@@ -1,0 +1,17 @@
+[Unit]
+Description=tamtam_again public Hyperliquid collectors
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/usr/bin/python3 -m tamtam_again --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 run-collectors --market-every-seconds 60 --ranking-refresh-seconds 900 --whale-every-seconds 3600 --whale-limit-per-window 5 --max-whale-accounts 5 --lookback-days 30
+Restart=on-failure
+RestartSec=30
+KillSignal=SIGINT
+TimeoutStopSec=40
+
+[Install]
+WantedBy=default.target

@@ -190,6 +190,28 @@ class Store:
             + " ORDER BY window_start_ms, observed_at", params
         ))
 
+    def mark_history_observations_complete(self, network: str, address: str,
+                                           endpoint: str) -> int:
+        cursor = self.connection.execute(
+            """UPDATE raw_observations SET complete=1
+               WHERE network=? AND entity_type='account' AND entity_id=?
+                 AND endpoint=? AND complete=0""",
+            (network, address.lower(), endpoint),
+        )
+        self.connection.commit()
+        return cursor.rowcount
+
+    def latest_observation_at(self, network: str, source: str,
+                              entity_type: str, entity_id: str,
+                              endpoint: str) -> str | None:
+        row = self.connection.execute(
+            """SELECT MAX(observed_at) FROM raw_observations
+               WHERE network=? AND source=? AND entity_type=?
+                 AND entity_id=? AND endpoint=?""",
+            (network, source, entity_type, entity_id, endpoint),
+        ).fetchone()
+        return row[0] if row and row[0] else None
+
     def save_market_rankings(self, snapshot_id: str, network: str,
                              observed_at: str, rows: list[dict[str, Any]]) -> None:
         self.connection.executemany(
@@ -221,13 +243,21 @@ class Store:
 
     def whale_addresses(self, snapshot_id: str, limit: int) -> list[sqlite3.Row]:
         return list(self.connection.execute(
-            """SELECT address, display_name, MIN(rank) AS best_rank
-               FROM whale_rankings WHERE snapshot_id=?
-               GROUP BY address, display_name
-               ORDER BY MIN(CASE window WHEN 'allTime' THEN 0 WHEN 'month' THEN 1
+            """SELECT ranked.address, ranked.display_name,
+                      MIN(ranked.rank) AS best_rank,
+                      COALESCE((SELECT MIN(cursor.last_successful_end_ms)
+                                FROM collection_cursors AS cursor
+                                WHERE cursor.address=ranked.address
+                                  AND cursor.network=(SELECT network
+                                      FROM whale_rankings WHERE snapshot_id=? LIMIT 1)), 0)
+                          AS collection_cursor
+               FROM whale_rankings AS ranked WHERE ranked.snapshot_id=?
+               GROUP BY ranked.address, ranked.display_name
+               ORDER BY collection_cursor,
+                        MIN(CASE window WHEN 'allTime' THEN 0 WHEN 'month' THEN 1
                                         WHEN 'week' THEN 2 ELSE 3 END),
                         MIN(CASE metric WHEN 'pnl' THEN 0 ELSE 1 END), MIN(rank), address
-               LIMIT ?""", (snapshot_id, limit),
+               LIMIT ?""", (snapshot_id, snapshot_id, limit),
         ))
 
     def latest_whale_rankings(self, network: str,

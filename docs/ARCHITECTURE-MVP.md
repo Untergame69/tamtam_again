@@ -35,6 +35,13 @@ courte, du risque élevé ou des biais de survivance. Les candidats sont des
 adresses observables et ne sont pas automatiquement regroupés avec leurs
 sous-comptes ou propriétaires.
 
+Les rangs compacts sont enregistrés à chaque cycle de découverte. La réponse
+complète du leaderboard (plusieurs mégaoctets observés) est archivée une fois
+par jour UTC, pour garder la provenance sans écrire le même jeu de dizaines de
+milliers de lignes à chaque heure. Les comptes candidats sont ordonnés par
+curseur de collecte : ceux jamais collectés passent d’abord, puis les historiques
+les moins avancés sont repris avant de recommencer un compte déjà couvert.
+
 Les requêtes de compte utilisent l’adresse maître ou sous-compte réellement
 associée aux données. Une adresse d’agent peut ne rien retourner. Les comptes
 liés ne sont pas automatiquement fusionnés.
@@ -63,13 +70,17 @@ différents, les comptes liés, les positions latentes, les liquidations ou une
 couverture historique lacunaire.
 
 La documentation officielle limite `userFillsByTime` aux 10 000 fills les plus
-récents et limite les réponses de fenêtres temporelles. Le collecteur pagine
-par fenêtres de 2 000 lignes maximum, conserve les recouvrements de timestamp
-pour déduplication et marque les fenêtres saturées comme incomplètes. Il
-respecte une seconde minimale entre requêtes et retente les réponses HTTP 429 et
-5xx avec attente exponentielle, en tenant compte de `Retry-After`. Une mesure de
-rentabilité ne peut pas être qualifiée avant que ces limites et la réconciliation
-de capital soient résolues.
+récents, à 2 000 lignes par réponse ; les autres endpoints temporels sont
+paginés à 500 lignes ou blocs distincts. Le collecteur applique le plafond
+propre à chaque endpoint, conserve le recouvrement de timestamp pour
+déduplication et marque les fenêtres saturées comme incomplètes. Il mémorise le
+dernier timestamp couvert afin que le cycle suivant reprenne la collecte sans
+recommencer toute la fenêtre; une répétition au même timestamp ne fait jamais
+avancer le curseur. La limite de requêtes est pondérée selon le poids API
+documenté, avec une marge sous le plafond IP; les réponses HTTP 429 et 5xx sont
+retentées avec attente exponentielle et `Retry-After`. Une mesure de rentabilité
+ne peut pas être qualifiée avant que ces limites et la réconciliation de capital
+soient résolues.
 
 ## Découverte et qualification des candidats
 

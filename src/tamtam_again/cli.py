@@ -262,12 +262,27 @@ def _discover_whales(store: Store, limit_per_window: int) -> tuple[str, list[dic
     rankings, candidates = rank_leaderboard(payload, limit_per_window)
     observed_at = utc_now()
     snapshot_id = uuid4().hex
-    store.save_observation(
-        network=NETWORK_NAME, source="hyperliquid-official-web-stats-v1",
-        entity_type="discovery", entity_id="leaderboard", endpoint="leaderboard",
-        payload=payload, request_payload={"url": "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard"},
-        requested_at=observed_at, record_count=len(payload["leaderboardRows"]),
+    archive_endpoint = "leaderboard-daily-raw"
+    archived_at = store.latest_observation_at(
+        NETWORK_NAME, "hyperliquid-official-web-stats-v1", "discovery",
+        "leaderboard", archive_endpoint,
     )
+    if archived_at is None:
+        archived_at = store.latest_observation_at(
+            NETWORK_NAME, "hyperliquid-official-web-stats-v1", "discovery",
+            "leaderboard", "leaderboard",
+        )
+    should_archive = (archived_at is None or
+                      datetime.fromisoformat(archived_at).date()
+                      < datetime.now(timezone.utc).date())
+    if should_archive:
+        store.save_observation(
+            network=NETWORK_NAME, source="hyperliquid-official-web-stats-v1",
+            entity_type="discovery", entity_id="leaderboard",
+            endpoint=archive_endpoint, payload=payload,
+            request_payload={"url": "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard"},
+            requested_at=observed_at, record_count=len(payload["leaderboardRows"]),
+        )
     store.save_whale_rankings(snapshot_id, NETWORK_NAME, observed_at, rankings)
     for candidate in candidates:
         store.add_candidate(NETWORK_NAME, candidate["address"],
@@ -298,9 +313,19 @@ def _collect_whale_accounts(store: Store, client: HyperliquidInfo,
                     complete=page.complete,
                 )
             complete = bool(pages) and all(page.complete for page in pages)
-            endpoint_results[endpoint] = {"pages": len(pages), "complete": complete}
+            resume_cursor = pages[-1].resume_cursor_ms if pages else None
+            endpoint_results[endpoint] = {
+                "pages": len(pages), "complete": complete,
+                "resume_cursor_ms": resume_cursor,
+            }
             if complete:
+                store.mark_history_observations_complete(
+                    NETWORK_NAME, address, endpoint
+                )
                 store.set_collection_cursor(NETWORK_NAME, address, endpoint, now_ms)
+            elif resume_cursor is not None and (prior is None or resume_cursor > prior):
+                store.set_collection_cursor(NETWORK_NAME, address, endpoint,
+                                           resume_cursor)
         snapshots = client.collect_account_snapshots(address)
         for endpoint, payload in snapshots.items():
             request_type = "clearinghouseState" if endpoint == "clearinghouseState" else "portfolio"

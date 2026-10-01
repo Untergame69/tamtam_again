@@ -5,8 +5,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tamtam_again.analysis import observed_account_summary
 from tamtam_again.markets import top_markets
-from tamtam_again.providers.hyperliquid import MAX_PAGE_ROWS, HyperliquidInfo
+from tamtam_again.providers.hyperliquid import (
+    MAX_PAGE_ROWS_BY_ENDPOINT,
+    HyperliquidInfo,
+    _request_weight,
+)
 from tamtam_again.storage import Store, decode_observation_payload
 from tamtam_again.whales import rank_leaderboard
 
@@ -86,13 +91,119 @@ class StorageTests(unittest.TestCase):
                 store.set_collection_cursor("net", address(1), "fills", 150)
                 self.assertEqual(store.collection_cursor("net", address(1), "fills"), 200)
 
+    def test_latest_observation_timestamp_is_available_for_daily_archiving(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with Store(Path(directory) / "collector.sqlite3") as store:
+                self.assertIsNone(store.latest_observation_at(
+                    "net", "source", "discovery", "leaderboard", "daily"
+                ))
+                store.save_observation(
+                    network="net", source="source", entity_type="discovery",
+                    entity_id="leaderboard", endpoint="daily", payload={"rows": []},
+                    requested_at="2026-10-01T12:00:00.000+00:00",
+                )
+                observed_at = store.latest_observation_at(
+                    "net", "source", "discovery", "leaderboard", "daily"
+                )
+                self.assertIsNotNone(observed_at)
+                self.assertTrue(observed_at.endswith("+00:00"))
+
+    def test_whale_selection_rotates_to_uncollected_accounts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with Store(Path(directory) / "collector.sqlite3") as store:
+                rows = []
+                for rank, number in enumerate((1, 2), start=1):
+                    rows.append({
+                        "window": "allTime", "metric": "pnl", "rank": rank,
+                        "address": address(number), "display_name": "",
+                        "account_value": "100", "pnl": str(100 - rank),
+                        "roi": "0.1", "volume": "1000",
+                    })
+                store.save_whale_rankings("snapshot", "net", "now", rows)
+                store.set_collection_cursor("net", address(1), "fills", 200)
+                selected = store.whale_addresses("snapshot", 1)
+                self.assertEqual(selected[0]["address"], address(2))
+
+    def test_analysis_deduplicates_inclusive_page_boundaries(self) -> None:
+        account = address(1)
+        fill_a = {"coin": "BTC", "tid": 1, "time": 200, "closedPnl": "2", "fee": "0"}
+        fill_b = {"coin": "BTC", "tid": 2, "time": 201, "closedPnl": "3", "fee": "0"}
+        funding = {"time": 200, "hash": "funding-1", "delta": {"usdc": "1"}}
+        ledger_a = {"time": 200, "hash": "ledger-1", "delta": {"type": "deposit"}}
+        ledger_b = {"time": 201, "hash": "ledger-2", "delta": {"type": "withdraw"}}
+        with tempfile.TemporaryDirectory() as directory:
+            with Store(Path(directory) / "collector.sqlite3") as store:
+                for endpoint, payloads in (
+                    ("userFillsByTime", [[fill_a], [fill_a, fill_b]]),
+                    ("userFunding", [[funding], [funding]]),
+                    ("userNonFundingLedgerUpdates", [[ledger_a], [ledger_a, ledger_b]]),
+                ):
+                    for window, payload in zip(((100, 200), (199, 300)), payloads):
+                        store.save_observation(
+                            network="hyperliquid-mainnet", source="test",
+                            entity_type="account", entity_id=account,
+                            endpoint=endpoint, payload=payload,
+                            window_start_ms=window[0], window_end_ms=window[1],
+                        )
+                result = observed_account_summary(
+                    store, "hyperliquid-mainnet", account, 100, 300
+                )
+        self.assertEqual(result["unique_fill_count_observed"], 2)
+        self.assertEqual(result["funding_usdc_observed"], "1")
+        self.assertEqual(result["non_funding_ledger_event_count_observed"], 2)
+        self.assertTrue(result["history_coverage_complete"])
+
+    def test_completed_resume_closes_prior_incomplete_window(self) -> None:
+        account = address(2)
+        empty = []
+        with tempfile.TemporaryDirectory() as directory:
+            with Store(Path(directory) / "collector.sqlite3") as store:
+                store.save_observation(
+                    network="hyperliquid-mainnet", source="test",
+                    entity_type="account", entity_id=account,
+                    endpoint="userFunding", payload=empty,
+                    window_start_ms=100, window_end_ms=200, complete=False,
+                )
+                store.save_observation(
+                    network="hyperliquid-mainnet", source="test",
+                    entity_type="account", entity_id=account,
+                    endpoint="userFunding", payload=empty,
+                    window_start_ms=199, window_end_ms=300, complete=True,
+                )
+                store.mark_history_observations_complete(
+                    "hyperliquid-mainnet", account, "userFunding"
+                )
+                result = observed_account_summary(
+                    store, "hyperliquid-mainnet", account, 100, 300
+                )
+        self.assertTrue(result["history_coverage_by_endpoint"]["userFunding"])
+        self.assertFalse(result["history_coverage_complete"])
+
+    def test_report_marks_uncollected_time_outside_window_incomplete(self) -> None:
+        account = address(3)
+        with tempfile.TemporaryDirectory() as directory:
+            with Store(Path(directory) / "collector.sqlite3") as store:
+                for endpoint in ("userFillsByTime", "userFunding",
+                                 "userNonFundingLedgerUpdates"):
+                    store.save_observation(
+                        network="hyperliquid-mainnet", source="test",
+                        entity_type="account", entity_id=account,
+                        endpoint=endpoint, payload=[],
+                        window_start_ms=100, window_end_ms=300,
+                    )
+                result = observed_account_summary(
+                    store, "hyperliquid-mainnet", account, 50, 300
+                )
+        self.assertFalse(result["history_coverage_complete"])
+
 
 class TimePaginationTests(unittest.TestCase):
     def test_inclusive_boundary_is_deduplicable_and_completes(self) -> None:
         client = HyperliquidInfo("hyperliquid-mainnet")
+        page_limit = MAX_PAGE_ROWS_BY_ENDPOINT["userFillsByTime"]
         first = [{"time": value, "tid": value}
-                 for value in range(100, 100 + MAX_PAGE_ROWS)]
-        boundary = 99 + MAX_PAGE_ROWS
+                 for value in range(100, 100 + page_limit)]
+        boundary = 99 + page_limit
         second = [{"time": boundary, "tid": boundary},
                   {"time": boundary + 1, "tid": boundary + 1}]
         with patch.object(client, "post_info", side_effect=[first, second]):
@@ -103,11 +214,50 @@ class TimePaginationTests(unittest.TestCase):
 
     def test_flags_unadvanceable_saturated_page_as_incomplete(self) -> None:
         client = HyperliquidInfo("hyperliquid-mainnet")
-        rows = [{"time": 100, "tid": value} for value in range(MAX_PAGE_ROWS)]
+        rows = [{"time": 100, "tid": value}
+                for value in range(MAX_PAGE_ROWS_BY_ENDPOINT["userFillsByTime"])]
         with patch.object(client, "post_info", return_value=rows):
             pages = client.collect_time_range("userFillsByTime", address(1), 100, 100)
         self.assertEqual(len(pages), 1)
         self.assertFalse(pages[0].complete)
+        self.assertIsNone(pages[0].resume_cursor_ms)
+
+    def test_uses_endpoint_specific_time_page_limits(self) -> None:
+        client = HyperliquidInfo("hyperliquid-mainnet")
+        rows = [{"time": value, "hash": str(value)}
+                for value in range(100, 100 + MAX_PAGE_ROWS_BY_ENDPOINT["userFunding"])]
+        final = [{"time": 600, "hash": "final"}]
+        with patch.object(client, "post_info", side_effect=[rows, final]):
+            pages = client.collect_time_range("userFunding", address(1), 100, 1000)
+        self.assertEqual(len(pages), 2)
+        self.assertTrue(pages[-1].complete)
+        self.assertEqual(pages[-1].resume_cursor_ms, 1000)
+
+    def test_saturated_fill_cap_returns_a_safe_resume_cursor(self) -> None:
+        client = HyperliquidInfo("hyperliquid-mainnet")
+        limit = MAX_PAGE_ROWS_BY_ENDPOINT["userFillsByTime"]
+        batches = []
+        cursor = 100
+        for page_index in range(5):
+            batch = [{"time": value, "tid": value}
+                     for value in range(cursor, cursor + limit)]
+            batches.append(batch)
+            cursor = batch[-1]["time"]
+        with patch.object(client, "post_info", side_effect=batches):
+            pages = client.collect_time_range("userFillsByTime", address(1), 100, 100_000)
+        self.assertEqual(len(pages), 5)
+        self.assertFalse(pages[-1].complete)
+        self.assertEqual(pages[-1].resume_cursor_ms, batches[-1][-1]["time"])
+
+
+class RequestWeightTests(unittest.TestCase):
+    def test_estimates_weight_by_endpoint_and_window(self) -> None:
+        self.assertEqual(_request_weight({"type": "l2Book", "coin": "BTC"}), 2)
+        self.assertEqual(_request_weight({"type": "userFillsByTime"}), 120)
+        self.assertEqual(_request_weight({"type": "userFunding"}), 45)
+        self.assertEqual(_request_weight({"type": "candleSnapshot", "req": {
+            "interval": "1m", "startTime": 0, "endTime": 300_000,
+        }}), 21)
 
 
 if __name__ == "__main__":

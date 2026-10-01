@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -13,14 +14,20 @@ def observed_account_summary(store: Store, network: str, address: str,
     rows = store.observations(network, "account", address.lower(), start_ms, end_ms)
     fills: dict[str, dict[str, Any]] = {}
     funding: dict[str, dict[str, Any]] = {}
-    ledger_count = 0
-    coverage_incomplete = False
+    ledger_events: dict[str, Any] = {}
+    coverage_intervals: defaultdict[str, list[tuple[int, int]]] = defaultdict(list)
     observed_endpoints: set[str] = set()
 
     for observation in rows:
         endpoint = observation["endpoint"]
         observed_endpoints.add(endpoint)
-        coverage_incomplete |= not bool(observation["complete"])
+        if (bool(observation["complete"])
+                and observation["window_start_ms"] is not None
+                and observation["window_end_ms"] is not None):
+            coverage_intervals[endpoint].append((
+                int(observation["window_start_ms"]),
+                int(observation["window_end_ms"]),
+            ))
         try:
             data = decode_observation_payload(observation)
         except ValueError:
@@ -38,7 +45,16 @@ def observed_account_summary(store: Store, network: str, address: str,
                 key = f"{item.get('time')}:{item.get('hash')}:{repr(item.get('delta'))}"
                 funding[key] = item
         elif endpoint == "userNonFundingLedgerUpdates" and isinstance(data, list):
-            ledger_count += len(data)
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                event_hash = item.get("hash")
+                if event_hash:
+                    key = str(event_hash).lower()
+                else:
+                    key = json.dumps(item, ensure_ascii=False, sort_keys=True,
+                                     separators=(",", ":"))
+                ledger_events[key] = item
 
     fill_counts: Counter[str] = Counter()
     realized_by_kind: defaultdict[str, Decimal] = defaultdict(Decimal)
@@ -61,6 +77,11 @@ def observed_account_summary(store: Store, network: str, address: str,
     expected_history = {"userFillsByTime", "userFunding",
                        "userNonFundingLedgerUpdates"}
     missing_history = sorted(expected_history - observed_endpoints)
+    coverage_by_endpoint = {
+        endpoint: _covers_window(coverage_intervals[endpoint], start_ms, end_ms)
+        for endpoint in sorted(expected_history)
+    }
+    coverage_incomplete = not all(coverage_by_endpoint.values())
 
     return {
         "network": network,
@@ -82,9 +103,10 @@ def observed_account_summary(store: Store, network: str, address: str,
         "perp_pnl_less_known_usdc_fees_plus_funding_observed_usdc": _format(
             realized_by_kind["perp"] - fees_by_kind_token["perp:USDC"] + funding_usdc
         ),
-        "non_funding_ledger_event_count_observed": ledger_count,
+        "non_funding_ledger_event_count_observed": len(ledger_events),
         "history_endpoints_observed": sorted(expected_history & observed_endpoints),
         "history_endpoints_missing": missing_history,
+        "history_coverage_by_endpoint": coverage_by_endpoint,
         "history_coverage_complete": not coverage_incomplete and not missing_history,
         "coverage_incomplete": coverage_incomplete or bool(missing_history),
         "observation_data_present": bool(observed_endpoints),
@@ -112,3 +134,17 @@ def _market_kind(coin: str) -> str:
     # Spot symbols use names such as @107 or PURR/USDC; perp symbols may include
     # a HIP-3 dex prefix but do not contain a slash.
     return "spot" if coin.startswith("@") or "/" in coin else "perp"
+
+
+def _covers_window(intervals: list[tuple[int, int]], start_ms: int,
+                   end_ms: int) -> bool:
+    cursor = start_ms
+    for interval_start, interval_end in sorted(intervals):
+        if interval_end < cursor:
+            continue
+        if interval_start > cursor + 1:
+            return False
+        cursor = max(cursor, interval_end)
+        if cursor >= end_ms:
+            return True
+    return cursor >= end_ms

@@ -17,11 +17,23 @@ NETWORKS = {
     "hyperliquid-testnet": "https://api.hyperliquid-testnet.xyz",
 }
 ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
-MAX_PAGE_ROWS = 2_000  # Maximum rows returned for a time-window request.
+MAX_PAGE_ROWS_BY_ENDPOINT = {
+    "userFillsByTime": 2_000,
+    "userFunding": 500,
+    "userNonFundingLedgerUpdates": 500,
+}
 MAX_PAGES_PER_ENDPOINT = 100
 MAX_TOTAL_FILLS_BY_TIME = 10_000
-MIN_REQUEST_INTERVAL_SECONDS = 1.0
+INFO_WEIGHT_LIMIT_PER_MINUTE = 900
 MAX_RETRIES = 5
+LIGHT_INFO_TYPES = {"l2Book", "clearinghouseState"}
+INTERVAL_MILLISECONDS = {
+    "1m": 60_000, "3m": 180_000, "5m": 300_000, "15m": 900_000,
+    "30m": 1_800_000, "1h": 3_600_000, "2h": 7_200_000,
+    "4h": 14_400_000, "8h": 28_800_000, "12h": 43_200_000,
+    "1d": 86_400_000, "3d": 259_200_000, "1w": 604_800_000,
+    "1M": 2_592_000_000,
+}
 READ_ONLY_INFO_TYPES = {
     "metaAndAssetCtxs", "userFillsByTime", "userFunding",
     "userNonFundingLedgerUpdates", "clearinghouseState", "portfolio",
@@ -41,13 +53,14 @@ class Page:
     start_ms: int
     end_ms: int
     complete: bool
+    resume_cursor_ms: int | None = None
 
 
 class HyperliquidInfo:
     """Small read-only adapter limited to Hyperliquid's public /info endpoint."""
 
     _rate_lock = threading.Lock()
-    _global_last_request = 0.0
+    _global_next_request_at = 0.0
 
     def __init__(self, network: str, timeout: float = 30.0):
         if network not in NETWORKS:
@@ -67,12 +80,9 @@ class HyperliquidInfo:
             headers={"Content-Type": "application/json", "Accept": "application/json",
                      "User-Agent": "tamtam-again/0.1 read-only research"},
         )
+        weight = _request_weight(payload)
         for attempt in range(MAX_RETRIES + 1):
-            with self._rate_lock:
-                wait = MIN_REQUEST_INTERVAL_SECONDS - (time.monotonic() - self._global_last_request)
-                if wait > 0:
-                    time.sleep(wait)
-                type(self)._global_last_request = time.monotonic()
+            _wait_for_global_slot(weight)
             try:
                 with urlopen(request, timeout=self.timeout) as response:
                     return json.loads(response.read().decode("utf-8"))
@@ -80,12 +90,12 @@ class HyperliquidInfo:
                 if exc.code not in {429, 500, 502, 503, 504} or attempt >= MAX_RETRIES:
                     raise ProviderError(f"Hyperliquid /info a répondu HTTP {exc.code}.") from exc
                 retry_after = _retry_after_seconds(exc.headers.get("Retry-After"))
-                time.sleep(retry_after if retry_after is not None
-                           else min(30.0, 2.0 ** attempt))
+                _defer_global_requests(retry_after if retry_after is not None
+                                       else min(30.0, 2.0 ** attempt))
             except (URLError, TimeoutError) as exc:
                 if attempt >= MAX_RETRIES:
                     raise ProviderError("Connexion à Hyperliquid impossible ou expirée.") from exc
-                time.sleep(min(30.0, 2.0 ** attempt))
+                _defer_global_requests(min(30.0, 2.0 ** attempt))
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                 raise ProviderError("Réponse Hyperliquid illisible; rien n’a été enregistré.") from exc
         raise ProviderError("Échec inattendu des reprises Hyperliquid.")
@@ -128,19 +138,19 @@ class HyperliquidInfo:
 
         pages: list[Page] = []
         cursor = start_ms
+        safe_cursor: int | None = None
         for _ in range(MAX_PAGES_PER_ENDPOINT):
             body = {"type": endpoint, "user": address,
                     "startTime": cursor, "endTime": end_ms}
             rows = self.post_info(body)
             if not isinstance(rows, list):
                 raise ProviderError(f"Réponse inattendue pour {endpoint}; rien n’a été enregistré.")
-            has_more = len(rows) >= MAX_PAGE_ROWS
+            page_limit = MAX_PAGE_ROWS_BY_ENDPOINT[endpoint]
+            has_more = len(rows) >= page_limit
             pages.append(Page(endpoint, body, rows, cursor, end_ms, True))
             if not has_more:
+                pages[-1] = Page(endpoint, body, rows, cursor, end_ms, True, end_ms)
                 return pages
-            if (endpoint == "userFillsByTime"
-                    and sum(len(page.rows) for page in pages) >= MAX_TOTAL_FILLS_BY_TIME):
-                break
             timestamps = [_event_time(row) for row in rows]
             timestamps = [value for value in timestamps if value is not None]
             if not timestamps:
@@ -149,11 +159,18 @@ class HyperliquidInfo:
             # API time ranges are inclusive. Keep the boundary item for deduplication.
             # If a full response has no later timestamp, report a coverage gap rather
             # than advancing past unseen events sharing the same millisecond.
+            if next_cursor > cursor:
+                safe_cursor = min(next_cursor, end_ms)
+            if (endpoint == "userFillsByTime"
+                    and sum(len(page.rows) for page in pages) >= MAX_TOTAL_FILLS_BY_TIME):
+                break
             if next_cursor <= cursor or next_cursor >= end_ms:
                 break
             cursor = next_cursor
         return [Page(page.endpoint, page.request, page.rows, page.start_ms,
-                     page.end_ms, False) for page in pages]
+                     page.end_ms, False,
+                     safe_cursor if index == len(pages) - 1 else None)
+                for index, page in enumerate(pages)]
 
 
 def validate_address(address: str) -> None:
@@ -186,3 +203,39 @@ def _retry_after_seconds(value: str | None) -> float | None:
             return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
         except (TypeError, ValueError, OverflowError):
             return None
+
+
+def _request_weight(payload: dict[str, Any]) -> int:
+    query_type = payload.get("type")
+    if query_type in LIGHT_INFO_TYPES:
+        return 2
+    if query_type == "userFillsByTime":
+        return 20 + (MAX_PAGE_ROWS_BY_ENDPOINT[query_type] + 19) // 20
+    if query_type in {"userFunding", "userNonFundingLedgerUpdates"}:
+        limit = MAX_PAGE_ROWS_BY_ENDPOINT[query_type]
+        return 20 + (limit + 19) // 20
+    if query_type == "candleSnapshot":
+        request = payload.get("req", {})
+        interval = INTERVAL_MILLISECONDS.get(request.get("interval"))
+        if interval and request.get("endTime", 0) >= request.get("startTime", 0):
+            bars = (request["endTime"] - request["startTime"]) // interval + 1
+            return 20 + (bars + 59) // 60
+    return 20
+
+
+def _wait_for_global_slot(weight: int) -> None:
+    cls = HyperliquidInfo
+    with cls._rate_lock:
+        now = time.monotonic()
+        scheduled = max(now, cls._global_next_request_at)
+        cls._global_next_request_at = scheduled + weight * 60 / INFO_WEIGHT_LIMIT_PER_MINUTE
+    if scheduled > now:
+        time.sleep(scheduled - now)
+
+
+def _defer_global_requests(delay_seconds: float) -> None:
+    cls = HyperliquidInfo
+    with cls._rate_lock:
+        cls._global_next_request_at = max(
+            cls._global_next_request_at, time.monotonic() + delay_seconds
+        )

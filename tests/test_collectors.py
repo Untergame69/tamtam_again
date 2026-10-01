@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
@@ -138,6 +139,40 @@ class WhaleRankingTests(unittest.TestCase):
 
 
 class StorageTests(unittest.TestCase):
+    def test_concurrent_store_startup_serializes_legacy_schema_migration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            db = Path(directory) / "legacy.sqlite3"
+            import sqlite3
+            with sqlite3.connect(db) as connection:
+                connection.executescript("""
+                    CREATE TABLE raw_observations (
+                        observation_id INTEGER PRIMARY KEY, network TEXT, source TEXT,
+                        entity_type TEXT, entity_id TEXT, endpoint TEXT,
+                        request_json TEXT, requested_at TEXT, observed_at TEXT,
+                        window_start_ms INTEGER, window_end_ms INTEGER,
+                        record_count INTEGER, complete INTEGER, response_sha256 TEXT,
+                        response_json TEXT
+                    );
+                    CREATE TABLE market_rankings (
+                        snapshot_id TEXT, network TEXT, observed_at TEXT, rank INTEGER,
+                        coin TEXT, day_notional_volume TEXT, instrument_json TEXT,
+                        context_json TEXT
+                    );
+                """)
+
+            def initialize_store() -> None:
+                with Store(db):
+                    pass
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                list(pool.map(lambda _index: initialize_store(), range(2)))
+
+            with sqlite3.connect(db) as connection:
+                columns = {row[1] for row in connection.execute(
+                    "PRAGMA table_info(market_rankings)"
+                )}
+            self.assertTrue({"market_type", "venue"}.issubset(columns))
+
     def test_compressed_observations_are_idempotent_and_decodable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with Store(Path(directory) / "collector.sqlite3") as store:

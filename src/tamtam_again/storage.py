@@ -3,10 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+_SCHEMA_LOCK = threading.Lock()
 
 
 SCHEMA = """
@@ -100,26 +104,30 @@ class Store:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
-        self.connection.executescript(SCHEMA)
-        columns = {row[1] for row in self.connection.execute(
-            "PRAGMA table_info(raw_observations)"
-        )}
-        if "response_encoding" not in columns:
-            self.connection.execute(
-                "ALTER TABLE raw_observations ADD COLUMN response_encoding TEXT NOT NULL DEFAULT 'json'"
-            )
-        market_columns = {row[1] for row in self.connection.execute(
-            "PRAGMA table_info(market_rankings)"
-        )}
-        if "market_type" not in market_columns:
-            self.connection.execute(
-                "ALTER TABLE market_rankings ADD COLUMN market_type TEXT NOT NULL DEFAULT 'perp'"
-            )
-        if "venue" not in market_columns:
-            self.connection.execute(
-                "ALTER TABLE market_rankings ADD COLUMN venue TEXT NOT NULL DEFAULT 'perps-main'"
-            )
-        self.connection.commit()
+        with _SCHEMA_LOCK:
+            self.connection.executescript(SCHEMA)
+            columns = {row[1] for row in self.connection.execute(
+                "PRAGMA table_info(raw_observations)"
+            )}
+            if "response_encoding" not in columns:
+                self.connection.execute(
+                    "ALTER TABLE raw_observations ADD COLUMN response_encoding "
+                    "TEXT NOT NULL DEFAULT 'json'"
+                )
+            market_columns = {row[1] for row in self.connection.execute(
+                "PRAGMA table_info(market_rankings)"
+            )}
+            if "market_type" not in market_columns:
+                self.connection.execute(
+                    "ALTER TABLE market_rankings ADD COLUMN market_type "
+                    "TEXT NOT NULL DEFAULT 'perp'"
+                )
+            if "venue" not in market_columns:
+                self.connection.execute(
+                    "ALTER TABLE market_rankings ADD COLUMN venue "
+                    "TEXT NOT NULL DEFAULT 'perps-main'"
+                )
+            self.connection.commit()
 
     def close(self) -> None:
         self.connection.close()

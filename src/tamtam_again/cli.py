@@ -169,11 +169,10 @@ def _collect(args: argparse.Namespace) -> None:
 
         snapshots = client.collect_account_snapshots(address)
         for endpoint, payload in snapshots.items():
-            request_type = "clearinghouseState" if endpoint == "clearinghouseState" else "portfolio"
             store.save_observation(network=args.network, source="hyperliquid-info-v1",
                                    entity_type="account", entity_id=address,
                                    endpoint=endpoint, payload=payload,
-                                   request_payload={"type": request_type, "user": address})
+                                   request_payload={"type": endpoint, "user": address})
         print(json.dumps({"network": args.network, "address": address,
                           "window_start_ms": args.start_ms, "window_end_ms": end_ms,
                           "market_snapshot_saved": True,
@@ -328,12 +327,11 @@ def _collect_whale_accounts(store: Store, client: HyperliquidInfo,
                                            resume_cursor)
         snapshots = client.collect_account_snapshots(address)
         for endpoint, payload in snapshots.items():
-            request_type = "clearinghouseState" if endpoint == "clearinghouseState" else "portfolio"
             store.save_observation(
                 network=NETWORK_NAME, source="hyperliquid-info-v1",
                 entity_type="account", entity_id=address, endpoint=endpoint,
                 payload=payload,
-                request_payload={"type": request_type, "user": address},
+                request_payload={"type": endpoint, "user": address},
             )
         result.append({"address": address, "history": endpoint_results,
                        "snapshots": sorted(snapshots)})

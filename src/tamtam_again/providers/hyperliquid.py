@@ -26,7 +26,7 @@ MAX_PAGES_PER_ENDPOINT = 100
 MAX_TOTAL_FILLS_BY_TIME = 10_000
 INFO_WEIGHT_LIMIT_PER_MINUTE = 900
 MAX_RETRIES = 5
-LIGHT_INFO_TYPES = {"l2Book", "clearinghouseState"}
+LIGHT_INFO_TYPES = {"l2Book", "clearinghouseState", "spotClearinghouseState"}
 INTERVAL_MILLISECONDS = {
     "1m": 60_000, "3m": 180_000, "5m": 300_000, "15m": 900_000,
     "30m": 1_800_000, "1h": 3_600_000, "2h": 7_200_000,
@@ -36,7 +36,8 @@ INTERVAL_MILLISECONDS = {
 }
 READ_ONLY_INFO_TYPES = {
     "metaAndAssetCtxs", "userFillsByTime", "userFunding",
-    "userNonFundingLedgerUpdates", "clearinghouseState", "portfolio",
+    "userNonFundingLedgerUpdates", "clearinghouseState",
+    "spotClearinghouseState", "openOrders", "portfolio",
     "l2Book", "candleSnapshot",
 }
 
@@ -123,6 +124,12 @@ class HyperliquidInfo:
         return {
             "clearinghouseState": self.post_info(
                 {"type": "clearinghouseState", "user": address}
+            ),
+            "spotClearinghouseState": self.post_info(
+                {"type": "spotClearinghouseState", "user": address}
+            ),
+            "openOrders": self.post_info(
+                {"type": "openOrders", "user": address}
             ),
             "portfolio": self.post_info({"type": "portfolio", "user": address}),
         }

@@ -261,6 +261,19 @@ class TimePaginationTests(unittest.TestCase):
         self.assertEqual(pages[-1].resume_cursor_ms, batches[-1][-1]["time"])
 
 
+class AccountSnapshotTests(unittest.TestCase):
+    def test_collects_perp_spot_orders_and_portfolio_snapshots(self) -> None:
+        client = HyperliquidInfo("hyperliquid-mainnet")
+        with patch.object(client, "post_info", side_effect=[{}, {}, [], []]) as request:
+            snapshots = client.collect_account_snapshots(address(1))
+        self.assertEqual(set(snapshots), {
+            "clearinghouseState", "spotClearinghouseState", "openOrders", "portfolio",
+        })
+        self.assertEqual([call.args[0]["type"] for call in request.call_args_list], [
+            "clearinghouseState", "spotClearinghouseState", "openOrders", "portfolio",
+        ])
+
+
 class RequestWeightTests(unittest.TestCase):
     def test_estimates_weight_by_endpoint_and_window(self) -> None:
         self.assertEqual(_request_weight({"type": "l2Book", "coin": "BTC"}), 2)

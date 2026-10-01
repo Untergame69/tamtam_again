@@ -16,6 +16,8 @@ n’implémente aucune route d’ordre ou signature.
 | Funding du compte | `userFunding` | Flux de funding reçus/payés et taux observés. |
 | Ledger hors funding | `userNonFundingLedgerUpdates` | Dépôts, transferts, retraits et autres variations de capital à réconcilier. |
 | Positions et marge courantes | `clearinghouseState` | Instantané de position ouverte; ne constitue pas l’historique latent. |
+| Soldes spot courants | `spotClearinghouseState` | Soldes de tokens utiles pour repérer les comptes unifiés et les expositions hors perpétuels. |
+| Ordres ouverts | `openOrders` | Intention de trading encore affichée, complément des exécutions déjà remplies. |
 | Historique de compte résumé | `portfolio` | Points historiques fournis par la plateforme, à comparer aux événements reconstruits. |
 | Classement public | données consommées par la page officielle de classement | Découverte de candidats par PnL/ROI sur day, week, month et allTime. La route de données du site n’est pas une API documentée et peut changer. |
 | Carnet des cinq principaux marchés | `l2Book` | État du carnet au moment de chaque cycle. |
@@ -150,5 +152,6 @@ fermeture de session et au démarrage de la machine.
 
 - [Hyperliquid — Info endpoint](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint)
 - [Hyperliquid — Perpetuals endpoints](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals)
+- [Hyperliquid — Spot endpoints](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/spot)
 - [Hyperliquid — Rate limits](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/rate-limits-and-user-limits)
 - [Hyperliquid — Classement public](https://app.hyperliquid.xyz/leaderboard)

@@ -320,7 +320,7 @@ def _collect_whale_accounts(store: Store, client: HyperliquidInfo,
             }
             if complete:
                 store.mark_history_observations_complete(
-                    NETWORK_NAME, address, endpoint
+                    NETWORK_NAME, address, endpoint, start_ms
                 )
                 store.set_collection_cursor(NETWORK_NAME, address, endpoint, now_ms)
             elif resume_cursor is not None and (prior is None or resume_cursor > prior):

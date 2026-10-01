@@ -162,6 +162,12 @@ class StorageTests(unittest.TestCase):
                     network="hyperliquid-mainnet", source="test",
                     entity_type="account", entity_id=account,
                     endpoint="userFunding", payload=empty,
+                    window_start_ms=0, window_end_ms=50, complete=False,
+                )
+                store.save_observation(
+                    network="hyperliquid-mainnet", source="test",
+                    entity_type="account", entity_id=account,
+                    endpoint="userFunding", payload=empty,
                     window_start_ms=100, window_end_ms=200, complete=False,
                 )
                 store.save_observation(
@@ -171,11 +177,16 @@ class StorageTests(unittest.TestCase):
                     window_start_ms=199, window_end_ms=300, complete=True,
                 )
                 store.mark_history_observations_complete(
-                    "hyperliquid-mainnet", account, "userFunding"
+                    "hyperliquid-mainnet", account, "userFunding", 199
                 )
+                statuses = [row[0] for row in store.connection.execute(
+                    "SELECT complete FROM raw_observations WHERE entity_id=? ORDER BY window_start_ms",
+                    (account,),
+                )]
                 result = observed_account_summary(
                     store, "hyperliquid-mainnet", account, 100, 300
                 )
+        self.assertEqual(statuses, [0, 1, 1])
         self.assertTrue(result["history_coverage_by_endpoint"]["userFunding"])
         self.assertFalse(result["history_coverage_complete"])
 

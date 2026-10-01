@@ -58,6 +58,9 @@ fenêtre. Les snapshots qui évoluent restent distincts grâce au hash de répon
 Les nombres du JSON brut restent des chaînes quand l’API les renvoie en
 chaînes. Les calculs d’agrégation utilisent `Decimal`. Une nouvelle version du
 normaliseur pourra donc recalculer les indicateurs sans réécrire la source.
+Le rapport dédoublonne les événements aux fenêtres inclusives et vérifie que
+les intervalles persistés couvrent réellement toute la période demandée. Une
+fenêtre initialement saturée reste incomplète jusqu’à la collecte de sa reprise.
 
 ## Ce que le premier rapport mesure
 

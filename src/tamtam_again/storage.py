@@ -191,12 +191,13 @@ class Store:
         ))
 
     def mark_history_observations_complete(self, network: str, address: str,
-                                           endpoint: str) -> int:
+                                           endpoint: str,
+                                           covered_from_ms: int) -> int:
         cursor = self.connection.execute(
             """UPDATE raw_observations SET complete=1
                WHERE network=? AND entity_type='account' AND entity_id=?
-                 AND endpoint=? AND complete=0""",
-            (network, address.lower(), endpoint),
+                 AND endpoint=? AND complete=0 AND window_end_ms>=?""",
+            (network, address.lower(), endpoint, covered_from_ms),
         )
         self.connection.commit()
         return cursor.rowcount

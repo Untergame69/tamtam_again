@@ -213,9 +213,11 @@ class StorageTests(unittest.TestCase):
                 self.assertIsNotNone(observed_at)
                 self.assertTrue(observed_at.endswith("+00:00"))
 
-    def test_whale_selection_rotates_to_uncollected_accounts(self) -> None:
+    def test_whale_selection_includes_candidates_from_older_rankings(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with Store(Path(directory) / "collector.sqlite3") as store:
+                for number in (1, 2, 3):
+                    store.add_candidate("net", address(number), "leaderboard:test")
                 rows = []
                 for rank, number in enumerate((1, 2), start=1):
                     rows.append({
@@ -226,8 +228,9 @@ class StorageTests(unittest.TestCase):
                     })
                 store.save_whale_rankings("snapshot", "net", "now", rows)
                 store.set_collection_cursor("net", address(1), "fills", 200)
+                store.set_collection_cursor("net", address(2), "fills", 300)
                 selected = store.whale_addresses("snapshot", 1)
-                self.assertEqual(selected[0]["address"], address(2))
+                self.assertEqual(selected[0]["address"], address(3))
 
     def test_analysis_deduplicates_inclusive_page_boundaries(self) -> None:
         account = address(1)

@@ -34,12 +34,14 @@ choix est un filtre de liquidité opérationnel, pas une mesure de qualité d’
 stratégie.
 
 La page officielle de classement fournit actuellement quatre fenêtres. Le
-collecteur conserve les classements PnL/ROI positifs et actifs, puis approfondit
-au plus cinq comptes par cycle dans le service. Le classement ne prouve pas
-qu’un compte possède un avantage reproductible : il peut refléter une période
-courte, du risque élevé ou des biais de survivance. Les candidats sont des
-adresses observables et ne sont pas automatiquement regroupés avec leurs
-sous-comptes ou propriétaires.
+collecteur conserve les 25 premiers rangs PnL/ROI positifs et actifs par fenêtre
+(day, week, month, allTime), puis approfondit au plus cinq comptes par cycle
+dans le service. Les candidats restent dans le registre après leur sortie des
+classements récents; ceux jamais approfondis et les historiques les moins avancés
+passent d’abord. Le classement ne prouve pas qu’un compte possède un avantage
+reproductible : il peut refléter une période courte, du risque élevé ou des biais
+de survivance. Les candidats sont des adresses observables et ne sont pas
+automatiquement regroupés avec leurs sous-comptes ou propriétaires.
 
 Les rangs compacts sont enregistrés à chaque cycle de découverte. La réponse
 complète du leaderboard (plusieurs mégaoctets observés) est archivée une fois
@@ -108,7 +110,7 @@ Depuis `tamtam_again/` :
 ```sh
 PYTHONPATH=src python -m tamtam_again init
 PYTHONPATH=src python -m tamtam_again collect-markets
-PYTHONPATH=src python -m tamtam_again collect-whales --limit-per-window 5 --max-accounts 5
+PYTHONPATH=src python -m tamtam_again collect-whales --limit-per-window 25 --max-accounts 5
 PYTHONPATH=src python -m tamtam_again top-markets
 PYTHONPATH=src python -m tamtam_again top-whales
 PYTHONPATH=src python -m tamtam_again collect 0x... --start-ms 1759276800000

@@ -265,22 +265,36 @@ class Store:
         self.connection.commit()
 
     def whale_addresses(self, snapshot_id: str, limit: int) -> list[sqlite3.Row]:
+        snapshot = self.connection.execute(
+            "SELECT network FROM whale_rankings WHERE snapshot_id=? LIMIT 1",
+            (snapshot_id,),
+        ).fetchone()
+        if not snapshot:
+            return []
         return list(self.connection.execute(
-            """SELECT ranked.address, ranked.display_name,
-                      MIN(ranked.rank) AS best_rank,
+            """SELECT candidate.address,
+                      COALESCE(NULLIF(MIN(ranked.display_name), ''), candidate.label)
+                          AS display_name,
+                      COALESCE(MIN(ranked.rank), 2147483647) AS best_rank,
                       COALESCE((SELECT MIN(cursor.last_successful_end_ms)
                                 FROM collection_cursors AS cursor
-                                WHERE cursor.address=ranked.address
-                                  AND cursor.network=(SELECT network
-                                      FROM whale_rankings WHERE snapshot_id=? LIMIT 1)), 0)
+                                WHERE cursor.address=candidate.address
+                                  AND cursor.network=candidate.network), 0)
                           AS collection_cursor
-               FROM whale_rankings AS ranked WHERE ranked.snapshot_id=?
-               GROUP BY ranked.address, ranked.display_name
-               ORDER BY collection_cursor,
-                        MIN(CASE window WHEN 'allTime' THEN 0 WHEN 'month' THEN 1
-                                        WHEN 'week' THEN 2 ELSE 3 END),
-                        MIN(CASE metric WHEN 'pnl' THEN 0 ELSE 1 END), MIN(rank), address
-               LIMIT ?""", (snapshot_id, snapshot_id, limit),
+               FROM candidates AS candidate
+               LEFT JOIN whale_rankings AS ranked
+                 ON ranked.snapshot_id=? AND ranked.address=candidate.address
+               WHERE candidate.network=? AND candidate.status='candidate'
+               GROUP BY candidate.network, candidate.address, candidate.label,
+                        candidate.added_at
+               ORDER BY collection_cursor, candidate.added_at,
+                        MIN(CASE ranked.window WHEN 'allTime' THEN 0
+                                               WHEN 'month' THEN 1
+                                               WHEN 'week' THEN 2 ELSE 3 END),
+                        MIN(CASE ranked.metric WHEN 'pnl' THEN 0
+                                               WHEN 'roi' THEN 1 ELSE 2 END),
+                        best_rank, candidate.address
+               LIMIT ?""", (snapshot_id, snapshot["network"], limit),
         ))
 
     def latest_whale_rankings(self, network: str,

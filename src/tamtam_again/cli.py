@@ -53,7 +53,7 @@ def _parser() -> argparse.ArgumentParser:
     markets.add_argument("--candle-lookback-minutes", default=5, type=int)
 
     whales = commands.add_parser("collect-whales", help="Découvrir les comptes les mieux classés et collecter leurs données publiques.")
-    whales.add_argument("--limit-per-window", default=10, type=int,
+    whales.add_argument("--limit-per-window", default=25, type=int,
                         help="Nombre de comptes retenus par fenêtre et métrique PnL/ROI.")
     whales.add_argument("--max-accounts", default=25, type=int,
                         help="Plafond de comptes à approfondir pendant ce cycle.")
@@ -64,7 +64,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--market-every-seconds", default=60, type=int)
     run.add_argument("--ranking-refresh-seconds", default=900, type=int)
     run.add_argument("--whale-every-seconds", default=3600, type=int)
-    run.add_argument("--whale-limit-per-window", default=10, type=int)
+    run.add_argument("--whale-limit-per-window", default=25, type=int)
     run.add_argument("--max-whale-accounts", default=25, type=int)
     run.add_argument("--lookback-days", default=30, type=int)
 
@@ -378,9 +378,11 @@ def _collect_whales(args: argparse.Namespace, emit: bool = True) -> dict[str, An
         snapshot_id, _, source_count = _discover_whales(store, args.limit_per_window)
         candidates = store.whale_addresses(snapshot_id, args.max_accounts)
         addresses = [row["address"] for row in candidates]
+        candidate_pool_size = len(store.candidates(NETWORK_NAME))
         collected = _collect_whale_accounts(store, client, addresses, args.lookback_days)
     summary = {"leaderboard_rows": source_count,
-               "ranked_candidates": len(candidates),
+               "candidate_pool_size": candidate_pool_size,
+               "selected_candidates": len(addresses),
                "collected_accounts": collected}
     if emit:
         print(json.dumps(summary, indent=2))

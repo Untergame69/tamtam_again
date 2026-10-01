@@ -403,12 +403,14 @@ def _run_collectors(args: argparse.Namespace) -> None:
         target=repeat,
         args=("markets", args.market_every_seconds, collect_market_loop),
         name="tamtam-market-collector",
+        daemon=True,
     )
     whale_thread = threading.Thread(
         target=repeat,
         args=("whales", args.whale_every_seconds,
               lambda: _collect_whales(whale_args, emit=False)),
         name="tamtam-whale-collector",
+        daemon=True,
     )
     market_thread.start()
     whale_thread.start()
@@ -418,8 +420,15 @@ def _run_collectors(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         print("Arrêt demandé; les requêtes en cours se terminent.", flush=True)
         stop_event.set()
-        market_thread.join(timeout=35)
-        whale_thread.join(timeout=35)
+        deadline = time.monotonic() + 30
+        for worker in (market_thread, whale_thread):
+            worker.join(timeout=max(0.0, deadline - time.monotonic()))
+        still_running = [worker.name for worker in (market_thread, whale_thread)
+                         if worker.is_alive()]
+        if still_running:
+            print(json.dumps({"stopping_workers": still_running,
+                              "message": "Arrêt après la fenêtre de grâce; les observations validées sont conservées."}),
+                  file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":

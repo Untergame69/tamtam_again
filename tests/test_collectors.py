@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tamtam_again.analysis import observed_account_summary
+from tamtam_again.cli import _collect_market_cycle
 from tamtam_again.markets import top_markets
 from tamtam_again.providers.hyperliquid import (
     MAX_PAGE_ROWS_BY_ENDPOINT,
@@ -35,6 +36,75 @@ class MarketRankingTests(unittest.TestCase):
     def test_rejects_misaligned_metadata(self) -> None:
         with self.assertRaises(ValueError):
             top_markets([{"universe": [{"name": "BTC"}]}, []])
+
+    def test_ranks_spot_and_every_perp_dex_in_one_volume_order(self) -> None:
+        snapshot = {
+            "perpDexs": [None, {"name": "xyz", "fullName": "XYZ Perps"}],
+            "perpUniverses": [
+                [{"universe": [{"name": "BTC"}, {"name": "ETH"}]},
+                 [{"dayNtlVlm": "500"}, {"dayNtlVlm": "100"}]],
+                [{"universe": [{"name": "xyz:XYZ100"}]},
+                 [{"dayNtlVlm": "800"}]],
+            ],
+            "spotMetaAndAssetCtxs": [
+                {"universe": [{"name": "TOKEN/USDC"}]},
+                [{"coin": "UNLISTED/USDC", "dayNtlVlm": "9000"},
+                 {"coin": "TOKEN/USDC", "dayNtlVlm": "700"}],
+            ],
+        }
+        rows = top_markets(snapshot, limit=3)
+        self.assertEqual([row["coin"] for row in rows],
+                         ["xyz:XYZ100", "TOKEN/USDC", "BTC"])
+        self.assertEqual([row["market_type"] for row in rows],
+                         ["perp", "spot", "perp"])
+        self.assertEqual([row["venue"] for row in rows],
+                         ["perps:xyz", "spot", "perps-main"])
+
+
+class MarketCollectionIntegrationTests(unittest.TestCase):
+    def test_collects_combined_universes_and_selected_market_data(self) -> None:
+        payload = {
+            "perpDexs": [None, {"name": "xyz"}],
+            "perpUniverses": [
+                [{"universe": [{"name": "BTC"}]}, [{"dayNtlVlm": "500"}]],
+                [{"universe": [{"name": "xyz:XYZ100"}]}, [{"dayNtlVlm": "900"}]],
+            ],
+            "spotMetaAndAssetCtxs": [
+                {"universe": [{"name": "TOKEN/USDC"}]},
+                [{"coin": "TOKEN/USDC", "dayNtlVlm": "700"}],
+            ],
+        }
+
+        class FakeInfo:
+            def __init__(self, _network: str):
+                pass
+
+            def collect_market_universes(self):
+                return payload
+
+            def collect_order_book(self, coin: str):
+                return {"coin": coin, "levels": [[], []]}
+
+            def collect_candles(self, coin: str, interval: str,
+                                start_ms: int, end_ms: int):
+                return [{"s": coin, "i": interval, "t": start_ms, "T": end_ms}]
+
+        with tempfile.TemporaryDirectory() as directory:
+            db = Path(directory) / "collector.sqlite3"
+            with patch("tamtam_again.cli.HyperliquidInfo", FakeInfo):
+                result = _collect_market_cycle(db, "hyperliquid-mainnet", "1m", 5)
+            with Store(db) as store:
+                selection = store.latest_market_selection("hyperliquid-mainnet")
+                raw_universes = store.connection.execute(
+                    "SELECT endpoint FROM raw_observations WHERE entity_type='market' "
+                    "AND endpoint IN ('metaAndAssetCtxs','perpDexs','spotMetaAndAssetCtxs') "
+                    "ORDER BY endpoint"
+                ).fetchall()
+        self.assertEqual(result["markets_in_universe"], 3)
+        self.assertEqual([row["coin"] for row in result["top_markets"]],
+                         ["xyz:XYZ100", "TOKEN/USDC", "BTC"])
+        self.assertEqual(len(selection["markets"]), 3)
+        self.assertEqual(len(raw_universes), 4)
 
 
 class WhaleRankingTests(unittest.TestCase):
@@ -272,6 +342,21 @@ class AccountSnapshotTests(unittest.TestCase):
         self.assertEqual([call.args[0]["type"] for call in request.call_args_list], [
             "clearinghouseState", "spotClearinghouseState", "openOrders", "portfolio",
         ])
+
+    def test_collects_all_perp_dexes_and_spot_contexts(self) -> None:
+        client = HyperliquidInfo("hyperliquid-mainnet")
+        with patch.object(client, "post_info", side_effect=[
+                [None, {"name": "xyz"}], [], [], [[], []]]) as request:
+            universes = client.collect_market_universes()
+        self.assertEqual(set(universes), {
+            "perpDexs", "perpUniverses", "spotMetaAndAssetCtxs",
+        })
+        self.assertEqual([call.args[0]["type"] for call in request.call_args_list], [
+            "perpDexs", "metaAndAssetCtxs", "metaAndAssetCtxs",
+            "spotMetaAndAssetCtxs",
+        ])
+        self.assertNotIn("dex", request.call_args_list[1].args[0])
+        self.assertEqual(request.call_args_list[2].args[0]["dex"], "xyz")
 
 
 class RequestWeightTests(unittest.TestCase):

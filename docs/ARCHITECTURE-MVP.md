@@ -11,7 +11,9 @@ n’implémente aucune route d’ordre ou signature.
 
 | Objet | Endpoint public | Usage |
 | --- | --- | --- |
-| Marchés perpétuels et contextes | `metaAndAssetCtxs` | Univers, mark/mid, funding courant, open interest, volumes et contexte du marché au moment de la collecte. |
+| Univers de tous les perpétuels | `perpDexs`, `metaAndAssetCtxs` par DEX | Univers et contextes de chaque DEX perpétuel Hyperliquid, y compris les DEX HIP-3. |
+| Noms des DEX perpétuels | `perpDexs` | Associe le DEX de chaque univers au classement et aux snapshots. |
+| Marchés spot et contextes | `spotMetaAndAssetCtxs` | Paires spot, volumes notionnels et prix disponibles au moment de la collecte. |
 | Exécutions du compte | `userFillsByTime` | Fills, PnL clôturé par fill, frais et horodatages. |
 | Funding du compte | `userFunding` | Flux de funding reçus/payés et taux observés. |
 | Ledger hors funding | `userNonFundingLedgerUpdates` | Dépôts, transferts, retraits et autres variations de capital à réconcilier. |
@@ -23,11 +25,13 @@ n’implémente aucune route d’ordre ou signature.
 | Carnet des cinq principaux marchés | `l2Book` | État du carnet au moment de chaque cycle. |
 | Bougies des cinq principaux marchés | `candleSnapshot` | Fenêtre récente en chandelles d’une minute. |
 
-Le top 5 est défini par `dayNtlVlm` décroissant sur le premier univers de
-perpétuels Hyperliquid. Cette mesure de volume notionnel sur 24 h est recalculée
-toutes les 15 minutes dans le service continu. Les carnets et cinq dernières
-minutes de bougies sont repris toutes les 60 secondes. Ce choix est un filtre
-de liquidité opérationnel, pas une mesure de qualité d’une stratégie.
+Le top 5 est défini par `dayNtlVlm` décroissant sur tous les DEX perpétuels et
+les paires spot Hyperliquid. Le marché, son type et son DEX restent enregistrés
+avec chaque rang. Cette mesure de volume notionnel sur 24 h est recalculée toutes
+les 15 minutes dans le service continu. Les carnets et cinq dernières minutes de
+bougies des cinq marchés sélectionnés sont repris toutes les 60 secondes. Ce
+choix est un filtre de liquidité opérationnel, pas une mesure de qualité d’une
+stratégie.
 
 La page officielle de classement fournit actuellement quatre fenêtres. Le
 collecteur conserve les classements PnL/ROI positifs et actifs, puis approfondit

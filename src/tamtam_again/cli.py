@@ -200,7 +200,7 @@ def _collect_market_cycle(db_path: Path, network: str, candle_interval: str,
         selection = store.latest_market_selection(network)
     should_refresh = refresh_ranking or selection is None
     if should_refresh:
-        payload = client.collect_market_snapshot()
+        payload = client.collect_market_universes()
         ranked = top_markets(payload, TOP_MARKET_COUNT)
         snapshot_id = uuid4().hex
     else:
@@ -213,9 +213,32 @@ def _collect_market_cycle(db_path: Path, network: str, candle_interval: str,
         if should_refresh:
             store.save_observation(
                 network=network, source="hyperliquid-info-v1",
-                entity_type="market", entity_id="perpetuals",
-                endpoint="metaAndAssetCtxs", payload=payload,
-                request_payload={"type": "metaAndAssetCtxs"}, requested_at=observed_at,
+                entity_type="market", entity_id="perpetuals", endpoint="perpDexs",
+                payload=payload["perpDexs"], request_payload={"type": "perpDexs"},
+                requested_at=observed_at,
+            )
+            for dex_index, (dex, pair) in enumerate(zip(
+                    payload["perpDexs"], payload["perpUniverses"])):
+                dex_name = dex.get("name") if isinstance(dex, dict) else None
+                venue = "perps-main" if dex_index == 0 else (
+                    f"perps:{dex_name}" if dex_name else f"perps-dex-{dex_index}"
+                )
+                request = {"type": "metaAndAssetCtxs"}
+                if dex_name:
+                    request["dex"] = dex_name
+                store.save_observation(
+                    network=network, source="hyperliquid-info-v1",
+                    entity_type="market", entity_id=f"perpetuals:{venue}",
+                    endpoint="metaAndAssetCtxs", payload=pair,
+                    request_payload=request, requested_at=observed_at,
+                )
+            store.save_observation(
+                network=network, source="hyperliquid-info-v1",
+                entity_type="market", entity_id="spot",
+                endpoint="spotMetaAndAssetCtxs",
+                payload=payload["spotMetaAndAssetCtxs"],
+                request_payload={"type": "spotMetaAndAssetCtxs"},
+                requested_at=observed_at,
             )
             store.save_market_rankings(snapshot_id, network, observed_at, ranked)
         for market in ranked:
@@ -245,12 +268,21 @@ def _collect_market_cycle(db_path: Path, network: str, candle_interval: str,
                 )
             except (ProviderError, ValueError) as exc:
                 errors.append({"coin": coin, "endpoint": "candleSnapshot", "error": str(exc)})
-    market_count = len(payload[0]["universe"]) if payload else None
+    perp_count = (sum(len(pair[0]["universe"]) for pair in payload["perpUniverses"])
+                  if payload else None)
+    spot_count = (len(payload["spotMetaAndAssetCtxs"][0]["universe"])
+                  if payload else None)
     return {"network": network, "source": "hyperliquid-info-v1",
             "ranking_refreshed": should_refresh,
             "ranking_observed_at": observed_at if should_refresh else selection["observed_at"],
-            "ranking": "dayNtlVlm_desc", "markets_in_universe": market_count,
+            "ranking": "dayNtlVlm_desc",
+            "perp_markets_in_universe": perp_count,
+            "spot_markets_in_universe": spot_count,
+            "markets_in_universe": (perp_count + spot_count
+                                    if perp_count is not None and spot_count is not None
+                                    else None),
             "top_markets": [{"rank": row["rank"], "coin": row["coin"],
+                             "market_type": row["market_type"], "venue": row["venue"],
                              "day_notional_volume": row["day_notional_volume"]}
                             for row in ranked],
             "candle_interval": candle_interval, "errors": errors}

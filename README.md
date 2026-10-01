@@ -22,7 +22,8 @@ Le premier incrément de code et son modèle de données sont décrits dans
 [TAMTAM_AGAIN-5](https://manhattam.com/work/issue/TAMTAM_AGAIN-5).
 
 Le collecteur couvre maintenant le top 5 Hyperliquid par volume notionnel sur
-24 h et les comptes classés sur le leaderboard public. Les cycles continus et
+24 h, calculé sur les perpétuels de tous les DEX et les marchés spot, ainsi que
+les comptes classés sur le leaderboard public. Les cycles continus et
 les commandes d’exploitation sont documentés dans l’architecture ; les réponses
 brutes sont conservées dans SQLite, compressées et dédupliquées.
 

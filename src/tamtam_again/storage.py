@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS market_rankings (
     rank INTEGER NOT NULL,
     coin TEXT NOT NULL,
     day_notional_volume TEXT NOT NULL,
+    market_type TEXT NOT NULL DEFAULT 'perp',
+    venue TEXT NOT NULL DEFAULT 'perps-main',
     instrument_json TEXT NOT NULL,
     context_json TEXT NOT NULL,
     PRIMARY KEY (snapshot_id, rank),
@@ -105,6 +107,17 @@ class Store:
         if "response_encoding" not in columns:
             self.connection.execute(
                 "ALTER TABLE raw_observations ADD COLUMN response_encoding TEXT NOT NULL DEFAULT 'json'"
+            )
+        market_columns = {row[1] for row in self.connection.execute(
+            "PRAGMA table_info(market_rankings)"
+        )}
+        if "market_type" not in market_columns:
+            self.connection.execute(
+                "ALTER TABLE market_rankings ADD COLUMN market_type TEXT NOT NULL DEFAULT 'perp'"
+            )
+        if "venue" not in market_columns:
+            self.connection.execute(
+                "ALTER TABLE market_rankings ADD COLUMN venue TEXT NOT NULL DEFAULT 'perps-main'"
             )
         self.connection.commit()
 
@@ -218,10 +231,11 @@ class Store:
         self.connection.executemany(
             """INSERT OR IGNORE INTO market_rankings
                (snapshot_id, network, observed_at, rank, coin,
-                day_notional_volume, instrument_json, context_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                day_notional_volume, market_type, venue, instrument_json, context_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [(snapshot_id, network, observed_at, row["rank"], row["coin"],
-              row["day_notional_volume"],
+              row["day_notional_volume"], row.get("market_type", "perp"),
+              row.get("venue", "perps-main"),
               json.dumps(row["instrument"], ensure_ascii=False, sort_keys=True),
               json.dumps(row["context"], ensure_ascii=False, sort_keys=True))
              for row in rows],
@@ -308,7 +322,8 @@ class Store:
         if not latest:
             return None
         rows = self.connection.execute(
-            """SELECT rank, coin, day_notional_volume, instrument_json, context_json
+            """SELECT rank, coin, day_notional_volume, market_type, venue,
+                      instrument_json, context_json
                FROM market_rankings WHERE snapshot_id=? ORDER BY rank""",
             (latest["snapshot_id"],),
         )
@@ -316,6 +331,7 @@ class Store:
                 "observed_at": latest["observed_at"],
                 "markets": [{"rank": row["rank"], "coin": row["coin"],
                              "day_notional_volume": row["day_notional_volume"],
+                             "market_type": row["market_type"], "venue": row["venue"],
                              "instrument": json.loads(row["instrument_json"]),
                              "context": json.loads(row["context_json"])}
                             for row in rows]}

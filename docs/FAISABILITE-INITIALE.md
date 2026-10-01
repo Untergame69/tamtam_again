@@ -98,8 +98,10 @@ Le ticket [TAMTAM_AGAIN-5](https://manhattam.com/work/issue/TAMTAM_AGAIN-5)
 porte le collecteur public Hyperliquid et le registre de candidats. Le code se
 trouve sous `src/tamtam_again/`; l’architecture, les commandes et les limites
 sont dans [ARCHITECTURE-MVP.md](ARCHITECTURE-MVP.md). Le premier cycle réel a
-enregistré les métadonnées et indicateurs de 234 perpétuels, puis le top 5 par
-volume notionnel sur 24 h avec carnets et bougies. Le canal de classement public
+enregistré les métadonnées et indicateurs de 234 perpétuels sur le DEX principal,
+puis le top 5 par volume notionnel sur 24 h avec carnets et bougies. Le collecteur
+évolue pour comparer aussi les autres DEX perpétuels et le spot dans un classement
+unique. Le canal de classement public
 a fourni 46 955 lignes; cinq comptes ont été retenus et leurs historiques,
 instantanés de positions et portefeuilles ont été collectés. Les fenêtres de
 fills les plus actives sont signalées incomplètes à la limite de rétention API.

@@ -35,7 +35,8 @@ INTERVAL_MILLISECONDS = {
     "1M": 2_592_000_000,
 }
 READ_ONLY_INFO_TYPES = {
-    "metaAndAssetCtxs", "userFillsByTime", "userFunding",
+    "metaAndAssetCtxs", "perpDexs", "allPerpMetas", "spotMetaAndAssetCtxs",
+    "userFillsByTime", "userFunding",
     "userNonFundingLedgerUpdates", "clearinghouseState",
     "spotClearinghouseState", "openOrders", "portfolio",
     "l2Book", "candleSnapshot",
@@ -103,6 +104,23 @@ class HyperliquidInfo:
 
     def collect_market_snapshot(self) -> Any:
         return self.post_info({"type": "metaAndAssetCtxs"})
+
+    def collect_market_universes(self) -> dict[str, Any]:
+        dexes = self.post_info({"type": "perpDexs"})
+        if not isinstance(dexes, list) or not dexes:
+            raise ProviderError("Réponse perpDexs inattendue.")
+        perp_universes = []
+        for dex in dexes:
+            dex_name = dex.get("name") if isinstance(dex, dict) else None
+            request = {"type": "metaAndAssetCtxs"}
+            if dex_name:
+                request["dex"] = dex_name
+            perp_universes.append(self.post_info(request))
+        return {
+            "perpDexs": dexes,
+            "perpUniverses": perp_universes,
+            "spotMetaAndAssetCtxs": self.post_info({"type": "spotMetaAndAssetCtxs"}),
+        }
 
     def collect_order_book(self, coin: str) -> Any:
         return self.post_info({"type": "l2Book", "coin": coin})

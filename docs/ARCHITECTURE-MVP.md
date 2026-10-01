@@ -126,8 +126,12 @@ mkdir -p ~/.config/systemd/user
 cp systemd/user/tamtam-again-collectors.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now tamtam-again-collectors.service
+loginctl enable-linger Untergame
 journalctl --user -u tamtam-again-collectors -f
 ```
+
+Le mode linger maintient le gestionnaire systemd utilisateur actif après la
+fermeture de session et au démarrage de la machine.
 
 ## Phases suivantes
 

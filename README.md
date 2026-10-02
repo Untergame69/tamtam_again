@@ -36,6 +36,16 @@ la période enregistrée suffit à démarrer un paper replay :
 .venv/bin/python -m tamtam_again research-status
 ```
 
+Ce rapport mesure désormais la maturité pour chaque compte × marché à partir
+des ordres clôturants contextualisés par BBO et montre les prérequis encore
+manquants. Une ETA n'est affichée que si ce couple a assez d'historique; le
+calendrier ne décide pas du passage à l'analyse. Les repères actuels sont
+exploratoires : un ordre clôturant n'est pas un cycle de position reconstruit.
+Voir [TAMTAM_AGAIN-7](https://manhattam.com/work/issue/TAMTAM_AGAIN-7) pour la
+définition de la maturité, et
+[TAMTAM_AGAIN-12](https://manhattam.com/work/issue/TAMTAM_AGAIN-12) pour la
+boucle Hermes et le paper trading N1.
+
 Les données déjà collectées sur les comptes non suivis restent archivées pour
 permettre leur réévaluation. Seuls les comptes marqués `tracked` sont interrogés
 en continu; les données archivées ne sont pas supprimées automatiquement.

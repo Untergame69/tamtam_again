@@ -13,7 +13,7 @@ from uuid import uuid4
 from .analysis import cohort_research_status, observed_account_summary
 from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, validate_address
 from .providers.hyperliquid_stats import HyperliquidLeaderboard
-from .markets import TOP_MARKET_COUNT, top_markets
+from .markets import STREAM_MARKET_COUNT, TOP_MARKET_COUNT, top_markets
 from .storage import Store, utc_now
 from .workflow import (claim_run, complete_paper, complete_research,
                        workflow_tick, write_research_evidence)
@@ -91,7 +91,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--whale-every-seconds", default=3600, type=int)
     run.add_argument("--whale-limit-per-window", default=25, type=int)
     run.add_argument("--max-whale-accounts", default=10, type=int)
-    run.add_argument("--max-stream-markets", default=10, type=int)
+    run.add_argument("--max-stream-markets", default=STREAM_MARKET_COUNT, type=int)
     run.add_argument("--max-depth-markets", default=2, type=int)
     run.add_argument("--lookback-days", default=30, type=int)
 
@@ -249,7 +249,9 @@ def _collect_markets(args: argparse.Namespace) -> None:
 
 def _collect_market_cycle(db_path: Path, network: str, candle_interval: str,
                           candle_lookback_minutes: int,
-                          refresh_ranking: bool = True) -> dict[str, Any]:
+                          refresh_ranking: bool = True,
+                          market_context_count: int = STREAM_MARKET_COUNT
+                          ) -> dict[str, Any]:
     if candle_lookback_minutes < 1:
         raise ValueError("candle-lookback-minutes doit être positif.")
     client = HyperliquidInfo(network)
@@ -257,7 +259,7 @@ def _collect_market_cycle(db_path: Path, network: str, candle_interval: str,
     payload = None
     with Store(db_path) as store:
         selection = store.latest_market_selection(network)
-        candle_markets = tracked_market_symbols(store, network, TOP_MARKET_COUNT)
+        candle_markets = tracked_market_symbols(store, network, market_context_count)
     should_refresh = refresh_ranking or selection is None
     if should_refresh:
         payload = client.collect_market_universes()
@@ -482,8 +484,10 @@ def _run_collectors(args: argparse.Namespace) -> None:
         nonlocal next_ranking_refresh
         now = time.monotonic()
         refresh = now >= next_ranking_refresh
-        summary = _collect_market_cycle(args.db, NETWORK_NAME, "1m", 5,
-                                        refresh_ranking=refresh)
+        summary = _collect_market_cycle(
+            args.db, NETWORK_NAME, "1m", 5, refresh_ranking=refresh,
+            market_context_count=args.max_stream_markets,
+        )
         if refresh:
             next_ranking_refresh = now + args.ranking_refresh_seconds
         return summary

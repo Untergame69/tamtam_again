@@ -5,6 +5,9 @@ from typing import Any
 
 
 TOP_MARKET_COUNT = 5
+# Archive market context for the leading whale-traded symbols as well as the
+# separate global top-five volume ranking.
+STREAM_MARKET_COUNT = 20
 
 
 def top_markets(snapshot: Any, limit: int = TOP_MARKET_COUNT) -> list[dict[str, Any]]:

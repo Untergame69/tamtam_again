@@ -131,6 +131,7 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                         "If evidence is insufficient, return needs_more_data with a strictly higher required cycle count.",
                         "Distinguish selected-cycle market-context counts from the wider account-market capture-window totals; never present one denominator as the other.",
                         "Recommend the smallest next cycle threshold justified by a specific evidence gap; do not apply a generic calendar duration or generic 100-cycle rule.",
+                        "required_exploitable_cycles and next_required_cycles are cumulative total-cycle thresholds, not additional cycles to collect; state the same cumulative target in prose.",
                     ],
                 }
                 _atomic_json(path, request)
@@ -668,7 +669,8 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "needs_more_data when the evidence sample is too small and choose the smallest "
         "strictly higher cycle threshold justified by the pair-specific evidence gap; "
         "do not default to 100 cycles. Distinguish selected-cycle market-context counts "
-        "from wider account-market capture-window totals. redo_re when the method or conclusion needs another "
+        "from wider account-market capture-window totals. Treat next_required_cycles as "
+        "a cumulative total threshold, not additional cycles. redo_re when the method or conclusion needs another "
         "analysis pass; reject only if the evidence directly contradicts the hypothesis.\n"
         f"run_id={run_id}\ninput_fingerprint={fingerprint}\n"
         f"draft={draft_path}\nevidence={evidence_path}"

@@ -366,11 +366,13 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "research_cycle_levels": list(RESEARCH_CYCLE_LEVELS),
             "unit": "completed perp position excursions (flat-to-flat or opening-and-return-to-observed-baseline) with complete HTTP fill coverage and BBO context",
             "calendar_time_is_only_an_estimate": True,
+            "eta_method": "last up to 10 exploitable cycles per account-market pair; estimate available from 2 cycles; low confidence below 10 cycles",
             "limitations": [
             "Partial fills are connected through their startPosition and resulting position. A cycle may return to a non-zero observed baseline; exits of inventory already held when collection begins do not count. Ambiguous same-timestamp paths, truncated episodes, and spot fills are excluded.",
             "When one execution crosses a non-zero baseline, only the proportional size, fee, and realized PnL needed to return to that baseline are allocated to the cycle; the remainder closes pre-existing inventory.",
                 "A cycle counts only if every fill timestamp lies in a complete userFillsByTime window and has a preceding BBO no older than 1 second.",
                 "The BBO match is a timing proxy, not proof of gap-free depth or complete order-book capture. The stricter 90% in-capture coverage rate remains an additional gate.",
+                "ETA uses the observed recent cycle rate; a short sample can overstate a burst and does not model future regime changes.",
             ],
         },
     }
@@ -513,10 +515,17 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "estimated_exploitable_cycles_per_hour": round(
             cycle_rate, 3
         ) if cycle_rate is not None else None,
+        "eta_observation_span_hours": round(
+            _recent_cycle_span_hours(cycles), 2
+        ) if cycle_rate is not None else None,
         "eta_cycles_sampled": min(len(cycles), 10) if cycle_rate is not None else 0,
         "hypothesis_eta_hours": _cycle_eta(cycles, missing_hypothesis),
         "validation_eta_hours": _cycle_eta(cycles, missing_validation),
-        "eta_confidence": "low" if cycle_rate is not None else "insufficient_pair_history",
+        "eta_confidence": (
+            "moderate" if cycle_rate is not None and len(cycles) >= 10
+            else "low" if cycle_rate is not None
+            else "insufficient_pair_history"
+        ),
         "eta_is_informational_only": True,
     }
 
@@ -539,12 +548,20 @@ def _cycle_eta(cycles: list[dict[str, Any]], remaining: int) -> float | None:
 
 def _recent_cycle_rate(cycles: list[dict[str, Any]]) -> float | None:
     recent = cycles[-10:]
-    if len(recent) < 5:
+    if len(recent) < 2:
         return None
+    span_hours = _recent_cycle_span_hours(recent)
+    if span_hours <= 0:
+        return None
+    return len(recent) / span_hours
+
+
+def _recent_cycle_span_hours(cycles: list[dict[str, Any]]) -> float:
+    recent = cycles[-10:]
+    if len(recent) < 2:
+        return 0.0
     span_ms = recent[-1]["closed_at_ms"] - recent[0]["opened_at_ms"]
-    if span_ms < 21_600_000:
-        return None
-    return len(recent) / (span_ms / 3_600_000)
+    return max(0.0, span_ms / 3_600_000)
 
 
 def _fills_from_observation(endpoint: str, payload: Any) -> list[dict[str, Any]]:

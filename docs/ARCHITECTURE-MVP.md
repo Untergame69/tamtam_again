@@ -221,13 +221,15 @@ Le premier palier est de 5 cycles exploitables pour lancer une RE exploratoire;
 les suivants sont 10 puis 30 pour approfondir, et 100 pour comparer. L'unité
 compte les excursions contextualisées, pas les fills ou les ordres isolés. Ces
 seuils déclenchent une analyse, ils ne prouvent pas un avantage statistique et
-ne fixent aucun délai. Après 5 cycles exploitables répartis sur au moins 6 h,
-l'ETA est estimée uniquement au débit de ce couple; sinon elle reste inconnue.
+ne fixent aucun délai. L'ETA est estimée au débit observé du couple dès que deux
+cycles sont disponibles, sur les dix plus récents au maximum. Elle est marquée
+de confiance faible avant dix cycles; une cadence observée sur une courte
+période peut refléter un pic temporaire, donc l'ETA reste indicative.
 Le seuil est un minimum de déclenchement : la RE reçoit aussi les cycles déjà
 collectés au moment où Hermes démarre, jusqu'aux 100 premiers cycles cumulés
 (ou jusqu'au seuil complet si celui-ci dépasse 100). Les paliers supérieurs
-reprennent ainsi l'échantillon antérieur et l'élargissent. La condition de 6 h
-ne retarde jamais une RE; elle sert uniquement à éviter une ETA trop instable.
+reprennent ainsi l'échantillon antérieur et l'élargissent. Le calcul d'ETA ne
+retarde jamais une RE.
 Si Hermes ou la revue Codex demande plus de données, le prochain seuil
 strictement supérieur propre au couple est conservé. Après une RE acceptée, la
 collecte passe au palier suivant afin de comparer les versions de l'hypothèse

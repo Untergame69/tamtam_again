@@ -41,7 +41,9 @@ la période enregistrée suffit à démarrer un paper replay :
 Ce rapport mesure désormais la maturité par compte × marché à partir des
 excursions de position complètes : un retour flat-à-flat ou le retour à un
 niveau de position observé après une nouvelle ouverture. Chaque fill du cycle
-est contextualisé par BBO. Il montre les prérequis
+est contextualisé par BBO. Le rapport indique le premier et le dernier fill de
+chaque paire, ainsi que l'ancienneté du dernier, pour distinguer une collecte
+active d'un marché devenu calme pour cette baleine. Il montre les prérequis
 manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les paliers
 de volume déclenchent la boucle : 5 cycles pour la première RE exploratoire,
 10 puis 30 pour approfondir et 100 pour comparer. Le calendrier ne bloque pas son

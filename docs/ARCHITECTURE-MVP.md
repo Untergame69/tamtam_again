@@ -193,7 +193,9 @@ fermeture de session et au démarrage de la machine.
 
 `research-status` est le point de contrôle avant d'écrire un replay. Il résume
 les fills observés par compte, les marchés utilisés et les messages de marché
-archivés pour ces symboles. Il ne déclare pas encore le paper replay prêt : les
+archivés pour ces symboles. Pour chaque paire compte × marché, il indique aussi
+le premier et le dernier fill observés et l'ancienneté du dernier fill. Il ne
+déclare pas encore le paper replay prêt : les
 fills HTTP historiques couvrent une période plus longue que les flux de carnet,
 et les marchés observés chez les comptes ne sont pas tous présents dans les
 carnets suivis. Une stratégie de copie reste à définir avant d'estimer une

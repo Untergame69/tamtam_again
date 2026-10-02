@@ -471,10 +471,16 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
     volume_gate = exploitable_cycle_count >= target_cycles
     context_gate = context_pct_1s is not None and context_pct_1s >= 90
     eta_as_of_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    first_fill_ms = min(stamps) if stamps else None
+    last_fill_ms = max(stamps) if stamps else None
     cycle_rate = _recent_cycle_rate(cycles, eta_as_of_ms)
     return {
         "coin": coin,
         "observed_fills": len(fill_ids),
+        "first_fill_utc": _iso_ms(first_fill_ms),
+        "last_fill_utc": _iso_ms(last_fill_ms),
+        "last_fill_age_hours": round(max(0, eta_as_of_ms - last_fill_ms) / 3_600_000, 2)
+        if last_fill_ms is not None else None,
         "distinct_order_ids": len(order_ids),
         "closing_fills": close_fill_count,
         "distinct_closing_orders": len(close_orders),

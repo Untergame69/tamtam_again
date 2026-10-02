@@ -222,9 +222,10 @@ les suivants sont 10 puis 30 pour approfondir, et 100 pour comparer. L'unité
 compte les excursions contextualisées, pas les fills ou les ordres isolés. Ces
 seuils déclenchent une analyse, ils ne prouvent pas un avantage statistique et
 ne fixent aucun délai. L'ETA est estimée au débit observé du couple dès que deux
-cycles sont disponibles, sur les dix plus récents au maximum. Elle est marquée
-de confiance faible avant dix cycles; une cadence observée sur une courte
-période peut refléter un pic temporaire, donc l'ETA reste indicative.
+cycles sont disponibles, sur les dix plus récents au maximum. Le calcul inclut
+le temps calme depuis l'ouverture du premier cycle échantillonné jusqu'à
+maintenant, afin qu'une interruption d'activité allonge l'estimation. Elle est
+marquée de confiance faible avant dix cycles et reste indicative.
 Le seuil est un minimum de déclenchement : la RE reçoit aussi les cycles déjà
 collectés au moment où Hermes démarre, jusqu'aux 100 premiers cycles cumulés
 (ou jusqu'au seuil complet si celui-ci dépasse 100). Les paliers supérieurs

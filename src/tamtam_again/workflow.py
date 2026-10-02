@@ -182,6 +182,10 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     fill_ids = {tid for cycle in selected_cycles for tid in cycle.get("fill_ids", [])}
     fills: dict[str, dict[str, Any]] = {}
     signal_received_at: dict[str, str] = {}
+    signal_event_provenance: dict[str, dict[str, Any]] = {}
+    snapshot_selected_fill_observations = 0
+    live_selected_fill_observations = 0
+    selected_snapshot_fill_ids: set[str] = set()
     for observation in store.observations(run["network"], "account", run["address"]):
         if observation["endpoint"] not in {"userFillsByTime", "userFills"}:
             continue
@@ -189,19 +193,37 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             payload = decode_observation_payload(observation)
         except (ValueError, TypeError, OSError):
             continue
+        is_live_ws = (
+            observation["endpoint"] == "userFills"
+            and observation["source"] == "hyperliquid-websocket-v1"
+        )
+        data = payload.get("data", {}) if isinstance(payload, dict) else {}
+        is_snapshot = is_live_ws and isinstance(data, dict) and data.get("isSnapshot") is True
         for fill in _fills_from_observation(observation["endpoint"], payload):
             identifier = str(fill.get("tid", fill.get("hash", "")))
             if identifier in fill_ids:
                 fills[identifier] = fill
-                if (observation["endpoint"] == "userFills"
-                        and observation["source"] == "hyperliquid-websocket-v1"):
-                    data = payload.get("data", {}) if isinstance(payload, dict) else {}
-                    is_snapshot = isinstance(data, dict) and data.get("isSnapshot") is True
-                    if not is_snapshot:
-                        receipt = str(observation["requested_at"] or observation["observed_at"])
-                        prior = signal_received_at.get(identifier)
-                        if prior is None or receipt < prior:
-                            signal_received_at[identifier] = receipt
+                if is_live_ws and is_snapshot:
+                    snapshot_selected_fill_observations += 1
+                    selected_snapshot_fill_ids.add(identifier)
+                elif is_live_ws:
+                    live_selected_fill_observations += 1
+                    receipt = str(observation["requested_at"] or observation["observed_at"])
+                    prior = signal_received_at.get(identifier)
+                    provenance = signal_event_provenance.setdefault(identifier, {
+                        "source": observation["source"],
+                        "endpoint": observation["endpoint"],
+                        "is_snapshot": False,
+                        "receipt_timestamp_field": "raw_observations.requested_at",
+                        "receipt_time": receipt,
+                        "raw_observation_id": int(observation["observation_id"]),
+                        "live_observation_count": 0,
+                    })
+                    provenance["live_observation_count"] += 1
+                    if prior is None or receipt < prior:
+                        signal_received_at[identifier] = receipt
+                        provenance["receipt_time"] = receipt
+                        provenance["raw_observation_id"] = int(observation["observation_id"])
     missing = sorted(fill_ids - set(fills))
     if not selected_cycles or missing:
         raise ValueError("Les fills complets des cycles retenus ne sont plus tous disponibles.")
@@ -295,6 +317,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         aligned_fills.append({
             "fill": fill,
             "signal_received_at": signal_at,
+            "signal_event_provenance": signal_event_provenance.get(fill_id),
             "market_context": {
                 "preceding_bbo": preceding_bbo[-1] if preceding_bbo else None,
                 "preceding_l2": preceding_l2[-1] if preceding_l2 else None,
@@ -453,6 +476,18 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                 "Historical HTTP retrieval time is not substituted for a missing local WebSocket signal time.",
                 "WebSocket userFills messages tagged isSnapshot=true are historical snapshots, not live follower signals, and are excluded.",
             ],
+        },
+        "signal_event_provenance": {
+            "selected_fill_observations_from_live_userFills": live_selected_fill_observations,
+            "selected_fill_observations_from_isSnapshot_true_excluded": snapshot_selected_fill_observations,
+            "selected_fill_ids_seen_in_snapshots": len(selected_snapshot_fill_ids),
+            "selected_fill_ids_with_live_signal": len(signal_received_at),
+            "selected_fill_ids_without_live_signal": len(fill_ids - set(signal_received_at)),
+            "selection_rule": (
+                "Only hyperliquid-websocket-v1 userFills observations with data.isSnapshot != true "
+                "provide signal_received_at. Snapshot observations are counted for audit and excluded. "
+                "Each selected fill carries the chosen raw observation id and receipt timestamp field."
+            ),
         },
         "market_event_counts_in_cycle_windows": {
             key: len(value) for key, value in market_events.items()
@@ -833,6 +868,11 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "latency or unsupported profitability claims. Compare cycle BBO flags with "
         "selected-sample coverage. Distinguish leader exchange execution time from a follower's local "
         "live userFills WebSocket signal_received_at; exclude isSnapshot=true messages as historical. "
+        "Audit signal_event_provenance for each selected fill: its source must be the live "
+        "hyperliquid-websocket-v1 userFills endpoint, is_snapshot must be false, and its raw "
+        "observation id and receipt timestamp field must support signal_received_at. Check the "
+        "snapshot-exclusion counters; zero snapshots in this selected sample means no selected "
+        "fill came from a snapshot, not that historical snapshots were counted as live signals. "
         "A market event received after the leader's execution "
         "but strictly before the follower's signal may be available to that follower; it was not available "
         "to the leader before execution. Audit follower_signal_context and do not claim a copy order can "

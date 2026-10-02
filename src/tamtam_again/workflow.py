@@ -7,6 +7,7 @@ import os
 import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -399,57 +400,54 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
             ).hexdigest()
             if strategy_fingerprint != calculated_fingerprint:
                 raise ValueError("strategy_fingerprint ne correspond pas à strategy_spec.")
-            latest = store.connection.execute(
-                """SELECT strategy_fingerprint FROM automation_runs WHERE stage='research'
-                   AND network=? AND address=? AND coin=? AND decision='accepted'
-                   AND run_id<>? ORDER BY created_at DESC LIMIT 1""",
-                (row["network"],row["address"],row["coin"],run_id),
-            ).fetchone()
-            changed = not latest or latest["strategy_fingerprint"] != strategy_fingerprint
-            if changed:
-                revision = store.connection.execute(
-                    """SELECT COALESCE(MAX(revision),0)+1 FROM paper_n1_revisions
-                       WHERE network=? AND address=? AND coin=?""",
-                    (row["network"],row["address"],row["coin"]),
-                ).fetchone()[0]
-                artifact_dir = ROOT / "data" / "paper" / "n1" / row["address"] / row["coin"] / f"rev-{revision:03d}"
-                paper_id = uuid4().hex
-                paper_request_path = ROOT / "data" / "automation" / "requests" / f"paper-{paper_id}.json"
-                request = {
-                    "schema_version": 1,
-                    "run_id": paper_id,
-                    "stage": "paper_n1",
-                    "network": row["network"],
-                    "account": row["address"],
-                    "coin": row["coin"],
-                    "research_run_id": run_id,
-                    "research_artifact": str(result_path.resolve()),
-                    "strategy_fingerprint": strategy_fingerprint,
-                    "revision": revision,
-                    "artifact_directory": str(artifact_dir),
-                    "guardrails": [
-                        "Produce a local virtual-trading N1 only; do not use a wallet, signer, exchange order API, or VPS.",
-                        "Preserve every earlier research and paper revision; promote this one only after validation.",
-                        "Write a structured paper specification and an initialized virtual ledger.",
-                    ],
-                }
-                _atomic_json(paper_request_path, request)
-                store.connection.execute(
-                    """INSERT INTO automation_runs
-                       (run_id,stage,network,address,coin,threshold_cycles,attempt,
-                        input_fingerprint,cycle_count,status,request_path,created_at,updated_at)
-                       VALUES (?,'paper',?,?,?,?,1,?,?,'queued',?,?,?)""",
-                    (paper_id,row["network"],row["address"],row["coin"],threshold,
-                     strategy_fingerprint,int(row["cycle_count"]),str(paper_request_path),now,now),
-                )
-                store.connection.execute(
-                    """INSERT INTO paper_n1_revisions
-                       (network,address,coin,revision,research_run_id,strategy_fingerprint,
-                        artifact_path,status,is_active,created_at)
-                       VALUES (?,?,?,?,?,?,?,'queued',0,?)""",
-                    (row["network"],row["address"],row["coin"],revision,run_id,
-                     strategy_fingerprint,str(artifact_dir),now),
-                )
+            # Every accepted RE gets its own Paper N1 revision, including when
+            # the executable strategy is unchanged. This RE is the current
+            # source of truth; retaining a revision
+            # makes that progression auditable instead of silently pinning N1
+            # to an older research artifact.
+            revision = store.connection.execute(
+                """SELECT COALESCE(MAX(revision),0)+1 FROM paper_n1_revisions
+                   WHERE network=? AND address=? AND coin=?""",
+                (row["network"],row["address"],row["coin"]),
+            ).fetchone()[0]
+            artifact_dir = ROOT / "data" / "paper" / "n1" / row["address"] / row["coin"] / f"rev-{revision:03d}"
+            paper_id = uuid4().hex
+            paper_request_path = ROOT / "data" / "automation" / "requests" / f"paper-{paper_id}.json"
+            request = {
+                "schema_version": 1,
+                "run_id": paper_id,
+                "stage": "paper_n1",
+                "network": row["network"],
+                "account": row["address"],
+                "coin": row["coin"],
+                "research_run_id": run_id,
+                "research_artifact": str(result_path.resolve()),
+                "strategy_fingerprint": strategy_fingerprint,
+                "revision": revision,
+                "artifact_directory": str(artifact_dir),
+                "guardrails": [
+                    "Produce a local virtual-trading N1 only; do not use a wallet, signer, exchange order API, or VPS.",
+                    "Preserve every earlier research and paper revision; promote this one only after validation.",
+                    "Write a structured paper specification and an initialized virtual ledger.",
+                ],
+            }
+            _atomic_json(paper_request_path, request)
+            store.connection.execute(
+                """INSERT INTO automation_runs
+                   (run_id,stage,network,address,coin,threshold_cycles,attempt,
+                    input_fingerprint,cycle_count,status,request_path,created_at,updated_at)
+                   VALUES (?,'paper',?,?,?,?,1,?,?,'queued',?,?,?)""",
+                (paper_id,row["network"],row["address"],row["coin"],threshold,
+                 strategy_fingerprint,int(row["cycle_count"]),str(paper_request_path),now,now),
+            )
+            store.connection.execute(
+                """INSERT INTO paper_n1_revisions
+                   (network,address,coin,revision,research_run_id,strategy_fingerprint,
+                    artifact_path,status,is_active,created_at)
+                   VALUES (?,?,?,?,?,?,?,'queued',0,?)""",
+                (row["network"],row["address"],row["coin"],revision,run_id,
+                 strategy_fingerprint,str(artifact_dir),now),
+            )
             store.connection.execute(
                 """UPDATE research_targets SET required_cycles=?,attempt=1,
                    status='collecting',updated_at=? WHERE network=? AND address=? AND coin=?""",
@@ -509,12 +507,31 @@ def complete_paper(store: Store, run_id: str, result_path: Path) -> dict[str, An
             or result.get("live_orders_enabled") is not False
             or result.get("wallet_or_signer_configured") is not False
             or not isinstance(result.get("paper_spec"), dict)
+            or result["paper_spec"].get("market") != run["coin"]
+            or result["paper_spec"].get("research_run_id") != request["research_run_id"]
+            or result["paper_spec"].get("revision") != revision["revision"]
+            or not isinstance(result["paper_spec"].get("fee_assumptions"), dict)
+            or not result["paper_spec"].get("fee_assumptions")
+            or not isinstance(result["paper_spec"].get("slippage_assumptions"), dict)
+            or not result["paper_spec"].get("slippage_assumptions")
             or not isinstance(result.get("virtual_ledger"), dict)
             or "cash" not in result["virtual_ledger"]
             or not isinstance(result["virtual_ledger"].get("positions"), dict)
+            or result["virtual_ledger"].get("positions") != {}
             or not isinstance(result["virtual_ledger"].get("orders"), list)
+            or result["virtual_ledger"].get("orders") != []
             or not isinstance(result["virtual_ledger"].get("fills"), list)):
         raise ValueError("Artifact N1 invalide : mode virtuel ou empreinte incompatible.")
+    if result["virtual_ledger"].get("fills") != []:
+        raise ValueError("Le ledger initial N1 doit démarrer sans exécution.")
+    try:
+        starting_capital = Decimal(str(result["paper_spec"].get("starting_capital_usdc")))
+        ledger_cash = Decimal(str(result["virtual_ledger"]["cash"]))
+    except (InvalidOperation, ValueError):
+        raise ValueError("Le capital initial et le cash du ledger doivent être numériques.")
+    if (not starting_capital.is_finite() or starting_capital <= 0
+            or not ledger_cash.is_finite() or ledger_cash != starting_capital):
+        raise ValueError("Le cash initial doit correspondre au capital virtuel positif en USDC.")
     artifact_path = result_path.resolve()
     if not artifact_path.is_file():
         raise ValueError("Artifact Paper N1 absent.")

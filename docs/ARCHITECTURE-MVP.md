@@ -215,8 +215,10 @@ existante. `workflow-complete` lance ensuite une revue Codex indépendante en
 sandbox lecture seule et n'accepte une stratégie que si les deux avis
 concordent. Chaque run possède une empreinte d'entrée, un bail de reprise et
 des artifacts immuables. `needs_more_data` augmente le seuil; `redo_re` relance
-la rétro au même seuil; `accepted` crée un run Paper N1 uniquement si
-l'empreinte de stratégie a changé. Les versions précédentes sont conservées.
+la rétro au même seuil. Chaque RE acceptée crée une nouvelle révision Paper N1,
+même si la stratégie proposée est identique : le N1 actif référence ainsi la RE
+la plus récente et son échantillon courant. Les versions précédentes
+sont conservées pour comparer l'évolution des hypothèses et des spécifications.
 Le nouvel N1 ne devient actif qu'après validation de son artifact; une rétro
 acceptée plus récente garde la priorité si deux runs paper finissent dans le
 désordre.

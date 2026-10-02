@@ -129,6 +129,8 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                         "Do not sign, create, or send any live order; all outputs are research only.",
                         "Keep the analysis immutable and write a separate result artifact.",
                         "If evidence is insufficient, return needs_more_data with a strictly higher required cycle count.",
+                        "Distinguish selected-cycle market-context counts from the wider account-market capture-window totals; never present one denominator as the other.",
+                        "Recommend the smallest next cycle threshold justified by a specific evidence gap; do not apply a generic calendar duration or generic 100-cycle rule.",
                     ],
                 }
                 _atomic_json(path, request)
@@ -246,6 +248,40 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                 "trade_count_within_250ms": len(adjacent_trades),
             },
         })
+    selected_closing_fills = [
+        item for item in aligned_fills
+        if (str(item["fill"].get("dir", "")).startswith("Close ")
+            or " > " in str(item["fill"].get("dir", "")))
+    ]
+
+    def selected_context_counts(items: list[dict[str, Any]]) -> dict[str, int]:
+        bbo_ages: list[int | None] = []
+        l2_ages: list[int | None] = []
+        for item in items:
+            stamp = _integer(item["fill"].get("time"))
+            context = item["market_context"]
+            bbo = context.get("preceding_bbo")
+            l2 = context.get("preceding_l2")
+            bbo_ages.append(
+                stamp - _integer(bbo.get("time")) if isinstance(bbo, dict) else None
+            )
+            l2_ages.append(
+                stamp - _integer(l2.get("time")) if isinstance(l2, dict) else None
+            )
+        return {
+            "fill_count": len(items),
+            "fills_with_bbo_within_1s": sum(
+                age is not None and 0 <= age <= 1_000 for age in bbo_ages
+            ),
+            "fills_with_bbo_within_250ms": sum(
+                age is not None and 0 <= age <= 250 for age in bbo_ages
+            ),
+            "fills_with_l2_within_250ms": sum(
+                age is not None and 0 <= age <= 250 for age in l2_ages
+            ),
+        }
+
+    pair_context = request["context"]
     evidence = {
         "schema_version": 1,
         "run_id": run_id,
@@ -257,6 +293,16 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         "input_fingerprint": run["input_fingerprint"],
         "cycles": selected_cycles,
         "fills_with_market_context": aligned_fills,
+        "market_context_coverage": {
+            "selected_cycle_fills": selected_context_counts(aligned_fills),
+            "selected_cycle_closing_fills": selected_context_counts(selected_closing_fills),
+            "account_market_capture_window": {
+                "population": "all account closing fills inside the archived BBO capture window; not limited to selected cycles",
+                "closing_fill_count": pair_context.get("closing_fills_in_bbo_capture_window"),
+                "closing_fills_with_bbo_within_1s": pair_context.get("closing_fills_with_bbo_within_1s"),
+                "closing_fills_with_bbo_within_250ms": pair_context.get("closing_fills_with_bbo_within_250ms"),
+            },
+        },
         "market_event_counts_in_cycle_windows": {
             key: len(value) for key, value in market_events.items()
         },
@@ -619,8 +665,10 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "latency or unsupported profitability claims. Read only: do not edit files, "
         "run tests, or execute any order. Return only schema-valid JSON. Use decision "
         "approve only if the hypothesis and machine-readable strategy are reproducible; "
-        "needs_more_data when the evidence sample is too small and choose a strictly "
-        "higher cycle threshold; redo_re when the method or conclusion needs another "
+        "needs_more_data when the evidence sample is too small and choose the smallest "
+        "strictly higher cycle threshold justified by the pair-specific evidence gap; "
+        "do not default to 100 cycles. Distinguish selected-cycle market-context counts "
+        "from wider account-market capture-window totals. redo_re when the method or conclusion needs another "
         "analysis pass; reject only if the evidence directly contradicts the hypothesis.\n"
         f"run_id={run_id}\ninput_fingerprint={fingerprint}\n"
         f"draft={draft_path}\nevidence={evidence_path}"

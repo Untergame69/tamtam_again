@@ -217,6 +217,24 @@ réduction d'inventaire préexistant. Le rapport conserve aussi les ordres bruts
 dans la fenêtre de capture et un indicateur à 250 ms pour distinguer les
 hypothèses rapides.
 
+Pour étudier une stratégie de copie, l'heure du fill sur la plateforme et
+l'heure à laquelle notre collecteur reçoit le message `userFills` sont deux
+repères différents. Les preuves RE utilisent l'heure du message WebSocket live
+`userFills` (les snapshots `isSnapshot=true` sont historiques et exclus), puis
+comparent l'heure locale de réception des BBO, trades et carnets au signal reçu
+par le suiveur. Une cotation reçue
+après l'exécution de la baleine peut donc être disponible au suiveur avant qu'il
+reçoive le signal; elle ne l'était pas avant l'exécution de la baleine. Les
+messages reçus dans la même milliseconde que le signal sont ambigus et exclus de
+la couverture antérieure. Cette cotation ne garantit pas un fill au même prix :
+le paper devra ajouter le délai de réaction, les frais, le slippage et le risque
+de sélection adverse.
+
+Les preuves conservent également l'ordre des fills reconstruit en reliant la
+position de départ de chacun à la position après le fill précédent. Cet ordre
+est essentiel lorsque plusieurs fills partagent le même horodatage; leurs
+identifiants seuls ne donnent pas nécessairement l'ordre d'exécution.
+
 Le premier palier est de 5 cycles exploitables pour lancer une RE exploratoire;
 les suivants sont 10 puis 30 pour approfondir, et 100 pour comparer. L'unité
 compte les excursions contextualisées, pas les fills ou les ordres isolés. Ces

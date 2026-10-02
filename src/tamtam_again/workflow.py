@@ -133,6 +133,8 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                         "Recommend the smallest next cycle threshold justified by a specific evidence gap; do not apply a generic calendar duration or generic 100-cycle rule.",
                         "required_exploitable_cycles and next_required_cycles are cumulative total-cycle thresholds, not additional cycles to collect; state the same cumulative target in prose.",
                         "Report BBO exchange-time age separately from local received_at lag; never imply a BBO received after a fill was actionable before that fill.",
+                        "For copy feasibility, compare market-event received_at with the local userFills WebSocket signal receipt. A quote received after the leader's exchange execution but before the follower's signal may be follower context, not pre-execution information for the leader.",
+                        "Exclude userFills WebSocket messages tagged isSnapshot=true from live follower signal timing; those are historical snapshots.",
                     ],
                 }
                 _atomic_json(path, request)
@@ -179,6 +181,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     selected_cycles = [cycle for cycle in cycle_summaries if cycle.get("cycle_id") in wanted]
     fill_ids = {tid for cycle in selected_cycles for tid in cycle.get("fill_ids", [])}
     fills: dict[str, dict[str, Any]] = {}
+    signal_received_at: dict[str, str] = {}
     for observation in store.observations(run["network"], "account", run["address"]):
         if observation["endpoint"] not in {"userFillsByTime", "userFills"}:
             continue
@@ -190,6 +193,15 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             identifier = str(fill.get("tid", fill.get("hash", "")))
             if identifier in fill_ids:
                 fills[identifier] = fill
+                if (observation["endpoint"] == "userFills"
+                        and observation["source"] == "hyperliquid-websocket-v1"):
+                    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+                    is_snapshot = isinstance(data, dict) and data.get("isSnapshot") is True
+                    if not is_snapshot:
+                        receipt = str(observation["requested_at"] or observation["observed_at"])
+                        prior = signal_received_at.get(identifier)
+                        if prior is None or receipt < prior:
+                            signal_received_at[identifier] = receipt
     missing = sorted(fill_ids - set(fills))
     if not selected_cycles or missing:
         raise ValueError("Les fills complets des cycles retenus ne sont plus tous disponibles.")
@@ -229,6 +241,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                     market_events[observation["endpoint"]].append({
                         "time": stamp,
                         "received_at": event.get("received_at"),
+                        "received_at_ms": _timestamp_ms(event.get("received_at")),
                         "data": value,
                     })
     market_events["bbo"].sort(key=lambda item: item["time"])
@@ -238,19 +251,66 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     aligned_fills = []
     for fill in sorted_fills:
         stamp = _integer(fill.get("time"))
+        fill_id = str(fill.get("tid", fill.get("hash", "")))
+        signal_at = signal_received_at.get(fill_id)
+        signal_ms = _timestamp_ms(signal_at)
         preceding_bbo = [event for event in market_events["bbo"]
                          if 0 <= stamp - event["time"] <= 1_000]
         preceding_l2 = [event for event in market_events["l2Book"]
                         if 0 <= stamp - event["time"] <= 250]
         adjacent_trades = [event for event in market_events["trades"]
                            if abs(stamp - event["time"]) <= 250]
+        def latest_received_before(endpoint: str) -> dict[str, Any] | None:
+            if signal_ms is None:
+                return None
+            eligible = [event for event in market_events[endpoint]
+                        if (event.get("received_at_ms") is not None
+                            and event["received_at_ms"] < signal_ms)]
+            if not eligible:
+                return None
+            event = max(eligible, key=lambda item: item["received_at_ms"])
+            return {
+                "time": event["time"],
+                "received_at": event["received_at"],
+                "received_age_ms": signal_ms - event["received_at_ms"],
+                "exchange_age_at_leader_fill_ms": stamp - event["time"],
+                "received_after_leader_execution": event["received_at_ms"] > stamp,
+                "data": event["data"],
+            }
+
+        bbo_at_signal = latest_received_before("bbo")
+        l2_at_signal = latest_received_before("l2Book")
+        trades_before_signal: list[dict[str, Any]] = []
+        if signal_ms is not None:
+            prior_trades = [event for event in market_events["trades"]
+                            if (event.get("received_at_ms") is not None
+                                and event["received_at_ms"] < signal_ms
+                                and signal_ms - event["received_at_ms"] < 250)]
+            trades_before_signal = [{
+                "time": event["time"],
+                "received_at": event["received_at"],
+                "received_age_ms": signal_ms - event["received_at_ms"],
+                "data": event["data"],
+            } for event in prior_trades[-100:]]
         aligned_fills.append({
             "fill": fill,
+            "signal_received_at": signal_at,
             "market_context": {
                 "preceding_bbo": preceding_bbo[-1] if preceding_bbo else None,
                 "preceding_l2": preceding_l2[-1] if preceding_l2 else None,
                 "trades_within_250ms": adjacent_trades[:100],
                 "trade_count_within_250ms": len(adjacent_trades),
+            },
+            "follower_decision_context": {
+                "decision_time_definition": "local receipt of this account's userFills WebSocket event",
+                "signal_received_at": signal_at,
+                "bbo": bbo_at_signal,
+                "l2Book": l2_at_signal,
+                "trades_received_within_250ms_before_signal": trades_before_signal,
+                "bbo_received_after_leader_execution": (
+                    bbo_at_signal["received_after_leader_execution"]
+                    if bbo_at_signal else None
+                ),
             },
         })
     selected_closing_fills = [
@@ -308,6 +368,40 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             ),
         }
 
+    def follower_signal_counts(items: list[dict[str, Any]]) -> dict[str, Any]:
+        rows = [item for item in items
+                if item.get("follower_decision_context", {}).get("signal_received_at")]
+        bbo_ages = [
+            item["follower_decision_context"]["bbo"]["received_age_ms"]
+            for item in rows if item["follower_decision_context"].get("bbo") is not None
+        ]
+        l2_ages = [
+            item["follower_decision_context"]["l2Book"]["received_age_ms"]
+            for item in rows if item["follower_decision_context"].get("l2Book") is not None
+        ]
+        return {
+            "fill_count": len(items),
+            "fills_with_local_user_fill_signal_time": len(rows),
+            "fills_with_bbo_received_before_signal": len(bbo_ages),
+            "fills_with_bbo_received_within_250ms_before_signal": sum(
+                age < 250 for age in bbo_ages
+            ),
+            "fills_with_bbo_received_within_1s_before_signal": sum(
+                age < 1_000 for age in bbo_ages
+            ),
+            "bbo_received_after_leader_execution_but_before_signal": sum(
+                bool(item["follower_decision_context"].get(
+                    "bbo_received_after_leader_execution"
+                )) for item in rows
+            ),
+            "fills_with_l2_received_within_250ms_before_signal": sum(
+                age < 250 for age in l2_ages
+            ),
+            "median_bbo_receive_age_at_signal_ms": (
+                sorted(bbo_ages)[len(bbo_ages) // 2] if bbo_ages else None
+            ),
+        }
+
     pair_context = request["context"]
     # A cycle's fill_ids are deliberately stable-sorted for fingerprints, but
     # that order is not the execution order when several fills share one
@@ -346,12 +440,26 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                 "closing_fills_with_bbo_within_250ms": pair_context.get("closing_fills_with_bbo_within_250ms"),
             },
         },
+        "follower_signal_context": {
+            "decision_definition": (
+                "A hypothetical follower's decision begins when its local collector receives the leader's userFills WebSocket event. "
+                "This is later than the leader's exchange execution and is not information available to the leader before execution."
+            ),
+            "selected_cycle_fills": follower_signal_counts(aligned_fills),
+            "selected_cycle_closing_fills": follower_signal_counts(selected_closing_fills),
+            "limitations": [
+                "Market events with the same millisecond receipt time as the user-fill signal are excluded because their order is ambiguous.",
+                "A quote available at signal receipt does not mean a copy order could fill at that quote; model additional reaction latency, fees, slippage, and adverse selection.",
+                "Historical HTTP retrieval time is not substituted for a missing local WebSocket signal time.",
+                "WebSocket userFills messages tagged isSnapshot=true are historical snapshots, not live follower signals, and are excluded.",
+            ],
+        },
         "market_event_counts_in_cycle_windows": {
             key: len(value) for key, value in market_events.items()
         },
         "limitations": [
             "The evidence joins only archived public feeds; missing events remain missing.",
-            "BBO and L2 exchange timestamps are snapshots near each leader fill, not a full exchange queue reconstruction. Compare received_at with fill time before treating a BBO as timely information.",
+            "The leader-fill exchange timestamp and a follower's local userFills signal receipt are separate decision times. A BBO received after leader execution can still be available to a follower if received before that signal; it cannot be treated as information available to the leader before execution.",
             "A strategy hypothesis needs out-of-sample validation and explicit fees, slippage, and latency assumptions.",
         ],
     }
@@ -723,8 +831,13 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "by tid alone. Flag a position discontinuity only when the listed trace itself does not reconcile. "
         "Also look for timestamp errors, survivorship, omitted fees, "
         "latency or unsupported profitability claims. Compare cycle BBO flags with "
-        "selected-sample coverage, and distinguish exchange timestamps from local "
-        "received_at; data received after a fill was not available ex ante. Read only: do not edit files, "
+        "selected-sample coverage. Distinguish leader exchange execution time from a follower's local "
+        "live userFills WebSocket signal_received_at; exclude isSnapshot=true messages as historical. "
+        "A market event received after the leader's execution "
+        "but strictly before the follower's signal may be available to that follower; it was not available "
+        "to the leader before execution. Audit follower_signal_context and do not claim a copy order can "
+        "fill at a quote without additional reaction-latency, fee, and slippage assumptions. Market events "
+        "with equal millisecond receipt time are ambiguous and excluded from the prior-signal counts. Read only: do not edit files, "
         "run tests, or execute any order. Return only schema-valid JSON. Use decision "
         "approve only if the hypothesis and machine-readable strategy are reproducible; "
         "needs_more_data when the evidence sample is too small and choose the smallest "
@@ -837,6 +950,17 @@ def _decimal_position(value: Any) -> Any:
         return Decimal(str(value or "0"))
     except (InvalidOperation, ValueError):
         return Decimal(0)
+
+
+def _timestamp_ms(value: Any) -> int | None:
+    if not value:
+        return None
+    try:
+        return int(datetime.fromisoformat(
+            str(value).replace("Z", "+00:00")
+        ).timestamp() * 1000)
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def _position_near(left: Any, right: Any) -> bool:

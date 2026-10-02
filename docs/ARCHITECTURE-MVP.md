@@ -46,7 +46,8 @@ qui était le marché principal d'un compte ajouté à la cohorte.
 La page officielle de classement fournit actuellement quatre fenêtres. Le
 collecteur conserve les 25 premiers rangs PnL/ROI positifs et actifs par fenêtre
 (day, week, month, allTime). Il épingle jusqu’à dix comptes dans une cohorte
-stable, en favorisant les rangs PnL allTime, month, week puis day. Cette limite
+qui se renouvelle selon l'activité récente, en favorisant les rangs PnL day et
+week lorsqu'une place se libère. Cette limite
 correspond à la limite documentée des abonnements WebSocket propres aux
 utilisateurs. Les historiques de ces comptes continuent d’être complétés par
 HTTP; les nouveaux fills arrivent par WebSocket. Le classement ne prouve pas
@@ -55,12 +56,15 @@ courte, du risque élevé ou des biais de survivance. Les candidats sont des
 adresses observables et ne sont pas automatiquement regroupés avec leurs
 sous-comptes ou propriétaires.
 
-Les rangs compacts sont enregistrés à chaque cycle de découverte. La réponse
+À chaque cycle horaire, un compte suivi sans fill observé depuis sept jours
+repasse au statut candidat, puis le collecteur le remplace par un compte positif
+au classement PnL jour/semaine si une place est disponible. Ce délai ne pilote
+pas la maturité des données : les seuils de RE restent fondés sur les cycles
+exploitables de chaque paire. Les rangs compacts sont enregistrés à chaque
+cycle de découverte. La réponse
 complète du leaderboard (plusieurs mégaoctets observés) est archivée une fois
 par jour UTC, pour garder la provenance sans écrire le même jeu de dizaines de
-milliers de lignes à chaque heure. Les adresses épinglées restent suivies même
-si elles quittent le classement; le changement de cohorte est une décision de
-qualification à expliciter, pas une rotation automatique à chaque cycle.
+milliers de lignes à chaque heure.
 
 Les observations déjà enregistrées pour les comptes qui ne sont plus suivis
 restent dans SQLite. Elles permettent de les requalifier sans perdre leur

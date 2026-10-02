@@ -10,11 +10,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .analysis import cohort_research_status, observed_account_summary
+from .analysis import (_fills_from_observation, cohort_research_status,
+                       observed_account_summary)
 from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, validate_address
 from .providers.hyperliquid_stats import HyperliquidLeaderboard
 from .markets import STREAM_MARKET_COUNT, TOP_MARKET_COUNT, top_markets
-from .storage import Store, utc_now
+from .storage import Store, decode_observation_payload, utc_now
 from .workflow import (claim_run, complete_paper, complete_research,
                        workflow_tick, write_research_evidence)
 from .whales import rank_leaderboard
@@ -23,6 +24,7 @@ from .websocket import run_websocket_collector, tracked_market_symbols
 
 DEFAULT_DB = Path("data/tamtam.sqlite3")
 NETWORK_NAME = "hyperliquid-mainnet"
+TRACKING_ACTIVITY_DAYS = 7
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -428,8 +430,18 @@ def _collect_whales(args: argparse.Namespace, emit: bool = True) -> dict[str, An
     client = HyperliquidInfo(NETWORK_NAME)
     with Store(args.db) as store:
         snapshot_id, _, source_count = _discover_whales(store, args.limit_per_window)
+        cutoff_ms = int(datetime.now(timezone.utc).timestamp() * 1000) - (
+            TRACKING_ACTIVITY_DAYS * 86_400_000
+        )
+        inactive_addresses = []
+        for row in store.candidates(NETWORK_NAME):
+            if row["status"] != "tracked":
+                continue
+            last_fill_ms = _last_observed_fill_ms(store, row["address"], cutoff_ms)
+            if last_fill_ms is None or last_fill_ms < cutoff_ms:
+                inactive_addresses.append(row["address"])
         tracked = store.promote_top_whales(snapshot_id, NETWORK_NAME,
-                                           args.max_accounts)
+                                           args.max_accounts, inactive_addresses)
         candidates = store.whale_addresses(snapshot_id, args.max_accounts)
         addresses = [row["address"] for row in candidates]
         candidate_pool_size = len(store.candidates(NETWORK_NAME))
@@ -437,11 +449,34 @@ def _collect_whales(args: argparse.Namespace, emit: bool = True) -> dict[str, An
     summary = {"leaderboard_rows": source_count,
                "candidate_pool_size": candidate_pool_size,
                "tracked_accounts": tracked,
+               "inactive_accounts_demoted": len(inactive_addresses),
                "selected_candidates": len(addresses),
                "collected_accounts": collected}
     if emit:
         print(json.dumps(summary, indent=2))
     return summary
+
+
+def _last_observed_fill_ms(store: Store, address: str,
+                           cutoff_ms: int) -> int | None:
+    latest: int | None = None
+    rows = store.observations(NETWORK_NAME, "account", address.lower(),
+                              cutoff_ms, None)
+    for observation in rows:
+        if observation["endpoint"] not in {"userFillsByTime", "userFills"}:
+            continue
+        try:
+            payload = decode_observation_payload(observation)
+        except (ValueError, TypeError, OSError):
+            continue
+        for fill in _fills_from_observation(observation["endpoint"], payload):
+            try:
+                stamp = int(fill.get("time", 0))
+            except (TypeError, ValueError):
+                continue
+            if stamp >= cutoff_ms and (latest is None or stamp > latest):
+                latest = stamp
+    return latest
 
 
 def _run_collectors(args: argparse.Namespace) -> None:

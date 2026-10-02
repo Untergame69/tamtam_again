@@ -348,10 +348,18 @@ class Store:
         ))
 
     def promote_top_whales(self, snapshot_id: str, network: str,
-                           limit: int) -> list[str]:
-        """Pin a small, stable cohort using longer-window leaderboard ranks."""
+                           limit: int,
+                           inactive_addresses: list[str] | tuple[str, ...] = ()) -> list[str]:
+        """Maintain a bounded active cohort while retaining demoted observations."""
         if limit < 1:
             raise ValueError("limit doit être positif.")
+        inactive = sorted({address.lower() for address in inactive_addresses})
+        if inactive:
+            self.connection.executemany(
+                "UPDATE candidates SET status='candidate' "
+                "WHERE network=? AND address=? AND status='tracked'",
+                [(network, address) for address in inactive],
+            )
         existing = self.connection.execute(
             "SELECT address FROM candidates WHERE network=? AND status='tracked' "
             "ORDER BY added_at, address", (network,),
@@ -365,10 +373,9 @@ class Store:
             ).fetchall()
             scores: dict[str, float] = {}
             for row in rows:
-                if row["metric"] != "pnl":
+                if row["metric"] != "pnl" or row["window"] not in {"day", "week"}:
                     continue
-                weight = {"allTime": 1.0, "month": 1.5,
-                          "week": 2.0, "day": 4.0}.get(row["window"], 6.0)
+                weight = {"week": 1.0, "day": 2.0}[row["window"]]
                 scores[row["address"]] = scores.get(row["address"], 0.0) + (
                     weight * int(row["rank"])
                 )

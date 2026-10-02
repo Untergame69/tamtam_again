@@ -22,11 +22,13 @@ Le premier incrément de code et son modèle de données sont décrits dans
 [TAMTAM_AGAIN-5](https://manhattam.com/work/issue/TAMTAM_AGAIN-5).
 
 Le collecteur utilise le top 5 Hyperliquid par volume notionnel comme départ,
-puis cible les cinq marchés les plus utilisés par sa cohorte stable de dix
-comptes classés. Il conserve leurs fills live, les trades publics et le meilleur
-prix acheteur/vendeur des cinq marchés via WebSocket, avec un carnet détaillé
-sur deux marchés, tout en gardant la collecte HTTP pour compléter l’historique
-et vérifier les données.
+puis cible les vingt marchés les plus utilisés par une cohorte dynamique de dix
+comptes au maximum. Il conserve leurs fills live, les trades publics et le
+meilleur prix acheteur/vendeur via WebSocket, avec un carnet détaillé sur deux
+marchés, tout en gardant la collecte HTTP pour compléter l’historique. Chaque
+heure, les comptes sans fill observé depuis sept jours libèrent leur place pour
+des comptes aux classements PnL jour/semaine positifs; leurs observations
+restent conservées.
 Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
 
 Pour voir les comptes réellement couverts, les marchés utilisés et décider si

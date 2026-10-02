@@ -252,9 +252,12 @@ collectés au moment où Hermes démarre, jusqu'aux 100 premiers cycles cumulés
 reprennent ainsi l'échantillon antérieur et l'élargissent. Le calcul d'ETA ne
 retarde jamais une RE.
 Si Hermes ou la revue Codex demande plus de données, le prochain seuil
-strictement supérieur propre au couple est conservé. Après une RE acceptée, la
-collecte passe au palier suivant afin de comparer les versions de l'hypothèse
-avec davantage de données.
+strictement supérieur propre au couple est conservé. Cette demande de volume
+prime sur une demande de refaire l'analyse : répéter la RE sur le même
+échantillon ne résoudrait pas le manque d'observations. Les deux avis et leurs
+motifs restent conservés dans les artifacts. Après une RE acceptée, la collecte
+passe au palier suivant afin de comparer les versions de l'hypothèse avec
+davantage de données.
 
 Deux tâches Hermes surveillent la file SQLite toutes les cinq minutes et ne
 appellent le modèle que lorsque sa sortie change : `tamtam-again-research`

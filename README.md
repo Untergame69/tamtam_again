@@ -48,9 +48,12 @@ manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les pali
 de volume déclenchent la boucle : 5 cycles pour la première RE exploratoire,
 10 puis 30 pour approfondir et 100 pour comparer. Le calendrier ne bloque pas son
 avancement; si une RE demande plus de données, son seuil propre au compte et au
-marché prend le relais. Le seuil est un minimum : Hermes reçoit tous les cycles
-déjà disponibles au déclenchement, jusqu'à 100 (ou jusqu'au seuil demandé s'il
-est supérieur), afin qu'un cycle supplémentaire ne soit pas écarté.
+marché prend le relais. Si un avis demande plus de cycles et l'autre une nouvelle
+analyse, le workflow collecte d'abord jusqu'au nouveau seuil : répéter la RE sur
+le même échantillon ne comblerait pas ce manque. Les deux avis restent archivés.
+Le seuil est un minimum : Hermes reçoit tous les cycles déjà disponibles au
+déclenchement, jusqu'à 100 (ou jusqu'au seuil demandé s'il est supérieur), afin
+qu'un cycle supplémentaire ne soit pas écarté.
 Voir [TAMTAM_AGAIN-7](https://manhattam.com/work/issue/TAMTAM_AGAIN-7) pour la
 définition de la maturité, et
 [TAMTAM_AGAIN-12](https://manhattam.com/work/issue/TAMTAM_AGAIN-12) pour la

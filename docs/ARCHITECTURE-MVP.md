@@ -194,16 +194,23 @@ carnets suivis. Une stratégie de copie reste à définir avant d'estimer une
 performance simulée.
 
 Le rapport mesure la maturité par couple compte × marché. Il relie les fills
-partiels via `startPosition`, reconstruit les épisodes flat-à-flat sur les
-perpétuels et exclut les séquences ambiguës, tronquées ou commencées avant la
-couverture observée. Un cycle exploitable exige que chacun de ses fills soit
+partiels via `startPosition` et reconstruit les excursions de position sur les
+perpétuels. Une excursion peut être flat-à-flat, ou partir d'un niveau de
+position observé, augmenter l'exposition puis revenir à ce niveau. Ce second
+cas permet d'analyser une baleine qui garde une position nette ouverte tout en
+faisant des allers-retours sur une partie de son exposition. Les sorties d'une
+position déjà ouverte au début de la collecte ne comptent pas avant qu'une
+nouvelle excursion soit observée. Les séquences ambiguës, tronquées ou
+commencées avant la couverture observée sont exclues. Un cycle exploitable
+exige que chacun de ses fills soit
 dans une fenêtre HTTP `userFillsByTime` complète et possède un BBO archivé datant
 de 1 s maximum. Le rapport conserve aussi les ordres bruts, la couverture BBO
 dans la fenêtre de capture et un indicateur à 250 ms pour distinguer les
 hypothèses rapides.
 
 Les paliers initiaux sont 30 cycles exploitables pour formuler une hypothèse et
-100 pour la comparer. Ce sont des seuils de volume, pas des preuves statistiques
+100 pour la comparer. L'unité compte les excursions contextualisées, pas les
+fills ou les ordres isolés. Ce sont des seuils de volume, pas des preuves statistiques
 ni des délais. Après 5 cycles exploitables répartis sur au moins 6 h, l'ETA est
 estimée uniquement au débit de ce couple; sinon elle reste inconnue. Si Hermes
 demande plus de données, il fixe un prochain seuil strictement supérieur. Après

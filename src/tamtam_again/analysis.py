@@ -283,7 +283,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "last_websocket_fill_observed_at": ws_fills_last.get(address),
             "data_maturity_by_market": sorted(
                 maturity_by_account[address],
-                key=lambda item: (-item["fully_reconstructed_position_cycles"], item["coin"]),
+                key=lambda item: (-item["fully_reconstructed_position_excursions"], item["coin"]),
             ),
         })
 
@@ -362,10 +362,10 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
         "maturity_model": {
             "hypothesis_cycle_reference": HYPOTHESIS_CYCLE_REFERENCE,
             "validation_cycle_reference": VALIDATION_CYCLE_REFERENCE,
-            "unit": "completed flat-to-flat perp position episodes with complete HTTP fill coverage and BBO context",
+            "unit": "completed perp position excursions (flat-to-flat or opening-and-return-to-observed-baseline) with complete HTTP fill coverage and BBO context",
             "calendar_time_is_only_an_estimate": True,
             "limitations": [
-                "Partial fills are connected through their startPosition and resulting position. Ambiguous same-timestamp paths, truncated episodes, and spot fills are excluded.",
+                "Partial fills are connected through their startPosition and resulting position. A cycle may return to a non-zero observed baseline; exits of inventory already held when collection begins do not count. Ambiguous same-timestamp paths, truncated episodes, and spot fills are excluded.",
                 "A cycle counts only if every fill timestamp lies in a complete userFillsByTime window and has a preceding BBO no older than 1 second.",
                 "The BBO match is a timing proxy, not proof of gap-free depth or complete order-book capture. The stricter 90% in-capture coverage rate remains an additional gate.",
             ],
@@ -458,6 +458,7 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
                          if len(rate_stamps) > 1 else 0.0)
     rate = usable_actions / usable_span_hours if usable_span_hours >= 6 and usable_actions >= 10 else None
     exploitable_cycle_count = len(cycles)
+    flat_to_flat_count = sum(cycle["cycle_kind"] == "flat_to_flat" for cycle in cycles)
     missing_hypothesis = max(0, target_cycles - exploitable_cycle_count)
     missing_validation = max(0, VALIDATION_CYCLE_REFERENCE - exploitable_cycle_count)
     context_pct_1s = 100 * bbo_covered_1s / in_capture_window if in_capture_window else None
@@ -473,7 +474,11 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "distinct_closing_orders": len(close_orders),
         "verified_flattening_events_proxy": len(closures),
         "usable_closing_order_actions_pilot": usable_actions,
+        "fully_reconstructed_position_excursions": exploitable_cycle_count,
+        # Compatibility alias for reports created before relative excursions
+        # were accepted as complete cycles.
         "fully_reconstructed_position_cycles": exploitable_cycle_count,
+        "flat_to_flat_cycles_with_complete_context": flat_to_flat_count,
         "exploitable_cycle_ids": [cycle["cycle_id"] for cycle in cycles],
         "exploitable_cycle_summaries": cycles,
         "hypothesis_cycle_target": target_cycles,
@@ -493,9 +498,9 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "account_history_complete_at_collection": history_is_complete,
         "hypothesis_gate_ready": volume_gate and context_gate,
         "hypothesis_gate_blockers": [
-            *([] if volume_gate else ["fully reconstructed, market-contextualized cycle sample below target"]),
+            *([] if volume_gate else ["fully reconstructed, market-contextualized position-excursion sample below target"]),
             *([] if context_gate else ["less than 90% of in-capture closing fills have BBO context within 1 second"]),
-            *([] if cycles else ["no flat-to-flat episode has complete fill history and BBO context"]),
+            *([] if cycles else ["no complete position excursion has full fill history and BBO context"]),
         ],
         "observed_notional": format(notional, "f"),
         "observed_realized_closed_pnl": format(realized, "f"),

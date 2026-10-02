@@ -98,6 +98,11 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                     "network": network,
                     "account": address,
                     "coin": coin,
+                    "cycle_definition": (
+                        "A complete perp position excursion: flat-to-flat, or an observed-baseline opening excursion "
+                        "that returns to its pre-open net position. Reductions of inventory that predates the observed "
+                        "excursion do not count."
+                    ),
                     "required_exploitable_cycles": threshold,
                     "cycle_count_at_dispatch": len(cycle_ids),
                     "cycle_sample_ids": sample_ids,
@@ -232,6 +237,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         "network": run["network"],
         "account": run["address"],
         "coin": run["coin"],
+        "cycle_definition": request["cycle_definition"],
         "threshold_cycles": run["threshold_cycles"],
         "input_fingerprint": run["input_fingerprint"],
         "cycles": selected_cycles,
@@ -592,6 +598,8 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
     prompt = (
         "Review the Hermes reverse-engineering draft and its selected public evidence. "
         "Check that its claims follow from the included cycles, fills, BBO, trades and L2; "
+        "interpret cycle_kind=baseline_excursion as a completed return to the observed pre-open net position, "
+        "not as a flat-to-zero trade; "
         "look for timestamp/position reconstruction errors, survivorship, omitted fees, "
         "latency or unsupported profitability claims. Read only: do not edit files, "
         "run tests, or execute any order. Return only schema-valid JSON. Use decision "

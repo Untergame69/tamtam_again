@@ -18,11 +18,14 @@ def reconstruct_position_cycles(
     *,
     bbo_tolerance_ms: int = 1_000,
 ) -> list[dict[str, Any]]:
-    """Return only flat-to-flat perp episodes whose fills have complete context.
+    """Return complete flat-to-flat or baseline-return perp excursions.
 
     startPosition is the authoritative pre-fill position. Fills at the same
     timestamp are ordered by matching each pre-position to the preceding
-    fill's post-position. Ambiguous or truncated episodes are discarded.
+    fill's post-position. If a whale starts the archive with an existing
+    position, a cycle may be an opening excursion that later returns to its
+    observed starting position; closes against the pre-existing baseline alone
+    do not count. Ambiguous or truncated episodes are discarded.
     """
     unique: dict[tuple[str, str], dict[str, Any]] = {}
     for fill in fills:
@@ -39,6 +42,7 @@ def reconstruct_position_cycles(
     intervals = sorted(complete_history_intervals)
     output: list[dict[str, Any]] = []
     position: Decimal | None = None
+    baseline: Decimal | None = None
     active: dict[str, Any] | None = None
 
     for stamp in sorted(groups):
@@ -51,11 +55,12 @@ def reconstruct_position_cycles(
             if not parsed:
                 active = None
                 position = None
+                baseline = None
                 break
 
             if position is None:
-                # A flat opening gives an episode a known start. Otherwise we
-                # track the unknown episode only until it returns to flat.
+                # With truncated history, begin from the first observed
+                # position. An opening fill can start a relative excursion.
                 first = next((pair for pair in parsed
                               if _near_zero(pair[1][0]) and _is_open(pair[0])), parsed[0])
             else:
@@ -67,12 +72,14 @@ def reconstruct_position_cycles(
                     # timestamp cannot be ordered safely from public fields.
                     active = None
                     position = None
+                    baseline = None
                     first = parsed[0]
                 else:
                     # A missing transition means history is truncated or the
                     # same-timestamp fills are ambiguous; do not bridge it.
                     active = None
                     position = None
+                    baseline = None
                     first = parsed[0]
 
             fill, values = first
@@ -80,52 +87,71 @@ def reconstruct_position_cycles(
             before, after = values
             if position is None:
                 position = before
+                baseline = before
             if not _near(before, position):
                 active = None
                 position = before
+                baseline = before
 
-            if _near_zero(before) and _is_open(fill):
-                active = _new_episode(fill, stamp)
-
-            if active is not None:
-                _add_fill(active, fill, stamp, market_times, intervals, bbo_tolerance_ms)
-
-            crossed = (before > ZERO and after < ZERO) or (before < ZERO and after > ZERO)
-            flat = _near_zero(after)
-            if flat and active is not None:
-                active["closed_at_ms"] = stamp
-                active["closed_position"] = True
-                episode = _finish_episode(active, bbo_tolerance_ms)
-                if episode["exploitable"]:
-                    output.append(episode)
-                active = None
-            elif crossed:
-                if active is not None:
+            if active is None:
+                if _is_flip(fill) and not _near_zero(after):
+                    # A flip opens the new side from flat after closing the
+                    # old side. Its realized PnL belongs to that old side.
+                    baseline = ZERO
+                    active = _new_episode(fill, stamp, baseline)
+                    active["side"] = "long" if after > ZERO else "short"
+                    _add_fill(active, fill, stamp, market_times, intervals,
+                              bbo_tolerance_ms, include_realized=False)
+                elif _is_open(fill):
+                    # Count an opening excursion relative to the position
+                    # immediately before the whale increased exposure.
+                    baseline = before
+                    active = _new_episode(fill, stamp, baseline)
+                    _add_fill(active, fill, stamp, market_times, intervals,
+                              bbo_tolerance_ms)
+                else:
+                    # A close of inventory already present when observation
+                    # began is not a complete research cycle. Move the
+                    # baseline forward until a newly observed open occurs.
+                    baseline = after
+            else:
+                _add_fill(active, fill, stamp, market_times, intervals,
+                          bbo_tolerance_ms)
+                episode_baseline = active["baseline_position"]
+                returned = _near(after, episode_baseline)
+                crossed_baseline = ((before - episode_baseline)
+                                    * (after - episode_baseline) < ZERO)
+                if returned or crossed_baseline:
                     active["closed_at_ms"] = stamp
                     active["closed_position"] = True
                     episode = _finish_episode(active, bbo_tolerance_ms)
                     if episode["exploitable"]:
                         output.append(episode)
-                active = _new_episode(fill, stamp)
-                active["side"] = "long" if after > ZERO else "short"
-                # A flip fill closes the old side and opens the new one. Its
-                # close PnL belongs only to the episode that just ended.
-                _add_fill(active, fill, stamp, market_times, intervals,
-                          bbo_tolerance_ms, include_realized=False)
-            elif _near_zero(after):
-                position = ZERO
+                    active = None
+                    baseline = after
+                    if _is_flip(fill) and not _near_zero(after):
+                        baseline = ZERO
+                        active = _new_episode(fill, stamp, baseline)
+                        active["side"] = "long" if after > ZERO else "short"
+                        # This fill contains both the old-side exit and the
+                        # new-side entry; count its fee/notional once per
+                        # excursion but assign realized PnL only to the exit.
+                        _add_fill(active, fill, stamp, market_times, intervals,
+                                  bbo_tolerance_ms, include_realized=False)
             position = after
 
-    # Open or truncated position episodes intentionally do not count.
+    # Open or truncated excursions intentionally do not count.
     return output
 
 
-def _new_episode(fill: dict[str, Any], stamp: int) -> dict[str, Any]:
+def _new_episode(fill: dict[str, Any], stamp: int, baseline: Decimal) -> dict[str, Any]:
     before, after = _fill_positions(fill) or (ZERO, ZERO)
     return {
         "opened_at_ms": stamp,
         "closed_at_ms": None,
         "side": "long" if after > before else "short",
+        "cycle_kind": "flat_to_flat" if _near_zero(baseline) else "baseline_excursion",
+        "baseline_position": baseline,
         "fills": [],
         "notional": ZERO,
         "fees": ZERO,
@@ -161,6 +187,8 @@ def _finish_episode(episode: dict[str, Any], tolerance_ms: int) -> dict[str, Any
         "opened_at_ms": episode["opened_at_ms"],
         "closed_at_ms": episode["closed_at_ms"],
         "side": episode["side"],
+        "cycle_kind": episode["cycle_kind"],
+        "baseline_position": format(episode["baseline_position"], "f"),
         "fill_count": count,
         "order_count": len({str(fill.get("oid")) for fill in episode["fills"]}),
         "notional": format(episode["notional"], "f"),
@@ -197,6 +225,10 @@ def _fill_positions(fill: dict[str, Any]) -> tuple[Decimal, Decimal] | None:
 
 def _is_open(fill: dict[str, Any]) -> bool:
     return str(fill.get("dir", "")).startswith("Open ")
+
+
+def _is_flip(fill: dict[str, Any]) -> bool:
+    return str(fill.get("dir", "")) in {"Long > Short", "Short > Long"}
 
 
 def _covered(stamp: int, intervals: list[tuple[int, int]]) -> bool:

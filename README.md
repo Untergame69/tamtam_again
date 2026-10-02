@@ -36,8 +36,10 @@ la période enregistrée suffit à démarrer un paper replay :
 .venv/bin/python -m tamtam_again research-status
 ```
 
-Ce rapport mesure désormais la maturité par compte × marché à partir des cycles
-flat-à-flat reconstruits et contextualisés par BBO. Il montre les prérequis
+Ce rapport mesure désormais la maturité par compte × marché à partir des
+excursions de position complètes : un retour flat-à-flat ou le retour à un
+niveau de position observé après une nouvelle ouverture. Chaque fill du cycle
+est contextualisé par BBO. Il montre les prérequis
 manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les paliers
 de volume déclenchent la boucle, le calendrier ne bloque pas son avancement.
 Voir [TAMTAM_AGAIN-7](https://manhattam.com/work/issue/TAMTAM_AGAIN-7) pour la
@@ -69,6 +71,6 @@ instruments dérivés fera l’objet de l’étude
 
 La collecte reste en lecture seule et les rangs ne valident pas une rentabilité
 reproductible. Les jobs Hermes, la revue Codex et la file versionnée RE → Paper
-N1 sont raccordés; ils restent inactifs tant qu'aucun couple n'a le volume de
-cycles complets et contextualisés requis. Le contrôle continu des instances
+N1 sont raccordés; ils restent inactifs tant qu'aucun couple n'a le volume
+d'excursions complètes et contextualisées requis. Le contrôle continu des instances
 Paper N1 reste hors périmètre pour l'instant.

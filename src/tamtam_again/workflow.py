@@ -132,6 +132,7 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                         "Distinguish selected-cycle market-context counts from the wider account-market capture-window totals; never present one denominator as the other.",
                         "Recommend the smallest next cycle threshold justified by a specific evidence gap; do not apply a generic calendar duration or generic 100-cycle rule.",
                         "required_exploitable_cycles and next_required_cycles are cumulative total-cycle thresholds, not additional cycles to collect; state the same cumulative target in prose.",
+                        "Report BBO exchange-time age separately from local received_at lag; never imply a BBO received after a fill was actionable before that fill.",
                     ],
                 }
                 _atomic_json(path, request)
@@ -199,13 +200,16 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     first_ms = _integer(sorted_fills[0].get("time")) - 1_000
     last_ms = _integer(sorted_fills[-1].get("time")) + 1_000
     first_iso = datetime.fromtimestamp(first_ms / 1000, timezone.utc).isoformat(timespec="milliseconds")
-    last_iso = datetime.fromtimestamp(last_ms / 1000, timezone.utc).isoformat(timespec="milliseconds")
+    # A WebSocket frame can contain a BBO whose exchange timestamp precedes
+    # a fill but whose local receipt is later. Include all such frames already
+    # archived when Hermes was dispatched; report receipt lag separately.
+    observed_end_iso = str(request.get("created_at") or utc_now())
     market_events: dict[str, list[dict[str, Any]]] = {"bbo": [], "trades": [], "l2Book": []}
     observations = store.connection.execute(
         """SELECT * FROM raw_observations WHERE network=? AND entity_type='market'
            AND entity_id=? AND endpoint IN ('bbo','trades','l2Book')
            AND observed_at>=? AND observed_at<=? ORDER BY observed_at""",
-        (run["network"],run["coin"],first_iso,last_iso),
+        (run["network"],run["coin"],first_iso,observed_end_iso),
     )
     for observation in observations:
         try:
@@ -257,6 +261,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
 
     def selected_context_counts(items: list[dict[str, Any]]) -> dict[str, int]:
         bbo_ages: list[int | None] = []
+        bbo_receipt_lags: list[int | None] = []
         l2_ages: list[int | None] = []
         for item in items:
             stamp = _integer(item["fill"].get("time"))
@@ -265,6 +270,16 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             l2 = context.get("preceding_l2")
             bbo_ages.append(
                 stamp - _integer(bbo.get("time")) if isinstance(bbo, dict) else None
+            )
+            received_at = bbo.get("received_at") if isinstance(bbo, dict) else None
+            try:
+                received_ms = int(datetime.fromisoformat(
+                    str(received_at).replace("Z", "+00:00")
+                ).timestamp() * 1000) if received_at else None
+            except (TypeError, ValueError, OverflowError):
+                received_ms = None
+            bbo_receipt_lags.append(
+                received_ms - stamp if received_ms is not None else None
             )
             l2_ages.append(
                 stamp - _integer(l2.get("time")) if isinstance(l2, dict) else None
@@ -276,6 +291,17 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             ),
             "fills_with_bbo_within_250ms": sum(
                 age is not None and 0 <= age <= 250 for age in bbo_ages
+            ),
+            "fills_with_bbo_received_by_fill_time": sum(
+                lag is not None and lag <= 0 for lag in bbo_receipt_lags
+            ),
+            "fills_with_bbo_received_within_250ms_after_fill": sum(
+                lag is not None and 0 < lag <= 250 for lag in bbo_receipt_lags
+            ),
+            "bbo_received_lag_median_ms": (
+                sorted(lag for lag in bbo_receipt_lags if lag is not None)[
+                    len([lag for lag in bbo_receipt_lags if lag is not None]) // 2
+                ] if any(lag is not None for lag in bbo_receipt_lags) else None
             ),
             "fills_with_l2_within_250ms": sum(
                 age is not None and 0 <= age <= 250 for age in l2_ages
@@ -298,7 +324,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             "selected_cycle_fills": selected_context_counts(aligned_fills),
             "selected_cycle_closing_fills": selected_context_counts(selected_closing_fills),
             "account_market_capture_window": {
-                "population": "all account closing fills inside the archived BBO capture window; not limited to selected cycles",
+                "population": "all account closing fills inside the archived BBO capture window; exchange timestamps, not limited to selected cycles",
                 "closing_fill_count": pair_context.get("closing_fills_in_bbo_capture_window"),
                 "closing_fills_with_bbo_within_1s": pair_context.get("closing_fills_with_bbo_within_1s"),
                 "closing_fills_with_bbo_within_250ms": pair_context.get("closing_fills_with_bbo_within_250ms"),
@@ -309,7 +335,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         },
         "limitations": [
             "The evidence joins only archived public feeds; missing events remain missing.",
-            "BBO and L2 context are snapshots near each leader fill, not a full exchange queue reconstruction.",
+            "BBO and L2 exchange timestamps are snapshots near each leader fill, not a full exchange queue reconstruction. Compare received_at with fill time before treating a BBO as timely information.",
             "A strategy hypothesis needs out-of-sample validation and explicit fees, slippage, and latency assumptions.",
         ],
     }
@@ -670,7 +696,9 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "interpret cycle_kind=baseline_excursion as a completed return to the observed pre-open net position, "
         "not as a flat-to-zero trade; "
         "look for timestamp/position reconstruction errors, survivorship, omitted fees, "
-        "latency or unsupported profitability claims. Read only: do not edit files, "
+        "latency or unsupported profitability claims. Compare cycle BBO flags with "
+        "selected-sample coverage, and distinguish exchange timestamps from local "
+        "received_at; data received after a fill was not available ex ante. Read only: do not edit files, "
         "run tests, or execute any order. Return only schema-valid JSON. Use decision "
         "approve only if the hypothesis and machine-readable strategy are reproducible; "
         "needs_more_data when the evidence sample is too small and choose the smallest "

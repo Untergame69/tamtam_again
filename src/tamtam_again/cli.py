@@ -91,7 +91,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--whale-every-seconds", default=3600, type=int)
     run.add_argument("--whale-limit-per-window", default=25, type=int)
     run.add_argument("--max-whale-accounts", default=10, type=int)
-    run.add_argument("--max-stream-markets", default=5, type=int)
+    run.add_argument("--max-stream-markets", default=10, type=int)
     run.add_argument("--max-depth-markets", default=2, type=int)
     run.add_argument("--lookback-days", default=30, type=int)
 

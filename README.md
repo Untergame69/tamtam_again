@@ -28,6 +28,17 @@ WebSocket, avec un carnet détaillé sur deux marchés, tout en gardant la colle
 HTTP pour compléter l’historique et vérifier les données.
 Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
 
+Pour voir les comptes réellement couverts, les marchés utilisés et décider si
+la période enregistrée suffit à démarrer un paper replay :
+
+```sh
+.venv/bin/python -m tamtam_again research-status
+```
+
+Les données déjà collectées sur les comptes non suivis restent archivées pour
+permettre leur réévaluation. Seuls les comptes marqués `tracked` sont interrogés
+en continu; les données archivées ne sont pas supprimées automatiquement.
+
 Les marchés propres à Polymarket (par exemple Up/Down et événements politiques)
 restent hors du périmètre initial. Leur éventuelle transposition par des
 instruments dérivés fera l’objet de l’étude

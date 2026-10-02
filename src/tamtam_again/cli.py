@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .analysis import observed_account_summary
+from .analysis import cohort_research_status, observed_account_summary
 from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, validate_address
 from .providers.hyperliquid_stats import HyperliquidLeaderboard
 from .markets import TOP_MARKET_COUNT, top_markets
@@ -47,6 +47,14 @@ def _parser() -> argparse.ArgumentParser:
 
     top_whales_cmd = commands.add_parser("top-whales", help="Afficher les derniers rangs PnL/ROI des comptes découverts.")
     top_whales_cmd.add_argument("--limit", default=25, type=int)
+
+    research_status = commands.add_parser(
+        "research-status",
+        help="Résumer la cohorte suivie, ses marchés et la couverture utile au paper replay.",
+    )
+    research_status.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
+    research_status.add_argument("--output", type=Path,
+                                  help="Écrire aussi le rapport JSON dans ce fichier.")
 
     markets = commands.add_parser("collect-markets", help="Collecter les métadonnées et indicateurs de marché publics.")
     markets.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
@@ -115,6 +123,14 @@ def main(argv: list[str] | None = None) -> int:
             with Store(args.db) as store:
                 result = [dict(row) for row in store.latest_whale_rankings(NETWORK_NAME, args.limit)]
             print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "research-status":
+            with Store(args.db) as store:
+                result = cohort_research_status(store, args.network)
+            serialized = json.dumps(result, ensure_ascii=False, indent=2)
+            if args.output:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(serialized + "\n", encoding="utf-8")
+            print(serialized)
         elif args.command == "collect-markets":
             _collect_markets(args)
         elif args.command == "collect-whales":

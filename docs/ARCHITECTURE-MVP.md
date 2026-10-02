@@ -57,6 +57,11 @@ milliers de lignes à chaque heure. Les adresses épinglées restent suivies mê
 si elles quittent le classement; le changement de cohorte est une décision de
 qualification à expliciter, pas une rotation automatique à chaque cycle.
 
+Les observations déjà enregistrées pour les comptes qui ne sont plus suivis
+restent dans SQLite. Elles permettent de les requalifier sans perdre leur
+historique; elles ne sont pas interrogées par les collectes des comptes suivis.
+Il n'y a pas de suppression automatique des candidats ou des observations.
+
 Les requêtes de compte utilisent l’adresse maître ou sous-compte réellement
 associée aux données. Une adresse d’agent peut ne rien retourner. Les comptes
 liés ne sont pas automatiquement fusionnés.
@@ -130,6 +135,7 @@ Depuis `tamtam_again/` :
 .venv/bin/python -m tamtam_again collect-whales --limit-per-window 25 --max-accounts 10
 .venv/bin/python -m tamtam_again top-markets
 .venv/bin/python -m tamtam_again top-whales
+.venv/bin/python -m tamtam_again research-status
 .venv/bin/python -m tamtam_again collect 0x... --start-ms 1759276800000
 .venv/bin/python -m tamtam_again report 0x... --start-ms 1759276800000 --end-ms 1790899200000
 .venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 5 --max-depth-markets 2
@@ -174,6 +180,14 @@ fermeture de session et au démarrage de la machine.
 4. Définir un backtest hors échantillon, puis plusieurs paliers de paper trading.
 5. Relier Hermes à un harness versionné après revue de ses capacités et contrats
    actuels. Les tickets TAMTAM_AGAIN ordinaires ne déclenchent pas Hermes.
+
+`research-status` est le point de contrôle avant d'écrire un replay. Il résume
+les fills observés par compte, les marchés utilisés et les messages de marché
+archivés pour ces symboles. Il ne déclare pas encore le paper replay prêt : les
+fills HTTP historiques couvrent une période plus longue que les flux de carnet,
+et les marchés observés chez les comptes ne sont pas tous présents dans les
+carnets suivis. Une stratégie de copie reste à définir avant d'estimer une
+performance simulée.
 
 ## Sources
 

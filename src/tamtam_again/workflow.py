@@ -395,6 +395,13 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
         result["next_required_cycles"] = max(
             suggested or [_next_research_target(threshold_now)]
         )
+        current_cycles = int(row["cycle_count"])
+        next_total = int(result["next_required_cycles"])
+        result["next_stage"] = (
+            f"Collect until {next_total} complete exploitable cycles total for this account-market pair; "
+            f"{current_cycles} cycles were available at the last review. This is a sample-size gate, "
+            "not evidence of profitability."
+        )
     elif decision == "redo_re":
         result["reason"] = str(draft.get("reason") or review.get("reason") or "Revue indépendante non concordante.")
     elif decision == "rejected":

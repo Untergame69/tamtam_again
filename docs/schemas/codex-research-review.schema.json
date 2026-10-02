@@ -6,17 +6,19 @@
     "run_id",
     "input_fingerprint",
     "decision",
+    "next_required_cycles",
     "findings",
     "reason"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
+    "schema_version": { "type": "integer", "enum": [1] },
     "run_id": { "type": "string" },
     "input_fingerprint": { "type": "string", "minLength": 32 },
     "decision": {
+      "type": "string",
       "enum": ["approve", "needs_more_data", "redo_re", "reject"]
     },
-    "next_required_cycles": { "type": "integer", "minimum": 31 },
+    "next_required_cycles": { "type": "integer", "minimum": 1 },
     "findings": {
       "type": "array",
       "items": {
@@ -32,11 +34,5 @@
     },
     "reason": { "type": "string" }
   },
-  "allOf": [
-    {
-      "if": { "properties": { "decision": { "const": "needs_more_data" } } },
-      "then": { "required": ["next_required_cycles"] }
-    }
-  ],
   "additionalProperties": false
 }

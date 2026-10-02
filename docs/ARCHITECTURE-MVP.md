@@ -206,20 +206,23 @@ nouvelle excursion soit observée. Les séquences ambiguës, tronquées ou
 commencées avant la couverture observée sont exclues. Un cycle exploitable
 exige que chacun de ses fills soit
 dans une fenêtre HTTP `userFillsByTime` complète et possède un BBO archivé datant
-de 1 s maximum. Le rapport conserve aussi les ordres bruts, la couverture BBO
+de 1 s maximum. Si un fill de clôture traverse un baseline non nul, le cycle
+n'inclut que la part de cette exécution nécessaire pour revenir au baseline;
+frais et PnL sont alloués proportionnellement, le reste correspondant à la
+réduction d'inventaire préexistant. Le rapport conserve aussi les ordres bruts, la couverture BBO
 dans la fenêtre de capture et un indicateur à 250 ms pour distinguer les
 hypothèses rapides.
 
-Le premier palier est de 10 cycles exploitables pour lancer une RE exploratoire;
-les suivants sont 30 pour approfondir puis 100 pour comparer. L'unité compte les
-excursions contextualisées, pas les fills ou les ordres isolés. Ces seuils
-déclenchent une analyse, ils ne prouvent pas un avantage statistique et ne
-fixent aucun délai. Après 5 cycles exploitables répartis sur au moins 6 h, l'ETA
-est estimée uniquement au débit de ce couple; sinon elle reste inconnue. Si
-Hermes ou la revue Codex demande plus de données, le prochain seuil strictement
-supérieur propre au couple est conservé. Après une RE acceptée, la collecte passe
-au palier suivant afin de comparer les versions de l'hypothèse avec davantage de
-données.
+Le premier palier est de 5 cycles exploitables pour lancer une RE exploratoire;
+les suivants sont 10 puis 30 pour approfondir, et 100 pour comparer. L'unité
+compte les excursions contextualisées, pas les fills ou les ordres isolés. Ces
+seuils déclenchent une analyse, ils ne prouvent pas un avantage statistique et
+ne fixent aucun délai. Après 5 cycles exploitables répartis sur au moins 6 h,
+l'ETA est estimée uniquement au débit de ce couple; sinon elle reste inconnue.
+Si Hermes ou la revue Codex demande plus de données, le prochain seuil
+strictement supérieur propre au couple est conservé. Après une RE acceptée, la
+collecte passe au palier suivant afin de comparer les versions de l'hypothèse
+avec davantage de données.
 
 Deux tâches Hermes surveillent la file SQLite toutes les cinq minutes et ne
 appellent le modèle que lorsque sa sortie change : `tamtam-again-research`

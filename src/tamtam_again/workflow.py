@@ -311,14 +311,14 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
     review_decision = str(review.get("decision", ""))
     if review_decision not in {"approve", "needs_more_data", "redo_re", "reject"}:
         raise ValueError("Décision de revue Codex invalide.")
-    if hermes_decision == "accepted" and review_decision == "approve":
+    if review_decision == "redo_re" or hermes_decision == "redo_re":
+        decision = "redo_re"
+    elif hermes_decision == "accepted" and review_decision == "approve":
         decision = "accepted"
     elif hermes_decision == "rejected" and review_decision == "reject":
         decision = "rejected"
     elif hermes_decision == "needs_more_data" or review_decision == "needs_more_data":
         decision = "needs_more_data"
-    elif hermes_decision == "redo_re" or review_decision == "redo_re":
-        decision = "redo_re"
     else:
         decision = "redo_re"
     result = dict(draft)

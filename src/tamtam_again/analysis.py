@@ -11,9 +11,9 @@ from .cycles import reconstruct_position_cycles
 from .storage import Store, decode_observation_payload
 
 
-HYPOTHESIS_CYCLE_REFERENCE = 10
+HYPOTHESIS_CYCLE_REFERENCE = 5
 VALIDATION_CYCLE_REFERENCE = 100
-RESEARCH_CYCLE_LEVELS = (HYPOTHESIS_CYCLE_REFERENCE, 30, VALIDATION_CYCLE_REFERENCE)
+RESEARCH_CYCLE_LEVELS = (HYPOTHESIS_CYCLE_REFERENCE, 10, 30, VALIDATION_CYCLE_REFERENCE)
 
 
 def observed_account_summary(store: Store, network: str, address: str,
@@ -367,7 +367,8 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "unit": "completed perp position excursions (flat-to-flat or opening-and-return-to-observed-baseline) with complete HTTP fill coverage and BBO context",
             "calendar_time_is_only_an_estimate": True,
             "limitations": [
-                "Partial fills are connected through their startPosition and resulting position. A cycle may return to a non-zero observed baseline; exits of inventory already held when collection begins do not count. Ambiguous same-timestamp paths, truncated episodes, and spot fills are excluded.",
+            "Partial fills are connected through their startPosition and resulting position. A cycle may return to a non-zero observed baseline; exits of inventory already held when collection begins do not count. Ambiguous same-timestamp paths, truncated episodes, and spot fills are excluded.",
+            "When one execution crosses a non-zero baseline, only the proportional size, fee, and realized PnL needed to return to that baseline are allocated to the cycle; the remainder closes pre-existing inventory.",
                 "A cycle counts only if every fill timestamp lies in a complete userFillsByTime window and has a preceding BBO no older than 1 second.",
                 "The BBO match is a timing proxy, not proof of gap-free depth or complete order-book capture. The stricter 90% in-capture coverage rate remains an additional gate.",
             ],

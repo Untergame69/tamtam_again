@@ -115,15 +115,16 @@ def reconstruct_position_cycles(
                     # baseline forward until a newly observed open occurs.
                     baseline = after
             else:
-                _add_fill(active, fill, stamp, market_times, intervals,
-                          bbo_tolerance_ms)
                 episode_baseline = active["baseline_position"]
                 returned = _near(after, episode_baseline)
                 crossed_baseline = ((before - episode_baseline)
                                     * (after - episode_baseline) < ZERO)
-                if returned or crossed_baseline:
+                if returned:
+                    _add_fill(active, fill, stamp, market_times, intervals,
+                              bbo_tolerance_ms)
                     active["closed_at_ms"] = stamp
                     active["closed_position"] = True
+                    active["ending_position"] = after
                     episode = _finish_episode(active, bbo_tolerance_ms)
                     if episode["exploitable"]:
                         output.append(episode)
@@ -138,6 +139,60 @@ def reconstruct_position_cycles(
                         # excursion but assign realized PnL only to the exit.
                         _add_fill(active, fill, stamp, market_times, intervals,
                                   bbo_tolerance_ms, include_realized=False)
+                elif crossed_baseline:
+                    # A fill can pass across a non-zero baseline while closing
+                    # inventory that predates the observed excursion. Allocate
+                    # only the executed fraction needed to return to baseline.
+                    displacement = after - before
+                    fraction = abs((episode_baseline - before) / displacement)
+                    allocated = dict(fill)
+                    original_size = abs(_decimal(fill.get("sz")))
+                    allocated["sz"] = format(original_size * fraction, "f")
+                    for field in ("fee", "closedPnl"):
+                        allocated[field] = format(_decimal(fill.get(field)) * fraction, "f")
+                    _add_fill(active, allocated, stamp, market_times, intervals,
+                              bbo_tolerance_ms)
+                    active["partial_fill_allocations"].append({
+                        "fill_id": str(fill.get("tid", fill.get("hash", ""))),
+                        "allocated_size": allocated["sz"],
+                        "original_size": format(original_size, "f"),
+                        "allocated_fee": allocated["fee"],
+                        "allocated_realized_pnl": allocated["closedPnl"],
+                    })
+                    active["closed_at_ms"] = stamp
+                    active["closed_position"] = True
+                    active["ending_position"] = episode_baseline
+                    episode = _finish_episode(active, bbo_tolerance_ms)
+                    if episode["exploitable"]:
+                        output.append(episode)
+                    active = None
+                    baseline = after
+                    if _is_flip(fill) and not _near(after, episode_baseline):
+                        # The remainder of a flip opens the opposite side
+                        # after the prior excursion has returned to baseline.
+                        remainder = dict(fill)
+                        original_size = abs(_decimal(fill.get("sz")))
+                        remainder_size = original_size * (Decimal(1) - fraction)
+                        remainder["startPosition"] = format(episode_baseline, "f")
+                        remainder["sz"] = format(remainder_size, "f")
+                        remainder["fee"] = format(
+                            _decimal(fill.get("fee")) * (Decimal(1) - fraction), "f"
+                        )
+                        remainder["closedPnl"] = "0"
+                        baseline = episode_baseline
+                        active = _new_episode(remainder, stamp, baseline)
+                        active["partial_fill_allocations"].append({
+                            "fill_id": str(fill.get("tid", fill.get("hash", ""))),
+                            "allocated_size": remainder["sz"],
+                            "original_size": format(original_size, "f"),
+                            "allocated_fee": remainder["fee"],
+                            "allocated_realized_pnl": "0",
+                        })
+                        _add_fill(active, remainder, stamp, market_times, intervals,
+                                  bbo_tolerance_ms, include_realized=False)
+                else:
+                    _add_fill(active, fill, stamp, market_times, intervals,
+                              bbo_tolerance_ms)
             position = after
 
     # Open or truncated excursions intentionally do not count.
@@ -153,6 +208,7 @@ def _new_episode(fill: dict[str, Any], stamp: int, baseline: Decimal) -> dict[st
         "cycle_kind": "flat_to_flat" if _near_zero(baseline) else "baseline_excursion",
         "baseline_position": baseline,
         "fills": [],
+        "partial_fill_allocations": [],
         "notional": ZERO,
         "fees": ZERO,
         "realized_pnl": ZERO,
@@ -189,6 +245,7 @@ def _finish_episode(episode: dict[str, Any], tolerance_ms: int) -> dict[str, Any
         "side": episode["side"],
         "cycle_kind": episode["cycle_kind"],
         "baseline_position": format(episode["baseline_position"], "f"),
+        "ending_position": format(episode["ending_position"], "f"),
         "fill_count": count,
         "order_count": len({str(fill.get("oid")) for fill in episode["fills"]}),
         "notional": format(episode["notional"], "f"),
@@ -196,6 +253,7 @@ def _finish_episode(episode: dict[str, Any], tolerance_ms: int) -> dict[str, Any
         "realized_pnl": format(episode["realized_pnl"], "f"),
         "bbo_tolerance_ms": tolerance_ms,
         "fill_ids": identifiers,
+        "partial_fill_allocations": episode["partial_fill_allocations"],
         "all_bbo_context": episode["all_bbo_context"],
         "all_history_covered": episode["all_history_covered"],
         "exploitable": (count > 0 and episode["all_bbo_context"]

@@ -7,11 +7,12 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from typing import Any
 
+from .cycles import reconstruct_position_cycles
 from .storage import Store, decode_observation_payload
 
 
-HYPOTHESIS_ORDER_REFERENCE = 30
-VALIDATION_ORDER_REFERENCE = 100
+HYPOTHESIS_CYCLE_REFERENCE = 30
+VALIDATION_CYCLE_REFERENCE = 100
 
 
 def observed_account_summary(store: Store, network: str, address: str,
@@ -140,6 +141,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
                          for i, row in enumerate(tracked, 1)}
     fills: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     history_complete: defaultdict[str, dict[str, bool]] = defaultdict(dict)
+    fill_history_intervals: defaultdict[str, list[tuple[int, int]]] = defaultdict(list)
     ws_fills_last: dict[str, str] = {}
     market_counts: Counter[str] = Counter()
     market_notional: defaultdict[str, Decimal] = defaultdict(Decimal)
@@ -180,6 +182,13 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
                     history_complete[address].get(endpoint, True)
                     and bool(observation["complete"])
                 )
+                if (endpoint == "userFillsByTime" and bool(observation["complete"])
+                        and observation["window_start_ms"] is not None
+                        and observation["window_end_ms"] is not None):
+                    fill_history_intervals[address].append((
+                        int(observation["window_start_ms"]),
+                        int(observation["window_end_ms"]),
+                    ))
         else:
             coin = observation["entity_id"]
             try:
@@ -236,9 +245,18 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             expected_history <= set(history_complete[address])
             and all(history_complete[address].get(endpoint, False) for endpoint in expected_history)
         )
+        target_row = store.connection.execute(
+            """SELECT required_cycles,attempt,status FROM research_targets
+               WHERE network=? AND address=? AND coin=?""",
+            (network,address,coin),
+        ).fetchone()
+        target_cycles = int(target_row["required_cycles"]) if target_row else HYPOTHESIS_CYCLE_REFERENCE
         maturity_by_account[address].append(_pair_maturity(
-            pair_rows, coin, bbo_times.get(coin, []), history_is_complete,
+            pair_rows, coin, bbo_times.get(coin, []),
+            fill_history_intervals[address], history_is_complete, target_cycles,
         ))
+        maturity_by_account[address][-1]["research_attempt"] = int(target_row["attempt"]) if target_row else 1
+        maturity_by_account[address][-1]["workflow_status"] = target_row["status"] if target_row else "collecting"
     for address, alias in tracked_addresses.items():
         rows = by_address[address]
         times = account_times[address]
@@ -265,7 +283,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "last_websocket_fill_observed_at": ws_fills_last.get(address),
             "data_maturity_by_market": sorted(
                 maturity_by_account[address],
-                key=lambda item: (-item["usable_closing_order_actions_pilot"], item["coin"]),
+                key=lambda item: (-item["fully_reconstructed_position_cycles"], item["coin"]),
             ),
         })
 
@@ -342,21 +360,24 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
         },
         "observation_counts_by_endpoint": dict(sorted(endpoint_counts.items())),
         "maturity_model": {
-            "hypothesis_reference_closing_orders": HYPOTHESIS_ORDER_REFERENCE,
-            "validation_reference_closing_orders": VALIDATION_ORDER_REFERENCE,
-            "unit": "distinct closing order actions as a volume indicator; not a completed-cycle count",
+            "hypothesis_cycle_reference": HYPOTHESIS_CYCLE_REFERENCE,
+            "validation_cycle_reference": VALIDATION_CYCLE_REFERENCE,
+            "unit": "completed flat-to-flat perp position episodes with complete HTTP fill coverage and BBO context",
             "calendar_time_is_only_an_estimate": True,
             "limitations": [
-                "Partial fills are grouped by order ID. The pilot volume values count closing order actions, not independent trades or completed position cycles.",
-                "A separate, stricter flattening proxy is reported; reliable cycle reconstruction still needs event continuity and account-history completeness.",
-                "Only closing orders with at least one fill matched to an archived BBO within 1 s advance the pilot volume; the 90% rate is measured inside the BBO capture window and does not prove gap-free market capture.",
+                "Partial fills are connected through their startPosition and resulting position. Ambiguous same-timestamp paths, truncated episodes, and spot fills are excluded.",
+                "A cycle counts only if every fill timestamp lies in a complete userFillsByTime window and has a preceding BBO no older than 1 second.",
+                "The BBO match is a timing proxy, not proof of gap-free depth or complete order-book capture. The stricter 90% in-capture coverage rate remains an additional gate.",
             ],
         },
     }
 
 
 def _pair_maturity(rows: list[dict[str, Any]], coin: str,
-                   market_bbo_times: list[int], history_is_complete: bool) -> dict[str, Any]:
+                   market_bbo_times: list[int],
+                   complete_history_intervals: list[tuple[int, int]],
+                   history_is_complete: bool,
+                   target_cycles: int) -> dict[str, Any]:
     """Estimate data volume per account/market without treating partial fills as samples."""
     ordered = sorted(rows, key=lambda item: (
         _int_or_zero(item.get("time")), _int_or_zero(item.get("tid")),
@@ -384,9 +405,11 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         except (InvalidOperation, ValueError):
             pass
 
-    # Hyperliquid supplies startPosition per fill. Count a position closure only
-    # when this individual execution reaches flat or flips through flat. Partial
-    # fills from the same order are deduplicated by order id.
+    cycles = reconstruct_position_cycles(
+        ordered, market_bbo_times, complete_history_intervals,
+        bbo_tolerance_ms=1_000,
+    )
+    # Retain this strict per-fill diagnostic alongside reconstructed episodes.
     closures: set[str] = set()
     for item in ordered:
         direction = str(item.get("dir", ""))
@@ -434,12 +457,14 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
     usable_span_hours = ((max(rate_stamps) - min(rate_stamps)) / 3_600_000
                          if len(rate_stamps) > 1 else 0.0)
     rate = usable_actions / usable_span_hours if usable_span_hours >= 6 and usable_actions >= 10 else None
-    missing_hypothesis = max(0, HYPOTHESIS_ORDER_REFERENCE - usable_actions)
-    missing_validation = max(0, VALIDATION_ORDER_REFERENCE - usable_actions)
+    exploitable_cycle_count = len(cycles)
+    missing_hypothesis = max(0, target_cycles - exploitable_cycle_count)
+    missing_validation = max(0, VALIDATION_CYCLE_REFERENCE - exploitable_cycle_count)
     context_pct_1s = 100 * bbo_covered_1s / in_capture_window if in_capture_window else None
     context_pct_250ms = 100 * bbo_covered_250ms / in_capture_window if in_capture_window else None
-    volume_gate = usable_actions >= HYPOTHESIS_ORDER_REFERENCE
+    volume_gate = exploitable_cycle_count >= target_cycles
     context_gate = context_pct_1s is not None and context_pct_1s >= 90
+    cycle_rate = _recent_cycle_rate(cycles)
     return {
         "coin": coin,
         "observed_fills": len(fill_ids),
@@ -448,12 +473,16 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "distinct_closing_orders": len(close_orders),
         "verified_flattening_events_proxy": len(closures),
         "usable_closing_order_actions_pilot": usable_actions,
-        "hypothesis_reference_actions": HYPOTHESIS_ORDER_REFERENCE,
-        "hypothesis_actions_remaining": missing_hypothesis,
-        "validation_reference_actions": VALIDATION_ORDER_REFERENCE,
-        "validation_actions_remaining": missing_validation,
-        "hypothesis_volume_reached": missing_hypothesis == 0,
-        "validation_volume_reached": missing_validation == 0,
+        "fully_reconstructed_position_cycles": exploitable_cycle_count,
+        "exploitable_cycle_ids": [cycle["cycle_id"] for cycle in cycles],
+        "exploitable_cycle_summaries": cycles,
+        "hypothesis_cycle_target": target_cycles,
+        "hypothesis_cycles_remaining": missing_hypothesis,
+        "validation_cycle_target": VALIDATION_CYCLE_REFERENCE,
+        "validation_cycles_remaining": missing_validation,
+        "hypothesis_cycles_reached": missing_hypothesis == 0,
+        "validation_cycles_reached": missing_validation == 0,
+        "recent_exploitable_cycle_ids": [cycle["cycle_id"] for cycle in cycles[-100:]],
         "closing_fills_in_bbo_capture_window": in_capture_window,
         "closing_fills_with_bbo_within_1s": bbo_covered_1s,
         "closing_fills_with_bbo_within_250ms": bbo_covered_250ms,
@@ -462,19 +491,23 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "closing_fill_bbo_context_pct_1s": round(context_pct_1s, 2) if context_pct_1s is not None else None,
         "closing_fill_bbo_context_pct_250ms": round(context_pct_250ms, 2) if context_pct_250ms is not None else None,
         "account_history_complete_at_collection": history_is_complete,
-        "hypothesis_gate_ready": volume_gate and context_gate and history_is_complete,
+        "hypothesis_gate_ready": volume_gate and context_gate,
         "hypothesis_gate_blockers": [
-            *([] if volume_gate else ["closing-order sample below pilot volume reference"]),
+            *([] if volume_gate else ["fully reconstructed, market-contextualized cycle sample below target"]),
             *([] if context_gate else ["less than 90% of in-capture closing fills have BBO context within 1 second"]),
-            *([] if history_is_complete else ["account history is missing or incomplete"]),
+            *([] if cycles else ["no flat-to-flat episode has complete fill history and BBO context"]),
         ],
         "observed_notional": format(notional, "f"),
         "observed_realized_closed_pnl": format(realized, "f"),
         "observed_span_hours": round(span_hours, 2),
         "usable_sample_span_hours": round(usable_span_hours, 2),
         "estimated_closing_order_actions_per_hour": round(rate, 3) if rate is not None else None,
-        "hypothesis_eta_hours": round(missing_hypothesis / rate, 2) if rate else None,
-        "validation_eta_hours": round(missing_validation / rate, 2) if rate else None,
+        "estimated_exploitable_cycles_per_hour": round(
+            cycle_rate, 3
+        ) if cycle_rate is not None else None,
+        "eta_cycles_sampled": min(len(cycles), 10) if cycle_rate is not None else 0,
+        "hypothesis_eta_hours": _cycle_eta(cycles, missing_hypothesis),
+        "validation_eta_hours": _cycle_eta(cycles, missing_validation),
         "eta_confidence": "low" if rate is not None else "insufficient_pair_history",
         "eta_is_informational_only": True,
     }
@@ -485,6 +518,25 @@ def _int_or_zero(value: Any) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _cycle_eta(cycles: list[dict[str, Any]], remaining: int) -> float | None:
+    if remaining == 0:
+        return 0.0
+    rate = _recent_cycle_rate(cycles)
+    if rate is None:
+        return None
+    return round(remaining / rate, 2)
+
+
+def _recent_cycle_rate(cycles: list[dict[str, Any]]) -> float | None:
+    recent = cycles[-10:]
+    if len(recent) < 5:
+        return None
+    span_ms = recent[-1]["closed_at_ms"] - recent[0]["opened_at_ms"]
+    if span_ms < 21_600_000:
+        return None
+    return len(recent) / (span_ms / 3_600_000)
 
 
 def _fills_from_observation(endpoint: str, payload: Any) -> list[dict[str, Any]]:

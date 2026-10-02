@@ -36,15 +36,18 @@ la période enregistrée suffit à démarrer un paper replay :
 .venv/bin/python -m tamtam_again research-status
 ```
 
-Ce rapport mesure désormais la maturité pour chaque compte × marché à partir
-des ordres clôturants contextualisés par BBO et montre les prérequis encore
-manquants. Une ETA n'est affichée que si ce couple a assez d'historique; le
-calendrier ne décide pas du passage à l'analyse. Les repères actuels sont
-exploratoires : un ordre clôturant n'est pas un cycle de position reconstruit.
+Ce rapport mesure désormais la maturité par compte × marché à partir des cycles
+flat-à-flat reconstruits et contextualisés par BBO. Il montre les prérequis
+manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les paliers
+de volume déclenchent la boucle, le calendrier ne bloque pas son avancement.
 Voir [TAMTAM_AGAIN-7](https://manhattam.com/work/issue/TAMTAM_AGAIN-7) pour la
 définition de la maturité, et
 [TAMTAM_AGAIN-12](https://manhattam.com/work/issue/TAMTAM_AGAIN-12) pour la
 boucle Hermes et le paper trading N1.
+
+Les tâches Hermes de rétro et de paper N1 s'installent avec
+`scripts/install-hermes-crons.sh`. Elles ne démarrent une analyse qu'à la
+présence d'un run admissible dans la file locale.
 
 Les données déjà collectées sur les comptes non suivis restent archivées pour
 permettre leur réévaluation. Seuls les comptes marqués `tracked` sont interrogés
@@ -64,6 +67,8 @@ instruments dérivés fera l’objet de l’étude
 - Toute évolution doit avoir un ticket YouTrack, et être validée dans ce ticket
   une fois terminée.
 
-Le service reste en collecte publique uniquement. Les observations et rangs ne
-valident pas la rentabilité reproductible des comptes ; l’analyse et le paper
-trading restent des phases à construire.
+La collecte reste en lecture seule et les rangs ne valident pas une rentabilité
+reproductible. Les jobs Hermes, la revue Codex et la file versionnée RE → Paper
+N1 sont raccordés; ils restent inactifs tant qu'aucun couple n'a le volume de
+cycles complets et contextualisés requis. Le contrôle continu des instances
+Paper N1 reste hors périmètre pour l'instant.

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "input_fingerprint",
+    "decision",
+    "findings",
+    "reason"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "run_id": { "type": "string" },
+    "input_fingerprint": { "type": "string", "minLength": 32 },
+    "decision": {
+      "enum": ["approve", "needs_more_data", "redo_re", "reject"]
+    },
+    "next_required_cycles": { "type": "integer", "minimum": 31 },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim", "assessment", "evidence"],
+        "properties": {
+          "claim": { "type": "string" },
+          "assessment": { "type": "string" },
+          "evidence": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reason": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "needs_more_data" } } },
+      "then": { "required": ["next_required_cycles"] }
+    }
+  ],
+  "additionalProperties": false
+}

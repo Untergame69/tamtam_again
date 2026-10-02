@@ -91,6 +91,56 @@ CREATE TABLE IF NOT EXISTS collection_cursors (
     updated_at TEXT NOT NULL,
     PRIMARY KEY (network, address, endpoint)
 );
+CREATE TABLE IF NOT EXISTS research_targets (
+    network TEXT NOT NULL,
+    address TEXT NOT NULL,
+    coin TEXT NOT NULL,
+    required_cycles INTEGER NOT NULL DEFAULT 30,
+    attempt INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'collecting',
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (network, address, coin)
+);
+CREATE TABLE IF NOT EXISTS automation_runs (
+    run_id TEXT PRIMARY KEY,
+    stage TEXT NOT NULL,
+    network TEXT NOT NULL,
+    address TEXT NOT NULL,
+    coin TEXT NOT NULL,
+    threshold_cycles INTEGER NOT NULL,
+    attempt INTEGER NOT NULL DEFAULT 1,
+    input_fingerprint TEXT NOT NULL,
+    cycle_count INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    decision TEXT,
+    next_threshold_cycles INTEGER,
+    strategy_fingerprint TEXT,
+    request_path TEXT NOT NULL,
+    artifact_path TEXT NOT NULL DEFAULT '',
+    lease_until TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (stage, network, address, coin, threshold_cycles, input_fingerprint, attempt)
+);
+CREATE INDEX IF NOT EXISTS idx_automation_runs_pending
+    ON automation_runs(stage, status, created_at);
+CREATE TABLE IF NOT EXISTS paper_n1_revisions (
+    revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    network TEXT NOT NULL,
+    address TEXT NOT NULL,
+    coin TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    research_run_id TEXT NOT NULL REFERENCES automation_runs(run_id),
+    strategy_fingerprint TEXT NOT NULL,
+    artifact_path TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    is_active INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    UNIQUE (network, address, coin, revision),
+    UNIQUE (research_run_id)
+);
+CREATE INDEX IF NOT EXISTS idx_paper_n1_active
+    ON paper_n1_revisions(network, address, coin, is_active);
 """
 
 

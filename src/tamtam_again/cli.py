@@ -15,6 +15,8 @@ from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, val
 from .providers.hyperliquid_stats import HyperliquidLeaderboard
 from .markets import TOP_MARKET_COUNT, top_markets
 from .storage import Store, utc_now
+from .workflow import (claim_run, complete_paper, complete_research,
+                       workflow_tick, write_research_evidence)
 from .whales import rank_leaderboard
 from .websocket import run_websocket_collector, tracked_market_symbols
 
@@ -55,6 +57,20 @@ def _parser() -> argparse.ArgumentParser:
     research_status.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
     research_status.add_argument("--output", type=Path,
                                   help="Écrire aussi le rapport JSON dans ce fichier.")
+
+    wf_tick = commands.add_parser(
+        "workflow-tick", help="Détecter les paliers atteints et exposer les tâches Hermes en attente."
+    )
+    wf_tick.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
+    wf_tick.add_argument("--stage", choices=("research", "paper"), default="research")
+    wf_claim = commands.add_parser("workflow-claim", help="Prendre un bail idempotent sur un run Hermes.")
+    wf_claim.add_argument("run_id")
+    wf_evidence = commands.add_parser("research-evidence", help="Exporter les cycles et leur contexte marché pour Hermes.")
+    wf_evidence.add_argument("run_id")
+    wf_evidence.add_argument("--output", type=Path, required=True)
+    wf_complete = commands.add_parser("workflow-complete", help="Enregistrer un artifact Hermes validé.")
+    wf_complete.add_argument("run_id")
+    wf_complete.add_argument("result_json", type=Path)
 
     markets = commands.add_parser("collect-markets", help="Collecter les métadonnées et indicateurs de marché publics.")
     markets.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
@@ -131,6 +147,30 @@ def main(argv: list[str] | None = None) -> int:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_text(serialized + "\n", encoding="utf-8")
             print(serialized)
+        elif args.command == "workflow-tick":
+            with Store(args.db) as store:
+                result = workflow_tick(store, args.network, args.stage)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "workflow-claim":
+            with Store(args.db) as store:
+                run = claim_run(store, args.run_id)
+            request = json.loads(Path(run["request_path"]).read_text(encoding="utf-8"))
+            print(json.dumps({"run": run, "request": request}, ensure_ascii=False, indent=2))
+        elif args.command == "research-evidence":
+            with Store(args.db) as store:
+                result = write_research_evidence(store, args.run_id, args.output)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "workflow-complete":
+            with Store(args.db) as store:
+                row = store.connection.execute(
+                    "SELECT stage FROM automation_runs WHERE run_id=?", (args.run_id,),
+                ).fetchone()
+                if not row:
+                    raise ValueError("Run inconnu.")
+                result = (complete_research(store, args.run_id, args.result_json)
+                          if row["stage"] == "research"
+                          else complete_paper(store, args.run_id, args.result_json))
+            print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "collect-markets":
             _collect_markets(args)
         elif args.command == "collect-whales":

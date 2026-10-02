@@ -190,23 +190,56 @@ et les marchés observés chez les comptes ne sont pas tous présents dans les
 carnets suivis. Une stratégie de copie reste à définir avant d'estimer une
 performance simulée.
 
-Le rapport expose aussi une maturité par couple compte × marché : nombre de
-fills bruts, ordres distincts, ordres de clôture, ordres de clôture alignés sur
-un BBO archivé, fraîcheur du BBO (1 s et 250 ms), couverture de l'historique et
-ETA indicative propre à ce couple. Les repères pilotes 30/100 portent sur les
-ordres de clôture contextualisés, jamais sur les fills bruts. Ils ne sont pas
-des cycles de position reconstruits ni une preuve statistique. Un compte ne
-peut donc pas emprunter le débit d'un autre pour obtenir une ETA; sans au moins
-6 heures et 10 ordres contextualisés, l'ETA reste vide. Les temps ne bloquent
-pas les phases : la progression dépend de la quantité de données utilisables.
+Le rapport mesure la maturité par couple compte × marché. Il relie les fills
+partiels via `startPosition`, reconstruit les épisodes flat-à-flat sur les
+perpétuels et exclut les séquences ambiguës, tronquées ou commencées avant la
+couverture observée. Un cycle exploitable exige que chacun de ses fills soit
+dans une fenêtre HTTP `userFillsByTime` complète et possède un BBO archivé datant
+de 1 s maximum. Le rapport conserve aussi les ordres bruts, la couverture BBO
+dans la fenêtre de capture et un indicateur à 250 ms pour distinguer les
+hypothèses rapides.
 
-Le contrôle « hypothèse prête » reste bloqué tant que le volume, la couverture
-BBO d'au moins 90 % dans la fenêtre réellement collectée et la complétude de
-l'historique du compte ne sont pas réunis. Le BBO précédent une exécution sert
-de contexte; une capture sans trou n'est pas garantie. Le seuil 250 ms est
-fourni séparément pour repérer les marchés incompatibles avec une hypothèse
-rapide. La reconstruction de cycles, l'orchestration Hermes idempotente et le
-paper trading N1 restent des étapes à achever avant toute analyse automatique.
+Les paliers initiaux sont 30 cycles exploitables pour formuler une hypothèse et
+100 pour la comparer. Ce sont des seuils de volume, pas des preuves statistiques
+ni des délais. Après 5 cycles exploitables répartis sur au moins 6 h, l'ETA est
+estimée uniquement au débit de ce couple; sinon elle reste inconnue. Si Hermes
+demande plus de données, il fixe un prochain seuil strictement supérieur. Après
+une rétro acceptée, le prochain palier devient au moins 100 afin de comparer la
+stratégie au fur et à mesure de l'acquisition.
+
+Deux tâches Hermes surveillent la file SQLite toutes les cinq minutes et ne
+appellent le modèle que lorsque sa sortie change : `tamtam-again-research`
+déclenche la rétro au palier atteint; `tamtam-again-paper-n1` traite ensuite la
+spécification paper. L'ordonnanceur est tické chaque minute par la crontab
+existante. `workflow-complete` lance ensuite une revue Codex indépendante en
+sandbox lecture seule et n'accepte une stratégie que si les deux avis
+concordent. Chaque run possède une empreinte d'entrée, un bail de reprise et
+des artifacts immuables. `needs_more_data` augmente le seuil; `redo_re` relance
+la rétro au même seuil; `accepted` crée un run Paper N1 uniquement si
+l'empreinte de stratégie a changé. Les versions précédentes sont conservées.
+Le nouvel N1 ne devient actif qu'après validation de son artifact; une rétro
+acceptée plus récente garde la priorité si deux runs paper finissent dans le
+désordre.
+
+Le N1 est local et virtuel : aucune clé, signature ou route d'ordre réel. Il
+initialise un cahier des charges et un ledger virtuel; son moteur de contrôle
+continu et son suivi des résultats restent une phase distincte.
+
+Pour installer les deux surveillances Hermes :
+
+```sh
+scripts/install-hermes-crons.sh
+```
+
+Commandes de maintenance manuelle :
+
+```sh
+.venv/bin/python -m tamtam_again workflow-tick --stage research
+.venv/bin/python -m tamtam_again workflow-tick --stage paper
+.venv/bin/python -m tamtam_again workflow-claim RUN_ID
+.venv/bin/python -m tamtam_again research-evidence RUN_ID --output data/automation/evidence/research/RUN_ID.json
+.venv/bin/python -m tamtam_again workflow-complete RUN_ID data/automation/results/research/RUN_ID.json
+```
 
 ## Sources
 

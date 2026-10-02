@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+from bisect import bisect_right
 from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from typing import Any
 
 from .storage import Store, decode_observation_payload
+
+
+HYPOTHESIS_ORDER_REFERENCE = 30
+VALIDATION_ORDER_REFERENCE = 100
 
 
 def observed_account_summary(store: Store, network: str, address: str,
@@ -142,6 +147,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
     market_stream: defaultdict[str, Counter[str]] = defaultdict(Counter)
     market_first: dict[tuple[str, str], int] = {}
     market_last: dict[tuple[str, str], int] = {}
+    bbo_times: defaultdict[str, list[int]] = defaultdict(list)
     candles: defaultdict[str, list[int]] = defaultdict(list)
     endpoint_counts: Counter[str] = Counter()
 
@@ -206,11 +212,15 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
                             key = (symbol, endpoint)
                             market_first[key] = min(stamp, market_first.get(key, stamp))
                             market_last[key] = max(stamp, market_last.get(key, stamp))
+                            if endpoint == "bbo":
+                                bbo_times[symbol].append(stamp)
 
     by_address: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    by_pair: defaultdict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for (address, _coin, _stamp, _tid), fill in fills.items():
         by_address[address].append(fill)
         coin = str(fill.get("coin", ""))
+        by_pair[(address, coin)].append(fill)
         market_counts[coin] += 1
         try:
             market_notional[coin] += Decimal(str(fill.get("px", "0"))) * Decimal(
@@ -219,6 +229,16 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
         except (InvalidOperation, ValueError):
             pass
     accounts = []
+    maturity_by_account: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    for (address, coin), pair_rows in by_pair.items():
+        expected_history = {"userFillsByTime", "userFunding", "userNonFundingLedgerUpdates"}
+        history_is_complete = (
+            expected_history <= set(history_complete[address])
+            and all(history_complete[address].get(endpoint, False) for endpoint in expected_history)
+        )
+        maturity_by_account[address].append(_pair_maturity(
+            pair_rows, coin, bbo_times.get(coin, []), history_is_complete,
+        ))
     for address, alias in tracked_addresses.items():
         rows = by_address[address]
         times = account_times[address]
@@ -243,6 +263,10 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "profitability_claim_ready": False,
             "websocket_fills_seen": address in ws_fills_last,
             "last_websocket_fill_observed_at": ws_fills_last.get(address),
+            "data_maturity_by_market": sorted(
+                maturity_by_account[address],
+                key=lambda item: (-item["usable_closing_order_actions_pilot"], item["coin"]),
+            ),
         })
 
     ranking = store.latest_market_selection(network)
@@ -317,7 +341,150 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "candidate_accounts_retained": len(candidates),
         },
         "observation_counts_by_endpoint": dict(sorted(endpoint_counts.items())),
+        "maturity_model": {
+            "hypothesis_reference_closing_orders": HYPOTHESIS_ORDER_REFERENCE,
+            "validation_reference_closing_orders": VALIDATION_ORDER_REFERENCE,
+            "unit": "distinct closing order actions as a volume indicator; not a completed-cycle count",
+            "calendar_time_is_only_an_estimate": True,
+            "limitations": [
+                "Partial fills are grouped by order ID. The pilot volume values count closing order actions, not independent trades or completed position cycles.",
+                "A separate, stricter flattening proxy is reported; reliable cycle reconstruction still needs event continuity and account-history completeness.",
+                "Only closing orders with at least one fill matched to an archived BBO within 1 s advance the pilot volume; the 90% rate is measured inside the BBO capture window and does not prove gap-free market capture.",
+            ],
+        },
     }
+
+
+def _pair_maturity(rows: list[dict[str, Any]], coin: str,
+                   market_bbo_times: list[int], history_is_complete: bool) -> dict[str, Any]:
+    """Estimate data volume per account/market without treating partial fills as samples."""
+    ordered = sorted(rows, key=lambda item: (
+        _int_or_zero(item.get("time")), _int_or_zero(item.get("tid")),
+    ))
+    fill_ids = {
+        (str(item.get("time", "")), str(item.get("tid", item.get("hash", ""))))
+        for item in ordered
+    }
+    order_ids = {str(item.get("oid")) for item in ordered if item.get("oid") is not None}
+    close_orders: set[str] = set()
+    close_fills: list[dict[str, Any]] = []
+    close_fill_count = 0
+    realized = Decimal(0)
+    notional = Decimal(0)
+    for item in ordered:
+        direction = str(item.get("dir", ""))
+        if direction.startswith("Close ") or " > " in direction:
+            close_fill_count += 1
+            close_fills.append(item)
+            if item.get("oid") is not None:
+                close_orders.add(str(item["oid"]))
+            realized += _decimal(item.get("closedPnl"))
+        try:
+            notional += Decimal(str(item.get("px", "0"))) * Decimal(str(item.get("sz", "0")))
+        except (InvalidOperation, ValueError):
+            pass
+
+    # Hyperliquid supplies startPosition per fill. Count a position closure only
+    # when this individual execution reaches flat or flips through flat. Partial
+    # fills from the same order are deduplicated by order id.
+    closures: set[str] = set()
+    for item in ordered:
+        direction = str(item.get("dir", ""))
+        if not (direction.startswith("Close ") or " > " in direction):
+            continue
+        try:
+            starting = abs(Decimal(str(item.get("startPosition", "0"))))
+            size = abs(Decimal(str(item.get("sz", "0"))))
+        except (InvalidOperation, ValueError):
+            continue
+        if size and starting <= size:
+            identity = str(item.get("oid") or item.get("tid") or item.get("time"))
+            closures.add(identity)
+
+    stamps = [_int_or_zero(item.get("time")) for item in ordered]
+    stamps = [stamp for stamp in stamps if stamp]
+    span_hours = max(0.0, (max(stamps) - min(stamps)) / 3_600_000) if len(stamps) > 1 else 0.0
+    # Only closing fills aligned to the locally archived BBO count as usable
+    # sample. Historical fills before market capture remain visible but do not
+    # advance this data-volume gate.
+    bbo_times = sorted(market_bbo_times)
+    bbo_covered_1s = 0
+    bbo_covered_250ms = 0
+    bbo_window_start = bbo_times[0] if bbo_times else None
+    bbo_window_end = bbo_times[-1] if bbo_times else None
+    in_capture_window = 0
+    contextualized_orders: set[str] = set()
+    contextualized_order_stamps: dict[str, int] = {}
+    for item in close_fills:
+        stamp = _int_or_zero(item.get("time"))
+        if bbo_window_start is None or stamp < bbo_window_start or stamp > bbo_window_end:
+            continue
+        in_capture_window += 1
+        index = bisect_right(bbo_times, stamp) - 1
+        age_ms = stamp - bbo_times[index] if index >= 0 else None
+        if age_ms is not None and 0 <= age_ms <= 1_000:
+            bbo_covered_1s += 1
+            order_id = str(item.get("oid") or item.get("tid") or stamp)
+            contextualized_orders.add(order_id)
+            contextualized_order_stamps[order_id] = stamp
+        if age_ms is not None and 0 <= age_ms <= 250:
+            bbo_covered_250ms += 1
+    usable_actions = len(contextualized_orders)
+    rate_stamps = list(contextualized_order_stamps.values())
+    usable_span_hours = ((max(rate_stamps) - min(rate_stamps)) / 3_600_000
+                         if len(rate_stamps) > 1 else 0.0)
+    rate = usable_actions / usable_span_hours if usable_span_hours >= 6 and usable_actions >= 10 else None
+    missing_hypothesis = max(0, HYPOTHESIS_ORDER_REFERENCE - usable_actions)
+    missing_validation = max(0, VALIDATION_ORDER_REFERENCE - usable_actions)
+    context_pct_1s = 100 * bbo_covered_1s / in_capture_window if in_capture_window else None
+    context_pct_250ms = 100 * bbo_covered_250ms / in_capture_window if in_capture_window else None
+    volume_gate = usable_actions >= HYPOTHESIS_ORDER_REFERENCE
+    context_gate = context_pct_1s is not None and context_pct_1s >= 90
+    return {
+        "coin": coin,
+        "observed_fills": len(fill_ids),
+        "distinct_order_ids": len(order_ids),
+        "closing_fills": close_fill_count,
+        "distinct_closing_orders": len(close_orders),
+        "verified_flattening_events_proxy": len(closures),
+        "usable_closing_order_actions_pilot": usable_actions,
+        "hypothesis_reference_actions": HYPOTHESIS_ORDER_REFERENCE,
+        "hypothesis_actions_remaining": missing_hypothesis,
+        "validation_reference_actions": VALIDATION_ORDER_REFERENCE,
+        "validation_actions_remaining": missing_validation,
+        "hypothesis_volume_reached": missing_hypothesis == 0,
+        "validation_volume_reached": missing_validation == 0,
+        "closing_fills_in_bbo_capture_window": in_capture_window,
+        "closing_fills_with_bbo_within_1s": bbo_covered_1s,
+        "closing_fills_with_bbo_within_250ms": bbo_covered_250ms,
+        "bbo_capture_first_utc": _iso_ms(bbo_window_start),
+        "bbo_capture_last_utc": _iso_ms(bbo_window_end),
+        "closing_fill_bbo_context_pct_1s": round(context_pct_1s, 2) if context_pct_1s is not None else None,
+        "closing_fill_bbo_context_pct_250ms": round(context_pct_250ms, 2) if context_pct_250ms is not None else None,
+        "account_history_complete_at_collection": history_is_complete,
+        "hypothesis_gate_ready": volume_gate and context_gate and history_is_complete,
+        "hypothesis_gate_blockers": [
+            *([] if volume_gate else ["closing-order sample below pilot volume reference"]),
+            *([] if context_gate else ["less than 90% of in-capture closing fills have BBO context within 1 second"]),
+            *([] if history_is_complete else ["account history is missing or incomplete"]),
+        ],
+        "observed_notional": format(notional, "f"),
+        "observed_realized_closed_pnl": format(realized, "f"),
+        "observed_span_hours": round(span_hours, 2),
+        "usable_sample_span_hours": round(usable_span_hours, 2),
+        "estimated_closing_order_actions_per_hour": round(rate, 3) if rate is not None else None,
+        "hypothesis_eta_hours": round(missing_hypothesis / rate, 2) if rate else None,
+        "validation_eta_hours": round(missing_validation / rate, 2) if rate else None,
+        "eta_confidence": "low" if rate is not None else "insufficient_pair_history",
+        "eta_is_informational_only": True,
+    }
+
+
+def _int_or_zero(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _fills_from_observation(endpoint: str, payload: Any) -> list[dict[str, Any]]:

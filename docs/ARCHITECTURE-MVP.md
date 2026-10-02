@@ -190,6 +190,24 @@ et les marchés observés chez les comptes ne sont pas tous présents dans les
 carnets suivis. Une stratégie de copie reste à définir avant d'estimer une
 performance simulée.
 
+Le rapport expose aussi une maturité par couple compte × marché : nombre de
+fills bruts, ordres distincts, ordres de clôture, ordres de clôture alignés sur
+un BBO archivé, fraîcheur du BBO (1 s et 250 ms), couverture de l'historique et
+ETA indicative propre à ce couple. Les repères pilotes 30/100 portent sur les
+ordres de clôture contextualisés, jamais sur les fills bruts. Ils ne sont pas
+des cycles de position reconstruits ni une preuve statistique. Un compte ne
+peut donc pas emprunter le débit d'un autre pour obtenir une ETA; sans au moins
+6 heures et 10 ordres contextualisés, l'ETA reste vide. Les temps ne bloquent
+pas les phases : la progression dépend de la quantité de données utilisables.
+
+Le contrôle « hypothèse prête » reste bloqué tant que le volume, la couverture
+BBO d'au moins 90 % dans la fenêtre réellement collectée et la complétude de
+l'historique du compte ne sont pas réunis. Le BBO précédent une exécution sert
+de contexte; une capture sans trou n'est pas garantie. Le seuil 250 ms est
+fourni séparément pour repérer les marchés incompatibles avec une hypothèse
+rapide. La reconstruction de cycles, l'orchestration Hermes idempotente et le
+paper trading N1 restent des étapes à achever avant toute analyse automatique.
+
 ## Sources
 
 - [Hyperliquid — Info endpoint](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint)

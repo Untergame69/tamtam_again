@@ -516,7 +516,7 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "eta_cycles_sampled": min(len(cycles), 10) if cycle_rate is not None else 0,
         "hypothesis_eta_hours": _cycle_eta(cycles, missing_hypothesis),
         "validation_eta_hours": _cycle_eta(cycles, missing_validation),
-        "eta_confidence": "low" if rate is not None else "insufficient_pair_history",
+        "eta_confidence": "low" if cycle_rate is not None else "insufficient_pair_history",
         "eta_is_informational_only": True,
     }
 

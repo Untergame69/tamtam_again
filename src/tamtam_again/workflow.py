@@ -309,6 +309,22 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         }
 
     pair_context = request["context"]
+    # A cycle's fill_ids are deliberately stable-sorted for fingerprints, but
+    # that order is not the execution order when several fills share one
+    # exchange timestamp. Preserve the position-matched order used by the
+    # reconstruction so an independent reviewer can reproduce the path.
+    fills_by_id = {
+        str(item.get("tid", item.get("hash", ""))): item
+        for item in fills.values()
+    }
+    for cycle in selected_cycles:
+        partial_sizes = {
+            str(item.get("fill_id")): str(item.get("allocated_size"))
+            for item in cycle.get("partial_fill_allocations", [])
+        }
+        cycle["position_trace"] = _cycle_position_trace(
+            cycle, fills_by_id, partial_sizes
+        )
     evidence = {
         "schema_version": 1,
         "run_id": run_id,
@@ -702,7 +718,10 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "Check that its claims follow from the included cycles, fills, BBO, trades and L2; "
         "interpret cycle_kind=baseline_excursion as a completed return to the observed pre-open net position, "
         "not as a flat-to-zero trade; "
-        "look for timestamp/position reconstruction errors, survivorship, omitted fees, "
+        "audit the explicit per-cycle position_trace in its listed order. Fills sharing an exchange timestamp "
+        "may need chaining by matching startPosition to the preceding postPosition; do not sort same-time fills "
+        "by tid alone. Flag a position discontinuity only when the listed trace itself does not reconcile. "
+        "Also look for timestamp errors, survivorship, omitted fees, "
         "latency or unsupported profitability claims. Compare cycle BBO flags with "
         "selected-sample coverage, and distinguish exchange timestamps from local "
         "received_at; data received after a fill was not available ex ante. Read only: do not edit files, "
@@ -744,6 +763,85 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         raise ValueError("La sortie Codex n'est pas rattachée au run courant.")
     output_path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     return review
+
+
+def _cycle_position_trace(cycle: dict[str, Any], fills_by_id: dict[str, dict[str, Any]],
+                          partial_sizes: dict[str, str]) -> dict[str, Any]:
+    """Expose the same position-linked order used to construct a cycle."""
+    from decimal import Decimal, InvalidOperation
+
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for fill_id in cycle.get("fill_ids", []):
+        fill = fills_by_id.get(str(fill_id))
+        if not fill:
+            continue
+        stamp = _integer(fill.get("time"))
+        grouped.setdefault(stamp, []).append(fill)
+
+    try:
+        position = Decimal(str(cycle.get("baseline_position", "0")))
+    except (InvalidOperation, ValueError):
+        position = Decimal(0)
+    trace: list[dict[str, Any]] = []
+    issues: list[str] = []
+    for stamp in sorted(grouped):
+        pending = list(grouped[stamp])
+        while pending:
+            matches = [fill for fill in pending
+                       if _position_near(
+                           _decimal_position(fill.get("startPosition")), position
+                       )]
+            if len(matches) != 1:
+                issues.append(
+                    f"{stamp}: expected one fill starting at {position}, found {len(matches)}"
+                )
+                break
+            fill = matches[0]
+            pending.remove(fill)
+            fill_id = str(fill.get("tid", fill.get("hash", "")))
+            size = _decimal_position(partial_sizes.get(fill_id, fill.get("sz", "0")))
+            before = _decimal_position(fill.get("startPosition"))
+            signed_size = size if str(fill.get("side", "")) == "B" else -size
+            after = before + signed_size
+            trace.append({
+                "sequence": len(trace) + 1,
+                "fill_id": fill_id,
+                "time": stamp,
+                "dir": fill.get("dir"),
+                "side": fill.get("side"),
+                "start_position": str(before),
+                "size_used_for_cycle": str(size),
+                "post_position": str(after),
+                "partial_allocation": fill_id in partial_sizes,
+            })
+            position = after
+    try:
+        expected_end = Decimal(str(cycle.get("ending_position", "0")))
+    except (InvalidOperation, ValueError):
+        expected_end = Decimal(0)
+    reconciles = not issues and len(trace) == len(cycle.get("fill_ids", [])) \
+        and position == expected_end
+    if position != expected_end:
+        issues.append(f"ending position {position} does not match {expected_end}")
+    return {
+        "ordering": "within each timestamp, chain the unique fill whose start_position equals the prior post_position",
+        "fills": trace,
+        "reconciles_to_ending_position": reconciles,
+        "issues": issues,
+    }
+
+
+def _decimal_position(value: Any) -> Any:
+    from decimal import Decimal, InvalidOperation
+    try:
+        return Decimal(str(value or "0"))
+    except (InvalidOperation, ValueError):
+        return Decimal(0)
+
+
+def _position_near(left: Any, right: Any) -> bool:
+    from decimal import Decimal
+    return abs(left - right) <= max(Decimal("0.00000001"), abs(left) * Decimal("1e-10"))
 
 
 def _integer(value: Any) -> int:

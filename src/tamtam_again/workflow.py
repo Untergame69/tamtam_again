@@ -23,6 +23,7 @@ from .storage import Store, decode_observation_payload, utc_now
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TARGET = HYPOTHESIS_CYCLE_REFERENCE
 LEASE_MINUTES = 45
+MAX_INITIAL_RESEARCH_SAMPLE_CYCLES = 100
 
 
 def workflow_tick(store: Store, network: str, stage: str = "research") -> dict[str, Any]:
@@ -75,7 +76,14 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                 cycle_ids = pair.get("exploitable_cycle_ids", [])
                 if (len(cycle_ids) < threshold or not pair.get("hypothesis_gate_ready")):
                     continue
-                sample_ids = cycle_ids[:threshold]
+                # A threshold is a minimum to start research, not a request to
+                # discard cycles already collected by the time Hermes runs.
+                # Include up to the first 100 accumulated cycles (or the full
+                # required threshold when a reviewer raised it above 100). This
+                # keeps successive samples cumulative while bounding an initial
+                # exploratory request for very active accounts.
+                sample_limit = max(threshold, MAX_INITIAL_RESEARCH_SAMPLE_CYCLES)
+                sample_ids = cycle_ids[:sample_limit]
                 fingerprint = hashlib.sha256("\n".join(sample_ids).encode()).hexdigest()
                 active = store.connection.execute(
                     """SELECT 1 FROM automation_runs WHERE stage='research'
@@ -107,6 +115,11 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                     ),
                     "required_exploitable_cycles": threshold,
                     "cycle_count_at_dispatch": len(cycle_ids),
+                    "cycle_sample_count": len(sample_ids),
+                    "cycle_sample_policy": (
+                        "cumulative chronological sample; all available cycles up to 100, "
+                        "or the full required threshold when it exceeds 100"
+                    ),
                     "cycle_sample_ids": sample_ids,
                     "input_fingerprint": fingerprint,
                     "created_at": now,

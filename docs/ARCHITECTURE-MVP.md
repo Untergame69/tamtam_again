@@ -223,6 +223,11 @@ compte les excursions contextualisées, pas les fills ou les ordres isolés. Ces
 seuils déclenchent une analyse, ils ne prouvent pas un avantage statistique et
 ne fixent aucun délai. Après 5 cycles exploitables répartis sur au moins 6 h,
 l'ETA est estimée uniquement au débit de ce couple; sinon elle reste inconnue.
+Le seuil est un minimum de déclenchement : la RE reçoit aussi les cycles déjà
+collectés au moment où Hermes démarre, jusqu'aux 100 premiers cycles cumulés
+(ou jusqu'au seuil complet si celui-ci dépasse 100). Les paliers supérieurs
+reprennent ainsi l'échantillon antérieur et l'élargissent. La condition de 6 h
+ne retarde jamais une RE; elle sert uniquement à éviter une ETA trop instable.
 Si Hermes ou la revue Codex demande plus de données, le prochain seuil
 strictement supérieur propre au couple est conservé. Après une RE acceptée, la
 collecte passe au palier suivant afin de comparer les versions de l'hypothèse

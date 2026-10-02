@@ -41,7 +41,10 @@ excursions de position complètes : un retour flat-à-flat ou le retour à un
 niveau de position observé après une nouvelle ouverture. Chaque fill du cycle
 est contextualisé par BBO. Il montre les prérequis
 manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les paliers
-de volume déclenchent la boucle, le calendrier ne bloque pas son avancement.
+de volume déclenchent la boucle : 10 cycles pour la première RE exploratoire,
+30 pour approfondir et 100 pour comparer. Le calendrier ne bloque pas son
+avancement; si une RE demande plus de données, son seuil propre au compte et au
+marché prend le relais.
 Voir [TAMTAM_AGAIN-7](https://manhattam.com/work/issue/TAMTAM_AGAIN-7) pour la
 définition de la maturité, et
 [TAMTAM_AGAIN-12](https://manhattam.com/work/issue/TAMTAM_AGAIN-12) pour la

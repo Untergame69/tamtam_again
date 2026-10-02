@@ -210,14 +210,16 @@ de 1 s maximum. Le rapport conserve aussi les ordres bruts, la couverture BBO
 dans la fenêtre de capture et un indicateur à 250 ms pour distinguer les
 hypothèses rapides.
 
-Les paliers initiaux sont 30 cycles exploitables pour formuler une hypothèse et
-100 pour la comparer. L'unité compte les excursions contextualisées, pas les
-fills ou les ordres isolés. Ce sont des seuils de volume, pas des preuves statistiques
-ni des délais. Après 5 cycles exploitables répartis sur au moins 6 h, l'ETA est
-estimée uniquement au débit de ce couple; sinon elle reste inconnue. Si Hermes
-demande plus de données, il fixe un prochain seuil strictement supérieur. Après
-une rétro acceptée, le prochain palier devient au moins 100 afin de comparer la
-stratégie au fur et à mesure de l'acquisition.
+Le premier palier est de 10 cycles exploitables pour lancer une RE exploratoire;
+les suivants sont 30 pour approfondir puis 100 pour comparer. L'unité compte les
+excursions contextualisées, pas les fills ou les ordres isolés. Ces seuils
+déclenchent une analyse, ils ne prouvent pas un avantage statistique et ne
+fixent aucun délai. Après 5 cycles exploitables répartis sur au moins 6 h, l'ETA
+est estimée uniquement au débit de ce couple; sinon elle reste inconnue. Si
+Hermes ou la revue Codex demande plus de données, le prochain seuil strictement
+supérieur propre au couple est conservé. Après une RE acceptée, la collecte passe
+au palier suivant afin de comparer les versions de l'hypothèse avec davantage de
+données.
 
 Deux tâches Hermes surveillent la file SQLite toutes les cinq minutes et ne
 appellent le modèle que lorsque sa sortie change : `tamtam-again-research`

@@ -13,13 +13,15 @@ import sqlite3
 from typing import Any
 from uuid import uuid4
 
-from .analysis import _fills_from_observation, cohort_research_status
+from .analysis import (
+    HYPOTHESIS_CYCLE_REFERENCE, RESEARCH_CYCLE_LEVELS, _fills_from_observation,
+    cohort_research_status,
+)
 from .storage import Store, decode_observation_payload, utc_now
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TARGET = 30
-NEXT_TARGET_AFTER_ACCEPT = 100
+DEFAULT_TARGET = HYPOTHESIS_CYCLE_REFERENCE
 LEASE_MINUTES = 45
 
 
@@ -331,7 +333,7 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
             draft.get("next_required_cycles"), review.get("next_required_cycles")
         ) if isinstance(value, int) and value > threshold_now]
         result["next_required_cycles"] = max(
-            suggested or [max(NEXT_TARGET_AFTER_ACCEPT, threshold_now * 2)]
+            suggested or [_next_research_target(threshold_now)]
         )
     elif decision == "redo_re":
         result["reason"] = str(draft.get("reason") or review.get("reason") or "Revue indépendante non concordante.")
@@ -457,7 +459,7 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
             store.connection.execute(
                 """UPDATE research_targets SET required_cycles=?,attempt=1,
                    status='collecting',updated_at=? WHERE network=? AND address=? AND coin=?""",
-                (max(NEXT_TARGET_AFTER_ACCEPT,threshold * 2),now,
+                (_next_research_target(threshold),now,
                  row["network"],row["address"],row["coin"]),
             )
         elif decision == "rejected":
@@ -667,3 +669,8 @@ def _target(store: Store, network: str, address: str, coin: str) -> int:
         (network,address,coin),
     ).fetchone()
     return int(row[0]) if row else DEFAULT_TARGET
+
+
+def _next_research_target(current: int) -> int:
+    """Use the next exploratory sample level, then double beyond validation."""
+    return next((level for level in RESEARCH_CYCLE_LEVELS if level > current), current * 2)

@@ -11,8 +11,9 @@ from .cycles import reconstruct_position_cycles
 from .storage import Store, decode_observation_payload
 
 
-HYPOTHESIS_CYCLE_REFERENCE = 30
+HYPOTHESIS_CYCLE_REFERENCE = 10
 VALIDATION_CYCLE_REFERENCE = 100
+RESEARCH_CYCLE_LEVELS = (HYPOTHESIS_CYCLE_REFERENCE, 30, VALIDATION_CYCLE_REFERENCE)
 
 
 def observed_account_summary(store: Store, network: str, address: str,
@@ -362,6 +363,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
         "maturity_model": {
             "hypothesis_cycle_reference": HYPOTHESIS_CYCLE_REFERENCE,
             "validation_cycle_reference": VALIDATION_CYCLE_REFERENCE,
+            "research_cycle_levels": list(RESEARCH_CYCLE_LEVELS),
             "unit": "completed perp position excursions (flat-to-flat or opening-and-return-to-observed-baseline) with complete HTTP fill coverage and BBO context",
             "calendar_time_is_only_an_estimate": True,
             "limitations": [

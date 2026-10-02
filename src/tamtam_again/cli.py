@@ -16,6 +16,7 @@ from .providers.hyperliquid_stats import HyperliquidLeaderboard
 from .markets import TOP_MARKET_COUNT, top_markets
 from .storage import Store, utc_now
 from .whales import rank_leaderboard
+from .websocket import run_websocket_collector
 
 
 DEFAULT_DB = Path("data/tamtam.sqlite3")
@@ -55,7 +56,7 @@ def _parser() -> argparse.ArgumentParser:
     whales = commands.add_parser("collect-whales", help="Découvrir les comptes les mieux classés et collecter leurs données publiques.")
     whales.add_argument("--limit-per-window", default=25, type=int,
                         help="Nombre de comptes retenus par fenêtre et métrique PnL/ROI.")
-    whales.add_argument("--max-accounts", default=25, type=int,
+    whales.add_argument("--max-accounts", default=10, type=int,
                         help="Plafond de comptes à approfondir pendant ce cycle.")
     whales.add_argument("--lookback-days", default=30, type=int,
                         help="Historique initial; les cycles suivants reprennent au curseur.")
@@ -65,7 +66,9 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--ranking-refresh-seconds", default=900, type=int)
     run.add_argument("--whale-every-seconds", default=3600, type=int)
     run.add_argument("--whale-limit-per-window", default=25, type=int)
-    run.add_argument("--max-whale-accounts", default=25, type=int)
+    run.add_argument("--max-whale-accounts", default=10, type=int)
+    run.add_argument("--max-stream-markets", default=5, type=int)
+    run.add_argument("--max-depth-markets", default=2, type=int)
     run.add_argument("--lookback-days", default=30, type=int)
 
     collect = commands.add_parser("collect", help="Collecter les données publiques d’un candidat connu.")
@@ -244,16 +247,6 @@ def _collect_market_cycle(db_path: Path, network: str, candle_interval: str,
         for market in ranked:
             coin = market["coin"]
             try:
-                book = client.collect_order_book(coin)
-                store.save_observation(
-                    network=network, source="hyperliquid-info-v1",
-                    entity_type="market", entity_id=coin, endpoint="l2Book",
-                    payload=book, request_payload={"type": "l2Book", "coin": coin},
-                    requested_at=observed_at,
-                )
-            except (ProviderError, ValueError) as exc:
-                errors.append({"coin": coin, "endpoint": "l2Book", "error": str(exc)})
-            try:
                 candles = client.collect_candles(coin, candle_interval, start_ms, end_ms)
                 store.save_observation(
                     network=network, source="hyperliquid-info-v1",
@@ -371,17 +364,20 @@ def _collect_whale_accounts(store: Store, client: HyperliquidInfo,
 
 
 def _collect_whales(args: argparse.Namespace, emit: bool = True) -> dict[str, Any]:
-    if args.max_accounts < 1 or args.limit_per_window < 1:
-        raise ValueError("Les limites de comptes doivent être positives.")
+    if not 1 <= args.max_accounts <= 10 or args.limit_per_window < 1:
+        raise ValueError("Le suivi WebSocket accepte 1 à 10 comptes; les autres limites doivent être positives.")
     client = HyperliquidInfo(NETWORK_NAME)
     with Store(args.db) as store:
         snapshot_id, _, source_count = _discover_whales(store, args.limit_per_window)
+        tracked = store.promote_top_whales(snapshot_id, NETWORK_NAME,
+                                           args.max_accounts)
         candidates = store.whale_addresses(snapshot_id, args.max_accounts)
         addresses = [row["address"] for row in candidates]
         candidate_pool_size = len(store.candidates(NETWORK_NAME))
         collected = _collect_whale_accounts(store, client, addresses, args.lookback_days)
     summary = {"leaderboard_rows": source_count,
                "candidate_pool_size": candidate_pool_size,
+               "tracked_accounts": tracked,
                "selected_candidates": len(addresses),
                "collected_accounts": collected}
     if emit:
@@ -394,8 +390,11 @@ def _run_collectors(args: argparse.Namespace) -> None:
         raise ValueError("Cadence minimale : marché 15 s; baleines 300 s.")
     if args.ranking_refresh_seconds < 300:
         raise ValueError("Le classement de volume doit être rafraîchi au moins toutes les 5 minutes.")
-    if args.max_whale_accounts < 1 or args.whale_limit_per_window < 1:
-        raise ValueError("Les limites de comptes doivent être positives.")
+    if (not 1 <= args.max_whale_accounts <= 10
+            or args.whale_limit_per_window < 1
+            or args.max_stream_markets < TOP_MARKET_COUNT
+            or not 1 <= args.max_depth_markets <= args.max_stream_markets):
+        raise ValueError("Le WebSocket accepte 1 à 10 comptes; limites de marchés invalides.")
     stop_event = threading.Event()
 
     def repeat(name: str, cadence: int, collect: Any) -> None:
@@ -439,6 +438,13 @@ def _run_collectors(args: argparse.Namespace) -> None:
         name="tamtam-market-collector",
         daemon=True,
     )
+    websocket_thread = threading.Thread(
+        target=run_websocket_collector,
+        args=(stop_event, args.db, NETWORK_NAME, args.max_stream_markets,
+              args.max_depth_markets),
+        name="tamtam-websocket-collector",
+        daemon=True,
+    )
     whale_thread = threading.Thread(
         target=repeat,
         args=("whales", args.whale_every_seconds,
@@ -448,6 +454,7 @@ def _run_collectors(args: argparse.Namespace) -> None:
     )
     market_thread.start()
     whale_thread.start()
+    websocket_thread.start()
     try:
         market_thread.join()
         whale_thread.join()
@@ -455,9 +462,9 @@ def _run_collectors(args: argparse.Namespace) -> None:
         print("Arrêt demandé; les requêtes en cours se terminent.", flush=True)
         stop_event.set()
         deadline = time.monotonic() + 30
-        for worker in (market_thread, whale_thread):
+        for worker in (market_thread, whale_thread, websocket_thread):
             worker.join(timeout=max(0.0, deadline - time.monotonic()))
-        still_running = [worker.name for worker in (market_thread, whale_thread)
+        still_running = [worker.name for worker in (market_thread, whale_thread, websocket_thread)
                          if worker.is_alive()]
         if still_running:
             print(json.dumps({"stopping_workers": still_running,

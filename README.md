@@ -21,11 +21,12 @@ Le premier incrément de code et son modèle de données sont décrits dans
 [docs/ARCHITECTURE-MVP.md](docs/ARCHITECTURE-MVP.md). Le ticket de collecte est
 [TAMTAM_AGAIN-5](https://manhattam.com/work/issue/TAMTAM_AGAIN-5).
 
-Le collecteur couvre maintenant le top 5 Hyperliquid par volume notionnel sur
-24 h, calculé sur les perpétuels de tous les DEX et les marchés spot, ainsi que
-les comptes classés sur le leaderboard public. Les cycles continus et
-les commandes d’exploitation sont documentés dans l’architecture ; les réponses
-brutes sont conservées dans SQLite, compressées et dédupliquées.
+Le collecteur utilise le top 5 Hyperliquid par volume notionnel comme départ,
+puis cible les cinq marchés les plus utilisés par sa cohorte stable de dix
+comptes classés. Il conserve leurs fills live et les trades publics via
+WebSocket, avec un carnet détaillé sur deux marchés, tout en gardant la collecte
+HTTP pour compléter l’historique et vérifier les données.
+Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
 
 Les marchés propres à Polymarket (par exemple Up/Down et événements politiques)
 restent hors du périmètre initial. Leur éventuelle transposition par des

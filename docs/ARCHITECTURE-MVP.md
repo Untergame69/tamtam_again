@@ -22,33 +22,40 @@ n’implémente aucune route d’ordre ou signature.
 | Ordres ouverts | `openOrders` | Intention de trading encore affichée, complément des exécutions déjà remplies. |
 | Historique de compte résumé | `portfolio` | Points historiques fournis par la plateforme, à comparer aux événements reconstruits. |
 | Classement public | données consommées par la page officielle de classement | Découverte de candidats par PnL/ROI sur day, week, month et allTime. La route de données du site n’est pas une API documentée et peut changer. |
-| Carnet des cinq principaux marchés | `l2Book` | État du carnet au moment de chaque cycle. |
+| Fills en direct des comptes suivis | WebSocket `userFills` | Exécutions des comptes suivis, avec snapshot d’abonnement et nouveaux fills. |
+| Trades publics des marchés suivis | WebSocket `trades` | Prix, taille, sens, heure et identifiant de chaque trade public. |
+| Carnet détaillé des marchés principaux | WebSocket `l2Book` en mode `fast` | Cinq niveaux de prix de chaque côté, pour deux marchés au départ. |
+| Meilleurs prix acheteur/vendeur | WebSocket `bbo` | Meilleur prix des deux côtés pour les deux marchés avec carnet détaillé. |
 | Bougies des cinq principaux marchés | `candleSnapshot` | Fenêtre récente en chandelles d’une minute. |
 
 Le top 5 est défini par `dayNtlVlm` décroissant sur tous les DEX perpétuels et
 les paires spot Hyperliquid. Le marché, son type et son DEX restent enregistrés
 avec chaque rang. Cette mesure de volume notionnel sur 24 h est recalculée toutes
-les 15 minutes dans le service continu. Les carnets et cinq dernières minutes de
-bougies des cinq marchés sélectionnés sont repris toutes les 60 secondes. Ce
-choix est un filtre de liquidité opérationnel, pas une mesure de qualité d’une
-stratégie.
+les 15 minutes. Les bougies récentes restent rafraîchies toutes les 60 secondes.
+Quand la cohorte a des fills, le WebSocket suit ses cinq marchés les plus
+utilisés par volume observé; avant cela, il utilise le top 5 global comme point
+de départ. Les trades sont suivis sur ces cinq symboles et le carnet détaillé
+sur les deux premiers pour contenir la croissance de SQLite. La liste est
+recalculée à partir des fills enregistrés.
 
 La page officielle de classement fournit actuellement quatre fenêtres. Le
 collecteur conserve les 25 premiers rangs PnL/ROI positifs et actifs par fenêtre
-(day, week, month, allTime), puis approfondit au plus cinq comptes par cycle
-dans le service. Les candidats restent dans le registre après leur sortie des
-classements récents; ceux jamais approfondis et les historiques les moins avancés
-passent d’abord. Le classement ne prouve pas qu’un compte possède un avantage
-reproductible : il peut refléter une période courte, du risque élevé ou des biais
-de survivance. Les candidats sont des adresses observables et ne sont pas
-automatiquement regroupés avec leurs sous-comptes ou propriétaires.
+(day, week, month, allTime). Il épingle jusqu’à dix comptes dans une cohorte
+stable, en favorisant les rangs PnL allTime, month, week puis day. Cette limite
+correspond à la limite documentée des abonnements WebSocket propres aux
+utilisateurs. Les historiques de ces comptes continuent d’être complétés par
+HTTP; les nouveaux fills arrivent par WebSocket. Le classement ne prouve pas
+qu’un compte possède un avantage reproductible : il peut refléter une période
+courte, du risque élevé ou des biais de survivance. Les candidats sont des
+adresses observables et ne sont pas automatiquement regroupés avec leurs
+sous-comptes ou propriétaires.
 
 Les rangs compacts sont enregistrés à chaque cycle de découverte. La réponse
 complète du leaderboard (plusieurs mégaoctets observés) est archivée une fois
 par jour UTC, pour garder la provenance sans écrire le même jeu de dizaines de
-milliers de lignes à chaque heure. Les comptes candidats sont ordonnés par
-curseur de collecte : ceux jamais collectés passent d’abord, puis les historiques
-les moins avancés sont repris avant de recommencer un compte déjà couvert.
+milliers de lignes à chaque heure. Les adresses épinglées restent suivies même
+si elles quittent le classement; le changement de cohorte est une décision de
+qualification à expliciter, pas une rotation automatique à chaque cycle.
 
 Les requêtes de compte utilisent l’adresse maître ou sous-compte réellement
 associée aux données. Une adresse d’agent peut ne rien retourner. Les comptes
@@ -62,6 +69,16 @@ la plateforme/réseau, l’endpoint, l’entité, les bornes demandées, le mome
 collecte, un hash du JSON et le corps JSON compressé. Une contrainte d’unicité
 empêche de réinsérer deux fois la même réponse pour le même sujet et la même
 fenêtre. Les snapshots qui évoluent restent distincts grâce au hash de réponse.
+
+Les messages WebSocket sont enregistrés comme observations brutes, regroupées
+par marché et par flux sur une seconde; chaque événement garde son heure de
+réception et son heure source. À la reconnexion, les abonnements
+sont reconstruits et les snapshots de fills renvoyés par le flux sont conservés.
+Les cycles HTTP continuent à compléter les historiques et à réconcilier les
+événements. Une interruption peut toutefois laisser un trou dans l’historique
+des trades publics et du carnet; la collecte actuelle ne reconstruit pas
+automatiquement chaque message de marché manqué. Le volume de stockage des
+carnets doit être surveillé, car le flux est plus fourni qu’un relevé par minute.
 
 Les nombres du JSON brut restent des chaînes quand l’API les renvoie en
 chaînes. Les calculs d’agrégation utilisent `Decimal`. Une nouvelle version du
@@ -108,28 +125,32 @@ tant qu’elles ne sont pas corroborées.
 Depuis `tamtam_again/` :
 
 ```sh
-PYTHONPATH=src python -m tamtam_again init
-PYTHONPATH=src python -m tamtam_again collect-markets
-PYTHONPATH=src python -m tamtam_again collect-whales --limit-per-window 25 --max-accounts 5
-PYTHONPATH=src python -m tamtam_again top-markets
-PYTHONPATH=src python -m tamtam_again top-whales
-PYTHONPATH=src python -m tamtam_again collect 0x... --start-ms 1759276800000
-PYTHONPATH=src python -m tamtam_again report 0x... --start-ms 1759276800000 --end-ms 1790899200000
-PYTHONPATH=src python -m tamtam_again run-collectors
+.venv/bin/python -m tamtam_again init
+.venv/bin/python -m tamtam_again collect-markets
+.venv/bin/python -m tamtam_again collect-whales --limit-per-window 25 --max-accounts 10
+.venv/bin/python -m tamtam_again top-markets
+.venv/bin/python -m tamtam_again top-whales
+.venv/bin/python -m tamtam_again collect 0x... --start-ms 1759276800000
+.venv/bin/python -m tamtam_again report 0x... --start-ms 1759276800000 --end-ms 1790899200000
+.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 5 --max-depth-markets 2
 ```
 
 Les commandes de découverte enregistrent les candidats et leurs rangs sans
-action de portefeuille. `run-collectors` lance les cycles marché et baleines en
-parallèle : marchés toutes les 60 secondes, classement de volume toutes les 15
-minutes, découverte des baleines toutes les heures. Les limites peuvent être
-ajustées avec les options de la commande. Les timestamps sont des millisecondes
-Unix UTC.
+action de portefeuille. `run-collectors` lance les cycles marché, baleines et
+WebSocket en parallèle : bougies toutes les 60 secondes, classement de volume
+toutes les 15 minutes, historique des baleines toutes les heures et flux live
+en continu. Hyperliquid limite à dix les utilisateurs distincts abonnés aux
+flux privés; cette première cohorte est donc limitée à dix comptes. Les trades
+sont suivis sur cinq marchés dominants de la cohorte, avec carnet détaillé sur
+deux marchés. Les timestamps sont des millisecondes Unix UTC.
 
 Le service systemd utilisateur est décrit dans
 [`systemd/user/tamtam-again-collectors.service`](../systemd/user/tamtam-again-collectors.service).
 Installation et consultation des journaux :
 
 ```sh
+python3 -m venv .venv
+.venv/bin/pip install -e .
 mkdir -p ~/.config/systemd/user
 cp systemd/user/tamtam-again-collectors.service ~/.config/systemd/user/
 systemctl --user daemon-reload

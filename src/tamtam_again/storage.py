@@ -284,7 +284,7 @@ class Store:
                FROM candidates AS candidate
                LEFT JOIN whale_rankings AS ranked
                  ON ranked.snapshot_id=? AND ranked.address=candidate.address
-               WHERE candidate.network=? AND candidate.status='candidate'
+               WHERE candidate.network=? AND candidate.status='tracked'
                GROUP BY candidate.network, candidate.address, candidate.label,
                         candidate.added_at
                ORDER BY collection_cursor, candidate.added_at,
@@ -296,6 +296,47 @@ class Store:
                         best_rank, candidate.address
                LIMIT ?""", (snapshot_id, snapshot["network"], limit),
         ))
+
+    def promote_top_whales(self, snapshot_id: str, network: str,
+                           limit: int) -> list[str]:
+        """Pin a small, stable cohort using longer-window leaderboard ranks."""
+        if limit < 1:
+            raise ValueError("limit doit être positif.")
+        existing = self.connection.execute(
+            "SELECT address FROM candidates WHERE network=? AND status='tracked' "
+            "ORDER BY added_at, address", (network,),
+        ).fetchall()
+        active = [row["address"] for row in existing]
+        capacity = max(0, limit - len(active))
+        if capacity:
+            rows = self.connection.execute(
+                """SELECT address, window, metric, rank
+                   FROM whale_rankings WHERE snapshot_id=?""", (snapshot_id,),
+            ).fetchall()
+            scores: dict[str, float] = {}
+            for row in rows:
+                if row["metric"] != "pnl":
+                    continue
+                weight = {"allTime": 1.0, "month": 1.5,
+                          "week": 2.0, "day": 4.0}.get(row["window"], 6.0)
+                scores[row["address"]] = scores.get(row["address"], 0.0) + (
+                    weight * int(row["rank"])
+                )
+            candidates = sorted(scores, key=lambda address: (scores[address], address))
+            for address in candidates:
+                if address in active:
+                    continue
+                cursor = self.connection.execute(
+                    "UPDATE candidates SET status='tracked' "
+                    "WHERE network=? AND address=? AND status='candidate'",
+                    (network, address),
+                )
+                if cursor.rowcount:
+                    active.append(address)
+                if len(active) >= limit:
+                    break
+            self.connection.commit()
+        return active[:limit]
 
     def latest_whale_rankings(self, network: str,
                               limit: int = 25) -> list[sqlite3.Row]:

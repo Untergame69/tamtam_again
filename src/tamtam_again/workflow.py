@@ -413,13 +413,20 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
     result["codex_review_path"] = str(expected_review_path.relative_to(ROOT))
     result["codex_review_decision"] = review_decision
     if decision == "needs_more_data":
-        result["reason"] = str(draft.get("reason") or review.get("reason") or "Cycle échantillon insuffisant.")
+        hermes_reason = str(draft.get("reason") or "")
+        review_reason = str(review.get("reason") or "")
+        result["hermes_reason"] = hermes_reason
+        result["review_reason"] = review_reason
         threshold_now = int(row["threshold_cycles"])
         suggested = [int(value) for value in (
             draft.get("next_required_cycles"), review.get("next_required_cycles")
         ) if isinstance(value, int) and value > threshold_now]
         result["next_required_cycles"] = max(
             suggested or [_next_research_target(threshold_now)]
+        )
+        result["reason"] = str(
+            review_reason if review_decision == "needs_more_data" and review_reason
+            else hermes_reason or review_reason or "Cycle échantillon insuffisant."
         )
         current_cycles = int(row["cycle_count"])
         next_total = int(result["next_required_cycles"])

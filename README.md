@@ -23,9 +23,10 @@ Le premier incrément de code et son modèle de données sont décrits dans
 
 Le collecteur utilise le top 5 Hyperliquid par volume notionnel comme départ,
 puis cible les cinq marchés les plus utilisés par sa cohorte stable de dix
-comptes classés. Il conserve leurs fills live et les trades publics via
-WebSocket, avec un carnet détaillé sur deux marchés, tout en gardant la collecte
-HTTP pour compléter l’historique et vérifier les données.
+comptes classés. Il conserve leurs fills live, les trades publics et le meilleur
+prix acheteur/vendeur des cinq marchés via WebSocket, avec un carnet détaillé
+sur deux marchés, tout en gardant la collecte HTTP pour compléter l’historique
+et vérifier les données.
 Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
 
 Pour voir les comptes réellement couverts, les marchés utilisés et décider si

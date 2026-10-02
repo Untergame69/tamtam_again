@@ -137,6 +137,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
     history_complete: defaultdict[str, dict[str, bool]] = defaultdict(dict)
     ws_fills_last: dict[str, str] = {}
     market_counts: Counter[str] = Counter()
+    market_notional: defaultdict[str, Decimal] = defaultdict(Decimal)
     account_times: defaultdict[str, list[int]] = defaultdict(list)
     market_stream: defaultdict[str, Counter[str]] = defaultdict(Counter)
     market_first: dict[tuple[str, str], int] = {}
@@ -209,7 +210,14 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
     by_address: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for (address, _coin, _stamp, _tid), fill in fills.items():
         by_address[address].append(fill)
-        market_counts[str(fill.get("coin", ""))] += 1
+        coin = str(fill.get("coin", ""))
+        market_counts[coin] += 1
+        try:
+            market_notional[coin] += Decimal(str(fill.get("px", "0"))) * Decimal(
+                str(fill.get("sz", "0"))
+            )
+        except (InvalidOperation, ValueError):
+            pass
     accounts = []
     for address, alias in tracked_addresses.items():
         rows = by_address[address]
@@ -241,8 +249,14 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
     global_markets = [{"coin": row["coin"], "rank": row["rank"],
                        "venue": row["venue"], "market_type": row["market_type"]}
                       for row in (ranking["markets"] if ranking else [])]
-    whale_top = [{"coin": coin, "fills": count}
-                 for coin, count in market_counts.most_common(10) if coin]
+    whale_by_fill_count = [{"coin": coin, "fills": count}
+                           for coin, count in market_counts.most_common(10) if coin]
+    whale_top = [{"coin": coin, "notional": format(value, "f"),
+                  "fills": market_counts[coin]}
+                 for coin, value in sorted(
+                     market_notional.items(),
+                     key=lambda item: (-item[1], -market_counts[item[0]], item[0]),
+                 )[:10] if coin]
     analyzed_symbols = set(market_counts)
     market_coverage = []
     for coin in sorted(analyzed_symbols):
@@ -259,6 +273,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
     coverage_by_coin = {row["coin"]: row for row in market_coverage}
     whale_focus = [row["coin"] for row in whale_top[:5]]
     market_gaps = []
+    candle_gaps = []
     for coin in whale_focus:
         coverage = coverage_by_coin.get(coin, {})
         missing = []
@@ -266,10 +281,10 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             missing.append("trades")
         if not coverage.get("bbo_messages") and not coverage.get("order_book_messages"):
             missing.append("BBO/carnet")
-        if not coverage.get("one_minute_candles"):
-            missing.append("bougies 1m")
         if missing:
             market_gaps.append({"coin": coin, "missing": missing})
+        if not coverage.get("one_minute_candles"):
+            candle_gaps.append(coin)
     return {
         "network": network,
         "candidate_accounts_retained": len(candidates),
@@ -278,7 +293,8 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             bool(by_address[row["address"].lower()]) for row in tracked
         ),
         "tracked_unique_observed_fills": len(fills),
-        "tracked_markets_by_fill_count": whale_top,
+        "tracked_markets_by_fill_count": whale_by_fill_count,
+        "tracked_markets_by_observed_notional": whale_top,
         "latest_top_markets_by_24h_volume": global_markets,
         "accounts": accounts,
         "market_coverage_for_observed_whale_markets": market_coverage,
@@ -287,6 +303,7 @@ def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
             "market_data_ready_for_top_5_whale_markets": not market_gaps,
             "top_5_whale_markets": whale_focus,
             "market_data_gaps": market_gaps,
+            "markets_without_one_minute_candles": candle_gaps,
             "reason": "La durée et la couverture des flux de marché ne recouvrent pas encore de façon démontrée les historiques de fills. Une stratégie de copie doit aussi être définie avant de chiffrer une performance simulée.",
             "requirements": [
                 "Une période de fills et de données marché qui se recouvre sans trou significatif.",

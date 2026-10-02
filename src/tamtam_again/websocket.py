@@ -71,6 +71,12 @@ def _subscriptions(store: Store, network: str, market_limit: int
     return accounts, list(dict.fromkeys(markets))[:market_limit]
 
 
+def tracked_market_symbols(store: Store, network: str,
+                           market_limit: int) -> list[str]:
+    """Return the cohort's highest-notional symbols, with global fallback."""
+    return _subscriptions(store, network, market_limit)[1]
+
+
 def _subscribe(websocket: Any, subscription: dict[str, Any], active: set[str]) -> bool:
     key = json.dumps(subscription, sort_keys=True, separators=(",", ":"))
     if key in active:
@@ -176,6 +182,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                 connected_at = time.monotonic()
                 active: set[str] = set()
                 market_coins: list[str] = []
+                bbo_coins: list[str] = []
                 depth_coins: list[str] = []
                 accounts, markets = _subscriptions(store, network, market_limit)
                 for address in accounts:
@@ -183,9 +190,10 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                 for coin in markets:
                     market_coins.append(coin)
                     _subscribe(websocket, {"type": "trades", "coin": coin}, active)
+                    bbo_coins.append(coin)
+                    _subscribe(websocket, {"type": "bbo", "coin": coin}, active)
                     if len(depth_coins) < depth_limit:
                         depth_coins.append(coin)
-                        _subscribe(websocket, {"type": "bbo", "coin": coin}, active)
                         _subscribe(websocket, {"type": "l2Book", "coin": coin,
                                               "fast": True}, active)
                 next_heartbeat = time.monotonic() + 30
@@ -212,9 +220,12 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             if coin not in current_markets:
                                 _unsubscribe(websocket, {"type": "trades", "coin": coin}, active)
                                 market_coins.remove(coin)
+                        for coin in list(bbo_coins):
+                            if coin not in current_markets:
+                                _unsubscribe(websocket, {"type": "bbo", "coin": coin}, active)
+                                bbo_coins.remove(coin)
                         for coin in list(depth_coins):
                             if coin not in new_depth:
-                                _unsubscribe(websocket, {"type": "bbo", "coin": coin}, active)
                                 _unsubscribe(websocket, {"type": "l2Book", "coin": coin,
                                                          "fast": True}, active)
                                 depth_coins.remove(coin)
@@ -222,9 +233,11 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             if coin not in market_coins:
                                 market_coins.append(coin)
                                 _subscribe(websocket, {"type": "trades", "coin": coin}, active)
+                            if coin not in bbo_coins:
+                                bbo_coins.append(coin)
+                                _subscribe(websocket, {"type": "bbo", "coin": coin}, active)
                             if coin in new_depth and coin not in depth_coins:
                                 depth_coins.append(coin)
-                                _subscribe(websocket, {"type": "bbo", "coin": coin}, active)
                                 _subscribe(websocket, {"type": "l2Book", "coin": coin,
                                                       "fast": True}, active)
                         next_refresh = now + 60

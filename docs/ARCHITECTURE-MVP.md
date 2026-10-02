@@ -35,7 +35,7 @@ les 15 minutes. Les bougies récentes restent rafraîchies toutes les 60 seconde
 Quand la cohorte a des fills, le WebSocket suit ses vingt marchés les plus
 utilisés par volume notionnel observé; avant cela, il utilise le top 5 global
 comme point de départ. Les trades et le meilleur prix acheteur/vendeur sont
-suivis sur ces vingt symboles; le carnet détaillé reste limité aux deux premiers
+suivis sur ces vingt symboles; le carnet détaillé couvre les cinq premiers
 pour contenir la croissance de SQLite. Les bougies d'une minute suivent les
 vingt premiers marchés de la cohorte. La liste est recalculée à partir des fills
 enregistrés. Cette couverture élargie inclut les marchés très utilisés par les
@@ -147,7 +147,7 @@ Depuis `tamtam_again/` :
 .venv/bin/python -m tamtam_again research-status
 .venv/bin/python -m tamtam_again collect 0x... --start-ms 1759276800000
 .venv/bin/python -m tamtam_again report 0x... --start-ms 1759276800000 --end-ms 1790899200000
-.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 20 --max-depth-markets 2
+.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 20 --max-depth-markets 5
 ```
 
 Les commandes de découverte enregistrent les candidats et leurs rangs sans
@@ -157,8 +157,9 @@ toutes les 15 minutes, historique des baleines toutes les heures et flux live
 en continu. Hyperliquid limite à dix les utilisateurs distincts abonnés aux
 flux privés; cette première cohorte est donc limitée à dix comptes. Les trades
 sont suivis sur vingt marchés dominants de la cohorte, avec BBO sur ces marchés
-et carnet détaillé sur deux. Les bougies d'une minute couvrent aussi ces vingt
-marchés. Les timestamps sont des millisecondes Unix UTC.
+et carnet détaillé sur les cinq plus utilisés par volume notionnel observé. Les
+bougies d'une minute couvrent aussi ces vingt marchés. Les timestamps sont des
+millisecondes Unix UTC.
 
 Le service systemd utilisateur est décrit dans
 [`systemd/user/tamtam-again-collectors.service`](../systemd/user/tamtam-again-collectors.service).

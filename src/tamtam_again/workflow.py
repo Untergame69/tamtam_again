@@ -86,7 +86,7 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                 sample_ids = cycle_ids[:sample_limit]
                 fingerprint = hashlib.sha256("\n".join(sample_ids).encode()).hexdigest()
                 previous_research_feedback = _previous_research_feedback(
-                    store, network, address, coin, int(target["attempt"])
+                    store, network, address, coin
                 )
                 active = store.connection.execute(
                     """SELECT 1 FROM automation_runs WHERE stage='research'
@@ -257,8 +257,15 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     sorted_fills = sorted(fills.values(), key=lambda item: (
         _integer(item.get("time")), str(item.get("tid", "")),
     ))
+    live_signal_ms = [_timestamp_ms(value) for value in signal_received_at.values()]
+    live_signal_ms = [value for value in live_signal_ms if value is not None]
     first_ms = _integer(sorted_fills[0].get("time")) - 1_000
-    last_ms = _integer(sorted_fills[-1].get("time")) + 1_000
+    # Preserve enough exchange-time context for a follower sensitivity replay
+    # at 100/250/500/1000 ms after its locally observed leader-fill signal.
+    last_ms = max(
+        _integer(sorted_fills[-1].get("time")) + 1_000,
+        max(live_signal_ms, default=0) + 1_000,
+    )
     first_iso = datetime.fromtimestamp(first_ms / 1000, timezone.utc).isoformat(timespec="milliseconds")
     # A WebSocket frame can contain a BBO whose exchange timestamp precedes
     # a fill but whose local receipt is later. Include all such frames already
@@ -333,6 +340,24 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         l2_at_leader_fill = latest_received_before("l2Book", stamp, stamp)
         bbo_at_signal = latest_received_before("bbo", signal_ms)
         l2_at_signal = latest_received_before("l2Book", signal_ms)
+        execution_replay_context = []
+        if signal_ms is not None:
+            for latency_ms in (100, 250, 500, 1_000):
+                submission_ms = signal_ms + latency_ms
+                execution_replay_context.append({
+                    "latency_ms_after_signal": latency_ms,
+                    "simulated_submission_at": datetime.fromtimestamp(
+                        submission_ms / 1000, timezone.utc
+                    ).isoformat(timespec="milliseconds"),
+                    "market_data_received_before_submission": {
+                        "bbo": latest_received_before("bbo", submission_ms),
+                        "l2Book": latest_received_before("l2Book", submission_ms),
+                    },
+                    "interpretation": (
+                        "Archived market snapshot available by the simulated submission time; "
+                        "it is not proof that an order would have filled at these prices or sizes."
+                    ),
+                })
         trades_before_signal: list[dict[str, Any]] = []
         if signal_ms is not None:
             prior_trades = [event for event in market_events["trades"]
@@ -374,6 +399,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                     if bbo_at_signal else None
                 ),
             },
+            "execution_replay_context": execution_replay_context,
         })
     selected_closing_fills = [
         item for item in aligned_fills
@@ -521,6 +547,31 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             },
             "selected_cycle_fills": selected_context_counts(aligned_fills),
             "selected_cycle_closing_fills": selected_context_counts(selected_closing_fills),
+            "execution_replay_grid": [
+                {
+                    "latency_ms_after_signal": latency_ms,
+                    "fills_with_archived_bbo_before_submission": sum(
+                        any(
+                            row.get("latency_ms_after_signal") == latency_ms
+                            and row.get("market_data_received_before_submission", {}).get("bbo")
+                            for row in item.get("execution_replay_context", [])
+                        )
+                        for item in aligned_fills
+                    ),
+                    "fills_with_archived_l2_before_submission": sum(
+                        any(
+                            row.get("latency_ms_after_signal") == latency_ms
+                            and row.get("market_data_received_before_submission", {}).get("l2Book")
+                            for row in item.get("execution_replay_context", [])
+                        )
+                        for item in aligned_fills
+                    ),
+                    "denominator_fills_with_live_signal": sum(
+                        bool(item.get("signal_received_at")) for item in aligned_fills
+                    ),
+                }
+                for latency_ms in (100, 250, 500, 1_000)
+            ],
             "account_market_capture_window": {
                 "population": "all account closing fills inside the archived BBO capture window; exchange timestamps, not limited to selected cycles",
                 "closing_fill_count": pair_context.get("closing_fills_in_bbo_capture_window"),
@@ -971,7 +1022,12 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "but strictly before the follower's signal may be available to that follower; it was not available "
         "to the leader before execution. Audit follower_signal_context and do not claim a copy order can "
         "fill at a quote without additional reaction-latency, fee, and slippage assumptions. Market events "
-        "with equal millisecond receipt time are ambiguous and excluded from the prior-signal counts. Read only: do not edit files, "
+        "with equal millisecond receipt time are ambiguous and excluded from the prior-signal counts. Inspect "
+        "execution_replay_context at every latency, report the exact denominator and BBO/L2 coverage, and calculate "
+        "a marketable-order proxy only when archived side and displayed sizes allow it; a snapshot is not proof of a fill. "
+        "If missing L2 or post-signal events prevent replay, treat that as a data/context gap and prefer needs_more_data "
+        "with the smallest pair-specific cumulative cycle target; do not repeat redo_re indefinitely for an unavailable feed. "
+        "Read only: do not edit files, "
         "run tests, or execute any order. Return only schema-valid JSON. Use decision "
         "approve only if the hypothesis and machine-readable strategy are reproducible; "
         "needs_more_data when the evidence sample is too small and choose the smallest "
@@ -1149,14 +1205,14 @@ def _target(store: Store, network: str, address: str, coin: str) -> int:
 
 
 def _previous_research_feedback(store: Store, network: str, address: str,
-                                coin: str, attempt: int) -> list[dict[str, Any]]:
-    """Carry concrete same-sample RE corrections into later attempts."""
-    if attempt <= 1:
-        return []
+                                coin: str) -> list[dict[str, Any]]:
+    """Carry RE corrections and data gaps across same-sample and larger-sample runs."""
     rows = list(store.connection.execute(
-        """SELECT run_id,threshold_cycles,cycle_count,artifact_path
+        """SELECT run_id,threshold_cycles,cycle_count,decision,
+                  next_threshold_cycles,artifact_path
            FROM automation_runs WHERE stage='research' AND network=? AND address=?
-             AND coin=? AND decision='redo_re' AND artifact_path<>''
+             AND coin=? AND decision IN ('redo_re','needs_more_data')
+             AND artifact_path<>''
            ORDER BY created_at DESC LIMIT 3""",
         (network,address,coin),
     ))
@@ -1170,13 +1226,21 @@ def _previous_research_feedback(store: Store, network: str, address: str,
             result = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        reason = str(result.get("reason") or "").strip()
+        reason = str(
+            result.get("reason") or result.get("review_reason")
+            or result.get("hermes_reason") or ""
+        ).strip()
         if not reason:
             continue
         feedback.append({
             "source_run_id": row["run_id"],
+            "source_decision": row["decision"],
             "threshold_cycles": int(row["threshold_cycles"]),
             "cycle_count": int(row["cycle_count"]),
+            "next_required_cycles": (
+                int(row["next_threshold_cycles"])
+                if row["next_threshold_cycles"] is not None else None
+            ),
             "finding": reason,
         })
     return feedback

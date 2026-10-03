@@ -21,8 +21,8 @@ WEBSOCKET_URLS = {
 MAX_USER_SUBSCRIPTIONS = 10
 
 
-def _subscriptions(store: Store, network: str, market_limit: int
-                   ) -> tuple[list[str], list[str]]:
+def _subscriptions(store: Store, network: str, market_limit: int,
+                   depth_limit: int = 5) -> tuple[list[str], list[str], list[str]]:
     accounts = [row["address"] for row in store.candidates(network)
                 if row["status"] == "tracked"]
     accounts = accounts[:MAX_USER_SUBSCRIPTIONS]
@@ -62,13 +62,29 @@ def _subscriptions(store: Store, network: str, market_limit: int
             count, total = usage.get(coin, (0, Decimal(0)))
             usage[coin] = (count + 1, total + notional)
     if usage:
-        markets = [coin for coin, _ in sorted(
+        ranked_markets = [coin for coin, _ in sorted(
             usage.items(), key=lambda item: (-item[1][1], -item[1][0], item[0])
         )]
     else:
         selection = store.latest_market_selection(network)
-        markets = [row["coin"] for row in selection["markets"]] if selection else []
-    return accounts, list(dict.fromkeys(markets))[:market_limit]
+        ranked_markets = [row["coin"] for row in selection["markets"]] if selection else []
+
+    # A pair already under active research gets scarce L2 capacity first. This
+    # is driven by an explicit RE threshold escalation or a repeated method
+    # review, not by a calendar-age rule. The overall market/depth caps remain
+    # unchanged.
+    target_rows = store.connection.execute(
+        """SELECT coin,MAX(updated_at) AS updated_at,MAX(attempt) AS attempt,
+                  MAX(required_cycles) AS required_cycles
+           FROM research_targets WHERE network=? AND status='collecting'
+             AND (required_cycles>? OR attempt>1)
+           GROUP BY coin ORDER BY updated_at DESC,attempt DESC,required_cycles DESC,coin""",
+        (network, 5),
+    ).fetchall()
+    research_markets = [str(row["coin"]) for row in target_rows]
+    markets = list(dict.fromkeys([*research_markets, *ranked_markets]))[:market_limit]
+    depth_markets = list(dict.fromkeys([*research_markets, *ranked_markets]))[:depth_limit]
+    return accounts, markets, depth_markets
 
 
 def tracked_market_symbols(store: Store, network: str,
@@ -184,7 +200,9 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                 market_coins: list[str] = []
                 bbo_coins: list[str] = []
                 depth_coins: list[str] = []
-                accounts, markets = _subscriptions(store, network, market_limit)
+                accounts, markets, depth_markets = _subscriptions(
+                    store, network, market_limit, depth_limit
+                )
                 for address in accounts:
                     _subscribe(websocket, {"type": "userFills", "user": address}, active)
                 for coin in markets:
@@ -192,10 +210,10 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     _subscribe(websocket, {"type": "trades", "coin": coin}, active)
                     bbo_coins.append(coin)
                     _subscribe(websocket, {"type": "bbo", "coin": coin}, active)
-                    if len(depth_coins) < depth_limit:
-                        depth_coins.append(coin)
-                        _subscribe(websocket, {"type": "l2Book", "coin": coin,
-                                              "fast": True}, active)
+                for coin in depth_markets:
+                    depth_coins.append(coin)
+                    _subscribe(websocket, {"type": "l2Book", "coin": coin,
+                                          "fast": True}, active)
                 next_heartbeat = time.monotonic() + 30
                 next_refresh = time.monotonic() + 60
                 next_flush = time.monotonic() + 1
@@ -210,12 +228,12 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                         websocket.send(json.dumps({"method": "ping"}))
                         next_heartbeat = now + 30
                     if now >= next_refresh:
-                        current_accounts, current_markets = _subscriptions(
-                            store, network, market_limit
+                        current_accounts, current_markets, current_depth = _subscriptions(
+                            store, network, market_limit, depth_limit
                         )
                         for address in current_accounts:
                             _subscribe(websocket, {"type": "userFills", "user": address}, active)
-                        new_depth = current_markets[:depth_limit]
+                        new_depth = current_depth
                         for coin in list(market_coins):
                             if coin not in current_markets:
                                 _unsubscribe(websocket, {"type": "trades", "coin": coin}, active)

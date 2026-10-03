@@ -90,7 +90,7 @@ def _parser() -> argparse.ArgumentParser:
     run = commands.add_parser("run-collectors", help="Lancer les collecteurs continus marché et baleines.")
     run.add_argument("--market-every-seconds", default=60, type=int)
     run.add_argument("--ranking-refresh-seconds", default=900, type=int)
-    run.add_argument("--whale-every-seconds", default=3600, type=int)
+    run.add_argument("--whale-every-seconds", default=900, type=int)
     run.add_argument("--whale-limit-per-window", default=25, type=int)
     run.add_argument("--max-whale-accounts", default=10, type=int)
     run.add_argument("--max-stream-markets", default=STREAM_MARKET_COUNT, type=int)

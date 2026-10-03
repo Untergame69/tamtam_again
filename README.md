@@ -25,11 +25,15 @@ Le collecteur utilise le top 5 Hyperliquid par volume notionnel comme départ,
 puis cible les vingt marchés les plus utilisés par une cohorte dynamique de dix
 comptes au maximum. Il conserve leurs fills live, les trades publics et le
 meilleur prix acheteur/vendeur via WebSocket, avec un carnet détaillé sur les
-cinq marchés les plus utilisés, tout en gardant la collecte HTTP pour compléter l’historique. Chaque
-heure, les comptes sans fill observé depuis sept jours libèrent leur place pour
-des comptes aux classements PnL jour/semaine positifs; leurs observations
-restent conservées. Ce délai sert uniquement à faire tourner la cohorte suivie :
-il ne fixe ni le temps d'attente avant une analyse, ni le volume de données requis.
+cinq marchés les plus utilisés, tout en gardant la collecte HTTP pour compléter
+l’historique. Les fills et états historiques des comptes sont réconciliés toutes
+les 15 minutes afin de réduire le délai de validation des cycles observés en
+live; cette cadence ne remplace pas le seuil de cycles exploitable par paire.
+Chaque heure, les comptes sans fill observé depuis sept jours libèrent leur
+place pour des comptes aux classements PnL jour/semaine positifs; leurs
+observations restent conservées. Ce délai sert uniquement à faire tourner la
+cohorte suivie : il ne fixe ni le temps d'attente avant une analyse, ni le
+volume de données requis.
 Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
 
 Pour voir les comptes réellement couverts, les marchés utilisés et décider si

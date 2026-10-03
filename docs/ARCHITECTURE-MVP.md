@@ -153,11 +153,15 @@ Depuis `tamtam_again/` :
 Les commandes de découverte enregistrent les candidats et leurs rangs sans
 action de portefeuille. `run-collectors` lance les cycles marché, baleines et
 WebSocket en parallèle : bougies toutes les 60 secondes, classement de volume
-toutes les 15 minutes, historique des baleines toutes les heures et flux live
-en continu. Hyperliquid limite à dix les utilisateurs distincts abonnés aux
-flux privés; cette première cohorte est donc limitée à dix comptes. Les trades
-sont suivis sur vingt marchés dominants de la cohorte, avec BBO sur ces marchés
-et carnet détaillé sur les cinq plus utilisés par volume notionnel observé. Les
+toutes les 15 minutes, réconciliation des historiques des baleines toutes les
+15 minutes et flux live en continu. La réconciliation plus fréquente réduit le
+délai entre un fill live et sa validation dans une fenêtre historique complète;
+elle ne fixe pas le seuil de maturité, qui reste fondé sur les cycles
+exploitables propres à chaque paire. Hyperliquid limite à dix les utilisateurs
+distincts abonnés aux flux privés; cette première cohorte est donc limitée à dix
+comptes. Les trades sont suivis sur vingt marchés dominants de la cohorte, avec
+BBO sur ces marchés et carnet détaillé sur les cinq plus utilisés par volume
+notionnel observé. Les
 bougies d'une minute couvrent aussi ces vingt marchés. Les timestamps sont des
 millisecondes Unix UTC.
 

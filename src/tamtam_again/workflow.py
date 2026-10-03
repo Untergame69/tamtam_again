@@ -1059,6 +1059,11 @@ def _cycle_position_trace(cycle: dict[str, Any], fills_by_id: dict[str, dict[str
             before = _decimal_position(partial_start_positions.get(
                 fill_id, fill.get("startPosition")
             ))
+            if before != position:
+                issues.append(
+                    f"{stamp}/{fill_id}: exact position discontinuity "
+                    f"{position} -> {before} ({before - position})"
+                )
             signed_size = size if str(fill.get("side", "")) == "B" else -size
             after = before + signed_size
             trace.append({

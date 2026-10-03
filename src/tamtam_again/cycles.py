@@ -101,6 +101,9 @@ def reconstruct_position_cycles(
                     # zero to the new-side excursion.
                     baseline = ZERO
                     original_size = abs(_decimal(fill.get("sz")))
+                    # Use the exact observed residual position; multiplying a
+                    # rounded ratio can introduce Decimal dust into the next
+                    # fill's position chain.
                     remainder_size = abs(after)
                     fraction = (remainder_size / original_size
                                 if original_size else ZERO)
@@ -162,11 +165,12 @@ def reconstruct_position_cycles(
                     # A fill can pass across a non-zero baseline while closing
                     # inventory that predates the observed excursion. Allocate
                     # only the executed fraction needed to return to baseline.
-                    displacement = after - before
-                    fraction = abs((episode_baseline - before) / displacement)
-                    allocated = dict(fill)
                     original_size = abs(_decimal(fill.get("sz")))
-                    allocated["sz"] = format(original_size * fraction, "f")
+                    allocated_size = abs(episode_baseline - before)
+                    fraction = (allocated_size / original_size
+                                if original_size else ZERO)
+                    allocated = dict(fill)
+                    allocated["sz"] = format(allocated_size, "f")
                     for field in ("fee", "closedPnl"):
                         allocated[field] = format(_decimal(fill.get(field)) * fraction, "f")
                     _add_fill(active, allocated, stamp, market_times, intervals,
@@ -191,12 +195,11 @@ def reconstruct_position_cycles(
                         # The remainder of a flip opens the opposite side
                         # after the prior excursion has returned to baseline.
                         remainder = dict(fill)
-                        original_size = abs(_decimal(fill.get("sz")))
-                        remainder_size = original_size * (Decimal(1) - fraction)
+                        remainder_size = original_size - allocated_size
                         remainder["startPosition"] = format(episode_baseline, "f")
                         remainder["sz"] = format(remainder_size, "f")
                         remainder["fee"] = format(
-                            _decimal(fill.get("fee")) * (Decimal(1) - fraction), "f"
+                            _decimal(fill.get("fee")) - _decimal(allocated["fee"]), "f"
                         )
                         remainder["closedPnl"] = "0"
                         baseline = episode_baseline

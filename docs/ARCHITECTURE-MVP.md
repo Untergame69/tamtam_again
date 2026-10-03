@@ -35,8 +35,13 @@ les 15 minutes. Les bougies récentes restent rafraîchies toutes les 60 seconde
 Quand la cohorte a des fills, le WebSocket suit ses vingt marchés les plus
 utilisés par volume notionnel observé; avant cela, il utilise le top 5 global
 comme point de départ. Les trades et le meilleur prix acheteur/vendeur sont
-suivis sur ces vingt symboles; le carnet détaillé couvre les cinq premiers
-pour contenir la croissance de SQLite. Les bougies d'une minute suivent les
+suivis sur ces vingt symboles. Le carnet détaillé reste limité à cinq marchés
+pour contenir la croissance de SQLite; les paires avec un seuil RE supérieur au
+palier initial de cinq cycles sont prioritaires, d'abord selon leur volume de
+cycles demandé, puis selon la mise à jour la plus récente de leur cible. Les
+places restantes reviennent au classement notionnel. Ainsi, une nouvelle RE
+peut obtenir le contexte L2 qu'une analyse précédente jugeait manquant. Les
+bougies d'une minute suivent les
 vingt premiers marchés de la cohorte. La liste est recalculée à partir des fills
 enregistrés. Cette couverture élargie inclut les marchés très utilisés par les
 baleines même s'ils ne figurent pas dans le top 5 notionnel (par exemple INJ et

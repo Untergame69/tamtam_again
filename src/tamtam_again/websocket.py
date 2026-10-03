@@ -78,10 +78,11 @@ def _subscriptions(store: Store, network: str, market_limit: int,
         selection = store.latest_market_selection(network)
         ranked_markets = [row["coin"] for row in selection["markets"]] if selection else []
 
-    # Research pairs with recent fills get scarce L2 capacity first; pairs
-    # without recent activity follow in decision recency order. This uses
-    # account-market activity rather than a fixed waiting period. The overall
-    # market/depth caps remain unchanged.
+    # Research pairs whose reviewers requested a larger cumulative sample get
+    # scarce L2 capacity first. Within the same target size, the most recently
+    # updated decision comes first, then current activity. This lets the next
+    # RE sample acquire the context that was missing without increasing the
+    # overall market/depth caps or using a calendar-time maturity gate.
     if accounts:
         placeholders = ",".join("?" for _ in accounts)
         target_rows = store.connection.execute(
@@ -101,14 +102,18 @@ def _subscriptions(store: Store, network: str, market_limit: int,
         item = (last_fill_ms, row)
         (active_targets if last_fill_ms >= now_ms - 86_400_000 else quiet_targets).append(item)
     target_sort = lambda item: (
-        -item[0], -int(item[1]["attempt"]), -int(item[1]["required_cycles"]),
+        int(item[1]["required_cycles"]),
+        int(item[1]["attempt"]),
+        str(item[1]["updated_at"]),
+        item[0],
         item[1]["coin"], item[1]["address"],
     )
-    active_targets.sort(key=target_sort)
+    active_targets.sort(key=target_sort, reverse=True)
     quiet_targets.sort(
         key=lambda item: (
-            str(item[1]["updated_at"]), int(item[1]["attempt"]),
-            int(item[1]["required_cycles"]), item[1]["coin"], item[1]["address"],
+            int(item[1]["required_cycles"]),
+            str(item[1]["updated_at"]),
+            int(item[1]["attempt"]), item[1]["coin"], item[1]["address"],
         ),
         reverse=True,
     )

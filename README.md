@@ -24,9 +24,13 @@ Le premier incrément de code et son modèle de données sont décrits dans
 Le collecteur utilise le top 5 Hyperliquid par volume notionnel comme départ,
 puis cible les vingt marchés les plus utilisés par une cohorte dynamique de dix
 comptes au maximum. Il conserve leurs fills live, les trades publics et le
-meilleur prix acheteur/vendeur via WebSocket, avec un carnet détaillé sur les
-cinq marchés les plus utilisés, tout en gardant la collecte HTTP pour compléter
-l’historique. Les fills et états historiques des comptes sont réconciliés toutes
+meilleur prix acheteur/vendeur via WebSocket, avec un carnet détaillé sur cinq
+marchés. Les paires dont la rétro demande un échantillon cumulatif plus grand
+passent d'abord, puis les demandes les plus récentes; les places restantes
+reviennent aux marchés les plus utilisés. Cela aide à combler un manque de
+contexte L2 pendant que le prochain échantillon se constitue, sans changer le
+plafond de collecte. La collecte HTTP complète l'historique. Les fills et états
+historiques des comptes sont réconciliés toutes
 les 15 minutes afin de réduire le délai de validation des cycles observés en
 live; cette cadence ne remplace pas le seuil de cycles exploitable par paire.
 Chaque heure, les comptes sans fill observé depuis sept jours libèrent leur

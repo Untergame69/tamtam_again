@@ -27,6 +27,7 @@ def _subscriptions(store: Store, network: str, market_limit: int,
                 if row["status"] == "tracked"]
     accounts = accounts[:MAX_USER_SUBSCRIPTIONS]
     usage: dict[str, tuple[int, Decimal]] = {}
+    latest_fill_by_pair: dict[tuple[str, str], int] = {}
     if accounts:
         placeholders = ",".join("?" for _ in accounts)
         rows = store.connection.execute(
@@ -52,7 +53,7 @@ def _subscriptions(store: Store, network: str, market_limit: int,
                 key = (row["entity_id"], str(fill["coin"]), str(fill.get("time", "")),
                        str(fill.get("tid", fill.get("hash", ""))))
                 unique[key] = fill
-        for (_, coin, _, _), fill in unique.items():
+        for (address, coin, stamp, _), fill in unique.items():
             try:
                 notional = Decimal(str(fill.get("px", "0"))) * Decimal(
                     str(fill.get("sz", "0"))
@@ -61,6 +62,14 @@ def _subscriptions(store: Store, network: str, market_limit: int,
                 notional = Decimal(0)
             count, total = usage.get(coin, (0, Decimal(0)))
             usage[coin] = (count + 1, total + notional)
+            try:
+                fill_ms = int(stamp)
+            except (TypeError, ValueError):
+                continue
+            pair_key = (address, coin)
+            latest_fill_by_pair[pair_key] = max(
+                latest_fill_by_pair.get(pair_key, 0), fill_ms
+            )
     if usage:
         ranked_markets = [coin for coin, _ in sorted(
             usage.items(), key=lambda item: (-item[1][1], -item[1][0], item[0])
@@ -69,19 +78,43 @@ def _subscriptions(store: Store, network: str, market_limit: int,
         selection = store.latest_market_selection(network)
         ranked_markets = [row["coin"] for row in selection["markets"]] if selection else []
 
-    # A pair already under active research gets scarce L2 capacity first. This
-    # is driven by an explicit RE threshold escalation or a repeated method
-    # review, not by a calendar-age rule. The overall market/depth caps remain
-    # unchanged.
-    target_rows = store.connection.execute(
-        """SELECT coin,MAX(updated_at) AS updated_at,MAX(attempt) AS attempt,
-                  MAX(required_cycles) AS required_cycles
-           FROM research_targets WHERE network=? AND status='collecting'
-             AND (required_cycles>? OR attempt>1)
-           GROUP BY coin ORDER BY updated_at DESC,attempt DESC,required_cycles DESC,coin""",
-        (network, 5),
-    ).fetchall()
-    research_markets = [str(row["coin"]) for row in target_rows]
+    # Research pairs with recent fills get scarce L2 capacity first; pairs
+    # without recent activity follow in decision recency order. This uses
+    # account-market activity rather than a fixed waiting period. The overall
+    # market/depth caps remain unchanged.
+    if accounts:
+        placeholders = ",".join("?" for _ in accounts)
+        target_rows = store.connection.execute(
+            f"""SELECT address,coin,updated_at,attempt,required_cycles
+                FROM research_targets WHERE network=? AND status='collecting'
+                  AND (required_cycles>? OR attempt>1)
+                  AND address IN ({placeholders})""",
+            [network, 5, *accounts],
+        ).fetchall()
+    else:
+        target_rows = []
+    now_ms = int(time.time() * 1000)
+    active_targets = []
+    quiet_targets = []
+    for row in target_rows:
+        last_fill_ms = latest_fill_by_pair.get((row["address"], row["coin"]), 0)
+        item = (last_fill_ms, row)
+        (active_targets if last_fill_ms >= now_ms - 86_400_000 else quiet_targets).append(item)
+    target_sort = lambda item: (
+        -item[0], -int(item[1]["attempt"]), -int(item[1]["required_cycles"]),
+        item[1]["coin"], item[1]["address"],
+    )
+    active_targets.sort(key=target_sort)
+    quiet_targets.sort(
+        key=lambda item: (
+            str(item[1]["updated_at"]), int(item[1]["attempt"]),
+            int(item[1]["required_cycles"]), item[1]["coin"], item[1]["address"],
+        ),
+        reverse=True,
+    )
+    research_markets = list(dict.fromkeys(
+        str(row["coin"]) for _, row in [*active_targets, *quiet_targets]
+    ))
     markets = list(dict.fromkeys([*research_markets, *ranked_markets]))[:market_limit]
     depth_markets = list(dict.fromkeys([*research_markets, *ranked_markets]))[:depth_limit]
     return accounts, markets, depth_markets

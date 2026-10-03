@@ -584,12 +584,18 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
         decision = "accepted"
     elif hermes_decision == "rejected" and review_decision == "reject":
         decision = "rejected"
+    # A concrete independent finding that the RE itself must be corrected
+    # takes precedence over a request for a larger sample. First repair and
+    # re-review the method on the same evidence; if the corrected pass still
+    # finds a sample-size gap, that pass can then advance the pair's threshold.
+    elif review_decision == "redo_re":
+        decision = "redo_re"
     # A sample-size gap cannot be fixed by rerunning RE on the same evidence.
-    # If either reviewer asks for more observations, advance this pair's
-    # cumulative target even when the other also asks for another analysis pass.
+    # Otherwise, if either reviewer asks for more observations, advance this
+    # pair's cumulative target rather than repeating the same incomplete sample.
     elif hermes_decision == "needs_more_data" or review_decision == "needs_more_data":
         decision = "needs_more_data"
-    elif review_decision == "redo_re" or hermes_decision == "redo_re":
+    elif hermes_decision == "redo_re":
         decision = "redo_re"
     else:
         decision = "redo_re"
@@ -622,7 +628,11 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
             "not evidence of profitability."
         )
     elif decision == "redo_re":
-        result["reason"] = str(draft.get("reason") or review.get("reason") or "Revue indépendante non concordante.")
+        result["reason"] = str(
+            review.get("reason") if review_decision == "redo_re" and review.get("reason")
+            else draft.get("reason") or review.get("reason")
+            or "Revue indépendante non concordante."
+        )
     elif decision == "rejected":
         result["reason"] = str(draft.get("reason") or review.get("reason") or "Les deux revues rejettent l'hypothèse.")
     result_path = required_result_dir / f"{run_id}.json"

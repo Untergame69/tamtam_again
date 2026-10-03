@@ -28,7 +28,8 @@ meilleur prix acheteur/vendeur via WebSocket, avec un carnet détaillé sur les
 cinq marchés les plus utilisés, tout en gardant la collecte HTTP pour compléter l’historique. Chaque
 heure, les comptes sans fill observé depuis sept jours libèrent leur place pour
 des comptes aux classements PnL jour/semaine positifs; leurs observations
-restent conservées.
+restent conservées. Ce délai sert uniquement à faire tourner la cohorte suivie :
+il ne fixe ni le temps d'attente avant une analyse, ni le volume de données requis.
 Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
 
 Pour voir les comptes réellement couverts, les marchés utilisés et décider si

@@ -186,6 +186,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     snapshot_selected_fill_observations = 0
     live_selected_fill_observations = 0
     selected_snapshot_fill_ids: set[str] = set()
+    raw_selected_user_fills_observations: list[dict[str, Any]] = []
     for observation in store.observations(run["network"], "account", run["address"]):
         if observation["endpoint"] not in {"userFillsByTime", "userFills"}:
             continue
@@ -199,10 +200,13 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         )
         data = payload.get("data", {}) if isinstance(payload, dict) else {}
         is_snapshot = is_live_ws and isinstance(data, dict) and data.get("isSnapshot") is True
+        matched_ws_fill_ids: set[str] = set()
         for fill in _fills_from_observation(observation["endpoint"], payload):
             identifier = str(fill.get("tid", fill.get("hash", "")))
             if identifier in fill_ids:
                 fills[identifier] = fill
+                if is_live_ws:
+                    matched_ws_fill_ids.add(identifier)
                 if is_live_ws and is_snapshot:
                     snapshot_selected_fill_observations += 1
                     selected_snapshot_fill_ids.add(identifier)
@@ -224,6 +228,20 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                         signal_received_at[identifier] = receipt
                         provenance["receipt_time"] = receipt
                         provenance["raw_observation_id"] = int(observation["observation_id"])
+        if is_live_ws and matched_ws_fill_ids:
+            # Preserve the archived frame and its storage metadata so the
+            # independent reviewer can verify the signal receipt provenance.
+            raw_selected_user_fills_observations.append({
+                "observation_id": int(observation["observation_id"]),
+                "source": observation["source"],
+                "endpoint": observation["endpoint"],
+                "requested_at": observation["requested_at"],
+                "observed_at": observation["observed_at"],
+                "complete": bool(observation["complete"]),
+                "response_sha256": observation["response_sha256"],
+                "selected_fill_ids": sorted(matched_ws_fill_ids),
+                "payload": payload,
+            })
     missing = sorted(fill_ids - set(fills))
     if not selected_cycles or missing:
         raise ValueError("Les fills complets des cycles retenus ne sont plus tous disponibles.")
@@ -439,8 +457,13 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             str(item.get("fill_id")): str(item.get("allocated_size"))
             for item in cycle.get("partial_fill_allocations", [])
         }
+        partial_start_positions = {
+            str(item.get("fill_id")): str(item.get("allocated_start_position"))
+            for item in cycle.get("partial_fill_allocations", [])
+            if item.get("allocated_start_position") is not None
+        }
         cycle["position_trace"] = _cycle_position_trace(
-            cycle, fills_by_id, partial_sizes
+            cycle, fills_by_id, partial_sizes, partial_start_positions
         )
     evidence = {
         "schema_version": 1,
@@ -453,6 +476,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
         "input_fingerprint": run["input_fingerprint"],
         "cycles": selected_cycles,
         "fills_with_market_context": aligned_fills,
+        "raw_selected_user_fills_observations": raw_selected_user_fills_observations,
         "market_context_coverage": {
             "selected_cycle_fills": selected_context_counts(aligned_fills),
             "selected_cycle_closing_fills": selected_context_counts(selected_closing_fills),
@@ -580,17 +604,17 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
         result["hermes_reason"] = hermes_reason
         result["review_reason"] = review_reason
         threshold_now = int(row["threshold_cycles"])
+        current_cycles = int(row["cycle_count"])
         suggested = [int(value) for value in (
             draft.get("next_required_cycles"), review.get("next_required_cycles")
-        ) if isinstance(value, int) and value > threshold_now]
+        ) if isinstance(value, int) and value > max(threshold_now, current_cycles)]
         result["next_required_cycles"] = max(
-            suggested or [_next_research_target(threshold_now)]
+            suggested or [_next_research_target(max(threshold_now, current_cycles))]
         )
         result["reason"] = str(
             review_reason if review_decision == "needs_more_data" and review_reason
             else hermes_reason or review_reason or "Cycle échantillon insuffisant."
         )
-        current_cycles = int(row["cycle_count"])
         next_total = int(result["next_required_cycles"])
         result["next_stage"] = (
             f"Collect until {next_total} complete exploitable cycles total for this account-market pair; "
@@ -718,10 +742,13 @@ def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str,
                 (row["network"],row["address"],row["coin"],revision,run_id,
                  strategy_fingerprint,str(artifact_dir),now),
             )
+            next_research_target = _next_research_target(
+                max(threshold, int(row["cycle_count"]))
+            )
             store.connection.execute(
                 """UPDATE research_targets SET required_cycles=?,attempt=1,
                    status='collecting',updated_at=? WHERE network=? AND address=? AND coin=?""",
-                (_next_research_target(threshold),now,
+                (next_research_target,now,
                  row["network"],row["address"],row["coin"]),
             )
         elif decision == "rejected":
@@ -873,7 +900,10 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "live userFills WebSocket signal_received_at; exclude isSnapshot=true messages as historical. "
         "Audit signal_event_provenance for each selected fill: its source must be the live "
         "hyperliquid-websocket-v1 userFills endpoint, is_snapshot must be false, and its raw "
-        "observation id and receipt timestamp field must support signal_received_at. Check the "
+        "observation id and receipt timestamp field must support signal_received_at. Cross-check "
+        "those IDs against raw_selected_user_fills_observations and its archived payload and response hash. "
+        "For split fills, apply allocated_start_position and allocated_size from the cycle's "
+        "partial_fill_allocations when reconciling position_trace. Check the "
         "snapshot-exclusion counters; zero snapshots in this selected sample means no selected "
         "fill came from a snapshot, not that historical snapshots were counted as live signals. "
         "A market event received after the leader's execution "
@@ -922,7 +952,8 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
 
 
 def _cycle_position_trace(cycle: dict[str, Any], fills_by_id: dict[str, dict[str, Any]],
-                          partial_sizes: dict[str, str]) -> dict[str, Any]:
+                          partial_sizes: dict[str, str],
+                          partial_start_positions: dict[str, str]) -> dict[str, Any]:
     """Expose the same position-linked order used to construct a cycle."""
     from decimal import Decimal, InvalidOperation
 
@@ -945,7 +976,10 @@ def _cycle_position_trace(cycle: dict[str, Any], fills_by_id: dict[str, dict[str
         while pending:
             matches = [fill for fill in pending
                        if _position_near(
-                           _decimal_position(fill.get("startPosition")), position
+                           _decimal_position(partial_start_positions.get(
+                               str(fill.get("tid", fill.get("hash", ""))),
+                               fill.get("startPosition"),
+                           )), position
                        )]
             if len(matches) != 1:
                 issues.append(
@@ -956,7 +990,9 @@ def _cycle_position_trace(cycle: dict[str, Any], fills_by_id: dict[str, dict[str
             pending.remove(fill)
             fill_id = str(fill.get("tid", fill.get("hash", "")))
             size = _decimal_position(partial_sizes.get(fill_id, fill.get("sz", "0")))
-            before = _decimal_position(fill.get("startPosition"))
+            before = _decimal_position(partial_start_positions.get(
+                fill_id, fill.get("startPosition")
+            ))
             signed_size = size if str(fill.get("side", "")) == "B" else -size
             after = before + signed_size
             trace.append({

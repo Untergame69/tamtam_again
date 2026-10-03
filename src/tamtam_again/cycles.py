@@ -96,11 +96,30 @@ def reconstruct_position_cycles(
             if active is None:
                 if _is_flip(fill) and not _near_zero(after):
                     # A flip opens the new side from flat after closing the
-                    # old side. Its realized PnL belongs to that old side.
+                    # old side. The original fill also closes pre-existing
+                    # inventory, so allocate only the residual size beyond
+                    # zero to the new-side excursion.
                     baseline = ZERO
-                    active = _new_episode(fill, stamp, baseline)
+                    original_size = abs(_decimal(fill.get("sz")))
+                    remainder_size = abs(after)
+                    fraction = (remainder_size / original_size
+                                if original_size else ZERO)
+                    remainder = dict(fill)
+                    remainder["startPosition"] = format(ZERO, "f")
+                    remainder["sz"] = format(remainder_size, "f")
+                    remainder["fee"] = format(_decimal(fill.get("fee")) * fraction, "f")
+                    remainder["closedPnl"] = "0"
+                    active = _new_episode(remainder, stamp, baseline)
                     active["side"] = "long" if after > ZERO else "short"
-                    _add_fill(active, fill, stamp, market_times, intervals,
+                    active["partial_fill_allocations"].append({
+                        "fill_id": str(fill.get("tid", fill.get("hash", ""))),
+                        "allocated_size": remainder["sz"],
+                        "original_size": format(original_size, "f"),
+                        "allocated_fee": remainder["fee"],
+                        "allocated_realized_pnl": "0",
+                        "allocated_start_position": format(ZERO, "f"),
+                    })
+                    _add_fill(active, remainder, stamp, market_times, intervals,
                               bbo_tolerance_ms, include_realized=False)
                 elif _is_open(fill):
                     # Count an opening excursion relative to the position
@@ -158,6 +177,7 @@ def reconstruct_position_cycles(
                         "original_size": format(original_size, "f"),
                         "allocated_fee": allocated["fee"],
                         "allocated_realized_pnl": allocated["closedPnl"],
+                        "allocated_start_position": str(allocated.get("startPosition", before)),
                     })
                     active["closed_at_ms"] = stamp
                     active["closed_position"] = True
@@ -187,6 +207,7 @@ def reconstruct_position_cycles(
                             "original_size": format(original_size, "f"),
                             "allocated_fee": remainder["fee"],
                             "allocated_realized_pnl": "0",
+                            "allocated_start_position": format(episode_baseline, "f"),
                         })
                         _add_fill(active, remainder, stamp, market_times, intervals,
                                   bbo_tolerance_ms, include_realized=False)

@@ -8,9 +8,9 @@ qu’elle remplace les marchés événementiels de Polymarket.
 
 La validation N1/N2 et ses limites opérationnelles sont décrites dans
 [docs/VALIDATION-PIPELINE.md](docs/VALIDATION-PIPELINE.md). Le moteur et la recette
-synthétique sont disponibles. Le dispatch IA historique est suspendu tant que
-l’isolement des données réservées n’est pas effectif ; aucun ledger simplement
-initialisé ne vaut N1 validé.
+synthétique sont disponibles. La recherche v2 utilise un runtime isolé vérifié
+et des plans prospectifs bornés ; le dispatch historique reste désactivé.
+Aucun ledger simplement initialisé ne vaut N1 validé.
 
 Le cadrage est suivi dans [TAMTAM_AGAIN-1](https://manhattam.com/work/issue/TAMTAM_AGAIN-1).
 Le premier collecteur est suivi dans
@@ -63,24 +63,20 @@ niveau de position observé après une nouvelle ouverture. Chaque fill du cycle
 est contextualisé par BBO. Le rapport indique le premier et le dernier fill de
 chaque paire, ainsi que l'ancienneté du dernier, pour distinguer une collecte
 active d'un marché devenu calme pour cette baleine. Il montre les prérequis
-manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les paliers
-de volume déclenchent la boucle : 5 cycles pour la première RE exploratoire,
-10 puis 30 pour approfondir et 100 pour comparer. Le calendrier ne bloque pas son
-avancement; si une RE demande plus de données, son seuil propre au compte et au
-marché prend le relais. Si un avis demande plus de cycles et l'autre une nouvelle
-analyse, le workflow collecte d'abord jusqu'au nouveau seuil : répéter la RE sur
-le même échantillon ne comblerait pas ce manque. Les deux avis restent archivés.
-Le seuil est un minimum : Hermes reçoit tous les cycles déjà disponibles au
-déclenchement, jusqu'à 100 (ou jusqu'au seuil demandé s'il est supérieur), afin
-qu'un cycle supplémentaire ne soit pas écarté.
+manquants; une ETA n'est affichée qu'à partir du débit de ce couple. Les seuils exploratoires adaptatifs restent propres à chaque compte × marché.
+Ils ne constituent jamais une validation de rentabilité. Le pilote prospectif
+sépare exploration, comparaison et finale, conserve les échecs et refuse une
+relance sur une entrée inchangée. Les fenêtres futures, le budget et le profil
+d'exécution sont dans `config/research-policy.json`.
 Voir [TAMTAM_AGAIN-7](https://manhattam.com/work/issue/TAMTAM_AGAIN-7) pour la
 définition de la maturité, et
 [TAMTAM_AGAIN-12](https://manhattam.com/work/issue/TAMTAM_AGAIN-12) pour la
 boucle Hermes et le paper trading N1.
 
-Les tâches Hermes de rétro et de paper N1 s'installent avec
-`scripts/install-hermes-crons.sh`. Elles ne démarrent une analyse qu'à la
-présence d'un run admissible dans la file locale.
+Le timer `tamtam-again-research.timer` exécute `research-tick` dans le runtime v2
+isolé. Les deux anciens crons Hermes sont en pause. `scripts/install-hermes-crons.sh`
+conserve uniquement leurs contrats historiques suspendus, pas une procédure de
+réactivation du worker v2.
 
 Les données déjà collectées sur les comptes non suivis restent archivées pour
 permettre leur réévaluation. Seuls les comptes marqués `tracked` sont interrogés

@@ -1,0 +1,117 @@
+{
+  "observed_at": "2026-10-06T18:59:19.562029+00:00",
+  "runtime": "bubblewrap namespaced, model tools=0, real agent preflight verified",
+  "policy_version": "prospective-pilot-v1",
+  "tests": {
+    "count": 62,
+    "result": "passed"
+  },
+  "research_jobs": [
+    {
+      "run_id": "e1d8296cff304705a0ef5e8a0aa8e0af",
+      "plan_id": "a93e1575338293b2524c145d48ac78a8a3387f02c27b3b755a11a8436e55e5e0",
+      "coin": "xyz:CL",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "usage": [
+        {
+          "api_calls": null,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 14142,
+          "input_tokens": 10472,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 338
+        }
+      ]
+    },
+    {
+      "run_id": "84f96fe2454e4db2b8ca60c27676c319",
+      "plan_id": "d7577abbedb3e8e8df22b36a48eceb49d8d60c446437dc602c68b69620786aee",
+      "coin": "XRP",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 11998,
+          "input_tokens": 10130,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 274
+        }
+      ]
+    },
+    {
+      "run_id": "9f60543904694762b5f15d7c5580d7e6",
+      "plan_id": "21ee42446adadf7063563176de698d18759f7d6af204ff967e4224d9da3512c2",
+      "coin": "xyz:BRENTOIL",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 14265,
+          "input_tokens": 10335,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 341
+        }
+      ]
+    },
+    {
+      "run_id": "4432c74a478d4038953e5e1bad6ae5e9",
+      "plan_id": "59b3fc4b761a54087face89ad96d52520c3dbbb2fefa9be62e18b5b8bdd8f08b",
+      "coin": "HYPE",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 14211,
+          "input_tokens": 9607,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 308
+        }
+      ]
+    }
+  ],
+  "real_variants": 0,
+  "real_paper_active": 0,
+  "unchanged_tick": {
+    "created": 0,
+    "inference_calls": 0,
+    "reason": "bounded pilot completed; same inputs remain consumed"
+  },
+  "next_action": "Inspect recorded needs_data requests. Distinguish missing observations from existing data omitted by the bounded export before preparing a new explicitly budgeted experiment. No reserved data may enter it.",
+  "youtrack": "TAMTAM_AGAIN-12 and article 183-29 updated and reread; export verified",
+  "live_orders_enabled": false,
+  "services": {
+    "tamtam-again-collectors.service": {
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "tamtam-again-research.timer": {
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "tamtam-again-paper.timer": {
+      "ActiveState": "active",
+      "SubState": "running"
+    }
+  },
+  "latest_stream_health": {
+    "received_at": "2026-10-06T18:59:15.536+00:00",
+    "kind": "subscriptions",
+    "connected": true,
+    "acknowledged_markets": 30
+  }
+}

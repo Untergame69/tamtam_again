@@ -14,19 +14,13 @@ sélection/exclusion ; `cohort-snapshot` conserve aussi les trois évaluations.
 Les métriques non établies restent nulles : rendement corrigé des flux,
 drawdown complet et dépendance de marché du compte ne sont pas inventés.
 
-Le dispatch Hermes historique et `workflow-claim` sont suspendus dans cette
-version. Ces agents utilisent le même principal Unix que le collecteur et
-peuvent lire la base brute. Une restriction de prompt ou un sandbox en lecture
-seule ne cache pas les périodes réservées. Aucun booléen du plan ne réactive ce
-dispatch. Sa reprise demande un véritable environnement d'agent isolé, puis
-son intégration vérifiée : seuls les exports d'exploration et le code autorisé
-doivent être lisibles, avec interdiction d'accès à la base, aux autres exports,
-aux résultats réservés et aux outils permettant de contourner cette limite.
-Cette intégration opérationnelle n'est pas réalisée par ce changement.
-
-Le moteur déterministe fonctionne sans IA. Les nouveaux exports de recherche
-refusent les requêtes historiques mélangeant exploration et réserve. Une ancienne
-initialisation de ledger ne peut plus activer un paper N1.
+Le dispatch historique est désactivé ; le runtime v2 isolé est intégré et
+contrôlé avec le véritable agent. `research-tick` prépare des plans prospectifs
+puis exécute un job borné. Quatre premiers plans existent (xyz:CL, XRP,
+xyz:BRENTOIL, HYPE), chacun avec comparaison de 24 h et finale de 48 h, séparées
+par un embargo de 5 min. Ces durées sont des fenêtres pilotes configurables,
+pas des seuils universels de maturité ou des preuves suffisantes.
+Les quatre premiers runs sont en `needs_data`, sans variante ni paper réel.
 
 ## Contrats et déroulement
 
@@ -133,13 +127,28 @@ continue, ni une validation sur marché réel.
 
 ## Déploiement local et N3
 
-Le timer/service `systemd/user/tamtam-again-paper.*` est installé et activé
-localement depuis le 06/10/2026 ; `pipeline-tick` termine avec succès.
-Le collecteur a été rechargé et ses nouvelles observations `streamHealth`
-ont été relues en base. Aucun plan réel, variante réelle ou paper actif n'est
-présent. Les crons Hermes existants portent les contrats suspendant le dispatch
-historique. Bubblewrap masque la base brute lors d'un contrôle préliminaire ;
-l'intégration et la vérification du runtime IA complet restent nécessaires.
+Les timers `tamtam-again-paper.timer` (5 s) et
+`tamtam-again-research.timer` (5 min) sont activés localement. Le collecteur
+reste actif ; la base brute et les observations existantes sont conservées.
+Les anciens crons de recherche/paper sont en pause pour éviter un double dispatch.
+Le worker v2 est protégé par verrou de fichier et bail SQLite conditionnel.
+Les appels interrompus consomment leur réservation et ne sont pas repris.
+La nouvelle recherche n'expose jamais comparaison/finale aux modèles ; le moteur
+`pipeline-tick` reste seul responsable des promotions réelles.
+
+```sh
+.venv/bin/python -m tamtam_again research-isolation-check
+.venv/bin/python -m tamtam_again research-prepare
+.venv/bin/python -m tamtam_again research-tick
+systemctl --user status tamtam-again-research.timer tamtam-again-paper.timer
+```
+
+Le pilote réserve 1 USD par rôle, plafond 2 USD par plan, avant tout appel.
+Les usages observés via l'abonnement Codex sont déclarés `included`, coût 0 USD ;
+ils consomment néanmoins des tokens/quota. Une estimation n'est pas une facture,
+et la réservation locale n'est pas un plafond de facturation imposé au fournisseur.
+Le nombre d'appels, le volume d'entrée, la sortie et le temps sont bornés.
+Le détail des paramètres est versionné dans `config/research-policy.json`.
 
 N3 reste une répétition future : environnement cible, même version du moteur,
 latence mesurée, reprise de processus, archive et ledger persistants, interruptions,
@@ -162,3 +171,11 @@ L'accès REST YouTrack local fonctionne. Les notes des tickets 5, 6, 7 et 12
 sont publiées avec déduplication et relecture via
 `scripts/publish-validation-notes.py --apply`. Elles distinguent mise en œuvre,
 contrôles synthétiques et absence de validation réelle.
+
+### Annuler uniquement l'activation de la recherche v2
+
+Arrêter et désactiver `tamtam-again-research.timer`, puis arrêter son service.
+Conserver les plans, runs et réservations en base ; ne pas restaurer toute la
+base et ne pas réactiver le dispatch historique non isolé. Le collecteur et le
+paper déterministe peuvent rester actifs. Les commits de code sont séparés
+pour permettre une annulation ciblée après conservation des registres.

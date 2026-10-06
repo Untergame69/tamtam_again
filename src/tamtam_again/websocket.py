@@ -22,12 +22,14 @@ MAX_USER_SUBSCRIPTIONS = 10
 
 
 def _subscriptions(store: Store, network: str, market_limit: int,
-                   depth_limit: int = 20) -> tuple[list[str], list[str], list[str]]:
+                   depth_limit: int = 26) -> tuple[list[str], list[str], list[str]]:
     accounts = [row["address"] for row in store.candidates(network)
                 if row["status"] == "tracked"]
     accounts = accounts[:MAX_USER_SUBSCRIPTIONS]
     usage: dict[str, tuple[int, Decimal]] = {}
     latest_fill_by_pair: dict[tuple[str, str], int] = {}
+    now_ms = int(time.time() * 1000)
+    usage_cutoff_ms = now_ms - 86_400_000
     if accounts:
         placeholders = ",".join("?" for _ in accounts)
         rows = store.connection.execute(
@@ -55,14 +57,6 @@ def _subscriptions(store: Store, network: str, market_limit: int,
                 unique[key] = fill
         for (address, coin, stamp, _), fill in unique.items():
             try:
-                notional = Decimal(str(fill.get("px", "0"))) * Decimal(
-                    str(fill.get("sz", "0"))
-                )
-            except (InvalidOperation, ValueError):
-                notional = Decimal(0)
-            count, total = usage.get(coin, (0, Decimal(0)))
-            usage[coin] = (count + 1, total + notional)
-            try:
                 fill_ms = int(stamp)
             except (TypeError, ValueError):
                 continue
@@ -70,6 +64,16 @@ def _subscriptions(store: Store, network: str, market_limit: int,
             latest_fill_by_pair[pair_key] = max(
                 latest_fill_by_pair.get(pair_key, 0), fill_ms
             )
+            if fill_ms < usage_cutoff_ms:
+                continue
+            try:
+                notional = Decimal(str(fill.get("px", "0"))) * Decimal(
+                    str(fill.get("sz", "0"))
+                )
+            except (InvalidOperation, ValueError):
+                notional = Decimal(0)
+            count, total = usage.get(coin, (0, Decimal(0)))
+            usage[coin] = (count + 1, total + notional)
     if usage:
         ranked_markets = [coin for coin, _ in sorted(
             usage.items(), key=lambda item: (-item[1][1], -item[1][0], item[0])
@@ -94,7 +98,6 @@ def _subscriptions(store: Store, network: str, market_limit: int,
         ).fetchall()
     else:
         target_rows = []
-    now_ms = int(time.time() * 1000)
     active_targets = []
     quiet_targets = []
     for row in target_rows:

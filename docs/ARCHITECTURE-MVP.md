@@ -32,11 +32,11 @@ Le top 5 est défini par `dayNtlVlm` décroissant sur tous les DEX perpétuels e
 les paires spot Hyperliquid. Le marché, son type et son DEX restent enregistrés
 avec chaque rang. Cette mesure de volume notionnel sur 24 h est recalculée toutes
 les 15 minutes. Les bougies récentes restent rafraîchies toutes les 60 secondes.
-Quand la cohorte a des fills, le WebSocket suit ses vingt marchés les plus
-utilisés par volume notionnel observé; avant cela, il utilise le top 5 global
-comme point de départ. Les trades et le meilleur prix acheteur/vendeur sont
-suivis sur ces vingt symboles. Le carnet détaillé couvre jusqu'à vingt marchés,
-avec la même priorité aux paires dont le seuil RE a dépassé le palier initial de
+Quand la cohorte a des fills, le WebSocket suit ses vingt-six marchés les plus
+utilisés au cours des dernières 24 heures par volume notionnel observé; avant
+cela, il utilise le top 5 global comme point de départ. Les trades et le meilleur
+prix acheteur/vendeur sont suivis sur ces symboles. Le carnet détaillé couvre
+jusqu'à vingt-six marchés, avec la même priorité aux paires dont le seuil RE a dépassé le palier initial de
 cinq cycles. Elles sont classées par volume de cycles demandé, puis par date de
 mise à jour de leur cible; les places restantes reviennent au classement
 notionnel. Cette capacité permet de conserver le contexte L2 demandé par
@@ -152,7 +152,7 @@ Depuis `tamtam_again/` :
 .venv/bin/python -m tamtam_again research-status
 .venv/bin/python -m tamtam_again collect 0x... --start-ms 1759276800000
 .venv/bin/python -m tamtam_again report 0x... --start-ms 1759276800000 --end-ms 1790899200000
-.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 20 --max-depth-markets 20
+.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 26 --max-depth-markets 26
 ```
 
 Les commandes de découverte enregistrent les candidats et leurs rangs sans
@@ -164,10 +164,10 @@ délai entre un fill live et sa validation dans une fenêtre historique complèt
 elle ne fixe pas le seuil de maturité, qui reste fondé sur les cycles
 exploitables propres à chaque paire. Hyperliquid limite à dix les utilisateurs
 distincts abonnés aux flux privés; cette première cohorte est donc limitée à dix
-comptes. Les trades, le BBO et le carnet détaillé sont suivis sur jusqu'à vingt
+comptes. Les trades, le BBO et le carnet détaillé sont suivis sur jusqu'à vingt-six
 marchés dominants de la cohorte; les paires avec une demande RE de données plus
 importante reçoivent la priorité L2. Les
-bougies d'une minute couvrent aussi ces vingt marchés. Les timestamps sont des
+bougies d'une minute couvrent aussi ces vingt-six marchés. Les timestamps sont des
 millisecondes Unix UTC.
 
 Le service systemd utilisateur est décrit dans

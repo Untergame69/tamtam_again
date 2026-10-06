@@ -8,6 +8,7 @@ import time
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from websockets.sync.client import connect
 
@@ -151,7 +152,8 @@ def _unsubscribe(websocket: Any, subscription: dict[str, Any], active: set[str])
 
 
 def _save_message(store: Store, network: str, message: dict[str, Any],
-                  pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]]) -> None:
+                  pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]],
+                  user_fills_stream: dict[str, Any] | None = None) -> None:
     channel = message.get("channel")
     data = message.get("data")
     if not isinstance(channel, str) or channel in {"pong", "subscriptionResponse"}:
@@ -177,10 +179,13 @@ def _save_message(store: Store, network: str, message: dict[str, Any],
     if entity_type == "market":
         pending.setdefault((channel, entity_id), []).append((received_at, message))
         return
+    request_payload = {"channel": channel}
+    if channel == "userFills" and user_fills_stream:
+        request_payload["user_fills_stream"] = user_fills_stream
     store.save_observation(
         network=network, source="hyperliquid-websocket-v1",
         entity_type=entity_type, entity_id=entity_id, endpoint=channel,
-        payload=message, request_payload={"channel": channel},
+        payload=message, request_payload=request_payload,
         requested_at=received_at,
         record_count=(len(data) if isinstance(data, list) else None),
     )
@@ -238,6 +243,9 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                          max_size=8 * 1024 * 1024) as websocket:
                 connected_at = time.monotonic()
                 active: set[str] = set()
+                user_fills_session_id = uuid4().hex
+                user_fills_sequences: dict[str, int] = {}
+                user_fills_subscription_at: dict[str, str] = {}
                 market_coins: list[str] = []
                 bbo_coins: list[str] = []
                 depth_coins: list[str] = []
@@ -245,7 +253,8 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     store, network, market_limit, depth_limit
                 )
                 for address in accounts:
-                    _subscribe(websocket, {"type": "userFills", "user": address}, active)
+                    if _subscribe(websocket, {"type": "userFills", "user": address}, active):
+                        user_fills_subscription_at[address.lower()] = utc_now()
                 for coin in markets:
                     market_coins.append(coin)
                     _subscribe(websocket, {"type": "trades", "coin": coin}, active)
@@ -273,7 +282,8 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             store, network, market_limit, depth_limit
                         )
                         for address in current_accounts:
-                            _subscribe(websocket, {"type": "userFills", "user": address}, active)
+                            if _subscribe(websocket, {"type": "userFills", "user": address}, active):
+                                user_fills_subscription_at[address.lower()] = utc_now()
                         new_depth = current_depth
                         for coin in list(market_coins):
                             if coin not in current_markets:
@@ -310,7 +320,21 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     if not isinstance(raw, str):
                         continue
                     message = json.loads(raw)
-                    _save_message(store, network, message, pending)
+                    stream_metadata = None
+                    if message.get("channel") == "userFills":
+                        data = message.get("data")
+                        address = data.get("user") if isinstance(data, dict) else None
+                        if isinstance(address, str):
+                            address = address.lower()
+                            sequence = user_fills_sequences.get(address, 0) + 1
+                            user_fills_sequences[address] = sequence
+                            stream_metadata = {
+                                "connection_id": user_fills_session_id,
+                                "sequence": sequence,
+                                "subscription_sent_at": user_fills_subscription_at.get(address),
+                                "first_frame_after_subscription": sequence == 1,
+                            }
+                    _save_message(store, network, message, pending, stream_metadata)
                     if time.monotonic() >= next_flush:
                         _flush_market_events(store, network, pending)
                         next_flush = time.monotonic() + 1

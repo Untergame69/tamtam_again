@@ -94,7 +94,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--whale-limit-per-window", default=25, type=int)
     run.add_argument("--max-whale-accounts", default=10, type=int)
     run.add_argument("--max-stream-markets", default=STREAM_MARKET_COUNT, type=int)
-    run.add_argument("--max-depth-markets", default=26, type=int)
+    run.add_argument("--max-depth-markets", default=30, type=int)
     run.add_argument("--lookback-days", default=30, type=int)
 
     collect = commands.add_parser("collect", help="Collecter les données publiques d’un candidat connu.")

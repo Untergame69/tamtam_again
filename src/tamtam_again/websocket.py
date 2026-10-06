@@ -22,7 +22,7 @@ MAX_USER_SUBSCRIPTIONS = 10
 
 
 def _subscriptions(store: Store, network: str, market_limit: int,
-                   depth_limit: int = 26) -> tuple[list[str], list[str], list[str]]:
+                   depth_limit: int = 30) -> tuple[list[str], list[str], list[str]]:
     accounts = [row["address"] for row in store.candidates(network)
                 if row["status"] == "tracked"]
     accounts = accounts[:MAX_USER_SUBSCRIPTIONS]

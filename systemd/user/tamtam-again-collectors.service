@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/home/Untergame/tamtam_again
 Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
-ExecStart=/home/Untergame/tamtam_again/.venv/bin/python -m tamtam_again --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 run-collectors --market-every-seconds 60 --ranking-refresh-seconds 900 --whale-every-seconds 900 --whale-limit-per-window 25 --max-whale-accounts 10 --max-stream-markets 26 --max-depth-markets 26 --lookback-days 30
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python -m tamtam_again --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 run-collectors --market-every-seconds 60 --ranking-refresh-seconds 900 --whale-every-seconds 900 --whale-limit-per-window 25 --max-whale-accounts 10 --max-stream-markets 30 --max-depth-markets 30 --lookback-days 30
 Restart=on-failure
 RestartSec=30
 KillSignal=SIGINT

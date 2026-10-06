@@ -13,3 +13,4 @@ data/paper/
 reports/
 
 data/rollback/
+data/*.research.lock

@@ -122,6 +122,9 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("--output", type=Path)
     recipe_cmd = commands.add_parser("validation-recipe", help="Synthetic N1/N2 acceptance in an isolated temporary DB")
     recipe_cmd.add_argument("--output",type=Path,required=True)
+    commands.add_parser("research-tick", help="Prepare prospective plans and execute one isolated bounded job")
+    commands.add_parser("research-prepare", help="Seal prospective pilot plans without calling models")
+    commands.add_parser("research-isolation-check", help="Verify actual isolated tool-free runtime without inference")
     plan_cmd = commands.add_parser("validation-plan", help="Register an immutable chronological plan")
     plan_cmd.add_argument("json", type=Path)
     freeze = commands.add_parser("strategy-freeze", help="Register an immutable executable v2 variant")
@@ -151,7 +154,15 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        if args.command == "validation-recipe":
+        if args.command == "research-isolation-check":
+            from .isolation import verify
+            print(json.dumps(verify(),ensure_ascii=False,indent=2))
+        elif args.command in {"research-tick","research-prepare"}:
+            from .research import tick, prepare, load_policy
+            with Store(args.db) as store:
+                result = tick(store) if args.command == "research-tick" else prepare(store,load_policy())
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+        elif args.command == "validation-recipe":
             from .recipe import run_recipe
             print(json.dumps(run_recipe(args.output),ensure_ascii=False,indent=2))
         elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
@@ -198,7 +209,8 @@ def main(argv: list[str] | None = None) -> int:
                     result = tick(store)
                 else:
                     result = {
-                        "agent_dispatch": "suspended_until_verified_isolation",
+                        "agent_dispatch": "isolated_v2_worker" if store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='isolated_research_jobs'").fetchone() else "not_configured",
+                        "legacy_dispatch": "disabled",
                         "plans": [dict(r) for r in store.connection.execute("SELECT plan_id,network,address,coin,created_ms,synthetic FROM validation_plans")],
                         "variants": [dict(r) for r in store.connection.execute("SELECT variant_id,plan_id,frozen_ms FROM strategy_variants")],
                         "evaluations": [dict(r) for r in store.connection.execute("SELECT evaluation_id,variant_id,stage,status,created_at FROM validation_evaluations")],

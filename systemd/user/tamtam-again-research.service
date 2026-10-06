@@ -1,0 +1,10 @@
+[Unit]
+Description=Tamtam Again bounded isolated prospective research worker
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python -m tamtam_again research-tick
+TimeoutStartSec=300
+KillMode=control-group
+NoNewPrivileges=true

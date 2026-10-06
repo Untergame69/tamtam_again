@@ -68,6 +68,9 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                 if prior_decision and prior_decision["state"] in {"rejected","non_identifiable"}:
                     continue
                 plan_record = latest_plan(store, network, address, coin)
+                if plan_record and store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='isolated_research_jobs'").fetchone():
+                    if store.connection.execute("SELECT 1 FROM isolated_research_jobs WHERE plan_id=?", (plan_record['plan_id'],)).fetchone():
+                        continue  # The isolated worker owns this target's transitions.
                 pipeline_decision(
                     store, network, address, coin, "suspended" if plan_record else "needs_data",
                     "Agent isolation unavailable: same Unix principal can read reserved raw observations" if plan_record else "No predefined chronological validation plan",

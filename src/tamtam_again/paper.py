@@ -25,13 +25,16 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
     """
     start = datetime.fromtimestamp(start_ms/1000,timezone.utc).isoformat(timespec="milliseconds")
     end = datetime.fromtimestamp(end_ms/1000,timezone.utc).isoformat(timespec="milliseconds")
-    rows = store.connection.execute("""SELECT * FROM raw_observations
-       WHERE network=? AND observation_id>? AND source='hyperliquid-websocket-v1'
-       AND observed_at>=? AND requested_at<?
-       AND ((entity_type='market' AND entity_id=? AND endpoint='bbo')
-         OR (entity_type='account' AND entity_id=? AND endpoint IN ('userFills','userFundings'))
-         OR (entity_type='stream' AND endpoint='streamHealth')) ORDER BY observation_id""",
-       (network,after_observation_id,start,end,coin,address)).fetchall()
+    # Separate indexed entity/time scans instead of a multi-entity OR scan over
+    # the whole archive. Availability is bounded at BOTH ends of the window.
+    common = "network=? AND observation_id>? AND source='hyperliquid-websocket-v1' AND observed_at>=? AND observed_at<? AND requested_at<?"
+    params = (network,after_observation_id,start,end,end)
+    rows = []
+    for clause,extra in [("entity_type='market' AND entity_id=? AND endpoint='bbo'",(coin,)),
+                         ("entity_type='account' AND entity_id=? AND endpoint IN ('userFills','userFundings')",(address,)),
+                         ("entity_type='stream' AND endpoint='streamHealth'",())]:
+        rows.extend(store.connection.execute('SELECT * FROM raw_observations WHERE '+common+' AND '+clause,params+extra).fetchall())
+    rows.sort(key=lambda row:row['observation_id'])
     events = []
     cursor = after_observation_id
     seen = set()

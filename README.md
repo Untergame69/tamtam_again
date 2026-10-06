@@ -6,6 +6,9 @@ qu’elle remplace les marchés événementiels de Polymarket.
 
 ## État
 
+Documentation opérationnelle YouTrack : [validation et exploitation](https://manhattam.com/work/articles/TAMTAM_AGAIN-A-1),
+[runtime IA isolé et contrats](https://manhattam.com/work/articles/TAMTAM_AGAIN-A-2).
+
 La validation N1/N2 et ses limites opérationnelles sont décrites dans
 [docs/VALIDATION-PIPELINE.md](docs/VALIDATION-PIPELINE.md). Le moteur et la recette
 synthétique sont disponibles. La recherche v2 utilise un runtime isolé vérifié

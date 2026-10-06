@@ -48,9 +48,10 @@ entrée différente ne peut réutiliser une réserve consommée du même compte 
 marché, même avec un autre plan. Il faut une nouvelle période future.
 
 Les limites d'itérations et de durée sont appliquées aux évaluations ; la durée
-s'applique aussi aux sessions N2. Le dispatch IA étant fermé, son coût est nul
-et ses corrections sur une entrée inchangée sont interdites. Les paramètres de
-budget IA du plan devront être reliés à des mesures effectives avant sa reprise.
+s'applique aussi aux sessions N2. Le dispatch IA v2 enregistre les tokens,
+la durée et le coût déclaré par le fournisseur. Un coût inconnu ou dépassant
+la réservation bloque la suite. Une entrée terminée ou interrompue ne relance
+pas les modèles ; le dispatch historique reste désactivé.
 
 ## Règles exécutables et limites
 

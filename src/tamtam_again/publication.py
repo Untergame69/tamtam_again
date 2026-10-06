@@ -29,6 +29,13 @@ def write_tracked_cohort(store: Store, output: Path, network: str) -> dict[str, 
                      or f"Compte {index:02d}",
             "address": address,
             "tracked_since": str(row["added_at"]),
+            "profile_url": f"https://hypurrscan.io/address/{address}",
+            "selection_evidence": [{"window": r["window"], "rank": r["rank"],
+                                    "pnl": r["pnl"]}
+                                   for r in rankings
+                                   if str(r["address"]).lower() == address
+                                   and r["metric"] == "pnl"],
+            "filter_status": "not_fully_verified",
         })
 
     payload = {

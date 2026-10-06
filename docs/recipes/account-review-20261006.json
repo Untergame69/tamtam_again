@@ -1,0 +1,433 @@
+{
+  "updated_at": "2026-10-06T20:49:34.586498+00:00",
+  "scope": "PnL réalisé sur les fills archivés (historique potentiellement incomplet). État latent, capital et levier : perpétuels standards uniquement, hors marchés HIP-3. Ne pas additionner ces métriques de périmètres/périodes différents.",
+  "accounts": [
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x5b5d51203a0f9079f8aeb098a6523a13f298c060",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T13:56:52.359+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:47:28.815+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "-155778.59139058",
+          "unrealized_pnl": "-99888510.6252419976",
+          "fees": "7809.30684863",
+          "funding": "6664780.888318",
+          "account_value": "166115326.9159429967",
+          "exposure_usdc": "834817525.7128870487",
+          "leverage": "5.025529800361636850723873601",
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.4634818842685908650897628494",
+          "market_dependence": null
+        },
+        "unknown": [
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 49046,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x7fdafde5cfb5465924316eced2d3715494c517d1",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T13:56:52.390+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:48:40.520+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "2662.281859",
+          "unrealized_pnl": "-7906875.7068910001",
+          "fees": "-2006.875624",
+          "funding": "1492846.802381",
+          "account_value": "56001590.9156899974",
+          "exposure_usdc": "208548800.8802269995",
+          "leverage": "3.723979934680708579784427384",
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.5451659726802895469063323036",
+          "market_dependence": null
+        },
+        "unknown": [
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 144295,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0xe928927c0a4086909a753a6a85a5f9296d9826e8",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T13:56:52.523+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:43:30.134+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "30054.81488896",
+          "unrealized_pnl": "0",
+          "fees": null,
+          "funding": "-42.542424",
+          "account_value": "0.0",
+          "exposure_usdc": "0.0",
+          "leverage": null,
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.3052934062491292691658862586",
+          "market_dependence": null
+        },
+        "unknown": [
+          "fees",
+          "leverage",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 3877,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x30afce2f6842bf183c7e3fe7162e279ff0b6393e",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T13:56:52.569+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:43:58.258+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "17216868.07289543",
+          "unrealized_pnl": "0",
+          "fees": null,
+          "funding": "-613152.664373",
+          "account_value": "0.0",
+          "exposure_usdc": "0.0",
+          "leverage": null,
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.9688322404141374357603227824",
+          "market_dependence": null
+        },
+        "unknown": [
+          "fees",
+          "leverage",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 135837,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T13:56:52.683+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:48:44.924+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "761955.79171599",
+          "unrealized_pnl": "672613.710297",
+          "fees": null,
+          "funding": "1487666.122130",
+          "account_value": "55933172.4393749982",
+          "exposure_usdc": "121589564.0627270043",
+          "leverage": "2.173836361499355997173303696",
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.5691710071399620823306163277",
+          "market_dependence": null
+        },
+        "unknown": [
+          "fees",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 398858,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x9794bbbc222b6b93c1417d01aa1ff06d42e5333b",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T13:56:52.693+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:44:46.355+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "-102.23789915",
+          "unrealized_pnl": "0",
+          "fees": null,
+          "funding": null,
+          "account_value": "0.0",
+          "exposure_usdc": "0.0",
+          "leverage": null,
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.9998064768890794967688939513",
+          "market_dependence": null
+        },
+        "unknown": [
+          "fees",
+          "funding",
+          "leverage",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 30,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x936cf4fb95c30ce83f658b5bbb247e4bb381bb0f",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T14:38:00.314+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:48:49.839+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "337002.70583139",
+          "unrealized_pnl": "2663846.3604180001",
+          "fees": null,
+          "funding": "729830.746407",
+          "account_value": "29640064.1369410008",
+          "exposure_usdc": "77690518.6139650047",
+          "leverage": "2.621131933285453584953499223",
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.4997219919820619629983011264",
+          "market_dependence": null
+        },
+        "unknown": [
+          "fees",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 241681,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x020ca66c30bec2c4fe3861a94e4db4a498a35872",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T14:38:00.546+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:45:39.787+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "3780302.8834560003",
+          "unrealized_pnl": "680510.265243",
+          "fees": "253628.113844",
+          "funding": "-1246639.681860",
+          "account_value": "10821908.7237320002",
+          "exposure_usdc": "158087582.0",
+          "leverage": "14.60810528306531014262511779",
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.1627803409391658318093567145",
+          "market_dependence": null
+        },
+        "unknown": [
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 139351,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x880ac484a1743862989a441d6d867238c7aa311c",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T14:38:00.637+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:46:06.495+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "595684.65164022",
+          "unrealized_pnl": "439097.221920",
+          "fees": null,
+          "funding": "237178.586899",
+          "account_value": "2852134.9566719998",
+          "exposure_usdc": "21145545.787641",
+          "leverage": "7.413935914278958316021467698",
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.3074314909258776531722345439",
+          "market_dependence": null
+        },
+        "unknown": [
+          "fees",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 17445,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x59905d5d085e0caf031ba883b821ba354e51f95e",
+      "selected_status": "tracked",
+      "discovered_at": "2026-10-01T19:38:00.272+00:00",
+      "selection_first_recorded_at": "2026-10-06T13:32:11.973+00:00",
+      "as_of": "2026-10-06T20:46:29.384+00:00",
+      "performance": {
+        "status": "descriptive_only",
+        "observed": {
+          "realized_pnl": "262.385992",
+          "unrealized_pnl": "0",
+          "fees": "277.482838",
+          "funding": "-5.774217",
+          "account_value": "0.0",
+          "exposure_usdc": "0.0",
+          "leverage": null,
+          "drawdown": null,
+          "deposit_adjusted_return": null,
+          "gain_concentration": "0.5315719932234219411776864038",
+          "market_dependence": null
+        },
+        "unknown": [
+          "leverage",
+          "drawdown",
+          "deposit_adjusted_return",
+          "market_dependence"
+        ],
+        "scope": "observed perpetual fills and latest perp state; not lifetime/whole-platform return"
+      },
+      "observability": {
+        "status": "partially_observable",
+        "fills": 773,
+        "ledger_present": true,
+        "external_hedges": "unknown",
+        "queue_priority": "unknown"
+      },
+      "reproducibility": {
+        "status": "unproven",
+        "requires": "frozen strategy with passed real N1 and measured N2"
+      }
+    }
+  ],
+  "filters": {
+    "selection": "Classement public PnL jour/semaine à l’inclusion, maintien tant que l’activité n’est pas jugée ancienne (7 jours). Le rang peut ensuite changer.",
+    "performance": "Non validée : rendement corrigé des transferts, drawdown et dépendance au marché inconnus.",
+    "observability": "Partielle : exécutions publiques visibles, couvertures externes et priorité de file inconnues.",
+    "reproducibility": "Non prouvée : aucune stratégie réelle n’a passé N1 puis N2."
+  }
+}

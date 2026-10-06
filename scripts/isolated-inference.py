@@ -54,7 +54,7 @@ def main():
                                 'output_tokens': agent.session_completion_tokens,
                                 'cost_usd': agent.session_estimated_cost_usd,
                                 'cost_status': agent.session_cost_status,
-                                'api_calls': getattr(agent, 'api_call_count', None)}}
+                                'api_calls': run.get('api_calls')}}
         agent.close()
     print(json.dumps(result))
 

@@ -211,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
                     result = {
                         "agent_dispatch": "isolated_v2_worker" if store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='isolated_research_jobs'").fetchone() else "not_configured",
                         "legacy_dispatch": "disabled",
+                        "research": [dict(r) for r in store.connection.execute("SELECT run_id,plan_id,input_fingerprint,status,reserved_cost_usd,actual_cost_usd,updated_at FROM isolated_research_jobs")] if store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='isolated_research_jobs'").fetchone() else [],
                         "plans": [dict(r) for r in store.connection.execute("SELECT plan_id,network,address,coin,created_ms,synthetic FROM validation_plans")],
                         "variants": [dict(r) for r in store.connection.execute("SELECT variant_id,plan_id,frozen_ms FROM strategy_variants")],
                         "evaluations": [dict(r) for r in store.connection.execute("SELECT evaluation_id,variant_id,stage,status,created_at FROM validation_evaluations")],

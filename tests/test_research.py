@@ -70,3 +70,22 @@ class ResearchTests(unittest.TestCase):
             self.assertEqual(call.call_count,1)
         row=self.store.connection.execute('SELECT reserved_cost_usd,actual_cost_usd FROM isolated_research_jobs').fetchone()
         self.assertEqual(row[0],'2');self.assertIsNone(row[1])
+
+    def test_invalid_response_is_preserved_with_measured_usage(self):
+        job=self.prepared_job()
+        usage={'cost_usd':0,'cost_status':'included','duration_ms':1}
+        with patch('tamtam_again.research.verify'),patch('tamtam_again.research.call',return_value=('invalid fixture response',usage)):
+            self.assertEqual(run_job(self.store,job['run_id'])['status'],'suspended')
+        row=self.store.connection.execute('SELECT result_json,usage_json FROM isolated_research_jobs').fetchone()
+        self.assertEqual(json.loads(row[0])['raw_proposal_response'],'invalid fixture response')
+        self.assertEqual(json.loads(row[1]),[usage])
+
+    def test_isolation_failure_prevents_any_inference(self):
+        job=self.prepared_job()
+        with patch('tamtam_again.research.verify',side_effect=RuntimeError),patch('tamtam_again.research.call') as call:
+            with self.assertRaises(RuntimeError):run_job(self.store,job['run_id'])
+            call.assert_not_called()
+
+    def test_missing_live_signal_cannot_create_a_plan(self):
+        with patch('tamtam_again.research.archive_events',return_value=([],0)):
+            self.assertEqual(prepare(self.store,self.policy,self.status)['created'],[])

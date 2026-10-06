@@ -40,6 +40,9 @@ observations restent conservées. Ce délai sert uniquement à faire tourner la
 cohorte suivie : il ne fixe ni le temps d'attente avant une analyse, ni le
 volume de données requis.
 Les réponses brutes sont conservées dans SQLite, compressées et dédupliquées.
+La cohorte réellement marquée `tracked` est publiée toutes les 15 minutes sur la
+page interne `/docs/whales.html#hyperliquid` de Manhattan. Cette liste indique
+les comptes en collecte ; elle ne vaut pas validation de leur rentabilité.
 
 Pour voir les comptes réellement couverts, les marchés utilisés et décider si
 la période enregistrée suffit à démarrer un paper replay :

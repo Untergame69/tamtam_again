@@ -15,6 +15,7 @@ from .analysis import (_fills_from_observation, cohort_research_status,
 from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, validate_address
 from .providers.hyperliquid_stats import HyperliquidLeaderboard
 from .markets import STREAM_MARKET_COUNT, TOP_MARKET_COUNT, top_markets
+from .publication import write_tracked_cohort
 from .storage import Store, decode_observation_payload, utc_now
 from .workflow import (claim_run, complete_paper, complete_research,
                        workflow_tick, write_research_evidence)
@@ -86,6 +87,14 @@ def _parser() -> argparse.ArgumentParser:
                         help="Plafond de comptes à approfondir pendant ce cycle.")
     whales.add_argument("--lookback-days", default=30, type=int,
                         help="Historique initial; les cycles suivants reprennent au curseur.")
+    whales.add_argument("--cohort-output", type=Path,
+                        help="Publier la cohorte suivie dans un JSON local.")
+
+    publish_cohort = commands.add_parser(
+        "publish-cohort", help="Exporter la liste des comptes actuellement suivis."
+    )
+    publish_cohort.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
+    publish_cohort.add_argument("--output", type=Path, required=True)
 
     run = commands.add_parser("run-collectors", help="Lancer les collecteurs continus marché et baleines.")
     run.add_argument("--market-every-seconds", default=60, type=int)
@@ -96,6 +105,8 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--max-stream-markets", default=STREAM_MARKET_COUNT, type=int)
     run.add_argument("--max-depth-markets", default=30, type=int)
     run.add_argument("--lookback-days", default=30, type=int)
+    run.add_argument("--cohort-output", type=Path,
+                     help="Mettre à jour ce JSON à chaque rafraîchissement de cohorte.")
 
     collect = commands.add_parser("collect", help="Collecter les données publiques d’un candidat connu.")
     collect.add_argument("address")
@@ -141,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
             with Store(args.db) as store:
                 result = [dict(row) for row in store.latest_whale_rankings(NETWORK_NAME, args.limit)]
             print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "publish-cohort":
+            with Store(args.db) as store:
+                result = write_tracked_cohort(store, args.output, args.network)
+            print(json.dumps({"output": str(args.output), "count": result["count"],
+                              "updated_at": result["updated_at"]}, ensure_ascii=False))
         elif args.command == "research-status":
             with Store(args.db) as store:
                 result = cohort_research_status(store, args.network)
@@ -446,6 +462,9 @@ def _collect_whales(args: argparse.Namespace, emit: bool = True) -> dict[str, An
         addresses = [row["address"] for row in candidates]
         candidate_pool_size = len(store.candidates(NETWORK_NAME))
         collected = _collect_whale_accounts(store, client, addresses, args.lookback_days)
+        cohort_output = getattr(args, "cohort_output", None)
+        if cohort_output:
+            write_tracked_cohort(store, cohort_output, NETWORK_NAME)
     summary = {"leaderboard_rows": source_count,
                "candidate_pool_size": candidate_pool_size,
                "tracked_accounts": tracked,
@@ -512,6 +531,7 @@ def _run_collectors(args: argparse.Namespace) -> None:
     whale_args = argparse.Namespace(
         db=args.db, limit_per_window=args.whale_limit_per_window,
         max_accounts=args.max_whale_accounts, lookback_days=args.lookback_days,
+        cohort_output=args.cohort_output,
     )
     next_ranking_refresh = 0.0
 

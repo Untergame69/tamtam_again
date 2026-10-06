@@ -154,6 +154,8 @@ class Store:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA busy_timeout=10000")
+        self.connection.execute("PRAGMA journal_mode=WAL")
         with _SCHEMA_LOCK:
             self.connection.executescript(SCHEMA)
             columns = {row[1] for row in self.connection.execute(

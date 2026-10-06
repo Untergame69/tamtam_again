@@ -260,6 +260,7 @@ def cohort_research_status(store: Store, network: str, *,
             pass
     if workflow_fast:
         bbo_times.update(_bbo_times_near_fills(store, network, by_pair))
+    from .quality import continuous_bbo_fill_times
     accounts = []
     maturity_by_account: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     for (address, coin), pair_rows in by_pair.items():
@@ -277,6 +278,7 @@ def cohort_research_status(store: Store, network: str, *,
         maturity_by_account[address].append(_pair_maturity(
             pair_rows, coin, bbo_times.get(coin, []),
             fill_history_intervals[address], history_is_complete, target_cycles,
+            continuity_times=continuous_bbo_fill_times(store, network, coin, pair_rows),
         ))
         maturity_by_account[address][-1]["research_attempt"] = int(target_row["attempt"]) if target_row else 1
         maturity_by_account[address][-1]["workflow_status"] = target_row["status"] if target_row else "collecting"
@@ -464,7 +466,7 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
                    market_bbo_times: list[int],
                    complete_history_intervals: list[tuple[int, int]],
                    history_is_complete: bool,
-                   target_cycles: int) -> dict[str, Any]:
+                   target_cycles: int, *, continuity_times: list[int] | None = None) -> dict[str, Any]:
     """Estimate data volume per account/market without treating partial fills as samples."""
     ordered = sorted(rows, key=lambda item: (
         _int_or_zero(item.get("time")), _int_or_zero(item.get("tid")),
@@ -492,8 +494,9 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         except (InvalidOperation, ValueError):
             pass
 
+    continuous = set(continuity_times or [])
     cycles = reconstruct_position_cycles(
-        ordered, market_bbo_times, complete_history_intervals,
+        ordered, sorted(set(market_bbo_times) | continuous), complete_history_intervals,
         bbo_tolerance_ms=1_000,
     )
     # Retain this strict per-fill diagnostic alongside reconstructed episodes.
@@ -520,6 +523,7 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
     bbo_times = sorted(market_bbo_times)
     bbo_covered_1s = 0
     bbo_covered_250ms = 0
+    bbo_contextualized = 0
     bbo_window_start = bbo_times[0] if bbo_times else None
     bbo_window_end = bbo_times[-1] if bbo_times else None
     in_capture_window = 0
@@ -527,7 +531,7 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
     contextualized_order_stamps: dict[str, int] = {}
     for item in close_fills:
         stamp = _int_or_zero(item.get("time"))
-        if bbo_window_start is None or stamp < bbo_window_start or stamp > bbo_window_end:
+        if stamp not in continuous and (bbo_window_start is None or stamp < bbo_window_start or stamp > bbo_window_end):
             continue
         in_capture_window += 1
         index = bisect_right(bbo_times, stamp) - 1
@@ -537,6 +541,8 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
             order_id = str(item.get("oid") or item.get("tid") or stamp)
             contextualized_orders.add(order_id)
             contextualized_order_stamps[order_id] = stamp
+        if stamp in continuous or (age_ms is not None and 0 <= age_ms <= 1_000):
+            bbo_contextualized += 1
         if age_ms is not None and 0 <= age_ms <= 250:
             bbo_covered_250ms += 1
     usable_actions = len(contextualized_orders)
@@ -551,13 +557,18 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
     context_pct_1s = 100 * bbo_covered_1s / in_capture_window if in_capture_window else None
     context_pct_250ms = 100 * bbo_covered_250ms / in_capture_window if in_capture_window else None
     volume_gate = exploitable_cycle_count >= target_cycles
-    context_gate = context_pct_1s is not None and context_pct_1s >= 90
+    context_pct = 100 * bbo_contextualized / in_capture_window if in_capture_window else None
+    context_gate = context_pct is not None and context_pct >= 90
     eta_as_of_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     first_fill_ms = min(stamps) if stamps else None
     last_fill_ms = max(stamps) if stamps else None
     cycle_rate = _recent_cycle_rate(cycles, eta_as_of_ms)
     return {
         "coin": coin,
+        "bbo_context_policy": "recent change or same-session healthy continuity; quote age alone is not staleness",
+        "fills_with_proven_bbo_continuity": len(continuous),
+        "closing_fill_context_pct": context_pct,
+        "validation_is_statistical_proof": False,
         "observed_fills": len(fill_ids),
         "first_fill_utc": _iso_ms(first_fill_ms),
         "last_fill_utc": _iso_ms(last_fill_ms),
@@ -593,7 +604,7 @@ def _pair_maturity(rows: list[dict[str, Any]], coin: str,
         "hypothesis_gate_ready": volume_gate and context_gate,
         "hypothesis_gate_blockers": [
             *([] if volume_gate else ["fully reconstructed, market-contextualized position-excursion sample below target"]),
-            *([] if context_gate else ["less than 90% of in-capture closing fills have BBO context within 1 second"]),
+            *([] if context_gate else ["less than 90% of in-capture closing fills have recent or continuity-proven BBO context"]),
             *([] if cycles else ["no complete position excursion has full fill history and BBO context"]),
         ],
         "observed_notional": format(notional, "f"),

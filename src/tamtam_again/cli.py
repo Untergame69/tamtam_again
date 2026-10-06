@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from .analysis import (_fills_from_observation, cohort_research_status,
                        observed_account_summary)
-from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, validate_address
+from .providers.hyperliquid import NETWORKS, HyperliquidInfo, ProviderError, validate_address, retained_recent_windows
 from .providers.hyperliquid_stats import HyperliquidLeaderboard
 from .markets import STREAM_MARKET_COUNT, TOP_MARKET_COUNT, top_markets
 from .publication import write_tracked_cohort
@@ -120,13 +120,93 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("--end-ms", required=True, type=int)
     report.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
     report.add_argument("--output", type=Path)
+    recipe_cmd = commands.add_parser("validation-recipe", help="Synthetic N1/N2 acceptance in an isolated temporary DB")
+    recipe_cmd.add_argument("--output",type=Path,required=True)
+    plan_cmd = commands.add_parser("validation-plan", help="Register an immutable chronological plan")
+    plan_cmd.add_argument("json", type=Path)
+    freeze = commands.add_parser("strategy-freeze", help="Register an immutable executable v2 variant")
+    freeze.add_argument("plan_id")
+    freeze.add_argument("json", type=Path)
+    evaluation = commands.add_parser("validation-evaluate", help="Deterministic N1 evaluation from local receipts")
+    evaluation.add_argument("variant_id")
+    evaluation.add_argument("--stage", required=True, choices=("exploration", "comparison", "final"))
+    evaluation.add_argument("--synthetic-events", type=Path, help="Only accepted for synthetic plans")
+    paper_start = commands.add_parser("paper-start", help="Start N2 only after passed real N1 final")
+    paper_start.add_argument("variant_id")
+    paper_tick_cmd = commands.add_parser("paper-tick", help="Process received archive events once")
+    paper_tick_cmd.add_argument("session_id")
+    decision_cmd = commands.add_parser("pipeline-decision", help="Record an explicit rejection, wait or non-identifiable diagnosis")
+    decision_cmd.add_argument("json",type=Path)
+    commands.add_parser("pipeline-status", help="Show validation registry and explicit wait conditions")
+    commands.add_parser("pipeline-tick", help="Run due deterministic evaluations and active N2 sessions")
+    qualify_cmd = commands.add_parser("qualify", help="Separate performance, observability, reproducibility")
+    qualify_cmd.add_argument("address")
+    qualify_cmd.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
+    cohort_cmd = commands.add_parser("cohort-snapshot", help="Archive selected and excluded accounts")
+    cohort_cmd.add_argument("--network", choices=NETWORKS, default=NETWORK_NAME)
+    cohort_cmd.add_argument("--reason", required=True)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        if args.command == "init":
+        if args.command == "validation-recipe":
+            from .recipe import run_recipe
+            print(json.dumps(run_recipe(args.output),ensure_ascii=False,indent=2))
+        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
+            from .validation import create_plan, register_variant, evaluate, get_variant, initialize
+            from .paper import archive_events, classify_regimes, start_paper, paper_tick
+            from .qualification import qualify, snapshot_cohort
+            with Store(args.db) as store:
+                initialize(store)
+                if args.command == "validation-plan":
+                    result = create_plan(store,json.loads(args.json.read_text()))
+                elif args.command == "strategy-freeze":
+                    result = register_variant(store,args.plan_id,json.loads(args.json.read_text()))
+                elif args.command == "validation-evaluate":
+                    row,spec,plan = get_variant(store,args.variant_id)
+                    if args.synthetic_events:
+                        if not row["synthetic"]:
+                            raise ValueError("External fixture cannot evaluate/promote a real strategy")
+                        events = json.loads(args.synthetic_events.read_text())
+                        provenance = "synthetic"
+                    else:
+                        window = plan[args.stage]
+                        events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"])
+                        events = classify_regimes(events,plan["criteria"])
+                        provenance = "local_archive"
+                    result = evaluate(store,args.variant_id,args.stage,events,provenance=provenance)
+                elif args.command == "paper-start":
+                    result = start_paper(store,args.variant_id)
+                elif args.command == "paper-tick":
+                    result = paper_tick(store,args.session_id)
+                elif args.command == "qualify":
+                    validate_address(args.address)
+                    result = qualify(store,args.network,args.address.lower())
+                elif args.command == "cohort-snapshot":
+                    result = snapshot_cohort(store,args.network,reason=args.reason)
+                elif args.command == "pipeline-decision":
+                    from .validation import decision
+                    diagnosis = json.loads(args.json.read_text())
+                    if diagnosis.get("state") not in {"needs_data","collector_correction","redo_analysis","rejected","non_identifiable","suspended"}:
+                        raise ValueError("Manual diagnosis cannot promote a strategy")
+                    decision(store,**diagnosis)
+                    result = {"recorded":True,"state":diagnosis["state"]}
+                elif args.command == "pipeline-tick":
+                    from .pipeline import tick
+                    result = tick(store)
+                else:
+                    result = {
+                        "agent_dispatch": "suspended_until_verified_isolation",
+                        "plans": [dict(r) for r in store.connection.execute("SELECT plan_id,network,address,coin,created_ms,synthetic FROM validation_plans")],
+                        "variants": [dict(r) for r in store.connection.execute("SELECT variant_id,plan_id,frozen_ms FROM strategy_variants")],
+                        "evaluations": [dict(r) for r in store.connection.execute("SELECT evaluation_id,variant_id,stage,status,created_at FROM validation_evaluations")],
+                        "paper": [dict(r) for r in store.connection.execute("SELECT session_id,variant_id,status,updated_at FROM paper_sessions")],
+                        "latest_decisions": [dict(r) for r in store.connection.execute("SELECT * FROM pipeline_decisions WHERE decision_id IN (SELECT max(decision_id) FROM pipeline_decisions GROUP BY network,address,coin)")],
+                    }
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+        elif args.command == "init":
             with Store(args.db):
                 pass
             print(f"Base initialisée : {args.db}")
@@ -231,6 +311,8 @@ def _collect(args: argparse.Namespace) -> None:
 
         for endpoint in ("userFillsByTime", "userFunding", "userNonFundingLedgerUpdates"):
             pages = client.collect_time_range(endpoint, address, args.start_ms, end_ms)
+            if endpoint == "userFillsByTime":
+                pages = retained_recent_windows(pages, args.start_ms)
             for page in pages:
                 store.save_observation(
                     network=args.network, source="hyperliquid-info-v1",
@@ -404,6 +486,8 @@ def _collect_whale_accounts(store: Store, client: HyperliquidInfo,
             prior = store.collection_cursor(NETWORK_NAME, address, endpoint)
             start_ms = max(0, prior - 1) if prior is not None else now_ms - lookback_days * 86_400_000
             pages = client.collect_time_range(endpoint, address, start_ms, now_ms)
+            if endpoint == "userFillsByTime":
+                pages = retained_recent_windows(pages, start_ms)
             for page in pages:
                 store.save_observation(
                     network=NETWORK_NAME, source="hyperliquid-info-v1",
@@ -414,14 +498,15 @@ def _collect_whale_accounts(store: Store, client: HyperliquidInfo,
                     complete=page.complete,
                 )
             complete = bool(pages) and all(page.complete for page in pages)
+            recent_complete = bool(pages) and pages[-1].complete
             resume_cursor = pages[-1].resume_cursor_ms if pages else None
             endpoint_results[endpoint] = {
                 "pages": len(pages), "complete": complete,
                 "resume_cursor_ms": resume_cursor,
             }
-            if complete:
+            if recent_complete:
                 store.mark_history_observations_complete(
-                    NETWORK_NAME, address, endpoint, start_ms
+                    NETWORK_NAME, address, endpoint, max(start_ms, pages[-1].start_ms)
                 )
                 store.set_collection_cursor(NETWORK_NAME, address, endpoint, now_ms)
             elif resume_cursor is not None and (prior is None or resume_cursor > prior):

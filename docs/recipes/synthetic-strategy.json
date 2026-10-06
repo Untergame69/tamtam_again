@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "type": "follower",
+  "market": "SYNTH",
+  "data_sources": [
+    "bbo",
+    "userFills",
+    "streamHealth",
+    "userFundings"
+  ],
+  "signal": {
+    "kind": "leader_delta"
+  },
+  "entry": {
+    "kind": "target_position"
+  },
+  "exit": {
+    "kind": "horizon_or_target"
+  },
+  "sizing": {
+    "scale": "1"
+  },
+  "max_exposure": {
+    "notional_usdc": "10000",
+    "max_drawdown_usdc": "100",
+    "max_leverage": "1"
+  },
+  "fees": {
+    "maker_bps": "1",
+    "taker_bps": "2"
+  },
+  "slippage": {
+    "bps": "1"
+  },
+  "latency_ms": 1,
+  "horizon_ms": 500,
+  "starting_capital_usdc": "10000",
+  "execution": {
+    "kind": "market_ioc",
+    "heartbeat_timeout_ms": 65000,
+    "unknown_quote_max_age_ms": 1000,
+    "order_ttl_ms": 500,
+    "displayed_size_fraction": "0.5"
+  },
+  "invalidation_conditions": [
+    "nonpositive net edge",
+    "uncertain continuity",
+    "exposure exceeded"
+  ]
+}

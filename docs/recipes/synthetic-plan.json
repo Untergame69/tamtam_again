@@ -1,0 +1,42 @@
+{
+  "network": "synthetic",
+  "address": "fixture-only",
+  "coin": "SYNTH",
+  "synthetic": true,
+  "exploration": {
+    "start_ms": 1000,
+    "end_ms": 6000
+  },
+  "comparison": {
+    "start_ms": 10000,
+    "end_ms": 16000
+  },
+  "final": {
+    "start_ms": 20000,
+    "end_ms": 26000
+  },
+  "embargo_ms": 1000,
+  "isolation": "unavailable",
+  "criteria": {
+    "block_ms": 1000,
+    "min_blocks": 4,
+    "min_regimes": 2,
+    "max_positive_block_share": "0.4",
+    "min_net_pnl": "0",
+    "max_drawdown_usdc": "10",
+    "min_block_lower_bound": "0",
+    "stress_multiplier": "2",
+    "min_stress_net_pnl": "0",
+    "require_funding": false,
+    "dependence_justification": "SYNTHETIC: independent scripted cycles, one cycle per block; not evidence for a real strategy",
+    "regime_threshold_bps": "10",
+    "regime_window_ms": 100,
+    "confidence_alpha": "0.05"
+  },
+  "budget": {
+    "max_runs": 10,
+    "max_same_input_corrections": 2,
+    "max_duration_ms": 86400000,
+    "max_cost_usd": "1"
+  }
+}

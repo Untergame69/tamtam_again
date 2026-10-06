@@ -6,6 +6,12 @@ qu’elle remplace les marchés événementiels de Polymarket.
 
 ## État
 
+La validation N1/N2 et ses limites opérationnelles sont décrites dans
+[docs/VALIDATION-PIPELINE.md](docs/VALIDATION-PIPELINE.md). Le moteur et la recette
+synthétique sont disponibles. Le dispatch IA historique est suspendu tant que
+l’isolement des données réservées n’est pas effectif ; aucun ledger simplement
+initialisé ne vaut N1 validé.
+
 Le cadrage est suivi dans [TAMTAM_AGAIN-1](https://manhattam.com/work/issue/TAMTAM_AGAIN-1).
 Le premier collecteur est suivi dans
 [TAMTAM_AGAIN-5](https://manhattam.com/work/issue/TAMTAM_AGAIN-5), et l’étude
@@ -95,7 +101,7 @@ instruments dérivés fera l’objet de l’étude
   une fois terminée.
 
 La collecte reste en lecture seule et les rangs ne valident pas une rentabilité
-reproductible. Les jobs Hermes, la revue Codex et la file versionnée RE → Paper
-N1 sont raccordés; ils restent inactifs tant qu'aucun couple n'a le volume
-d'excursions complètes et contextualisées requis. Le contrôle continu des instances
-Paper N1 reste hors périmètre pour l'instant.
+reproductible. La file Hermes historique est suspendue par le nouveau garde-fou
+d’isolation. Le contrôle déterministe local passe par `pipeline-tick` ; N2 exige
+un N1 réel validé. Voir la procédure et les conditions de reprise dans la fiche
+de validation ci-dessus.

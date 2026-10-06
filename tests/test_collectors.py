@@ -229,6 +229,9 @@ class StorageTests(unittest.TestCase):
                 store.save_whale_rankings("snapshot", "net", "now", rows)
                 store.set_collection_cursor("net", address(1), "fills", 200)
                 store.set_collection_cursor("net", address(2), "fills", 300)
+                # Only the active cohort is collected; archived candidates remain excluded.
+                store.connection.execute("UPDATE candidates SET status='tracked'")
+                store.connection.commit()
                 selected = store.whale_addresses("snapshot", 1)
                 self.assertEqual(selected[0]["address"], address(3))
 

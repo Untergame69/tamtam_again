@@ -155,8 +155,8 @@ class Store:
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA busy_timeout=10000")
-        self.connection.execute("PRAGMA journal_mode=WAL")
         with _SCHEMA_LOCK:
+            self.connection.execute("PRAGMA journal_mode=WAL")
             self.connection.executescript(SCHEMA)
             columns = {row[1] for row in self.connection.execute(
                 "PRAGMA table_info(raw_observations)"
@@ -269,7 +269,8 @@ class Store:
         cursor = self.connection.execute(
             """UPDATE raw_observations SET complete=1
                WHERE network=? AND entity_type='account' AND entity_id=?
-                 AND endpoint=? AND complete=0 AND window_end_ms>=?""",
+                 AND endpoint=? AND complete=0 AND window_end_ms>=?
+                 AND request_json NOT LIKE '%retention_unknown%'""",
             (network, address.lower(), endpoint, covered_from_ms),
         )
         self.connection.commit()
@@ -355,6 +356,10 @@ class Store:
         """Maintain a bounded active cohort while retaining demoted observations."""
         if limit < 1:
             raise ValueError("limit doit être positif.")
+        self.connection.execute("""CREATE TABLE IF NOT EXISTS cohort_membership_decisions (
+            decision_id INTEGER PRIMARY KEY, snapshot_id TEXT NOT NULL,network TEXT NOT NULL,
+            address TEXT NOT NULL,status TEXT NOT NULL,reason TEXT NOT NULL,created_at TEXT NOT NULL,
+            UNIQUE(snapshot_id,network,address))""")
         inactive = sorted({address.lower() for address in inactive_addresses})
         if inactive:
             self.connection.executemany(
@@ -395,6 +400,12 @@ class Store:
                 if len(active) >= limit:
                     break
             self.connection.commit()
+        for candidate in self.candidates(network):
+            self.connection.execute(
+                "INSERT OR IGNORE INTO cohort_membership_decisions(snapshot_id,network,address,status,reason,created_at) VALUES (?,?,?,?,?,?)",
+                (snapshot_id,network,candidate["address"],candidate["status"],
+                 "inactive rotation" if candidate["address"] in inactive else "cohort capacity and public ranking selection",utc_now()))
+        self.connection.commit()
         return active[:limit]
 
     def latest_whale_rankings(self, network: str,

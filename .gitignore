@@ -11,3 +11,5 @@ data/*.sqlite3-journal
 data/automation/
 data/paper/
 reports/
+
+data/rollback/

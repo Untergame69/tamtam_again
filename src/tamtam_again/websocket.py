@@ -222,6 +222,16 @@ def _flush_market_events(store: Store, network: str,
     pending.clear()
 
 
+def _stream_health(store: Store, network: str, session: str, kind: str,
+                   markets: list[str], connected: bool = True) -> None:
+    stamp = utc_now()
+    payload = {"kind": kind, "session": session, "connected": connected,
+               "markets": sorted(markets), "recorded_at": stamp}
+    store.save_observation(network=network, source="hyperliquid-websocket-v1",
+                           entity_type="stream", entity_id=session, endpoint="streamHealth",
+                           payload=payload, requested_at=stamp)
+
+
 def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             network: str, market_limit: int,
                             depth_limit: int) -> None:
@@ -237,12 +247,15 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
     while not stop_event.is_set():
         pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]] = {}
         connected_at: float | None = None
+        user_fills_session_id = None
+        bbo_coins = []
         try:
             with connect(WEBSOCKET_URLS[network], ping_interval=None,
                          open_timeout=15, close_timeout=5,
                          max_size=8 * 1024 * 1024) as websocket:
                 connected_at = time.monotonic()
                 active: set[str] = set()
+                acknowledged_bbo: set[str] = set()
                 user_fills_session_id = uuid4().hex
                 user_fills_sequences: dict[str, int] = {}
                 user_fills_subscription_at: dict[str, str] = {}
@@ -253,6 +266,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     store, network, market_limit, depth_limit
                 )
                 for address in accounts:
+                    _subscribe(websocket, {"type": "userFundings", "user": address}, active)
                     if _subscribe(websocket, {"type": "userFills", "user": address}, active):
                         user_fills_subscription_at[address.lower()] = utc_now()
                 for coin in markets:
@@ -264,9 +278,11 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     depth_coins.append(coin)
                     _subscribe(websocket, {"type": "l2Book", "coin": coin,
                                           "fast": True}, active)
+                _stream_health(store, network, user_fills_session_id, "connection", [])
                 next_heartbeat = time.monotonic() + 30
                 next_refresh = time.monotonic() + 60
                 next_flush = time.monotonic() + 1
+                last_server_message = time.monotonic()
                 print(json.dumps({"collector": "websocket", "state": "connected",
                                   "tracked_accounts": len(accounts),
                                   "market_symbols": market_coins,
@@ -274,6 +290,8 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                       flush=True)
                 while not stop_event.is_set():
                     now = time.monotonic()
+                    if now - last_server_message > 65:
+                        raise TimeoutError("No server frame/heartbeat for 65 seconds")
                     if now >= next_heartbeat:
                         websocket.send(json.dumps({"method": "ping"}))
                         next_heartbeat = now + 30
@@ -282,8 +300,14 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             store, network, market_limit, depth_limit
                         )
                         for address in current_accounts:
+                            _subscribe(websocket, {"type": "userFundings", "user": address}, active)
                             if _subscribe(websocket, {"type": "userFills", "user": address}, active):
                                 user_fills_subscription_at[address.lower()] = utc_now()
+                        for address in accounts:
+                            if address not in current_accounts:
+                                _unsubscribe(websocket, {"type": "userFills", "user": address}, active)
+                                _unsubscribe(websocket, {"type": "userFundings", "user": address}, active)
+                        accounts = current_accounts
                         new_depth = current_depth
                         for coin in list(market_coins):
                             if coin not in current_markets:
@@ -293,6 +317,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             if coin not in current_markets:
                                 _unsubscribe(websocket, {"type": "bbo", "coin": coin}, active)
                                 bbo_coins.remove(coin)
+                                acknowledged_bbo.discard(coin)
                         for coin in list(depth_coins):
                             if coin not in new_depth:
                                 _unsubscribe(websocket, {"type": "l2Book", "coin": coin,
@@ -309,6 +334,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                                 depth_coins.append(coin)
                                 _subscribe(websocket, {"type": "l2Book", "coin": coin,
                                                       "fast": True}, active)
+                        _stream_health(store, network, user_fills_session_id, "subscriptions", sorted(acknowledged_bbo))
                         next_refresh = now + 60
                     try:
                         raw = websocket.recv(timeout=1)
@@ -320,6 +346,18 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     if not isinstance(raw, str):
                         continue
                     message = json.loads(raw)
+                    last_server_message = time.monotonic()
+                    if message.get("channel") == "subscriptionResponse":
+                        ack = message.get("data", {})
+                        sub = ack.get("subscription", {})
+                        if sub.get("type") == "bbo":
+                            if ack.get("method") == "subscribe":
+                                acknowledged_bbo.add(sub["coin"])
+                            elif ack.get("method") == "unsubscribe":
+                                acknowledged_bbo.discard(sub["coin"])
+                    if message.get("channel") == "pong":
+                        _stream_health(store, network, user_fills_session_id, "heartbeat", sorted(acknowledged_bbo))
+                    message["_stream"] = {"connection_id": user_fills_session_id}
                     stream_metadata = None
                     if message.get("channel") == "userFills":
                         data = message.get("data")
@@ -350,6 +388,8 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                 retry_delay = min(60.0, retry_delay * 2)
         finally:
             try:
+                if user_fills_session_id:
+                    _stream_health(store, network, user_fills_session_id, "connection", bbo_coins, connected=False)
                 _flush_market_events(store, network, pending)
             except Exception as exc:
                 print(json.dumps({"collector": "websocket", "state": "storage_error",

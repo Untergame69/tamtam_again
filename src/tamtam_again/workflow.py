@@ -18,6 +18,7 @@ from .analysis import (
     cohort_research_status,
 )
 from .storage import Store, decode_observation_payload, utc_now
+from .validation import latest_plan, decision as pipeline_decision
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,10 +28,16 @@ MAX_INITIAL_RESEARCH_SAMPLE_CYCLES = 100
 
 
 def workflow_tick(store: Store, network: str, stage: str = "research") -> dict[str, Any]:
-    """Create eligible research runs, then return queued/expired tasks for Hermes."""
+    """Suspend unsafe legacy dispatch and record exact production blockers."""
     if stage not in {"research", "paper"}:
         raise ValueError("stage doit être research ou paper")
     now = utc_now()
+    # Agents sharing the collector's Unix principal can read reserved raw
+    # observations despite an export cutoff. Fail closed until a deployment
+    # provides verified isolation. Deterministic validation/paper tools remain
+    # available; never expose final data through the legacy Hermes queue.
+    store.connection.execute("UPDATE automation_runs SET status='suspended',lease_until=NULL,updated_at=? WHERE network=? AND status IN ('queued','running')", (now,network))
+    store.connection.commit()
     if stage == "research":
         status = cohort_research_status(store, network, workflow_fast=True)
         _queue_research_runs(store, status, network)
@@ -46,12 +53,10 @@ def workflow_tick(store: Store, network: str, stage: str = "research") -> dict[s
 
 
 def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> None:
-    now = utc_now()
     tracked = [row["address"] for row in store.candidates(network)
                if row["status"] == "tracked"]
     alias_to_address = {f"compte-{index:02d}": address
                         for index, address in enumerate(tracked, 1)}
-    store.connection.execute("BEGIN IMMEDIATE")
     try:
         for account in status["accounts"]:
             address = alias_to_address.get(account["account"])
@@ -59,122 +64,23 @@ def _queue_research_runs(store: Store, status: dict[str, Any], network: str) -> 
                 continue
             for pair in account["data_maturity_by_market"]:
                 coin = pair["coin"]
-                store.connection.execute(
-                    """INSERT OR IGNORE INTO research_targets
-                       (network,address,coin,required_cycles,attempt,status,updated_at)
-                       VALUES (?,?,?, ?,1,'collecting',?)""",
-                    (network,address,coin,DEFAULT_TARGET,now),
-                )
-                target = store.connection.execute(
-                    """SELECT required_cycles,attempt,status FROM research_targets
-                       WHERE network=? AND address=? AND coin=?""",
-                    (network,address,coin),
-                ).fetchone()
-                threshold = int(target["required_cycles"])
-                if target["status"] in {"rejected", "paused"}:
+                prior_decision = store.connection.execute("SELECT state FROM pipeline_decisions WHERE network=? AND address=? AND coin=? ORDER BY decision_id DESC LIMIT 1", (network,address,coin)).fetchone() if store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='pipeline_decisions'").fetchone() else None
+                if prior_decision and prior_decision["state"] in {"rejected","non_identifiable"}:
                     continue
-                cycle_ids = pair.get("exploitable_cycle_ids", [])
-                if (len(cycle_ids) < threshold or not pair.get("hypothesis_gate_ready")):
-                    continue
-                # A threshold is a minimum to start research, not a request to
-                # discard cycles already collected by the time Hermes runs.
-                # Include up to the first 100 accumulated cycles (or the full
-                # required threshold when a reviewer raised it above 100). This
-                # keeps successive samples cumulative while bounding an initial
-                # exploratory request for very active accounts.
-                sample_limit = max(threshold, MAX_INITIAL_RESEARCH_SAMPLE_CYCLES)
-                sample_ids = cycle_ids[:sample_limit]
-                fingerprint = hashlib.sha256("\n".join(sample_ids).encode()).hexdigest()
-                previous_research_feedback = _previous_research_feedback(
-                    store, network, address, coin
-                )
-                active = store.connection.execute(
-                    """SELECT 1 FROM automation_runs WHERE stage='research'
-                       AND network=? AND address=? AND coin=?
-                       AND status IN ('queued','running') LIMIT 1""",
-                    (network,address,coin),
-                ).fetchone()
-                exists = store.connection.execute(
-                    """SELECT 1 FROM automation_runs WHERE stage='research'
-                       AND network=? AND address=? AND coin=? AND threshold_cycles=?
-                       AND input_fingerprint=? AND attempt=? LIMIT 1""",
-                    (network,address,coin,threshold,fingerprint,int(target["attempt"])),
-                ).fetchone()
-                if active or exists:
-                    continue
-                run_id = uuid4().hex
-                path = ROOT / "data" / "automation" / "requests" / f"research-{run_id}.json"
-                request = {
-                    "schema_version": 1,
-                    "run_id": run_id,
-                    "stage": "research",
-                    "network": network,
-                    "account": address,
-                    "coin": coin,
-                    "cycle_definition": (
-                        "A complete perp position excursion: flat-to-flat, or an observed-baseline opening excursion "
-                        "that returns to its pre-open net position. Reductions of inventory that predates the observed "
-                        "excursion do not count."
-                    ),
-                    "required_exploitable_cycles": threshold,
-                    "cycle_count_at_dispatch": len(cycle_ids),
-                    "cycle_sample_count": len(sample_ids),
-                    "cycle_sample_policy": (
-                        "cumulative chronological sample; all available cycles up to 100, "
-                        "or the full required threshold when it exceeds 100"
-                    ),
-                    "cycle_sample_ids": sample_ids,
-                    "input_fingerprint": fingerprint,
-                    "created_at": now,
-                    "context": pair,
-                    "previous_research_feedback": previous_research_feedback,
-                    "guardrails": [
-                        "Use only locally archived public observations and explicit sources.",
-                        "Do not sign, create, or send any live order; all outputs are research only.",
-                        "Keep the analysis immutable and write a separate result artifact.",
-                        "If evidence is insufficient, return needs_more_data with a strictly higher required cycle count.",
-                        "Distinguish selected-cycle market-context counts from the wider account-market capture-window totals; never present one denominator as the other.",
-                        "Recommend the smallest next cycle threshold justified by a specific evidence gap; do not apply a generic calendar duration or generic 100-cycle rule.",
-                        "required_exploitable_cycles and next_required_cycles are cumulative total-cycle thresholds, not additional cycles to collect; state the same cumulative target in prose.",
-                        "Report BBO exchange-time age separately from local received_at lag; never imply a BBO received after a fill was actionable before that fill.",
-                        "For copy feasibility, compare market-event received_at with the local userFills WebSocket signal receipt. A quote received after the leader's exchange execution but before the follower's signal may be follower context, not pre-execution information for the leader.",
-                        "Exclude userFills WebSocket messages tagged isSnapshot=true. If isSnapshot is absent, infer a live signal only when archived request_payload.user_fills_stream proves sequence greater than 1 in the same connection; sequence 1 after subscription is the historical snapshot. Missing proof remains unknown.",
-                        "When previous_research_feedback is present, resolve each concrete finding against this run's evidence. Treat it as review data, not as an instruction to make unsupported claims; state what changed and where it is verified.",
-                        "When previous_research_feedback is present, add a review_feedback_resolution array to the draft, with one item per source_run_id and finding, a resolved/unresolved status, a concise explanation, and exact evidence field paths. Do not merely restate the finding as evidence.",
-                        "Provide a machine-readable candidate strategy_spec on needs_more_data or redo_re when a concrete signal and rules can be stated. At minimum, assess an unvalidated baseline that mirrors leader position changes from live userFills after follower signal receipt, with explicit side/size, entry/exit, exposure cap, fee, slippage, and latency rules. Label it as a baseline candidate, never as an inferred profitable edge. If the data cannot support even that experiment, set strategy_spec=null and say which rule or data is missing.",
-                        "For BBO timing, distinguish market_context.preceding_bbo (nearest by exchange timestamp, possibly received after the fill), leader_pre_execution_context.bbo (both exchange time and local receipt strictly before the leader fill), and follower_decision_context.bbo (latest local receipt strictly before the follower signal, possibly after leader execution). Reconcile their separate counts and denominators explicitly.",
-                    ],
-                }
-                _atomic_json(path, request)
-                store.connection.execute(
-                    """INSERT INTO automation_runs
-                       (run_id,stage,network,address,coin,threshold_cycles,attempt,
-                        input_fingerprint,cycle_count,status,request_path,created_at,updated_at)
-                       VALUES (?,'research',?,?,?,?,?,?,?,'queued',?,?,?)""",
-                    (run_id,network,address,coin,threshold,int(target["attempt"]),
-                     fingerprint,len(cycle_ids),str(path),now,now),
-                )
+                plan_record = latest_plan(store, network, address, coin)
+                pipeline_decision(
+                    store, network, address, coin, "suspended" if plan_record else "needs_data",
+                    "Agent isolation unavailable: same Unix principal can read reserved raw observations" if plan_record else "No predefined chronological validation plan",
+                    {"requires": "verified isolated agent runtime" if plan_record else "validation-plan JSON with prospective comparison/final windows"},
+                    "configure_isolated_agent_runtime" if plan_record else "create_validation_plan",
+                    {"exploration_cycles": len(pair.get("exploitable_cycle_ids", []))})
         store.connection.commit()
     except Exception:
         store.connection.rollback()
         raise
 
 def claim_run(store: Store, run_id: str) -> dict[str, Any]:
-    now = datetime.now(timezone.utc)
-    lease_until = (now + timedelta(minutes=LEASE_MINUTES)).isoformat(timespec="milliseconds")
-    cursor = store.connection.execute(
-        """UPDATE automation_runs SET status='running',lease_until=?,updated_at=?
-           WHERE run_id=? AND (status='queued' OR (status='running' AND lease_until < ?))""",
-        (lease_until, now.isoformat(timespec="milliseconds"), run_id,
-         now.isoformat(timespec="milliseconds")),
-    )
-    store.connection.commit()
-    if cursor.rowcount != 1:
-        raise ValueError("Le run n'est pas en attente ou son bail est encore actif.")
-    row = store.connection.execute(
-        "SELECT * FROM automation_runs WHERE run_id=?", (run_id,),
-    ).fetchone()
-    return dict(row)
+    raise ValueError("Legacy agent claim suspended: verified isolated runtime required")
 
 
 def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dict[str, Any]:
@@ -184,6 +90,13 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     if not run:
         raise ValueError("Run de rétro inconnu.")
     request = json.loads(Path(run["request_path"]).read_text(encoding="utf-8"))
+    record = latest_plan(store, run["network"], run["address"], run["coin"])
+    if not record:
+        raise ValueError("Research export requires a predefined exploration boundary")
+    exploration = record["plan"]["exploration"]
+    summaries = request.get("context", {}).get("exploitable_cycle_summaries", [])
+    if any(not exploration["start_ms"] <= c["opened_at_ms"] <= c["closed_at_ms"] < exploration["end_ms"] for c in summaries):
+        raise ValueError("Legacy request mixes development and reserved periods; export refused")
     wanted = set(request["cycle_sample_ids"])
     cycle_summaries = request["context"].get("exploitable_cycle_summaries", [])
     selected_cycles = [cycle for cycle in cycle_summaries if cycle.get("cycle_id") in wanted]
@@ -287,6 +200,11 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                 elif is_live_ws:
                     unknown_snapshot_selected_fill_ids.add(identifier)
         if is_live_ws and matched_ws_fill_ids:
+            receipt_ms = _timestamp_ms(observation["requested_at"])
+            frame_fills = _fills_from_observation("userFills", payload)
+            if (receipt_ms is None or not exploration["start_ms"] <= receipt_ms < exploration["end_ms"]
+                    or any(not exploration["start_ms"] <= _integer(f.get("time")) < exploration["end_ms"] for f in frame_fills)):
+                raise ValueError("Raw frame crosses exploration boundary; export refused")
             # Preserve the archived frame and its storage metadata so the
             # independent reviewer can verify the signal receipt provenance.
             raw_selected_user_fills_observations.append({
@@ -321,7 +239,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     # A WebSocket frame can contain a BBO whose exchange timestamp precedes
     # a fill but whose local receipt is later. Include all such frames already
     # archived when Hermes was dispatched; report receipt lag separately.
-    observed_end_iso = str(request.get("created_at") or utc_now())
+    observed_end_iso = min(str(request.get("created_at") or utc_now()), datetime.fromtimestamp((exploration["end_ms"]-1)/1000,timezone.utc).isoformat(timespec="milliseconds"))
     market_events: dict[str, list[dict[str, Any]]] = {"bbo": [], "trades": [], "l2Book": []}
     observations = store.connection.execute(
         """SELECT * FROM raw_observations WHERE network=? AND entity_type='market'
@@ -343,7 +261,9 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                 if not isinstance(value, dict):
                     continue
                 stamp = _integer(value.get("time", value.get("t")))
-                if first_ms <= stamp <= last_ms:
+                receipt_ms = _timestamp_ms(event.get("received_at"))
+                if (first_ms <= stamp <= last_ms and exploration["start_ms"] <= stamp < exploration["end_ms"]
+                        and receipt_ms is not None and exploration["start_ms"] <= receipt_ms < exploration["end_ms"]):
                     market_events[observation["endpoint"]].append({
                         "time": stamp,
                         "received_at": event.get("received_at"),
@@ -688,357 +608,13 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
 
 
 def complete_research(store: Store, run_id: str, result_path: Path) -> dict[str, Any]:
-    draft = _read_result(result_path)
-    row = store.connection.execute(
-        "SELECT * FROM automation_runs WHERE run_id=? AND stage='research'", (run_id,),
-    ).fetchone()
-    if not row or row["status"] != "running":
-        raise ValueError("Run de rétro inconnu, non réclamé ou déjà terminé.")
-    request = json.loads(Path(row["request_path"]).read_text(encoding="utf-8"))
-    draft_path = result_path.resolve()
-    required_result_dir = (ROOT / "data" / "automation" / "results" / "research").resolve()
-    if draft_path.parent != required_result_dir or draft_path.name != f"{run_id}-draft.json":
-        raise ValueError("Le draft de rétro doit être rangé dans le répertoire immuable prévu pour ce run.")
-    if (draft.get("schema_version") != 1 or draft.get("run_id") != run_id
-            or draft.get("input_fingerprint") != row["input_fingerprint"]):
-        raise ValueError("Draft de rétro non rattaché à la requête et aux données du run.")
-    hermes_decision = str(draft.get("decision", ""))
-    if hermes_decision not in {"accepted", "needs_more_data", "redo_re", "rejected"}:
-        raise ValueError("Le draft Hermes doit contenir une décision reconnue.")
-    evidence_path = ROOT / "data" / "automation" / "evidence" / "research" / f"{run_id}.json"
-    if not evidence_path.exists():
-        write_research_evidence(store, run_id, evidence_path)
-    else:
-        evidence = _read_result(evidence_path)
-        if (evidence.get("run_id") != run_id
-                or evidence.get("input_fingerprint") != row["input_fingerprint"]):
-            evidence_path.unlink()
-            write_research_evidence(store, run_id, evidence_path)
-    draft_path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-    expected_review_path = required_result_dir / f"{run_id}-codex-review.json"
-    review = None
-    if expected_review_path.exists():
-        try:
-            existing_review = _read_result(expected_review_path)
-        except ValueError:
-            expected_review_path.unlink()
-        else:
-            if (existing_review.get("run_id") == run_id
-                    and existing_review.get("input_fingerprint") == row["input_fingerprint"]
-                    and existing_review.get("schema_version") == 1):
-                review = existing_review
-            else:
-                expected_review_path.unlink()
-    if review is None:
-        review = _run_codex_review(
-            run_id, row["input_fingerprint"], draft_path, evidence_path,
-            expected_review_path,
-        )
-    if (review.get("schema_version") != 1 or review.get("run_id") != run_id
-            or review.get("input_fingerprint") != row["input_fingerprint"]):
-        raise ValueError("L'artifact de revue Codex ne correspond pas au run courant.")
-    review_decision = str(review.get("decision", ""))
-    if review_decision not in {"approve", "needs_more_data", "redo_re", "reject"}:
-        raise ValueError("Décision de revue Codex invalide.")
-    if hermes_decision == "accepted" and review_decision == "approve":
-        decision = "accepted"
-    elif hermes_decision == "rejected" and review_decision == "reject":
-        decision = "rejected"
-    # A concrete independent finding that the RE itself must be corrected
-    # takes precedence over a request for a larger sample. First repair and
-    # re-review the method on the same evidence; if the corrected pass still
-    # finds a sample-size gap, that pass can then advance the pair's threshold.
-    elif review_decision == "redo_re":
-        decision = "redo_re"
-    # A sample-size gap cannot be fixed by rerunning RE on the same evidence.
-    # Otherwise, if either reviewer asks for more observations, advance this
-    # pair's cumulative target rather than repeating the same incomplete sample.
-    elif hermes_decision == "needs_more_data" or review_decision == "needs_more_data":
-        decision = "needs_more_data"
-    elif hermes_decision == "redo_re":
-        decision = "redo_re"
-    else:
-        decision = "redo_re"
-    result = dict(draft)
-    result["hermes_decision"] = hermes_decision
-    result["decision"] = decision
-    result["codex_review_path"] = str(expected_review_path.relative_to(ROOT))
-    result["codex_review_decision"] = review_decision
-    if decision == "needs_more_data":
-        hermes_reason = str(draft.get("reason") or "")
-        review_reason = str(review.get("reason") or "")
-        result["hermes_reason"] = hermes_reason
-        result["review_reason"] = review_reason
-        threshold_now = int(row["threshold_cycles"])
-        current_cycles = int(row["cycle_count"])
-        suggested = [int(value) for value in (
-            draft.get("next_required_cycles"), review.get("next_required_cycles")
-        ) if isinstance(value, int) and value > max(threshold_now, current_cycles)]
-        result["next_required_cycles"] = max(
-            suggested or [_next_research_target(max(threshold_now, current_cycles))]
-        )
-        result["reason"] = str(
-            review_reason if review_decision == "needs_more_data" and review_reason
-            else hermes_reason or review_reason or "Cycle échantillon insuffisant."
-        )
-        next_total = int(result["next_required_cycles"])
-        result["next_stage"] = (
-            f"Collect until {next_total} complete exploitable cycles total for this account-market pair; "
-            f"{current_cycles} cycles were available at the last review. This is a sample-size gate, "
-            "not evidence of profitability."
-        )
-    elif decision == "redo_re":
-        result["reason"] = str(
-            review.get("reason") if review_decision == "redo_re" and review.get("reason")
-            else draft.get("reason") or review.get("reason")
-            or "Revue indépendante non concordante."
-        )
-    elif decision == "rejected":
-        result["reason"] = str(draft.get("reason") or review.get("reason") or "Les deux revues rejettent l'hypothèse.")
-    result_path = required_result_dir / f"{run_id}.json"
-    threshold = int(row["threshold_cycles"])
-    now = utc_now()
-    paper_request_path: Path | None = None
-    store.connection.execute("BEGIN IMMEDIATE")
-    try:
-        store.connection.execute(
-            """UPDATE automation_runs SET status=?,decision=?,artifact_path=?,
-               strategy_fingerprint=?,updated_at=?,lease_until=NULL WHERE run_id=?""",
-            (decision,str(result.get("decision")),str(result_path.resolve()),
-             result.get("strategy_fingerprint"),now,run_id),
-        )
-        if decision == "needs_more_data":
-            if not str(result.get("reason", "")).strip():
-                raise ValueError("needs_more_data exige une raison exploitable.")
-            next_target = int(result.get("next_required_cycles", 0))
-            if next_target <= threshold:
-                raise ValueError("needs_more_data exige un seuil supérieur au seuil actuel.")
-            review_target = int(review.get("next_required_cycles", threshold))
-            if review_decision == "needs_more_data" and next_target < review_target:
-                raise ValueError("Le nouveau seuil ne peut pas être inférieur au seuil recommandé par Codex.")
-            store.connection.execute(
-                """UPDATE research_targets SET required_cycles=?,attempt=1,
-                   status='collecting',updated_at=? WHERE network=? AND address=? AND coin=?""",
-                (next_target,now,row["network"],row["address"],row["coin"]),
-            )
-            store.connection.execute(
-                "UPDATE automation_runs SET next_threshold_cycles=? WHERE run_id=?",
-                (next_target,run_id),
-            )
-        elif decision == "redo_re" or decision == "insufficient_concordance":
-            if not str(result.get("reason", "")).strip():
-                raise ValueError("redo_re exige une raison exploitable.")
-            store.connection.execute(
-                """UPDATE research_targets SET attempt=attempt+1,status='collecting',updated_at=?
-                   WHERE network=? AND address=? AND coin=?""",
-                (now,row["network"],row["address"],row["coin"]),
-            )
-        elif decision == "accepted":
-            if (not str(result.get("hypothesis", "")).strip()
-                    or not isinstance(result.get("evidence"), list)
-                    or not isinstance(result.get("limitations"), list)):
-                raise ValueError("Une rétro acceptée doit contenir hypothèse, preuves et limites.")
-            strategy_fingerprint = result.get("strategy_fingerprint")
-            strategy_spec = result.get("strategy_spec")
-            if not isinstance(strategy_spec, dict) or not strategy_spec:
-                raise ValueError("Une rétro acceptée doit fournir strategy_spec structuré.")
-            required_spec = {"schema_version", "signal", "entry", "exit", "sizing",
-                             "max_exposure", "fees", "slippage", "latency_ms",
-                             "invalidation_conditions"}
-            if (not required_spec <= set(strategy_spec)
-                    or strategy_spec.get("schema_version") != 1
-                    or not isinstance(strategy_spec.get("signal"), dict)
-                    or not isinstance(strategy_spec.get("entry"), dict)
-                    or not isinstance(strategy_spec.get("exit"), dict)
-                    or not isinstance(strategy_spec.get("sizing"), dict)
-                    or not isinstance(strategy_spec.get("max_exposure"), dict)
-                    or not isinstance(strategy_spec.get("fees"), dict)
-                    or not isinstance(strategy_spec.get("slippage"), dict)
-                    or not isinstance(strategy_spec.get("invalidation_conditions"), list)
-                    or not isinstance(strategy_spec.get("latency_ms"), int)
-                    or strategy_spec["latency_ms"] < 0):
-                raise ValueError("strategy_spec ne respecte pas le contrat N1 version 1.")
-            calculated_fingerprint = hashlib.sha256(
-                json.dumps(strategy_spec, sort_keys=True, ensure_ascii=False,
-                           separators=(",", ":")).encode()
-            ).hexdigest()
-            if strategy_fingerprint != calculated_fingerprint:
-                raise ValueError("strategy_fingerprint ne correspond pas à strategy_spec.")
-            # Every accepted RE gets its own Paper N1 revision, including when
-            # the executable strategy is unchanged. This RE is the current
-            # source of truth; retaining a revision
-            # makes that progression auditable instead of silently pinning N1
-            # to an older research artifact.
-            revision = store.connection.execute(
-                """SELECT COALESCE(MAX(revision),0)+1 FROM paper_n1_revisions
-                   WHERE network=? AND address=? AND coin=?""",
-                (row["network"],row["address"],row["coin"]),
-            ).fetchone()[0]
-            artifact_dir = ROOT / "data" / "paper" / "n1" / row["address"] / row["coin"] / f"rev-{revision:03d}"
-            paper_id = uuid4().hex
-            paper_request_path = ROOT / "data" / "automation" / "requests" / f"paper-{paper_id}.json"
-            request = {
-                "schema_version": 1,
-                "run_id": paper_id,
-                "stage": "paper_n1",
-                "network": row["network"],
-                "account": row["address"],
-                "coin": row["coin"],
-                "research_run_id": run_id,
-                "research_artifact": str(result_path.resolve()),
-                "strategy_fingerprint": strategy_fingerprint,
-                "revision": revision,
-                "artifact_directory": str(artifact_dir),
-                "guardrails": [
-                    "Produce a local virtual-trading N1 only; do not use a wallet, signer, exchange order API, or VPS.",
-                    "Preserve every earlier research and paper revision; promote this one only after validation.",
-                    "Write a structured paper specification and an initialized virtual ledger.",
-                ],
-            }
-            _atomic_json(paper_request_path, request)
-            store.connection.execute(
-                """INSERT INTO automation_runs
-                   (run_id,stage,network,address,coin,threshold_cycles,attempt,
-                    input_fingerprint,cycle_count,status,request_path,created_at,updated_at)
-                   VALUES (?,'paper',?,?,?,?,1,?,?,'queued',?,?,?)""",
-                (paper_id,row["network"],row["address"],row["coin"],threshold,
-                 strategy_fingerprint,int(row["cycle_count"]),str(paper_request_path),now,now),
-            )
-            store.connection.execute(
-                """INSERT INTO paper_n1_revisions
-                   (network,address,coin,revision,research_run_id,strategy_fingerprint,
-                    artifact_path,status,is_active,created_at)
-                   VALUES (?,?,?,?,?,?,?,'queued',0,?)""",
-                (row["network"],row["address"],row["coin"],revision,run_id,
-                 strategy_fingerprint,str(artifact_dir),now),
-            )
-            next_research_target = _next_research_target(
-                max(threshold, int(row["cycle_count"]))
-            )
-            store.connection.execute(
-                """UPDATE research_targets SET required_cycles=?,attempt=1,
-                   status='collecting',updated_at=? WHERE network=? AND address=? AND coin=?""",
-                (next_research_target,now,
-                 row["network"],row["address"],row["coin"]),
-            )
-        elif decision == "rejected":
-            if not str(result.get("reason", "")).strip():
-                raise ValueError("rejected exige une raison exploitable.")
-            store.connection.execute(
-                """UPDATE research_targets SET status='rejected',updated_at=?
-                   WHERE network=? AND address=? AND coin=?""",
-                (now,row["network"],row["address"],row["coin"]),
-            )
-        else:
-            raise ValueError("decision doit être accepted, needs_more_data, redo_re ou rejected")
-        _atomic_json(result_path, result)
-        for path in (draft_path, expected_review_path, result_path):
-            path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-        store.connection.commit()
-    except Exception:
-        store.connection.rollback()
-        result_path.unlink(missing_ok=True)
-        if paper_request_path:
-            paper_request_path.unlink(missing_ok=True)
-        raise
-    return {"run_id": run_id, "decision": decision,
-            "next_required_cycles": _target(store, row["network"], row["address"], row["coin"])}
+    """Reject the legacy raw-database model workflow at its completion gate."""
+    raise ValueError("Legacy model review suspended: use isolated research proposals and strategy-freeze; no raw-database agent access")
 
 
 def complete_paper(store: Store, run_id: str, result_path: Path) -> dict[str, Any]:
-    result = _read_result(result_path)
-    run = store.connection.execute(
-        "SELECT * FROM automation_runs WHERE run_id=? AND stage='paper'", (run_id,),
-    ).fetchone()
-    if not run or run["status"] != "running":
-        raise ValueError("Run Paper N1 inconnu, non réclamé ou déjà terminé.")
-    # The paper request stores the source research run id in its JSON. Resolve it
-    # from the request file rather than trusting a caller-supplied identifier.
-    request = json.loads(Path(run["request_path"]).read_text(encoding="utf-8"))
-    revision = store.connection.execute(
-        "SELECT * FROM paper_n1_revisions WHERE research_run_id=?",
-        (request["research_run_id"],),
-    ).fetchone()
-    expected_fp = request["strategy_fingerprint"]
-    strategy_spec = result.get("strategy_spec")
-    strategy_hash = hashlib.sha256(
-        json.dumps(strategy_spec, sort_keys=True, ensure_ascii=False,
-                   separators=(",", ":")).encode()
-    ).hexdigest() if isinstance(strategy_spec, dict) else ""
-    if (not revision or result.get("schema_version") != 1
-            or result.get("run_id") != run_id
-            or result.get("research_run_id") != request["research_run_id"]
-            or result.get("mode") != "paper_n1"
-            or result.get("strategy_fingerprint") != expected_fp
-            or strategy_hash != expected_fp
-            or result.get("live_orders_enabled") is not False
-            or result.get("wallet_or_signer_configured") is not False
-            or not isinstance(result.get("paper_spec"), dict)
-            or result["paper_spec"].get("market") != run["coin"]
-            or result["paper_spec"].get("research_run_id") != request["research_run_id"]
-            or result["paper_spec"].get("revision") != revision["revision"]
-            or not isinstance(result["paper_spec"].get("fee_assumptions"), dict)
-            or not result["paper_spec"].get("fee_assumptions")
-            or not isinstance(result["paper_spec"].get("slippage_assumptions"), dict)
-            or not result["paper_spec"].get("slippage_assumptions")
-            or not isinstance(result.get("virtual_ledger"), dict)
-            or "cash" not in result["virtual_ledger"]
-            or not isinstance(result["virtual_ledger"].get("positions"), dict)
-            or result["virtual_ledger"].get("positions") != {}
-            or not isinstance(result["virtual_ledger"].get("orders"), list)
-            or result["virtual_ledger"].get("orders") != []
-            or not isinstance(result["virtual_ledger"].get("fills"), list)):
-        raise ValueError("Artifact N1 invalide : mode virtuel ou empreinte incompatible.")
-    if result["virtual_ledger"].get("fills") != []:
-        raise ValueError("Le ledger initial N1 doit démarrer sans exécution.")
-    try:
-        starting_capital = Decimal(str(result["paper_spec"].get("starting_capital_usdc")))
-        ledger_cash = Decimal(str(result["virtual_ledger"]["cash"]))
-    except (InvalidOperation, ValueError):
-        raise ValueError("Le capital initial et le cash du ledger doivent être numériques.")
-    if (not starting_capital.is_finite() or starting_capital <= 0
-            or not ledger_cash.is_finite() or ledger_cash != starting_capital):
-        raise ValueError("Le cash initial doit correspondre au capital virtuel positif en USDC.")
-    artifact_path = result_path.resolve()
-    if not artifact_path.is_file():
-        raise ValueError("Artifact Paper N1 absent.")
-    artifact_dir = Path(revision["artifact_path"]).resolve()
-    if artifact_dir not in artifact_path.parents:
-        raise ValueError("L'artifact Paper N1 doit rester dans son répertoire de révision.")
-    artifact_path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-    now = utc_now()
-    store.connection.execute("BEGIN IMMEDIATE")
-    try:
-        store.connection.execute(
-            """UPDATE automation_runs SET status='accepted',decision='created',artifact_path=?,
-               updated_at=?,lease_until=NULL WHERE run_id=?""",
-            (str(artifact_path),now,run_id),
-        )
-        latest_research = store.connection.execute(
-            """SELECT run_id FROM automation_runs WHERE stage='research'
-               AND network=? AND address=? AND coin=? AND decision='accepted'
-               ORDER BY created_at DESC LIMIT 1""",
-            (run["network"],run["address"],run["coin"]),
-        ).fetchone()
-        is_latest = bool(latest_research and latest_research["run_id"] == request["research_run_id"])
-        if is_latest:
-            store.connection.execute(
-                """UPDATE paper_n1_revisions SET is_active=0,status='superseded'
-                   WHERE network=? AND address=? AND coin=? AND is_active=1""",
-                (run["network"],run["address"],run["coin"]),
-            )
-        store.connection.execute(
-            """UPDATE paper_n1_revisions SET is_active=?,status=?,artifact_path=?
-               WHERE revision_id=?""",
-            (int(is_latest),"active" if is_latest else "superseded",
-             str(artifact_path),revision["revision_id"]),
-        )
-        store.connection.commit()
-    except Exception:
-        store.connection.rollback()
-        raise
-    return {"run_id": run_id, "paper_revision": revision["revision"],
-            "active": is_latest, "artifact": str(artifact_path)}
+    """Compatibility entry point: initializing a ledger is not N1 proof."""
+    raise ValueError("Legacy initialized ledger is not N1 validation; use validation-evaluate then paper-start")
 
 
 def _read_result(path: Path) -> dict[str, Any]:

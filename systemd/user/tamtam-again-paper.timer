@@ -1,0 +1,10 @@
+[Unit]
+Description=Tamtam Again local virtual paper cadence
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5
+Unit=tamtam-again-paper.service
+
+[Install]
+WantedBy=timers.target

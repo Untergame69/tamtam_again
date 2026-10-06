@@ -1,0 +1,8 @@
+[Unit]
+Description=Tamtam Again deterministic local virtual paper tick
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python -m tamtam_again pipeline-tick
+NoNewPrivileges=true

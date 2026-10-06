@@ -264,3 +264,25 @@ def _defer_global_requests(delay_seconds: float) -> None:
         cls._global_next_request_at = max(
             cls._global_next_request_at, time.monotonic() + delay_seconds
         )
+
+
+def retained_recent_windows(pages: list[Page], requested_start_ms: int) -> list[Page]:
+    """Separate an unprovable old prefix from the API-returned recent suffix.
+
+    Even a short response cannot prove retention before its first fill. The
+    first startPosition anchors the observed suffix; no prior PnL is inferred.
+    Saturated pagination remains incomplete until it reaches an unsaturated
+    response. The known 10k retention cap is not repaired by pagination.
+    """
+    if not pages or pages[0].endpoint != "userFillsByTime":
+        return pages
+    times = [int(row["time"]) for page in pages for row in page.rows if isinstance(row,dict) and row.get("time") is not None]
+    if not times:
+        return [Page(p.endpoint,{**p.request,"coverage_status":"empty_retention_unknown"},p.rows,p.start_ms,p.end_ms,False,p.resume_cursor_ms) for p in pages]
+    first = min(times)
+    result = []
+    if first > requested_start_ms:
+        result.append(Page("userFillsByTime",{**pages[0].request,"coverage_status":"old_prefix_retention_unknown"},[],requested_start_ms,first-1,False))
+    for page in pages:
+        result.append(Page(page.endpoint,{**page.request,"coverage_status":"returned_recent_suffix"},page.rows,max(first,page.start_ms),page.end_ms,page.complete,page.resume_cursor_ms))
+    return result

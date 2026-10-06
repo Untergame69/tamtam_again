@@ -129,17 +129,41 @@ def observed_account_summary(store: Store, network: str, address: str,
     }
 
 
-def cohort_research_status(store: Store, network: str) -> dict[str, Any]:
+def cohort_research_status(store: Store, network: str, *,
+                           workflow_fast: bool = False) -> dict[str, Any]:
     """Report what the tracked cohort and market archive can support today."""
     candidates = store.candidates(network)
     tracked = [row for row in candidates if row["status"] == "tracked"]
-    all_observations = list(store.connection.execute(
-        """SELECT * FROM raw_observations WHERE network=?
-           AND entity_type IN ('account','market') ORDER BY observed_at""",
-        (network,),
-    ))
     tracked_addresses = {row["address"].lower(): f"compte-{i:02d}"
                          for i, row in enumerate(tracked, 1)}
+    if workflow_fast:
+        # The workflow gate needs complete whale fills plus preceding BBO only.
+        # Reading every archived L2 book, public trade, and candle here made a
+        # five-minute eligibility check scan gigabytes and block SQLite writers.
+        # The full research-status report still loads those feeds on demand.
+        addresses = list(tracked_addresses)
+        if addresses:
+            placeholders = ",".join("?" for _ in addresses)
+            observations_query = f"""SELECT * FROM raw_observations
+                WHERE network=? AND (
+                  (entity_type='account' AND entity_id IN ({placeholders})
+                   AND endpoint IN ('userFillsByTime','userFills','userFunding',
+                                    'userNonFundingLedgerUpdates'))
+                  OR (entity_type='market' AND endpoint='bbo')
+                ) ORDER BY observed_at"""
+            observation_params = (network, *addresses)
+        else:
+            observations_query = """SELECT * FROM raw_observations
+                WHERE network=? AND entity_type='market' AND endpoint='bbo'
+                ORDER BY observed_at"""
+            observation_params = (network,)
+    else:
+        observations_query = """SELECT * FROM raw_observations WHERE network=?
+           AND entity_type IN ('account','market') ORDER BY observed_at"""
+        observation_params = (network,)
+    all_observations = list(store.connection.execute(
+        observations_query, observation_params,
+    ))
     fills: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     history_complete: defaultdict[str, dict[str, bool]] = defaultdict(dict)
     fill_history_intervals: defaultdict[str, list[tuple[int, int]]] = defaultdict(list)

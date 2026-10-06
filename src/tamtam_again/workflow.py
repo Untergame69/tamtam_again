@@ -32,7 +32,7 @@ def workflow_tick(store: Store, network: str, stage: str = "research") -> dict[s
         raise ValueError("stage doit être research ou paper")
     now = utc_now()
     if stage == "research":
-        status = cohort_research_status(store, network)
+        status = cohort_research_status(store, network, workflow_fast=True)
         _queue_research_runs(store, status, network)
     pending = list(store.connection.execute(
         """SELECT run_id,stage,network,address,coin,threshold_cycles,attempt,

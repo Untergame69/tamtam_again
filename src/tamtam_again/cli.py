@@ -122,6 +122,9 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("--output", type=Path)
     recipe_cmd = commands.add_parser("validation-recipe", help="Synthetic N1/N2 acceptance in an isolated temporary DB")
     recipe_cmd.add_argument("--output",type=Path,required=True)
+    correction = commands.add_parser("research-correct-packet", help="Register one diagnosed export correction with new prospective windows")
+    correction.add_argument("plan_id")
+    correction.add_argument("--reason", required=True)
     commands.add_parser("research-tick", help="Prepare prospective plans and execute one isolated bounded job")
     commands.add_parser("research-prepare", help="Seal prospective pilot plans without calling models")
     commands.add_parser("research-isolation-check", help="Verify actual isolated tool-free runtime without inference")
@@ -154,7 +157,12 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        if args.command == "research-isolation-check":
+        if args.command == "research-correct-packet":
+            from .research import correct_packet
+            with Store(args.db) as store:
+                result = correct_packet(store,args.plan_id,args.reason)
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+        elif args.command == "research-isolation-check":
             from .isolation import verify
             print(json.dumps(verify(),ensure_ascii=False,indent=2))
         elif args.command in {"research-tick","research-prepare"}:

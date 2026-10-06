@@ -15,7 +15,7 @@ class ResearchTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.store=Store(Path(self.directory.name)/'test.sqlite3')
         self.addCleanup(self.store.connection.close)
-        self.policy=load_policy();self.address='0x'+'1'*40
+        self.policy=load_policy();self.policy['packet_schema_version']=1;self.address='0x'+'1'*40
         self.store.add_candidate(self.policy['network'],self.address,'synthetic-test')
         self.store.connection.execute("UPDATE candidates SET status='tracked' WHERE address=?",(self.address,));self.store.connection.commit()
         clock=now_ms()

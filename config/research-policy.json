@@ -1,14 +1,14 @@
 {
-  "version": "prospective-pilot-v1",
-  "description": "Conservative pilot parameters, not statistically certified universal thresholds. Timed windows bound experiments; adaptive account/market maturity triggers exploration.",
+  "version": "prospective-pilot-v2-complete-episodes",
+  "description": "Conservative pilot parameters, not statistically certified universal thresholds. Timed windows bound experiments; adaptive account/market maturity triggers exploration. Four additional plans are explicitly reserved for one diagnosed export correction of each initial plan, preserving its exploration cutoff.",
   "network": "hyperliquid-mainnet",
-  "max_plans": 4,
+  "max_plans": 8,
   "max_jobs_per_tick": 1,
   "model": "gpt-6.1-sol",
   "timeout_seconds": 120,
   "max_output_tokens": 3000,
-  "max_packet_chars": 45000,
-  "max_prompt_chars": 65000,
+  "max_packet_chars": 225000,
+  "max_prompt_chars": 260000,
   "call_reservation_usd": "1",
   "freeze_grace_ms": 1800000,
   "embargo_ms": 300000,
@@ -43,18 +43,52 @@
     "schema_version": 2,
     "type": "follower",
     "market": "REPLACED_BY_PAIR",
-    "data_sources": ["bbo", "userFills", "streamHealth", "userFundings"],
-    "signal": {"kind": "leader_delta"},
-    "entry": {"kind": "target_position"},
-    "exit": {"kind": "horizon_or_target"},
-    "sizing": {"scale": "0.001"},
-    "max_exposure": {"notional_usdc": "100", "max_drawdown_usdc": "10", "max_leverage": "1"},
-    "fees": {"maker_bps": "4.5", "taker_bps": "4.5"},
-    "slippage": {"bps": "5"},
+    "data_sources": [
+      "bbo",
+      "userFills",
+      "streamHealth",
+      "userFundings"
+    ],
+    "signal": {
+      "kind": "leader_delta"
+    },
+    "entry": {
+      "kind": "target_position"
+    },
+    "exit": {
+      "kind": "horizon_or_target"
+    },
+    "sizing": {
+      "scale": "0.001"
+    },
+    "max_exposure": {
+      "notional_usdc": "100",
+      "max_drawdown_usdc": "10",
+      "max_leverage": "1"
+    },
+    "fees": {
+      "maker_bps": "4.5",
+      "taker_bps": "4.5"
+    },
+    "slippage": {
+      "bps": "5"
+    },
     "latency_ms": 5000,
     "horizon_ms": 120000,
     "starting_capital_usdc": "1000",
-    "execution": {"kind": "market_ioc", "heartbeat_timeout_ms": 65000, "unknown_quote_max_age_ms": 1000, "order_ttl_ms": 10000, "displayed_size_fraction": "0.1"},
-    "invalidation_conditions": ["nonpositive edge after costs", "unknown or interrupted feed", "risk limit reached", "insufficient independent market episodes"]
-  }
+    "execution": {
+      "kind": "market_ioc",
+      "heartbeat_timeout_ms": 65000,
+      "unknown_quote_max_age_ms": 1000,
+      "order_ttl_ms": 10000,
+      "displayed_size_fraction": "0.1"
+    },
+    "invalidation_conditions": [
+      "nonpositive edge after costs",
+      "unknown or interrupted feed",
+      "risk limit reached",
+      "insufficient independent market episodes"
+    ]
+  },
+  "packet_schema_version": 2
 }

@@ -86,7 +86,9 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                         continue
                     seen.add(identity)
                     events.append({"id":identity,"kind":"leader_fill","event_ms":exchange,"received_ms":receipt,
-                                   "available_ms":max(receipt,archived_available),"session":session,"is_snapshot":False,"delta":str(number(fill["sz"]) * (1 if fill["side"] == "B" else -1))})
+                                   "available_ms":max(receipt,archived_available),"session":session,"is_snapshot":False,
+                                   "leader_start_position":fill.get("startPosition"),
+                                   "delta":str(number(fill["sz"]) * (1 if fill["side"] == "B" else -1))})
             elif row["endpoint"] == "userFundings" and data.get("isSnapshot") is False:
                 for funding in data.get("fundings",[]):
                     if funding.get("coin") != coin:

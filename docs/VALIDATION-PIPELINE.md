@@ -16,11 +16,13 @@ drawdown complet et dépendance de marché du compte ne sont pas inventés.
 
 Le dispatch historique est désactivé ; le runtime v2 isolé est intégré et
 contrôlé avec le véritable agent. `research-tick` prépare des plans prospectifs
-puis exécute un job borné. Quatre premiers plans existent (xyz:CL, XRP,
-xyz:BRENTOIL, HYPE), chacun avec comparaison de 24 h et finale de 48 h, séparées
+puis exécute un job borné. Les plans initiaux et leurs corrections bornées concernent xyz:CL, XRP,
+xyz:BRENTOIL et HYPE, avec comparaison de 24 h et finale de 48 h, séparées
 par un embargo de 5 min. Ces durées sont des fenêtres pilotes configurables,
 pas des seuils universels de maturité ou des preuves suffisantes.
-Les quatre premiers runs sont en `needs_data`, sans variante ni paper réel.
+Les quatre premiers runs needs_data restent archivés. Leurs corrections
+d’export sont suivies dans TAMTAM_AGAIN-12 ; elles peuvent produire des variantes
+figées, sans constituer une validation N1 ni autoriser le paper réel.
 
 ## Contrats et déroulement
 
@@ -180,3 +182,22 @@ Conserver les plans, runs et réservations en base ; ne pas restaurer toute la
 base et ne pas réactiver le dispatch historique non isolé. Le collecteur et le
 paper déterministe peuvent rester actifs. Les commits de code sont séparés
 pour permettre une annulation ciblée après conservation des registres.
+
+## Export causal complet et passage à N1
+
+Les paquets schema v2 conservent des épisodes d'archive disjoints jusqu'à la
+latence et l'horizon de sortie, plutôt que seulement les cotations précédant
+quelques fills. Les montants et offsets temporels sont exportés sans arrondi.
+Les prix après signal ne sont utilisables que comme résultats exploratoires,
+jamais comme entrées futures du moteur. L'inventaire source observé avant fill
+est fourni ; l'inventaire virtuel de notre stratégie démarre à zéro.
+
+L'extension versionnée du budget d'entrée (225 000 caractères de paquet,
+260 000 de prompt) sert à conserver des chemins complets. Les coûts, risques,
+latence et critères de promotion restent inchangés. Les tokens effectivement
+consommés sont enregistrés, même si l'inférence relève d'un abonnement.
+
+Une règle acceptée par la critique est figée avant sa nouvelle comparaison.
+`pipeline-tick` attend la fin de cette fenêtre avant de mesurer N1. Il n'utilise
+pas l'ancien passé réservé pour accélérer une promotion ; aucun passage au
+paper ne découle de la seule acceptation de la proposition.

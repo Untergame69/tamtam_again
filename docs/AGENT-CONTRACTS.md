@@ -47,7 +47,7 @@ une affirmation dans un commentaire ou un JSON rédigé par un modèle.
 
 ## Pilote prospectif borné
 
-`config/research-policy.json` fixe quatre plans au maximum, un job par tick et
+`config/research-policy.json` fixe huit plans au maximum (quatre initiaux et quatre corrections explicites), un job par tick et
 au plus deux rôles par entrée. Un paquet terminé ou interrompu n'est pas relancé.
 Les demandes `needs_data` sont conservées avec l'observation manquante et la
 question qu'elle permettra de trancher. Le pilote ne crée pas automatiquement
@@ -55,8 +55,25 @@ une révision d'un plan simplement parce que le temps passe : une reprise exige
 un diagnostic précis, de nouvelles preuves ou une correction identifiée et un
 nouveau budget explicite. Les réserves consommées restent interdites.
 
-Les données transmises sont un échantillon descriptif borné, pas un rejeu complet.
+Le paquet v2 transmet des épisodes disjoints complets de l’archive, choisis par
+quantiles temporels fixes. Tous les fills, changements BBO, états de connexion
+et fundings présents dans chaque intervalle sont conservés, avec inventaire
+public avant fill et temps événement/réception/disponibilité. Les observations
+manquantes restent inconnues ; une tranche d’archive complète ne prouve pas
+une collecte sans interruption. Le budget retire un épisode entier, jamais
+une partie de son chemin de prix. Ce sont des exemples exploratoires, pas
+un historique complet ni une preuve de rentabilité.
 Si le modèle demande un chemin de prix complet déjà présent dans la base, il
 faut corriger cet export avant de demander davantage de collecte. Les quatre
 premiers runs ont demandé notamment inventaire initial et épisodes causaux
 complets ; ces demandes ne constituent pas une validation.
+
+## Correction identifiée d'un paquet
+
+`research-correct-packet PLAN_ID --reason "diagnostic précis"` enregistre une
+seule correction d'un run needs_data. Le paquet et run antérieurs restent
+immuables. La borne finale de l'exploration d'origine est conservée : aucune
+observation de l'ancienne comparaison n'est importée dans la nouvelle analyse.
+Les critères et limites d'exécution ne changent pas. Comparaison et finale du
+nouveau plan sont de nouvelles fenêtres futures. Une chaîne de corrections
+est interdite et un second appel pour le même parent retourne le plan déjà créé.

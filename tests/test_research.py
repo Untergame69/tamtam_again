@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tamtam_again.research import build_plan, packet_for, load_policy, prepare, run_job, enforce_profile
+from tamtam_again.research import build_plan, packet_for, load_policy, prepare, run_job, enforce_profile, correct_packet
 from tamtam_again.storage import Store
 from tamtam_again.validation import now_ms
 
@@ -89,3 +89,21 @@ class ResearchTests(unittest.TestCase):
     def test_missing_live_signal_cannot_create_a_plan(self):
         with patch('tamtam_again.research.archive_events',return_value=([],0)):
             self.assertEqual(prepare(self.store,self.policy,self.status)['created'],[])
+
+    def test_correction_preserves_old_exploration_and_is_bounded_idempotent(self):
+        old=self.prepared_job()
+        original=json.loads(self.store.connection.execute('SELECT plan_json FROM validation_plans').fetchone()[0])
+        self.store.connection.execute("UPDATE isolated_research_jobs SET status='needs_data'");self.store.connection.commit()
+        corrected={'schema_version':2,'episodes':[{},{}],'sampling':{},'cycles':self.cycles}
+        with patch('tamtam_again.research.archive_events',return_value=(self.events,1)) as archive,patch('tamtam_again.research.packet_for',return_value=corrected),patch('tamtam_again.research.load_policy',return_value=load_policy()):
+            result=correct_packet(self.store,old['plan_id'],'test export correction')
+            self.assertEqual(archive.call_args.args[-1],original['exploration']['end_ms'])
+            again=correct_packet(self.store,old['plan_id'],'same correction')
+            self.assertEqual(again['plan_id'],result['plan_id'])
+            self.assertEqual(archive.call_count,1)
+            child=json.loads(self.store.connection.execute('SELECT plan_json FROM validation_plans WHERE plan_id=?',(result['plan_id'],)).fetchone()[0])
+            self.assertEqual(child['exploration'],original['exploration'])
+            self.assertEqual(child['criteria'],original['criteria'])
+            self.assertGreater(child['comparison']['start_ms'],now_ms())
+            self.store.connection.execute("UPDATE isolated_research_jobs SET status='needs_data' WHERE plan_id=?",(result['plan_id'],));self.store.connection.commit()
+            with self.assertRaises(ValueError):correct_packet(self.store,result['plan_id'],'unbounded chain')

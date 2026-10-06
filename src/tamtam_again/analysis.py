@@ -150,12 +150,11 @@ def cohort_research_status(store: Store, network: str, *,
                    AND endpoint IN ('userFillsByTime','userFills','userFunding',
                                     'userNonFundingLedgerUpdates'))
                   OR (entity_type='market' AND endpoint='bbo')
-                ) ORDER BY observed_at"""
+                )"""
             observation_params = (network, *addresses)
         else:
             observations_query = """SELECT * FROM raw_observations
-                WHERE network=? AND entity_type='market' AND endpoint='bbo'
-                ORDER BY observed_at"""
+                WHERE network=? AND entity_type='market' AND endpoint='bbo'"""
             observation_params = (network,)
     else:
         observations_query = """SELECT * FROM raw_observations WHERE network=?

@@ -1,0 +1,12 @@
+<section id="hyperliquid-accounts" class="service-status-section" aria-labelledby="hyperliquid-accounts-title">
+  <h2 id="hyperliquid-accounts-title">Hyperliquid — comptes actuellement suivis</h2>
+  <p>Collecte pour la rétro-ingénierie des décisions. La sélection utilise le classement public et l’activité récente ; les filtres complets de performance, de risque et de reproductibilité restent à vérifier.</p>
+  <p><strong>Suivi ≠ rentabilité validée.</strong> Chaque compte possède un lien vers ses informations publiques. <a href="/work/issues/TAMTAM_AGAIN-6">Qualification et suivi dans YouTrack</a>.</p>
+  <div id="hyperliquid-cohort" aria-live="polite">Chargement des comptes…</div>
+  <details><summary>Revue des filtres et observations datées</summary><div id="hyperliquid-review">Chargement de la revue…</div></details>
+</section>
+<style>
+.hl-accounts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding:0;list-style:none}
+.hl-accounts li{border:1px solid var(--border,#344);border-radius:12px;padding:16px;overflow-wrap:anywhere}
+.hl-accounts code{font-size:.78rem}.hl-accounts p{margin:8px 0}.hl-review-table{overflow-x:auto}.hl-review-table table{width:100%;border-collapse:collapse}.hl-review-table th,.hl-review-table td{padding:10px;border-bottom:1px solid #344;text-align:left;white-space:nowrap}
+</style>

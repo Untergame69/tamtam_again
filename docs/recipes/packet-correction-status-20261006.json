@@ -1,0 +1,149 @@
+{
+  "observed_at": "2026-10-06T20:38:26.518483+00:00",
+  "tests": 66,
+  "jobs": [
+    {
+      "coin": "xyz:CL",
+      "plan_id": "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      "parent_plan_id": "a93e1575338293b2524c145d48ac78a8a3387f02c27b3b755a11a8436e55e5e0",
+      "status": "ready_to_test",
+      "episode_count": 3,
+      "episode_event_counts": [
+        1227,
+        1182,
+        931
+      ],
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 19776,
+          "input_tokens": 103134,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 569
+        },
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 12320,
+          "input_tokens": 103506,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 317
+        }
+      ],
+      "comparison_end_ms": 1791407188148,
+      "final_end_ms": 1791580288148,
+      "old_exploration_cutoff_ms": 1791312538367
+    },
+    {
+      "coin": "XRP",
+      "plan_id": "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      "parent_plan_id": "d7577abbedb3e8e8df22b36a48eceb49d8d60c446437dc602c68b69620786aee",
+      "status": "ready_to_test",
+      "episode_count": 3,
+      "episode_event_counts": [
+        665,
+        992,
+        1253
+      ],
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 20241,
+          "input_tokens": 100450,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 819
+        },
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 12134,
+          "input_tokens": 100870,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 330
+        }
+      ],
+      "comparison_end_ms": 1791407188390,
+      "final_end_ms": 1791580288390,
+      "old_exploration_cutoff_ms": 1791312538607
+    },
+    {
+      "coin": "xyz:BRENTOIL",
+      "plan_id": "7470c3dc3050684e127419491c38ec748042d2742aa08ce5f556d7233ca01a68",
+      "parent_plan_id": "21ee42446adadf7063563176de698d18759f7d6af204ff967e4224d9da3512c2",
+      "status": "needs_data",
+      "episode_count": 3,
+      "episode_event_counts": [
+        913,
+        1181,
+        551
+      ],
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 24935,
+          "input_tokens": 82455,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 801
+        },
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 17044,
+          "input_tokens": 82994,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 383
+        }
+      ],
+      "comparison_end_ms": 1791407188605,
+      "final_end_ms": 1791580288605,
+      "old_exploration_cutoff_ms": 1791312538813
+    },
+    {
+      "coin": "HYPE",
+      "plan_id": "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      "parent_plan_id": "59b3fc4b761a54087face89ad96d52520c3dbbb2fefa9be62e18b5b8bdd8f08b",
+      "status": "ready_to_test",
+      "episode_count": 2,
+      "episode_event_counts": [
+        1358,
+        1161
+      ],
+      "usage": [
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 27148,
+          "input_tokens": 78606,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 897
+        },
+        {
+          "api_calls": 1,
+          "cost_status": "included",
+          "cost_usd": 0.0,
+          "duration_ms": 14262,
+          "input_tokens": 79265,
+          "model": "gpt-6.1-sol",
+          "output_tokens": 299
+        }
+      ],
+      "comparison_end_ms": 1791407188843,
+      "final_end_ms": 1791580288843,
+      "old_exploration_cutoff_ms": 1791312539014
+    }
+  ],
+  "frozen_variants": 3,
+  "real_N1_evaluations": 0,
+  "paper_active": 0,
+  "live_orders_enabled": false
+}

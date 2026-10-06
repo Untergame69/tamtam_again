@@ -145,16 +145,13 @@ def cohort_research_status(store: Store, network: str, *,
         if addresses:
             placeholders = ",".join("?" for _ in addresses)
             observations_query = f"""SELECT * FROM raw_observations
-                WHERE network=? AND (
-                  (entity_type='account' AND entity_id IN ({placeholders})
-                   AND endpoint IN ('userFillsByTime','userFills','userFunding',
-                                    'userNonFundingLedgerUpdates'))
-                  OR (entity_type='market' AND endpoint='bbo')
-                )"""
+                WHERE network=? AND entity_type='account'
+                  AND entity_id IN ({placeholders})
+                  AND endpoint IN ('userFillsByTime','userFills','userFunding',
+                                   'userNonFundingLedgerUpdates')"""
             observation_params = (network, *addresses)
         else:
-            observations_query = """SELECT * FROM raw_observations
-                WHERE network=? AND entity_type='market' AND endpoint='bbo'"""
+            observations_query = """SELECT * FROM raw_observations WHERE 0"""
             observation_params = (network,)
     else:
         observations_query = """SELECT * FROM raw_observations WHERE network=?
@@ -261,6 +258,8 @@ def cohort_research_status(store: Store, network: str, *,
             )
         except (InvalidOperation, ValueError):
             pass
+    if workflow_fast:
+        bbo_times.update(_bbo_times_near_fills(store, network, by_pair))
     accounts = []
     maturity_by_account: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     for (address, coin), pair_rows in by_pair.items():
@@ -399,6 +398,66 @@ def cohort_research_status(store: Store, network: str, *,
             ],
         },
     }
+
+
+def _bbo_times_near_fills(
+    store: Store, network: str,
+    pairs: dict[tuple[str, str], list[dict[str, Any]]],
+) -> defaultdict[str, list[int]]:
+    """Load only BBO observations near whale fills for the automatic gate."""
+    padding_ms = 10_000
+    times: defaultdict[str, list[int]] = defaultdict(list)
+    fills_by_coin: defaultdict[str, set[int]] = defaultdict(set)
+    for (_address, coin), fills in pairs.items():
+        for fill in fills:
+            try:
+                fills_by_coin[coin].add(int(fill.get("time", 0)))
+            except (TypeError, ValueError):
+                continue
+    for coin, stamps in fills_by_coin.items():
+        ordered = sorted(stamp for stamp in stamps if stamp > 0)
+        if not ordered:
+            continue
+        intervals: list[list[int]] = []
+        for stamp in ordered:
+            start, end = stamp - padding_ms, stamp + padding_ms
+            if intervals and start <= intervals[-1][1]:
+                intervals[-1][1] = max(intervals[-1][1], end)
+            else:
+                intervals.append([start, end])
+        for start_ms, end_ms in intervals:
+            start = datetime.fromtimestamp(start_ms / 1000, timezone.utc).isoformat(
+                timespec="milliseconds"
+            )
+            end = datetime.fromtimestamp(end_ms / 1000, timezone.utc).isoformat(
+                timespec="milliseconds"
+            )
+            observations = store.connection.execute(
+                """SELECT * FROM raw_observations
+                   WHERE network=? AND entity_type='market' AND entity_id=?
+                     AND endpoint='bbo' AND observed_at BETWEEN ? AND ?""",
+                (network, coin, start, end),
+            )
+            for observation in observations:
+                try:
+                    payload = decode_observation_payload(observation)
+                except (ValueError, TypeError, OSError):
+                    continue
+                events = payload.get("events", []) if isinstance(payload, dict) else []
+                for event in events:
+                    message = event.get("message", {}) if isinstance(event, dict) else {}
+                    data = message.get("data") if isinstance(message, dict) else None
+                    values = data if isinstance(data, list) else [data]
+                    for value in values:
+                        if not isinstance(value, dict):
+                            continue
+                        try:
+                            stamp = int(value.get("time", value.get("t")) or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        if stamp:
+                            times[coin].append(stamp)
+    return times
 
 
 def _pair_maturity(rows: list[dict[str, Any]], coin: str,

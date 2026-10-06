@@ -232,7 +232,8 @@ hypothèses rapides.
 Pour étudier une stratégie de copie, l'heure du fill sur la plateforme et
 l'heure à laquelle notre collecteur reçoit le message `userFills` sont deux
 repères différents. Les preuves RE utilisent l'heure du message WebSocket live
-`userFills` (les snapshots `isSnapshot=true` sont historiques et exclus), puis
+`userFills` (seuls les messages `isSnapshot=false` explicites sont des signaux
+en direct ; les snapshots `true` et les valeurs absentes sont exclus), puis
 comparent l'heure locale de réception des BBO, trades et carnets au signal reçu
 par le suiveur. Une cotation reçue
 après l'exécution de la baleine peut donc être disponible au suiveur avant qu'il

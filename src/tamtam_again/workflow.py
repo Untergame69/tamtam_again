@@ -195,6 +195,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
     live_selected_fill_observations = 0
     selected_snapshot_fill_ids: set[str] = set()
     raw_selected_user_fills_observations: list[dict[str, Any]] = []
+    unknown_snapshot_selected_fill_ids: set[str] = set()
     for observation in store.observations(run["network"], "account", run["address"]):
         if observation["endpoint"] not in {"userFillsByTime", "userFills"}:
             continue
@@ -207,7 +208,9 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             and observation["source"] == "hyperliquid-websocket-v1"
         )
         data = payload.get("data", {}) if isinstance(payload, dict) else {}
-        is_snapshot = is_live_ws and isinstance(data, dict) and data.get("isSnapshot") is True
+        snapshot_flag = data.get("isSnapshot") if isinstance(data, dict) else None
+        is_snapshot = is_live_ws and snapshot_flag is True
+        is_explicit_live = is_live_ws and snapshot_flag is False
         matched_ws_fill_ids: set[str] = set()
         for fill in _fills_from_observation(observation["endpoint"], payload):
             identifier = str(fill.get("tid", fill.get("hash", "")))
@@ -218,7 +221,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                 if is_live_ws and is_snapshot:
                     snapshot_selected_fill_observations += 1
                     selected_snapshot_fill_ids.add(identifier)
-                elif is_live_ws:
+                elif is_explicit_live:
                     live_selected_fill_observations += 1
                     receipt = str(observation["requested_at"] or observation["observed_at"])
                     prior = signal_received_at.get(identifier)
@@ -226,6 +229,7 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                         "source": observation["source"],
                         "endpoint": observation["endpoint"],
                         "is_snapshot": False,
+                        "snapshot_flag_present": True,
                         "receipt_timestamp_field": "raw_observations.requested_at",
                         "receipt_time": receipt,
                         "raw_observation_id": int(observation["observation_id"]),
@@ -236,6 +240,8 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
                         signal_received_at[identifier] = receipt
                         provenance["receipt_time"] = receipt
                         provenance["raw_observation_id"] = int(observation["observation_id"])
+                elif is_live_ws:
+                    unknown_snapshot_selected_fill_ids.add(identifier)
         if is_live_ws and matched_ws_fill_ids:
             # Preserve the archived frame and its storage metadata so the
             # independent reviewer can verify the signal receipt provenance.
@@ -601,11 +607,13 @@ def write_research_evidence(store: Store, run_id: str, output_path: Path) -> dic
             "selected_fill_observations_from_live_userFills": live_selected_fill_observations,
             "selected_fill_observations_from_isSnapshot_true_excluded": snapshot_selected_fill_observations,
             "selected_fill_ids_seen_in_snapshots": len(selected_snapshot_fill_ids),
+            "selected_fill_ids_with_unknown_snapshot_status": len(unknown_snapshot_selected_fill_ids),
             "selected_fill_ids_with_live_signal": len(signal_received_at),
             "selected_fill_ids_without_live_signal": len(fill_ids - set(signal_received_at)),
             "selection_rule": (
-                "Only hyperliquid-websocket-v1 userFills observations with data.isSnapshot != true "
-                "provide signal_received_at. Snapshot observations are counted for audit and excluded. "
+                "Only hyperliquid-websocket-v1 userFills observations with data.isSnapshot explicitly false "
+                "provide signal_received_at. Explicit true snapshots and missing/non-boolean flags are "
+                "counted separately for audit and excluded. "
                 "Each selected fill carries the chosen raw observation id and receipt timestamp field."
             ),
         },
@@ -1009,9 +1017,10 @@ def _run_codex_review(run_id: str, fingerprint: str, draft_path: Path,
         "Also look for timestamp errors, survivorship, omitted fees, "
         "latency or unsupported profitability claims. Compare cycle BBO flags with "
         "selected-sample coverage. Distinguish leader exchange execution time from a follower's local "
-        "live userFills WebSocket signal_received_at; exclude isSnapshot=true messages as historical. "
+        "live userFills WebSocket signal_received_at; count a frame as live only when isSnapshot is explicitly false. "
+        "Exclude true snapshots and missing/non-boolean isSnapshot values from live-signal timing. "
         "Audit signal_event_provenance for each selected fill: its source must be the live "
-        "hyperliquid-websocket-v1 userFills endpoint, is_snapshot must be false, and its raw "
+        "hyperliquid-websocket-v1 userFills endpoint, is_snapshot must be explicitly false, and its raw "
         "observation id and receipt timestamp field must support signal_received_at. Cross-check "
         "those IDs against raw_selected_user_fills_observations and its archived payload and response hash. "
         "For split fills, apply allocated_start_position and allocated_size from the cycle's "

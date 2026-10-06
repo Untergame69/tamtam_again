@@ -35,13 +35,13 @@ les 15 minutes. Les bougies récentes restent rafraîchies toutes les 60 seconde
 Quand la cohorte a des fills, le WebSocket suit ses vingt marchés les plus
 utilisés par volume notionnel observé; avant cela, il utilise le top 5 global
 comme point de départ. Les trades et le meilleur prix acheteur/vendeur sont
-suivis sur ces vingt symboles. Le carnet détaillé reste limité à cinq marchés
-pour contenir la croissance de SQLite; les paires avec un seuil RE supérieur au
-palier initial de cinq cycles sont prioritaires, d'abord selon leur volume de
-cycles demandé, puis selon la mise à jour la plus récente de leur cible. Les
-places restantes reviennent au classement notionnel. Ainsi, une nouvelle RE
-peut obtenir le contexte L2 qu'une analyse précédente jugeait manquant. Les
-bougies d'une minute suivent les
+suivis sur ces vingt symboles. Le carnet détaillé couvre jusqu'à vingt marchés,
+avec la même priorité aux paires dont le seuil RE a dépassé le palier initial de
+cinq cycles. Elles sont classées par volume de cycles demandé, puis par date de
+mise à jour de leur cible; les places restantes reviennent au classement
+notionnel. Cette capacité permet de conserver le contexte L2 demandé par
+plusieurs revues en parallèle, sans suivre tous les marchés de la plateforme.
+Les bougies d'une minute suivent les
 vingt premiers marchés de la cohorte. La liste est recalculée à partir des fills
 enregistrés. Cette couverture élargie inclut les marchés très utilisés par les
 baleines même s'ils ne figurent pas dans le top 5 notionnel (par exemple INJ et
@@ -152,7 +152,7 @@ Depuis `tamtam_again/` :
 .venv/bin/python -m tamtam_again research-status
 .venv/bin/python -m tamtam_again collect 0x... --start-ms 1759276800000
 .venv/bin/python -m tamtam_again report 0x... --start-ms 1759276800000 --end-ms 1790899200000
-.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 20 --max-depth-markets 5
+.venv/bin/python -m tamtam_again run-collectors --max-whale-accounts 10 --max-stream-markets 20 --max-depth-markets 20
 ```
 
 Les commandes de découverte enregistrent les candidats et leurs rangs sans
@@ -164,9 +164,9 @@ délai entre un fill live et sa validation dans une fenêtre historique complèt
 elle ne fixe pas le seuil de maturité, qui reste fondé sur les cycles
 exploitables propres à chaque paire. Hyperliquid limite à dix les utilisateurs
 distincts abonnés aux flux privés; cette première cohorte est donc limitée à dix
-comptes. Les trades sont suivis sur vingt marchés dominants de la cohorte, avec
-BBO sur ces marchés et carnet détaillé sur les cinq plus utilisés par volume
-notionnel observé. Les
+comptes. Les trades, le BBO et le carnet détaillé sont suivis sur jusqu'à vingt
+marchés dominants de la cohorte; les paires avec une demande RE de données plus
+importante reçoivent la priorité L2. Les
 bougies d'une minute couvrent aussi ces vingt marchés. Les timestamps sont des
 millisecondes Unix UTC.
 

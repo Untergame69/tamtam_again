@@ -44,6 +44,20 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
             'no complete raw execution path or public queue position supplied',
             'multiple instruments and unknown mechanisms may be hypothesized; execution requires a separate contract',
             'no comparison/final observations or evaluation outcomes exported']}
+    if store.connection.execute("select 1 from sqlite_master where name='population_order_reports'").fetchone():
+        orders=store.connection.execute('select report_id,available_ms,payload_json from population_order_reports '
+            'where network=? and address=? and available_ms<=? order by available_ms desc,rowid desc limit 1',
+            (network,address,as_of_ms)).fetchone()
+        if orders:
+            public_orders=json.loads(orders['payload_json'])
+            if public_orders['address']!=address or public_orders['network']!=network or public_orders['available_ms']!=orders['available_ms']:
+                raise ValueError('Order report provenance differs from registry')
+            packet['observations']['public_orders']=public_orders['descriptor']
+            packet['evidence_refs'].append('population_order_reports:'+orders['report_id'])
+            packet['available_ms']=max(packet['available_ms'],orders['available_ms'])
+            packet['research_input_fingerprint']=fingerprint({'scope':packet['research_input_fingerprint'],
+                'public_orders':public_orders['descriptor']['content_fingerprint']})
+            packet['limits'].extend(public_orders['limits'])
     if store.connection.execute("select 1 from sqlite_master where name='research_knowledge'").fetchone():
         from .research_memory import export_knowledge
         memory=export_knowledge(store,as_of_ms=as_of_ms,network=network,address=address,market='*')

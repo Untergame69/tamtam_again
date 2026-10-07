@@ -132,3 +132,39 @@ ne prétend qu'accumuler davantage de fills suffira.
 Retour arrière : annuler uniquement les changements de routage/scheduler,
 conserver la table et les requêtes. Le raccordement automatique à un plan puis
 à son évaluation demeure à terminer.
+
+## Observation ciblée des ordres publics
+
+population-collect-orders.py interroge une adresse explicitement choisie et un
+à trois DEX : historicalOrders puis frontendOpenOrders par DEX. Aucun nouvel
+abonnement utilisateur ni timer activé. Les réserves sont exclues avant requête.
+Le client partagé réserve 120 poids pour historicalOrders (borne 2 000 lignes)
+et 20 pour chaque inventaire ouvert ; retries et attente passent par la base
+commune de télémétrie. Une nouvelle cadence doit entrer dans le budget mesuré.
+
+Réponses complètes archivées, empreinte de contenu, statuts et ordres ouverts
+résumés dans population_order_reports. Les snapshots séquentiels n'établissent
+pas une trajectoire d'inventaire ou un cycle d'amendements exhaustif. Réception
+locale distincte des statusTimestamp ; couverture historique et file inconnues,
+ancien passé et cibles privées non reconstitués. Les paquets futurs incluent
+uniquement le résumé disponible au cutoff. Un contenu d'ordres nouveau peut
+changer l'empreinte de recherche, mais un nouveau timestamp seul ne le peut pas.
+Les paquets déjà scellés restent immuables. Les besoins d'une hypothèse ne sont
+pas marqués satisfaits simplement parce qu'une réponse existe.
+
+Sources officielles vérifiées le 7 octobre 2026 :
+[Info](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint)
+(historique récent borné et inventaire ouvert),
+[Subscriptions](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/websocket/subscriptions)
+(orderUpdates),
+[Quotas](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/rate-limits-and-user-limits).
+Le flux orderUpdates est documenté ; son intégration prospective reste à faire.
+Les données publiques ne prouvent pas une couverture sur une plateforme externe
+ou l'intention de ciblage du compte.
+
+Commande explicite :
+```sh
+PYTHONPATH=src python3 scripts/population-collect-orders.py --db data/tamtam.sqlite3 --telemetry-db data/tamtam.telemetry.sqlite3 --address ADRESSE --dex '' --output /tmp/public-orders.json
+```
+Rollback : annuler le code ciblé, conserver population_order_reports et archives.
+Aucun redémarrage collecteur requis pour cette commande indépendante.

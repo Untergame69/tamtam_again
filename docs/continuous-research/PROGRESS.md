@@ -460,3 +460,18 @@ Contrôle réel des deux hypothèses revues : needs_data, sans appel ni promotio
 La condition de réveil descriptive n'est pas une preuve de complétude ; les
 besoins inaccessibles et le raccordement de plans restent à traiter. Tests de
 rejeu immuable, absence de création de variante/plan et capacité structurée.
+
+### Ordres publics ciblés, sans nouvelle cadence automatique
+
+Ajout de historicalOrders et frontendOpenOrders au client lecture seule, borne
+réservée historique 120 poids et coût de réponse mesuré par items. Commande
+explicite partageant la télémétrie/quota existants, maximum trois inventaires DEX,
+refus des comptes réservés avant requête. Snapshots archivés avec réception et
+périmètre ; aucun cycle complet, cible privée ou priorité de file certifié.
+Résumé causal optionnel dans les paquets suivants, empreinte de contenu d'ordres
+pour signaler une information nouvelle, sans altération des paquets scellés.
+Contrôle réel : 1 890 ordres historiques, 570 statuts canceled, deux ordres ouverts
+sur DEX standard ; paquet ultérieur prêt et résumé inclus. Les besoins des deux
+hypothèses restent non satisfaits. Preuve population-orders-control-20261007.json.
+Trente-quatre tests population passent en 7,205 s. Aucun timer ni collecteur
+redémarré, aucune inférence demandée par ce contrôle.

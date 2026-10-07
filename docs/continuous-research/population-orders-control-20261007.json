@@ -1,0 +1,48 @@
+{
+  "report_id": "d4c0ad6d086213caa7e57211fe5903f351f42a5bf5b9dea250bcb56c6b7a74cd",
+  "network": "hyperliquid-mainnet",
+  "address": "0x50c5132bbbe67357b74e115f9374d8a683439547",
+  "started_ms": 1791373935244,
+  "available_ms": 1791373947355,
+  "descriptor": {
+    "dex_scopes": [
+      ""
+    ],
+    "historical_orders_returned": 1890,
+    "historical_status_counts": {
+      "filled": 234,
+      "open": 880,
+      "siblingFilledCanceled": 6,
+      "triggered": 94,
+      "canceled": 570,
+      "reduceOnlyCanceled": 68,
+      "perpMarginRejected": 5,
+      "iocCancelRejected": 23,
+      "positionIncreaseAtOpenInterestCapRejected": 10
+    },
+    "historical_status_time_bounds": {
+      "start_ms": 1748247650905,
+      "end_ms": 1791367660539
+    },
+    "open_orders_by_dex": {
+      "": 2
+    },
+    "content_fingerprint": "73088a37a0b348b5a486219d2aea7e2588b7031f753e7674080dc78a08390482",
+    "historical_coverage": "bounded_recent_orders; complete prior history and intermediate amendments unknown",
+    "saturated_history": false,
+    "live_follower_signal": false,
+    "queue_priority": "unknown",
+    "private_target": "unknown",
+    "order_lifecycle_complete": false
+  },
+  "evidence_refs": [
+    "raw_observations:7677122",
+    "raw_observations:7677692"
+  ],
+  "limits": [
+    "REST snapshot is not a stream of all submissions, amendments and cancellations",
+    "multiple DEX snapshots are sequential, not simultaneous",
+    "status timestamps are event times; observations become available only after receipt",
+    "an empty response does not establish absence of earlier activity"
+  ]
+}

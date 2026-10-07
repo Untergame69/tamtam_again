@@ -45,3 +45,16 @@ class PacketTests(unittest.TestCase):
         self.assertEqual(original['research_input_fingerprint'],new['research_input_fingerprint'])
         self.assertIn('research_memory',new)
         self.assertEqual(export.call_args.kwargs['as_of_ms'],20)
+
+    def test_order_evidence_is_causal_and_changes_input_only_for_content(self):
+        original=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']
+        self.s.connection.execute('create table population_order_reports(report_id text,network text,address text,available_ms integer,payload_json text)')
+        report={'network':'test','address':'account','available_ms':25,
+            'descriptor':{'content_fingerprint':'new-orders','order_lifecycle_complete':False},'limits':['partial orders']}
+        self.s.connection.execute('insert into population_order_reports values(?,?,?,?,?)',('orders','test','account',25,json.dumps(report)))
+        early=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']
+        later=packet_for_account(self.s,'test','account',as_of_ms=25,max_chars=10000)['packet']
+        self.assertEqual(early['research_input_fingerprint'],original['research_input_fingerprint'])
+        self.assertNotEqual(later['research_input_fingerprint'],original['research_input_fingerprint'])
+        self.assertEqual(later['available_ms'],25)
+        self.assertFalse(later['observations']['public_orders']['order_lifecycle_complete'])

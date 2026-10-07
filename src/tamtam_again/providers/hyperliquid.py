@@ -40,7 +40,7 @@ READ_ONLY_INFO_TYPES = {
     "metaAndAssetCtxs", "perpDexs", "allPerpMetas", "spotMetaAndAssetCtxs",
     "userFillsByTime", "userFunding",
     "userNonFundingLedgerUpdates", "clearinghouseState",
-    "spotClearinghouseState", "openOrders", "portfolio",
+    "spotClearinghouseState", "openOrders", "frontendOpenOrders", "historicalOrders", "portfolio",
     "l2Book", "candleSnapshot", "userRole", "userAbstraction", "subAccounts",
 }
 
@@ -270,6 +270,8 @@ def _request_weight(payload: dict[str, Any]) -> int:
         return 2
     if query_type == "userRole":
         return 60
+    if query_type == "historicalOrders":
+        return 120
     if query_type == "userFillsByTime":
         return 20 + (MAX_PAGE_ROWS_BY_ENDPOINT[query_type] + 19) // 20
     if query_type == "userFunding":
@@ -329,5 +331,5 @@ def response_weight_bound(payload: dict[str, Any], items: int | None) -> int:
     kind = payload.get("type")
     base = 2 if kind in LIGHT_INFO_TYPES else 60 if kind == "userRole" else 20
     if kind == "candleSnapshot": return base + ((items or 0) + 59) // 60
-    if kind in {"userFillsByTime", "userFunding"}: return base + ((items or 0) + 19) // 20
+    if kind in {"userFillsByTime", "userFunding", "historicalOrders"}: return base + ((items or 0) + 19) // 20
     return base

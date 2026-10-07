@@ -160,11 +160,18 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
             (row['network'],row['address'],row['coin'])).fetchall()
         replacement=plan.get('paper_replacement')
         transferred=None
+        capital_policy='independent_paper_session'
+        capital_evidence=None
         for prior in priors:
             if replacement and prior['status']!='retired':
                 from .paper_handover import eligible
                 if transferred is not None or not eligible(replacement,prior,started):
                     raise ValueError('Predeclared replacement waits for a suspended flat predecessor and cooldown')
+                if replacement.get('capital_policy')=='carry_flat_cash':
+                    from .paper_handover import carry_flat_cash
+                    carried,capital_evidence=carry_flat_cash(store,prior,started)
+                    state.update(cash=carried,peak_equity=carried,session_starting_capital_usdc=carried)
+                    capital_policy='carry_flat_cash'
                 store.connection.execute('insert into paper_retirements values(?,?,?)',
                     (prior['session_id'],started,'predeclared replacement: '+replacement['justification']))
                 store.connection.execute("update paper_sessions set status='retired',updated_at=? where session_id=?",
@@ -182,12 +189,12 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
             raise ValueError('Predeclared replacement requires its suspended predecessor session')
         store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,0,utc_now()))
         store.connection.execute('insert into paper_session_policy values(?,?,?)',
-                                 (session_id,'independent_paper_session',restart_reason))
+                                 (session_id,capital_policy,restart_reason))
         paper_evidence.record(store,session_id,started,0,state,
             metrics(state,spec,plan['criteria']['block_ms']))
         if transferred:
             store.connection.execute('insert into paper_handovers values(?,?,?,?)',
-                (session_id,transferred,started,canonical(replacement)))
+                (session_id,transferred,started,canonical({**replacement,'capital_snapshot_id':capital_evidence,'opening_capital_usdc':state['cash']})))
         store.connection.commit()
     except BaseException:
         store.connection.rollback()
@@ -195,7 +202,7 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     if not row["synthetic"]:
         decision(store,row["network"],row["address"],row["coin"],"paper_active","N1 final passed by deterministic engine",{"interruptions":"suspend"},"paper_tick",{"session_id":session_id})
     return {"session_id":session_id,"synthetic":bool(row["synthetic"]),"started_ms":started,
-            "capital_policy":"independent_paper_session","restart_reason":restart_reason}
+            "capital_policy":capital_policy,"restart_reason":restart_reason}
 
 
 def retire_paper(store: Store, session_id: str, *, reason: str) -> dict[str,Any]:

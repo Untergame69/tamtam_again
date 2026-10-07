@@ -312,7 +312,7 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
 def metrics(state: dict[str, Any], spec: dict[str, Any], block_ms: int, *, confidence_alpha: float = 0.05) -> dict[str, Any]:
     if block_ms <= 0:
         raise ValueError("Positive independent block duration required")
-    capital = number(spec["starting_capital_usdc"])
+    capital = number(state.get("session_starting_capital_usdc",spec["starting_capital_usdc"]))
     curve = state["equity_curve"]
     final = number(curve[-1][1]) if curve else capital
     peak, drawdown = capital, Decimal(0)
@@ -332,7 +332,7 @@ def metrics(state: dict[str, Any], spec: dict[str, Any], block_ms: int, *, confi
         raise ValueError("Invalid confidence alpha")
     quantile = NormalDist().inv_cdf(1-confidence_alpha/2)
     lower = mean(values) - quantile * stdev(values) / math.sqrt(len(values)) if len(values) >= 2 else None
-    return {"net_pnl": str(final - capital), "realized_pnl": state["realized_pnl"],
+    return {"starting_capital_usdc":str(capital),"net_pnl": str(final - capital), "realized_pnl": state["realized_pnl"],
             "unrealized_pnl": str(final - number(state["cash"])), "fees": state["fees"],
             "funding": state["funding"], "drawdown_usdc": str(drawdown),
             "block_count": len(values), "block_mean_lower_95_descriptive": lower,

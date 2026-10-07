@@ -580,3 +580,12 @@ borne absente inconnue, ancienne trace explicitement non vérifiée. L'adaptateu
 paper fournit capital initial du modèle plus PnL cumulatif aux instantanés plats.
 Coûts externes séparés de la balance du moteur. Transfert entre sessions et
 comparateurs contemporains toujours manquants ; aucune stratégie réelle validée.
+
+### Transmission du cash paper lors d'un remplacement — étape 12
+
+Option explicite du plan immutable carry_flat_cash, prédécesseur suspendu plat,
+cash positif et fingerprint d'instantané disponible exigés. Transfert atomique
+avec retraite/lien/session, base de capital propre au nouveau state et compteurs
+séparés. Anciennes règles inchangées, anciens plans indépendants par défaut.
+Aucune activation réelle ; limites risque comparatif/coûts externes et rollback
+spécifique aux sessions transférées dans PROCEDURE-EVALUATION.md.

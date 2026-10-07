@@ -114,3 +114,30 @@ nominalement à USDC, sans modélisation de dépeg ou conversion exécutée. Le
 transfert réel de capital aux remplacements et les références contemporaines
 restent à implémenter ; cette vérification ne les invente pas. Pas de rendement
 composé ou drawdown prétendu à partir des seules bornes.
+
+## Transmission du cash lors d'un remplacement prévu
+
+Option `paper_replacement.capital_policy: carry_flat_cash` dans le plan figé.
+Par défaut les anciens plans conservent independent_paper_session. Le prédécesseur
+reste obligatoirement suspendu, plat, sans pending et assez ancien selon le délai
+prévu. Sa balance cash positive doit correspondre au fingerprint d'un instantané
+immuable disponible à la date de remplacement ; absence/décalage refuse le passage.
+Retraite, lien de transmission, nouvelle session et observation initiale sont
+atomiques. Le lien conserve la preuve de capital et son montant. Pas de transfert
+entre comptes/marchés ni de position ouverte ; pas de cash supplémentaire inventé.
+
+Le nouveau state garde session_starting_capital_usdc égal au cash transmis. Ses
+métriques partent de cette base, avec compteurs PnL/frais propres à la version.
+Les règles et tailles absolues figées ne changent pas ; ceci ne garantit aucune
+comparabilité de risque après changement de capital. Les bornes paper exposent
+cette base dans les métriques, avec fallback aux anciennes règles pour anciens
+instantanés. Les dépenses de recherche restent externes au moteur paper.
+
+Tests : transmission avec preuve, preuve future/manquante ou état modifié refusé,
+PnL nouvelle version partant de zéro, cooldown/position ouverte, idempotence et
+rollback de la retraite sur échec SQL d'insertion de la nouvelle session. Cette
+option n'est activée sur aucun plan réel existant ; aucun paper réel créé.
+Rollback : revenir sur le code seulement pour sessions indépendantes. Avec une
+session carry_flat_cash déjà créée, conserver le support de sa base de capital
+et les liens jusqu'à sa retraite ; ne jamais supprimer le champ ni réinterpréter
+son PnL depuis le capital du contrat historique.

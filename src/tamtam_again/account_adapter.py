@@ -31,12 +31,18 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         if millis(r['observed_at'])<=as_of_ms:records.append((r,decode_observation_payload(r),json.loads(r['request_json'])))
     modes=[(millis(r['observed_at']),p,r['observation_id']) for r,p,q in records if r['endpoint']=='userAbstraction']
     mode=modes[-1][1] if modes else 'unknown';mode_changed=len({str(p) for _,p,_ in modes})>1
-    boundaries={};events=[];unsupported=[];refs=[];ledger_events=[]
+    boundaries={};events=[];unsupported=[];refs=[];ledger_events=[];boundary_diagnostics=[]
     for row,payload,query in records:
         available=millis(row['observed_at']);ref='raw_observations:'+str(row['observation_id']);refs.append(ref)
         endpoint=row['endpoint']
         if endpoint=='clearinghouseState' and isinstance(payload,dict):
-            dex=query.get('dex','');scope='perp:'+dex;stamp=int(payload.get('time',available))
+            dex=query.get('dex','');scope='perp:'+dex
+            stamp=payload.get('time')
+            if type(stamp) is not int or not 0<=stamp<=available:
+                boundary_diagnostics.append({'scope_id':scope,'evidence_ref':ref,
+                    'available_ms':available,'status':'valuation_event_time_unknown',
+                    'reason':'receipt time cannot substitute for valuation event time'})
+                continue
             positions=[p['position'] for p in payload.get('assetPositions',[]) if isinstance(p,dict) and isinstance(p.get('position'),dict)]
             equity=payload.get('marginSummary',{}).get('accountValue')
             if equity is None or any('unrealizedPnl' not in p for p in positions):continue
@@ -75,6 +81,22 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         coverage={k:{'status':'unknown','evidence_refs':[],'reason':'presence of API responses does not establish period completeness'} for k in ('fills','funding','flows','other_income','valuation_scope')}
         report=reconcile_period({'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms,'scope':{'id':scope,'currency':currency,'account_mode':mode,'shared_collateral_model_verified':False},'coverage':coverage,'valuations':boundaries.get(scope,[]),'events':[e for e in events if e['scope_id']==scope]})
         reports.append(report)
+        values=boundaries.get(scope,[])
+        for name,target in (('start',start_ms),('end',end_ms)):
+            before=[v for v in values if v['event_ms']<=target]
+            after=[v for v in values if v['event_ms']>=target]
+            nearest_before=max(before,key=lambda v:v['event_ms']) if before else None
+            nearest_after=min(after,key=lambda v:v['event_ms']) if after else None
+            def describe(v):
+                return {'event_ms':v['event_ms'],'available_ms':v['available_ms'],
+                        'distance_ms':abs(v['event_ms']-target),
+                        'evidence_ref':v['evidence_ref']} if v else None
+            exact=any(v['event_ms']==target for v in values)
+            boundary_diagnostics.append({'scope_id':scope,'boundary':name,
+                'target_ms':target,'status':'exact_observation' if exact else 'missing_exact_observation',
+                'nearest_before':describe(nearest_before),'nearest_after':describe(nearest_after),
+                'interpolation_applied':False,
+                'next_action':None if exact else 'choose explicit observed boundaries or obtain timestamped valuations; do not interpolate equity'})
     # Deduplicate receptions without merging contradictory financial events.
     ledger_by_id={}
     for event in ledger_events:
@@ -83,4 +105,4 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             unsupported.append({'kind':'conflicting_ledger_duplicate','evidence_refs':[old['evidence_ref'],event['evidence_ref']],'event_id':event['id'],'reason':'same identity with different financial fields'})
         ledger_by_id.setdefault(event['id'],event)
     ledger_events=list(ledger_by_id.values())
-    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}
+    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}

@@ -44,3 +44,18 @@ class AdapterTests(unittest.TestCase):
   self.assertEqual(r['unsupported_events'][0]['status'],'currency_unverified')
   self.assertEqual(r['perp_scope_reports'][0]['observed']['funding'],'0')
   self.assertIn('funding denomination/amount unavailable',r['perp_scope_reports'][0]['unknown_reasons'])
+ def test_missing_valuation_time_is_not_receipt_time(self):
+  self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,endpoint='clearinghouseState',payload={'marginSummary':{'accountValue':'100'},'assetPositions':[]})
+  self.s.connection.execute("update raw_observations set observed_at='1970-01-01T00:00:01+00:00'");self.s.connection.commit()
+  r=report_account(self.s,'test',self.addr,0,1000,as_of_ms=2000)
+  self.assertEqual(r['boundary_diagnostics'][0]['status'],'valuation_event_time_unknown')
+  self.assertEqual(r['perp_scope_reports'],[])
+ def test_nearest_valuation_not_interpolated(self):
+  for stamp in (100,900):
+   self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,endpoint='clearinghouseState',payload={'time':stamp,'marginSummary':{'accountValue':'100'},'assetPositions':[]})
+  self.s.connection.execute("update raw_observations set observed_at='1970-01-01T00:00:01+00:00'");self.s.connection.commit()
+  r=report_account(self.s,'test',self.addr,0,1000,as_of_ms=2000)
+  self.assertEqual(r['boundary_diagnostics'][0]['nearest_after']['distance_ms'],100)
+  self.assertEqual(r['boundary_diagnostics'][1]['nearest_before']['distance_ms'],100)
+  self.assertFalse(r['boundary_diagnostics'][1]['interpolation_applied'])
+  self.assertIsNone(r['perp_scope_reports'][0]['metrics']['economic_pnl'])

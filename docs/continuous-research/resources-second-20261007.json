@@ -1,0 +1,36 @@
+{
+  "sample": {
+    "sampled_at": 1791369731.1484482,
+    "database_identity": [
+      66306,
+      195957818
+    ],
+    "logical_allocated_bytes": 7577473024,
+    "logical_live_page_bytes": 7577473024,
+    "file_bytes": {
+      "": 7577415680,
+      "-wal": 56732432,
+      "-shm": 32768
+    },
+    "disk_free_bytes": 2246428667904,
+    "process": {
+      "pid": 447350,
+      "start_ticks": 14241699,
+      "cpu_seconds": 821.36,
+      "resident_bytes": 563884032
+    },
+    "limits": [
+      "process sample excludes children and other workers",
+      "live pages include indexes; not payload bytes",
+      "WAL/file sizes can fluctuate during checkpoints"
+    ]
+  },
+  "change": {
+    "elapsed_seconds": 59.34179067611694,
+    "same_database": true,
+    "logical_live_growth_bytes_per_second": 54873.97604451728,
+    "process_cpu_cores_used": 0.07246158147584637,
+    "same_process": true,
+    "extrapolation_status": "window_only_not_capacity_forecast"
+  }
+}

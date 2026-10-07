@@ -1,0 +1,11 @@
+[Unit]
+Description=tamtam_again progressive REST population scheduling
+
+[Timer]
+OnBootSec=120
+OnUnitInactiveSec=60
+AccuracySec=5
+Unit=tamtam-again-population.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=tamtam_again bounded public REST population overview
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/population-tick.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --policy /home/Untergame/tamtam_again/config/population-policy.json
+TimeoutStartSec=600
+NoNewPrivileges=true

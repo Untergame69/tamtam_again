@@ -41,7 +41,7 @@ READ_ONLY_INFO_TYPES = {
     "userFillsByTime", "userFunding",
     "userNonFundingLedgerUpdates", "clearinghouseState",
     "spotClearinghouseState", "openOrders", "portfolio",
-    "l2Book", "candleSnapshot",
+    "l2Book", "candleSnapshot", "userRole", "userAbstraction", "subAccounts",
 }
 
 
@@ -268,6 +268,8 @@ def _request_weight(payload: dict[str, Any]) -> int:
     query_type = payload.get("type")
     if query_type in LIGHT_INFO_TYPES:
         return 2
+    if query_type == "userRole":
+        return 60
     if query_type == "userFillsByTime":
         return 20 + (MAX_PAGE_ROWS_BY_ENDPOINT[query_type] + 19) // 20
     if query_type == "userFunding":

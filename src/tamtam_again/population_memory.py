@@ -28,6 +28,15 @@ def remember(store,request_id):
         'execution_limits':[hypothesis['execution_constraints'],hypothesis['risk']],
         'open_questions':questions if isinstance(questions,list) else [questions],
         'related_hypotheses':[],'status':'hypothesis'}
+    # Inherited knowledge can concern other accounts or markets. Keep its entire
+    # declared source union instead of laundering it into this account's period.
+    for entry in packet.get('research_memory',[]):
+        inherited=entry['item']
+        for period in inherited['periods']:
+            if period not in item['periods']:item['periods'].append(period)
+        item['origin_accounts']=sorted(set(item['origin_accounts'])|set(inherited['origin_accounts']))
+        item['origin_markets']=sorted(set(item['origin_markets'])|set(inherited['origin_markets']))
+        item['evidence_refs'].append({'kind':'knowledge','id':entry['knowledge_id']})
     saved=save_knowledge(store,item)
     store.connection.execute('insert or ignore into population_research_memory values(?,?,?)',
         (request_id,saved['knowledge_id'],now_ms()));store.connection.commit()

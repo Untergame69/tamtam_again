@@ -124,6 +124,30 @@ class RuntimeTests(unittest.TestCase):
         self.assertFalse(routed['promotion_authorized'])
         self.assertFalse(self.s.connection.execute("select 1 from sqlite_master where name='validation_plans'").fetchone())
 
+    def test_memory_import_preserves_cross_account_inherited_periods(self):
+        from tamtam_again.population_memory import remember
+        from tamtam_again.research_memory import migrate,save_knowledge
+        migrate(self.s)
+        inherited_period={'network':'test','address':'other-account','market':'SOL','start_ms':1,'end_ms':10}
+        inherited={'periods':[inherited_period],'origin_accounts':['other-account'], 'origin_markets':['SOL']}
+        self.s.connection.execute('insert into research_knowledge values(?,?,?)',('ancestor',40,json.dumps(inherited)))
+        packet=json.loads(self.s.connection.execute('select packet_json from population_research_jobs').fetchone()[0])
+        packet['available_ms']=40
+        packet['research_memory']=[{'knowledge_id':'ancestor','created_ms':40,'item':inherited}]
+        result={'proposal':{'hypothesis':{'mechanism':'fixture','markets':['BTC'],
+            'required_data':[],'rejection_criteria':'reject','execution_constraints':'limits','risk':'risk'}},
+            'critique':{'decision':'consistent'},'promotion_authorized':False,'profitability_proven':False}
+        self.s.connection.execute("update population_research_jobs set status='hypothesis_recorded',result_json=?,packet_json=?,updated_ms=50",
+            (json.dumps(result),json.dumps(packet)));self.s.connection.commit()
+        with patch('tamtam_again.research_memory.clock',return_value=100):
+            saved=remember(self.s,self.request)
+            item=json.loads(self.s.connection.execute('select item_json from research_knowledge where knowledge_id=?',(saved['knowledge_id'],)).fetchone()[0])
+            self.assertIn(inherited_period,item['periods'])
+            self.assertIn('other-account',item['origin_accounts'])
+            self.assertIn({'kind':'knowledge','id':'ancestor'},item['evidence_refs'])
+            item['periods'].remove(inherited_period)
+            with self.assertRaisesRegex(ValueError,'inherited periods'):save_knowledge(self.s,item)
+
     def test_open_hypothesis_and_review_never_promote(self):
         hypothesis={k:'fixture testable specification' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
         hypothesis.update(type='autonomous',markets=['BTC','ETH'],required_data=['causal price paths'],evidence_refs=['account_scope_reports:one'])

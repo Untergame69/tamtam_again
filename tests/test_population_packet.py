@@ -40,11 +40,12 @@ class PacketTests(unittest.TestCase):
     def test_optional_memory_does_not_reopen_descriptive_input(self):
         original=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']
         self.s.connection.execute('create table research_knowledge(knowledge_id text)')
-        with patch('tamtam_again.research_memory.export_knowledge',return_value=[{'knowledge_id':'fixture','item':{'status':'hypothesis'}}]) as export:
-            new=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']
+        with patch('tamtam_again.research_memory.export_knowledge',return_value=[{'knowledge_id':'fixture','created_ms':22,'item':{'status':'hypothesis'}}]) as export:
+            new=packet_for_account(self.s,'test','account',as_of_ms=25,max_chars=10000)['packet']
         self.assertEqual(original['research_input_fingerprint'],new['research_input_fingerprint'])
         self.assertIn('research_memory',new)
-        self.assertEqual(export.call_args.kwargs['as_of_ms'],20)
+        self.assertEqual(export.call_args.kwargs['as_of_ms'],25)
+        self.assertEqual(new['available_ms'],22)
 
     def test_order_evidence_is_causal_and_changes_input_only_for_content(self):
         original=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']

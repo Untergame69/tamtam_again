@@ -168,3 +168,12 @@ PYTHONPATH=src python3 scripts/population-collect-orders.py --db data/tamtam.sql
 ```
 Rollback : annuler le code ciblé, conserver population_order_reports et archives.
 Aucun redémarrage collecteur requis pour cette commande indépendante.
+
+La mémoire réutilisée conserve désormais toute l'union de ses périodes sources,
+y compris d'autres comptes/marchés. Chaque connaissance héritée reste une preuve
+typée, avec date de création et contrôle de disponibilité ; le point générique
+save_knowledge refuse aussi de supprimer ces périodes. La disponibilité du
+paquet est au moins celle de toute connaissance qu'il inclut. Son empreinte
+qui déclenche une nouvelle analyse reste fondée sur les observations, pour
+éviter une boucle provoquée par sa propre mémoire. Cette correction ne libère
+aucune réserve et ne réécrit pas les imports existants.

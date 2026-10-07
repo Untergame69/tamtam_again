@@ -91,6 +91,15 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
                 result.get('critique',{}).get('decision')!='consistent'):
                 raise ValueError('Population evidence must retain reviewed hypothesis status')
             packet=json.loads(row['packet_json'])
+            for entry in packet.get('research_memory',[]):
+                inherited=store.connection.execute('select item_json,created_ms from research_knowledge where knowledge_id=?',(entry['knowledge_id'],)).fetchone()
+                if (not inherited or inherited['created_ms']>packet['available_ms'] or
+                    json.loads(inherited['item_json'])['periods']!=entry['item']['periods'] or
+                    {'kind':'knowledge','id':entry['knowledge_id']} not in item['evidence_refs']):
+                    raise ValueError('Population inherited knowledge proof must remain available and explicit')
+            inherited_periods=[p for entry in packet.get('research_memory',[]) for p in entry['item']['periods']]
+            if any(p not in item['periods'] for p in inherited_periods):
+                raise ValueError('Population packet inherited periods must remain explicit')
             # Conservative union: descriptors can refer to older inventory/history.
             # Never narrow the declared period to just a favorable episode.
             if not any(p['network']==row['network'] and p['address']==row['address'] and
@@ -98,8 +107,8 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
                        p['end_ms']>=packet['available_ms']+1 for p in item['periods']):
                 raise ValueError('Whole population packet source period must remain explicit')
         elif proof['kind']=='knowledge':
-            row=store.connection.execute('select item_json from research_knowledge where knowledge_id=?',(proof['id'],)).fetchone()
-            if not row:raise ValueError('Unknown related knowledge')
+            row=store.connection.execute('select item_json,created_ms from research_knowledge where knowledge_id=?',(proof['id'],)).fetchone()
+            if not row or row['created_ms']>now:raise ValueError('Unknown or unavailable related knowledge')
             if any(p not in item['periods'] for p in json.loads(row[0])['periods']):raise ValueError('Inherited periods must remain explicit')
         else:raise ValueError('Unsupported evidence kind; arbitrary file paths cannot grant access')
     if len(canonical(item))>24000:raise ValueError('Research memory item exceeds bounded size')

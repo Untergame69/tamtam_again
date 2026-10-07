@@ -64,7 +64,9 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
         eligible=len(memory)
         while memory and len(canonical({**packet,'research_memory':memory}))>max_chars-512:
             memory.pop()
-        if memory:packet['research_memory']=memory
+        if memory:
+            packet['research_memory']=memory
+            packet['available_ms']=max(packet['available_ms'],max(entry.get('created_ms',0) for entry in memory))
         packet['memory_selection']={'eligible_exported_items':eligible,'included_items':len(memory),
             'method':'whole authorized items in chronological order within remaining packet budget',
             'new_memory_alone_does_not_reopen_unchanged_population_input':True}

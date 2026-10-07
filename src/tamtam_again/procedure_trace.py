@@ -38,6 +38,11 @@ def registry_trace(store, *, as_of_ms):
             emit('population_research_latest_status',row['request_id'],row['updated_ms'],
                  {'status':row['status'],'actual_cost_usd':row['actual_cost_usd'],
                   'reserved_cost_usd':row['reserved_cost_usd']})
+    if exists('pipeline_decisions'):
+        for row in store.connection.execute('select decision_id,created_at from pipeline_decisions'):
+            identity=str(row['decision_id'])
+            emit('pipeline_decision_recorded',identity,stamp(row['created_at']),
+                 {'evidence_ref':'pipeline_decisions:'+identity})
     for table,identity,date,kind in (
         ('population_cohorts','cohort_id','created_ms','population_cohort_created'),
         ('population_order_reports','report_id','available_ms','public_orders_available'),
@@ -45,7 +50,8 @@ def registry_trace(store, *, as_of_ms):
         ('research_period_releases','evaluation_id','released_ms','evaluated_period_released'),
         ('population_hypothesis_routes','request_id','created_ms','population_hypothesis_routed'),
         ('population_experiment_links','request_id','created_ms','population_experiment_registered'),
-        ('population_plan_drafts','request_id','created_ms','population_plan_preregistered')):
+        ('population_plan_drafts','request_id','created_ms','population_plan_preregistered'),
+        ('evaluation_terminal_events','evaluation_id','available_ms','evaluation_terminal_recorded')):
         if exists(table):
             # Column names are internal constants; no packet/result payload is read.
             for row in store.connection.execute(f'select {identity},{date} from {table} where {date}<=?',(as_of_ms,)):

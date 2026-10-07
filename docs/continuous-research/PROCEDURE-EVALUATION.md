@@ -40,3 +40,28 @@ réservé n'est consulté pour produire ces événements. Les preuves restent
 référencées, sans rétrodatation ni qualification économique. Ces événements
 complètent la chronologie, mais ne remplacent pas les adaptateurs de sélection
 et de performance de toute la procédure.
+
+## Attentes, preuves distinctes et fins d'évaluations
+
+La déduplication pipeline_decisions inclut désormais les preuves. Deux variantes
+recevant le même diagnostic/réveil restent deux décisions conservées ; répéter
+le même diagnostic et la même preuve n'ajoute pas de ligne. Les décisions
+anciennes dont les preuves ont été fusionnées ne sont pas reconstruites après
+coup : la limite du journal historique doit rester explicite.
+
+Les nouvelles évaluations enregistrent evaluation_terminal_events avec leur
+statut terminal et date après calcul, dans la même transaction que le résultat.
+Une erreur de calcul est aussi journalisée ; la période finale reste consommée.
+Les relectures ne réécrivent ni date ni statut. Aucun backfill à partir de
+created_at n'est effectué : ce champ correspond au début de l'évaluation et
+ne prouve pas quand un résultat terminal était disponible.
+
+La trace metadata-only référence décisions et fins d'évaluation à leur date
+propre. Elle ne lit ni diagnostic, preuves JSON, statut terminal ni métriques :
+les résultats réservés ne deviennent pas une entrée de développement via cet
+export. L'évaluation autorisée de la procédure devra résoudre ces références
+avec ses contrôles temporels et de réserve. Le journal seul ne prouve toujours
+pas la rentabilité de la sélection/adaptation.
+
+Rollback ciblé code ; conserver pipeline_decisions et evaluation_terminal_events.
+L'ajout du journal est compatible avec les anciens plans et ne les réécrit pas.

@@ -54,14 +54,26 @@ def decision(store: Store, network: str, address: str, coin: str, state: str,
         raise ValueError("Explicit transition diagnostic, wake condition and action required")
     initialize(store)
     latest = store.connection.execute(
-        "SELECT state,diagnostic,wake_json,next_action FROM pipeline_decisions WHERE network=? AND address=? AND coin=? ORDER BY decision_id DESC LIMIT 1",
+        "SELECT state,diagnostic,wake_json,next_action,evidence_json FROM pipeline_decisions WHERE network=? AND address=? AND coin=? ORDER BY decision_id DESC LIMIT 1",
         (network,address,coin)).fetchone()
     values = (state,diagnostic,canonical(wake),next_action)
-    if latest and tuple(latest) == values:
+    if latest and tuple(latest) == (*values,canonical(evidence)):
         return
     store.connection.execute("INSERT INTO pipeline_decisions(network,address,coin,state,diagnostic,wake_json,next_action,evidence_json,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
                              (network,address,coin,*values,canonical(evidence),utc_now()))
     store.connection.commit()
+
+
+def record_evaluation_terminal(store: Store,evaluation_id: str,status: str) -> None:
+    """Caller commits this metadata with the terminal evaluation result."""
+    if status not in ('passed','failed','error'):raise ValueError('Terminal evaluation status required')
+    source=store.connection.execute('select status from validation_evaluations where evaluation_id=?',(evaluation_id,)).fetchone()
+    if not source or source[0]!=status:raise ValueError('Matching terminal evaluation evidence required')
+    store.connection.execute('create table if not exists evaluation_terminal_events '
+        '(evaluation_id text primary key,status text not null,available_ms integer not null)')
+    prior=store.connection.execute('select status from evaluation_terminal_events where evaluation_id=?',(evaluation_id,)).fetchone()
+    if prior and prior[0]!=status:raise ValueError('Terminal evaluation event is immutable')
+    store.connection.execute('insert or ignore into evaluation_terminal_events values(?,?,?)',(evaluation_id,status,now_ms()))
 
 
 def validate_criteria(criteria: dict[str, Any]) -> None:
@@ -260,9 +272,11 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
                   "input_fingerprint":data_fp,"criteria_fingerprint":fingerprint(criteria)}
     except Exception as exc:
         store.connection.execute("UPDATE validation_evaluations SET status='error',result_json=? WHERE evaluation_id=?",(canonical({"status":"error","error_type":type(exc).__name__}),evaluation_id))
+        record_evaluation_terminal(store,evaluation_id,'error')
         store.connection.commit()
         raise
     store.connection.execute("UPDATE validation_evaluations SET status=?,result_json=? WHERE evaluation_id=?",(result["status"],canonical(result),evaluation_id))
+    record_evaluation_terminal(store,evaluation_id,result["status"])
     store.connection.commit()
     decision(store,row["network"],row["address"],row["coin"],"ready_to_test" if result["promotable"] else "needs_data" if not failures else "rejected",
              f"{stage}: {result['status']}; synthetic={bool(row['synthetic'])}",

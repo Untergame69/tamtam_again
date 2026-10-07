@@ -549,3 +549,15 @@ Artefact population-recipe-control-20261007.json, aucune requête fournisseur ni
 inférence réelle, isolation explicitement simulée, aucun changement production.
 La recette ne qualifie aucune stratégie réelle et ne termine pas les autres
 capacités du Goal. Commande/limites/rollback POPULATION-RESEARCH.md.
+
+### Attentes et issues dans le journal causal — étape 12
+
+Correction dedup pipeline : preuves incluses, les variantes différentes ne sont
+plus perdues sous un même diagnostic d'attente. Nouveau journal terminal des
+évaluations, statut/date après calcul, commit atomique avec résultat, erreur
+incluse et finale toujours consommée ; rejeu sans changement de date. Trace
+metadata-only des décisions et terminaisons sans lecture de résultats réservés.
+Anciens événements manquants non reconstitués/non rétrodatés. Tests preuve
+changée vs rejouée, date disponible/cutoff, absence de lecture de diagnostic ou
+preuves JSON, statut terminal immuable et chemin erreur réel du moteur sur fixture.
+L'adaptateur complet de sélection/résultats autorisés reste à terminer.

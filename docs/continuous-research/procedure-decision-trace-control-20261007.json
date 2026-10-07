@@ -1,0 +1,24 @@
+{
+  "as_of_ms": 1791375867819,
+  "trace_fingerprint": "d90c0694d382c97c0e9e4f213809d852f6eaf5cc4e3b761e3acfb7381d290066",
+  "counts_by_kind": {
+    "pipeline_decision_recorded": 896,
+    "research_registered": 8,
+    "research_latest_status": 8,
+    "variant_frozen": 3,
+    "population_attempt_started": 103,
+    "population_attempt_finished": 103,
+    "research_knowledge_created": 5,
+    "population_cohort_created": 1,
+    "population_diagnostic": 50,
+    "population_research_sealed": 6,
+    "population_research_latest_status": 6,
+    "population_memory_imported": 4,
+    "population_hypothesis_routed": 5,
+    "public_orders_available": 1
+  },
+  "performance_status": "unknown",
+  "net_adaptation_result": null,
+  "no_reserved_payload_read": true,
+  "historical_missing_events_backfilled": false
+}

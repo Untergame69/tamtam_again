@@ -222,7 +222,10 @@ class RegistryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.evaluate("final")
         self.assertEqual(self.store.connection.execute("SELECT count(*) FROM consumed_holdouts").fetchone()[0],1)
+        error_event=self.store.connection.execute("select t.evaluation_id,t.available_ms from evaluation_terminal_events t join validation_evaluations e using(evaluation_id) where e.stage='final' and t.status='error'").fetchone()
+        self.assertIsNotNone(error_event)
         self.assertEqual(self.evaluate("final")["status"],"error")
+        self.assertEqual(self.store.connection.execute('select available_ms from evaluation_terminal_events where evaluation_id=?',(error_event[0],)).fetchone()[0],error_event[1])
 
     def test_synthetic_fixture_cannot_promote_real_n2(self):
         self.evaluate("comparison")

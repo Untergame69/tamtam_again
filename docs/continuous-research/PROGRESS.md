@@ -348,3 +348,7 @@ Décomposition reproductible intégrée au rapport capacity : backfill, historiq
 ## Contrat de consolidation testé — 2026-10-07
 
 Reducer de valorisation pour pools indépendants, avec garde contre somme de collatéral partagé, scopes manquants/doublons, dates économiques désalignées et conversions non contemporaines ou futures. Quatre tests dédiés, 39 tests account/accounting passent. Capacité pure sur fixtures uniquement : intégration des preuves réelles de capital et valorisation spot reste à faire ; aucune consolidation réelle revendiquée. Aucune mutation d’archive ni service, rollback du module/documentation.
+
+## Modèle de capital selon le mode — 2026-10-07
+
+Documentation officielle relue : en unified/portfolio margin, spotClearinghouseState expose les balances/holds et les états utilisateur par DEX ne donnent pas un capital fiable. Adaptateur corrigé : refus des bornes de capital perp pour modes partagés/discontinué et changements observés ; balances spot conservées comme observations non valorisées. Quarante tests account/accounting passent dont fixture unified avec deux montants contradictoires entre sources. Pas de donnée réservée lue ou archive modifiée. Contrat et lien officiel dans ACCOUNTING-CONTRACT.md. La consolidation réelle exige encore valorisation des balances, engagements et positions, preuves de périmètre et dates alignées ; aucune validation économique.

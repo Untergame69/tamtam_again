@@ -32,12 +32,21 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         if millis(r['observed_at'])<=as_of_ms:records.append((r,decode_observation_payload(r),json.loads(r['request_json'])))
     modes=[(millis(r['observed_at']),p,r['observation_id']) for r,p,q in records if r['endpoint']=='userAbstraction']
     mode=modes[-1][1] if modes else 'unknown';mode_changed=len({str(p) for _,p,_ in modes})>1
-    boundaries={};events=[];unsupported=[];refs=[];ledger_events=[];boundary_diagnostics=[]
+    boundaries={};events=[];unsupported=[];refs=[];ledger_events=[];boundary_diagnostics=[];spot_snapshots=[]
     for row,payload,query in records:
         available=millis(row['observed_at']);ref='raw_observations:'+str(row['observation_id']);refs.append(ref)
         endpoint=row['endpoint']
+        if endpoint=='spotClearinghouseState' and isinstance(payload,dict):
+            spot_snapshots.append({'available_ms':available,'evidence_ref':ref,
+                'balances':payload.get('balances'),'event_ms':payload.get('time'),
+                'status':'observed_balances_not_priced_equity'})
         if endpoint=='clearinghouseState' and isinstance(payload,dict):
             dex=query.get('dex','');scope='perp:'+dex
+            if mode in ('unifiedAccount','portfolioMargin','dexAbstraction') or mode_changed:
+                boundary_diagnostics.append({'scope_id':scope,'evidence_ref':ref,
+                    'available_ms':available,'status':'per_dex_capital_not_usable',
+                    'reason':'shared or changing account mode requires account-wide collateral valuation'})
+                continue
             stamp=payload.get('time')
             if type(stamp) is not int or not 0<=stamp<=available:
                 boundary_diagnostics.append({'scope_id':scope,'evidence_ref':ref,
@@ -115,4 +124,4 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             unsupported.append({'kind':'conflicting_ledger_duplicate','evidence_refs':[old['evidence_ref'],event['evidence_ref']],'event_id':event['id'],'reason':'same identity with different financial fields'})
         ledger_by_id.setdefault(event['id'],event)
     ledger_events=list(ledger_by_id.values())
-    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}
+    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_balance_snapshots':spot_snapshots,'capital_model':{'mode':mode,'status':'unverified','balance_source':'spotClearinghouseState' if mode in ('unifiedAccount','portfolioMargin') else 'mode-specific inventory','reference':'https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}

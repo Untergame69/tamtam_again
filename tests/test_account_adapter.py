@@ -59,3 +59,13 @@ class AdapterTests(unittest.TestCase):
   self.assertEqual(r['boundary_diagnostics'][1]['nearest_before']['distance_ms'],100)
   self.assertFalse(r['boundary_diagnostics'][1]['interpolation_applied'])
   self.assertIsNone(r['perp_scope_reports'][0]['metrics']['economic_pnl'])
+ def test_unified_per_dex_capital_not_used_as_equity(self):
+  for endpoint,payload in [('userAbstraction','unifiedAccount'),('clearinghouseState',{'time':500,'marginSummary':{'accountValue':'100'},'assetPositions':[]}),('spotClearinghouseState',{'balances':[{'coin':'USDC','token':0,'total':'200','hold':'0'}]})]:
+   self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,endpoint=endpoint,payload=payload)
+  self.s.connection.execute("update raw_observations set observed_at='1970-01-01T00:00:01+00:00'");self.s.connection.commit()
+  r=report_account(self.s,'test',self.addr,0,1000,as_of_ms=2000)
+  self.assertEqual(r['perp_scope_reports'],[])
+  self.assertEqual(r['boundary_diagnostics'][0]['status'],'per_dex_capital_not_usable')
+  self.assertEqual(r['capital_model']['balance_source'],'spotClearinghouseState')
+  self.assertEqual(r['spot_balance_snapshots'][0]['balances'][0]['total'],'200')
+  self.assertFalse(r['economic_validation'])

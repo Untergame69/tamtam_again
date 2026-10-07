@@ -92,6 +92,9 @@ def create_plan(store: Store, plan: dict[str, Any]) -> dict[str, Any]:
     if not required <= plan.keys() or type(plan["synthetic"]) is not bool:
         raise ValueError("Incomplete validation plan")
     validate_criteria(plan["criteria"])
+    if 'paper_monitoring' in plan:
+        from .paper_monitor import validate_policy
+        validate_policy(plan['paper_monitoring'])
     if not plan["synthetic"]:
         from .providers.hyperliquid import NETWORKS, validate_address
         if plan["network"] not in NETWORKS:

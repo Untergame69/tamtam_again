@@ -221,14 +221,18 @@ class RegistryTests(unittest.TestCase):
         row,spec,plan=get_variant(self.store,self.variant)
         # Exercise the real scheduler branch without allowing any archive reads.
         row={**dict(row),'synthetic':False}
+        plan={**plan,'paper_monitoring':{'version':'paper-loss-budget-v1',
+            'max_net_loss_usdc':'5','justification':'fixture risk budget'}}
         with patch('tamtam_again.paper.get_variant',return_value=(row,spec,plan)), \
              patch('tamtam_again.paper.archive_events',return_value=([],0)), \
+             patch('tamtam_again.paper.metrics',return_value={'net_pnl':'-5'}), \
              patch('tamtam_again.paper.now_ms',return_value=1000):
             result=paper_tick(self.store,session['session_id'])
         self.assertEqual(result['status'],'suspended')
         journal=self.store.connection.execute('select * from paper_suspensions').fetchone()
         self.assertEqual(journal['suspended_ms'],1000)
         self.assertIn('missing_live_heartbeat',journal['diagnostics_json'])
+        self.assertIn('paper_net_loss_budget_exhausted',journal['diagnostics_json'])
         self.assertNotIn('paper_session_suspended',[e['kind'] for e in registry_trace(self.store,as_of_ms=999)['events']])
         self.assertIn('paper_session_suspended',[e['kind'] for e in registry_trace(self.store,as_of_ms=1000)['events']])
         from tamtam_again.paper import synthetic_recipe_tick

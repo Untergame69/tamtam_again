@@ -221,6 +221,10 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
             state["diagnostics"].append("paper_duration_budget_exhausted")
         if healthy is None or now_ms()-healthy > spec["execution"]["heartbeat_timeout_ms"]:
             state["diagnostics"].append("missing_live_heartbeat")
+        if 'paper_monitoring' in plan:
+            from .paper_monitor import diagnose
+            state['diagnostics'].extend(diagnose(plan['paper_monitoring'],
+                metrics(state,spec,plan['criteria']['block_ms'])))
         status = "suspended" if state["diagnostics"] else "active"
         if status == "suspended":
             store.connection.execute('insert into paper_suspensions values(?,?,?)',
@@ -231,7 +235,7 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
         store.connection.rollback()
         raise
     if status == "suspended":
-        decision(store,row["network"],row["address"],row["coin"],"suspended","N2 observation continuity failed",{"requires_operator_review":True,"new_session_required":True},"inspect_collector",state["diagnostics"])
+        decision(store,row["network"],row["address"],row["coin"],"suspended","N2 deterministic monitoring stopped the session",{"requires_operator_review":True,"new_session_required":True},"inspect_paper_diagnostics",state["diagnostics"])
     return {"session_id":session_id,"status":status,"processed_events":len(events),"metrics":metrics(state,spec,plan["criteria"]["block_ms"])}
 
 

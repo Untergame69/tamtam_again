@@ -61,3 +61,30 @@ spot et valorisations/conversions nécessaires, bornes comparables et preuves de
 complétude. Puis cas réels contrastés et exécution automatique sur la population.
 La qualification v1 descriptive reste consultable pour l'historique, sans être
 transformée rétroactivement en preuve de validation économique.
+
+## Adaptateur de données réelles et résultat du 7 octobre
+
+`account_adapter.report_account` ne lit que les observations du nouveau collecteur
+population REST. Il refuse les adresses des plans réels avant toute requête brute,
+filtre la disponibilité et conserve les références d'observation. Les scopes de
+perp sont séparés ; devises HIP-3 non vérifiées, spot non valorisé et funding/ledger
+non classifiés ne sont jamais considérés connus ou égaux à zéro.
+
+Rapport réel `population-accounting-20261007.json` : sept comptes inventoriés sur
+une période commune explicite du 7 octobre, zéro qualification économique.
+Les PnL de fills présents sont descriptifs, les métriques de rendement et de
+réconciliation restent inconnues quand les preuves manquent. L'outil s'applique
+à tous les comptes déjà inventoriés sans relire les données des pilotes.
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/population-accounting-report.py --db data/tamtam.sqlite3 --start-ms START --end-ms END --output /tmp/population-accounting.json
+```
+
+Source officielle vérifiée le 7 octobre :
+https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes
+Pour unifiedAccount et portfolioMargin, les soldes/holds sont dans l'état spot ;
+les valeurs des comptes perp individuels ne sont pas significatives. Le ratio de
+maintenance unifié nécessite la correspondance dex/collateralToken, les marges
+cross/isolated et les soldes spot. Il ne se confond pas avec le ratio brut
+exposition/accountValue calculé dans l'ancienne qualification descriptive.
+Les anciens rapports demeurent datés, sans qualification rétroactive de leur ratio.

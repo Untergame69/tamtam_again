@@ -36,7 +36,7 @@ def reconcile_period(data:dict[str,Any])->dict[str,Any]:
         stamp=int(event['event_ms'])
         if not start<stamp<=end:continue
         identity=(event['kind'],event.get('scope_id'),event['id'])
-        canonical=json.dumps(event,sort_keys=True,separators=(',',':'))
+        canonical=json.dumps({k:v for k,v in event.items() if k not in ('available_ms','evidence_ref')},sort_keys=True,separators=(',',':'))
         if identity in events and events[identity][0]!=canonical:conflicts.append(str(identity))
         events.setdefault(identity,(canonical,event))
     if conflicts:missing.append('conflicting duplicate events')

@@ -134,3 +134,26 @@ Retour arrière propre à cet incrément : arrêter/désactiver
 observations et tentatives. Les anciens collecteurs et les pilotes continuent.
 Les fiches de périmètre, la comptabilité comparable et les autres exigences
 restent à terminer ; les comptes inventoriés ne sont pas déclarés rentables.
+
+## Troisième incrément — rapprochement comptable et adaptateur réel
+
+- dbfc6ea : reducer de période explicite, frais/remises et conversions causales,
+  flux internes/externes, capital/latent aux bornes, écarts de réconciliation,
+  Modified Dietz estimatif et TWR/drawdown échantillonné seulement si calculables.
+- Adaptateur population-only : garde des adresses réservées avant lecture, scopes
+  séparés, références d'observation et disponibilité. Les devises HIP-3 et le spot
+  incomplets ne reçoivent pas une valorisation inventée.
+- Rapport réel de sept comptes sur une période commune :
+  population-accounting-20261007.json ; aucun rendement validé. Funding/ledger,
+  valorisation consolidée, bornes et complétude encore insuffisants.
+- 96 tests passent, incluant absence de lecture des autres sources, refus des
+  pilotes, page courte non assimilée à une preuve et doublons de réception d'une
+  même exécution sans double compte ni faux conflit.
+- Documentation officielle des modes de compte relue : en mode unifié, prendre
+  le capital d'un perp dex comme capital global n'est pas valide. Les anciens
+  ratios restent des observations non qualifiées tant que le mode est inconnu.
+
+La tâche 6 reste partielle : les fondations de calcul et le diagnostic réel sont
+livrés, mais il faut normaliser et collecter les preuves manquantes, démontrer
+la valuation par mode et tester des cas réels contrastés réconciliables.
+Aucune modification des règles de promotion ni des périodes réservées.

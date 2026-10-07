@@ -26,3 +26,6 @@ class AccountingTests(unittest.TestCase):
   f=fixture();f['events'][-1]['event_ms']=500;r=reconcile_period(f);self.assertIsNotNone(r['metrics']['modified_dietz_estimate']);self.assertIsNone(r['metrics']['time_weighted_return']);self.assertIsNone(r['metrics']['sampled_flow_adjusted_drawdown'])
  def test_unavailable_event_not_exposed_to_accounting(self):
   f=fixture();e=copy.deepcopy(f['events'][0]);e['id']='future';e['available_ms']=3000;f['events'].append(e);self.assertEqual(reconcile_period(f)['observed']['events'],3)
+ def test_repeated_receipts_of_same_fill_do_not_conflict(self):
+  f=fixture();e=copy.deepcopy(f['events'][0]);e['available_ms']=1500;e['evidence_ref']='fixture:later';f['events'].append(e)
+  r=reconcile_period(f);self.assertEqual(r['observed']['events'],3);self.assertEqual(r['status'],'reconciled_inputs')

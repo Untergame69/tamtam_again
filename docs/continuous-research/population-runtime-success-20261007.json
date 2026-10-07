@@ -1,0 +1,40 @@
+{
+  "request_id": "2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807",
+  "status": "hypothesis_recorded",
+  "reserved_cost_usd": "2",
+  "actual_cost_usd": "0.0",
+  "observed_ms": 1791372916951,
+  "usage": [
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 59461,
+      "input_tokens": 4609,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 1545
+    },
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 19639,
+      "input_tokens": 5794,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 467
+    }
+  ],
+  "promotion_authorized": false,
+  "profitability_proven": false,
+  "runtime_contract_version": "population-hypothesis-v1-structured-diagnostic-projected-refs",
+  "validation_plans": 8,
+  "variants": 3,
+  "paper_sessions": 0,
+  "population_job_counts": {
+    "hypothesis_recorded": 1,
+    "running": 1,
+    "suspended": 1
+  },
+  "timer_enabled": true,
+  "systemd": "Id=tamtam-again-population-research.timer\nActiveState=active\nSubState=running\n\nMainPID=509168\nId=tamtam-again-population-research.service\nActiveState=activating\nSubState=start\n\nMainPID=447350\nId=tamtam-again-collectors.service\nActiveState=active\nSubState=running\n"
+}

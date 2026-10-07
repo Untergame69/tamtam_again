@@ -67,7 +67,24 @@ plafond de nouveaux paquets et appels par tick. Fallback aux fiches disponibles
 pour les bases de recette sans ordonnanceur population. Commande :
 `PYTHONPATH=src .venv/bin/python scripts/population-research-tick.py --db CHEMIN
 --policy POLITIQUE --max-jobs 1`. Ajouter --prepare-only pour ne pas appeler de
-modèle. Aucun timer ni fichier de politique de production activé à ce stade.
+modèle. Politique locale `config/population-research-policy.json` : première
+tranche huit requêtes au total, cooldown par compte 24 h, expiration 1 h,
+deux appels maximum de 120 s/job, réservation 1 USD/appel, 5000 tokens sortie.
+Ces limites sont des budgets choisis, aucune certification statistique.
+
+Timer dédié tamtam-again-population-research.timer actif, OnUnitInactiveSec=900,
+un job par service et arrêt de nouvelles requêtes au plafond global. Ne pas
+augmenter automatiquement le plafond ni relancer une entrée échouée identique.
+Le timer pilote existant et ses plans restent séparés. Première recette réelle
+complète : population-runtime-success-20261007.json ; hypothèse enregistrée et
+revue de cohérence, aucune stratégie validée ni session paper créée.
+
+Rollback : `systemctl --user disable --now tamtam-again-population-research.timer`,
+puis arrêter son service (appel éventuellement engagé conserve sa réservation et
+sera classé interrupted au prochain worker). Revenir au code ciblé, garder
+requêtes/réponses/budgets et archives. Présence antérieure des unités consignée
+dans data/rollback/population-research-20261007 ; collecteur et autres timers
+ne doivent pas être arrêtés pour ce rollback.
 
 Reste à raccorder : politique d'exploitation et activation mesurée, puis
 routage vers famille d'expérience ou mécanisme unsupported, critères et nouvelles

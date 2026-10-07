@@ -18,7 +18,7 @@ class AccountingTests(unittest.TestCase):
   f=fixture();f['events'][0]['fee']='-1';f['valuations'][-1]['equity']='162';r=reconcile_period(f);self.assertEqual(r['metrics']['component_pnl'],'12');self.assertEqual(r['metrics']['reconciliation_residual'],'0')
  def test_non_usdc_fee_requires_causal_fx(self):
   f=fixture();f['events'][0]['fee_currency']='HYPE';r=reconcile_period(f);self.assertIsNone(r['metrics']['economic_pnl'])
-  f['events'][0]['fee_conversion']={'currency':'USDC','rate':'1','quote_ms':400,'evidence_ref':'fixture:fx'};self.assertEqual(reconcile_period(f)['metrics']['reconciliation_residual'],'0')
+  f['events'][0]['fee_conversion']={'currency':'USDC','rate':'1','quote_ms':400,'available_ms':600,'evidence_ref':'fixture:fx'};self.assertEqual(reconcile_period(f)['metrics']['reconciliation_residual'],'0')
   f['events'][0]['fee_conversion']['quote_ms']=600;self.assertIsNone(reconcile_period(f)['metrics']['economic_pnl'])
  def test_transfer_inside_scope_is_not_return(self):
   f=fixture();f['events'][-1]['boundary_classification']='internal';f['valuations'][-1]['equity']='110';self.assertEqual(reconcile_period(f)['metrics']['economic_pnl'],'10')
@@ -29,3 +29,16 @@ class AccountingTests(unittest.TestCase):
  def test_repeated_receipts_of_same_fill_do_not_conflict(self):
   f=fixture();e=copy.deepcopy(f['events'][0]);e['available_ms']=1500;e['evidence_ref']='fixture:later';f['events'].append(e)
   r=reconcile_period(f);self.assertEqual(r['observed']['events'],3);self.assertEqual(r['status'],'reconciled_inputs')
+ def test_conversion_received_after_decision_is_unknown(self):
+  f=fixture();f['events'][0]['fee_currency']='HYPE'
+  f['events'][0]['fee_conversion']={'currency':'USDC','rate':'1','quote_ms':400,'available_ms':2001,'evidence_ref':'fixture:fx'}
+  self.assertIsNone(reconcile_period(f)['metrics']['economic_pnl'])
+  f['as_of_ms']=2001
+  self.assertEqual(reconcile_period(f)['metrics']['reconciliation_residual'],'0')
+ def test_invalid_or_undated_conversion_is_unknown(self):
+  for updates in ({'available_ms':None},{'available_ms':399},{'quote_ms':-1},
+                  {'rate':'0'},{'rate':'-1'},{'rate':'NaN'}, {'quote_ms':'400'}):
+   with self.subTest(updates=updates):
+    f=fixture();f['events'][0]['fee_currency']='HYPE'
+    f['events'][0]['fee_conversion']={'currency':'USDC','rate':'1','quote_ms':400,'available_ms':600,'evidence_ref':'fixture:fx',**updates}
+    self.assertIsNone(reconcile_period(f)['metrics']['economic_pnl'])

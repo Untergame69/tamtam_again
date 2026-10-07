@@ -116,3 +116,7 @@ du résumé. Quinze comptes examinés, aucune qualification économique ; les bo
 la couverture et la valorisation consolidée restent à établir.
 
 Source : [types ledger et funding officiels](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/websocket/subscriptions).
+
+## Disponibilité des conversions de frais
+
+Chaque `fee_conversion` exige `currency`, `rate`, `quote_ms`, `available_ms` et `evidence_ref`. Le taux doit être fini et strictement positif ; les timestamps doivent être des entiers avec `0 <= quote_ms <= event_ms` et `quote_ms <= available_ms <= as_of_ms`. Une cotation historique reçue après le fill peut servir à une analyse rétrospective seulement après sa disponibilité réelle. Une conversion absente, malformée ou indisponible laisse les métriques économiques inconnues. Les rapports déjà conservés restent inchangés ; un nouveau calcul porte un nouveau fingerprint d’entrée.

@@ -57,8 +57,17 @@ def reconcile_period(data:dict[str,Any])->dict[str,Any]:
         if token==currency:fees+=decimal(f['fee'])
         else:
             fx=f.get('fee_conversion',{})
-            if fx.get('currency')!=currency or not fx.get('evidence_ref') or int(fx.get('quote_ms',end+1))>int(f['event_ms']):missing.append('fee conversion unavailable: '+token)
-            else:fees+=decimal(f['fee'])*decimal(fx['rate'])
+            try:
+                quote_ms=fx['quote_ms'];received_ms=fx['available_ms']
+                rate=decimal(fx['rate'])
+                valid=(fx.get('currency')==currency and bool(fx.get('evidence_ref'))
+                       and type(quote_ms) is int and type(received_ms) is int
+                       and 0<=quote_ms<=int(f['event_ms'])
+                       and quote_ms<=received_ms<=available and rate>0)
+            except (KeyError,ValueError,TypeError):
+                valid=False
+            if not valid:missing.append('fee conversion unavailable: '+token)
+            else:fees+=decimal(f['fee'])*rate
     if any('closed_pnl' not in e or e.get('pnl_currency')!=currency for e in fills):missing.append('realized PnL amount/currency absent')
     realized=sum((decimal(e['closed_pnl']) for e in fills if 'closed_pnl' in e and e.get('pnl_currency')==currency),ZERO)
     def total(entries,label):

@@ -537,3 +537,15 @@ d'exécution : les délais restent expérimentaux simulés. Tests référence ab
 future, mauvaise nature/date et contournement direct refusés. Contrat sans
 promotion ni nouvelle inférence ; anciens registres préservés. Le raccordement
 de mesures d'exécution véritables reste à établir avec l'environnement paper.
+
+### Parcours scheduler jusqu'au paper synthétique — étape 11
+
+Recette reproductible indépendante en base temporaire : inventaire→paquet→deux
+rôles simulés→mémoire/route→plan/famille→pipeline comparaison/sélection/finale→paper
+synthétique→reconnexion et rejeu. Le pipeline refuse le mode fixture si un plan
+réel existe ; tick ordinaire ignore les variantes synthétiques. Test d'échec de
+comparaison sans paper et provenance synthetic/promotable=false conservée.
+Artefact population-recipe-control-20261007.json, aucune requête fournisseur ni
+inférence réelle, isolation explicitement simulée, aucun changement production.
+La recette ne qualifie aucune stratégie réelle et ne termine pas les autres
+capacités du Goal. Commande/limites/rollback POPULATION-RESEARCH.md.

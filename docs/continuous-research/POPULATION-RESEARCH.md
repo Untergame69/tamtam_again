@@ -289,3 +289,34 @@ Le contrôle s'applique au runtime, à la création du draft et à l'enregistrem
 explicite d'une expérience. Des profils sans preuve sont refusés avant réservation
 ou gel, sans rappel IA. Les axes simulés avec justification et références restent
 utilisables. Les plans déjà figés et les réponses anciennes ne sont pas réécrits.
+
+## Recette automatique jusqu'au paper synthétique
+
+```sh
+PYTHONPATH=src python3 scripts/population-validation-recipe.py --output /tmp/tamtam-population-recipe
+```
+
+La commande crée exclusivement une base temporaire. Inventaire, deux réponses
+IA et événements sont des fixtures ; aucune inférence fournisseur, requête
+réseau ou connexion de collecte réelle. L'isolation est simulée dans cette
+recette et doit être contrôlée séparément sur le runtime réel. Le scheduler
+population scelle puis revoit, conserve mémoire/route et prépare plan/famille
+avec la politique explicite. Le même pipeline déterministe compare, sélectionne
+un gagnant, évalue la finale et crée une session paper explicitement synthétique.
+Après reconnexion SQLite, le rejeu retrouve la session et son ledger sans doublon.
+
+synthetic_tick refuse toute base contenant un plan réel avant lecture de données
+ou exécution de fixture. Le tick ordinaire continue à ignorer les variantes
+synthétiques. La branche recette utilise les mêmes gates, comptabilité et
+sélection ; seule la source des événements/provenance et l'autorisation explicite
+de paper synthétique diffèrent. Un échec de comparaison ne crée aucun paper.
+Les évaluations gardent synthetic=true et promotable=false.
+
+Preuve population-recipe-control-20261007.json : un plan, une variante, deux
+évaluations et une session synthétique ; real_strategy_validated=false,
+real_model_calls=0, real_provider_calls=0. Cette preuve établit le raccordement
+de l'orchestration, jamais sa rentabilité réelle, couverture de collecte ou
+exécutabilité économique. Les demandes réelles non résolues, l'adaptation
+multi-instrument et la qualification consolidée restent des travaux distincts.
+Rollback : code/script recette ciblés ; aucun service activé et aucune table
+ajoutée à la production par la recette. Ne pas recopier sa base vers la collecte.

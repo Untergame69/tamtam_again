@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "real_strategy_validated": false,
+  "live_orders_enabled": false,
+  "real_model_calls": 0,
+  "real_provider_calls": 0,
+  "simulated_role_calls": 2,
+  "isolation_verification": "mocked in this recipe; separate real isolation checks required",
+  "counts": {
+    "population_research_jobs": 1,
+    "research_knowledge": 1,
+    "population_experiment_links": 1,
+    "validation_plans": 1,
+    "strategy_variants": 1,
+    "validation_evaluations": 2,
+    "paper_sessions": 1
+  },
+  "stages": [
+    {
+      "stage": "comparison",
+      "status": "passed",
+      "synthetic": true,
+      "promotable": false
+    },
+    {
+      "stage": "final",
+      "status": "passed",
+      "synthetic": true,
+      "promotable": false
+    }
+  ],
+  "restart_and_duplicate_verified": true,
+  "original_database_touched": false,
+  "limits": [
+    "scripted profitability is fixture design, never evidence for a real strategy",
+    "real collection, cost realism, isolation and latency require independent checks",
+    "broad population qualification and multi-instrument integration remain separate requirements"
+  ]
+}

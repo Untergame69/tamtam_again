@@ -8,6 +8,19 @@ from .validation import decision, evaluate, get_variant, initialize, now_ms
 
 
 def tick(store: Store) -> dict[str,Any]:
+    return _tick(store)
+
+
+def synthetic_tick(store: Store, fixtures: dict[str,dict[str,list]]) -> dict[str,Any]:
+    """Exercise the same scheduler in an exclusively synthetic recipe database."""
+    initialize(store)
+    if not isinstance(fixtures,dict) or not fixtures:raise ValueError('Explicit synthetic fixture mapping required')
+    if store.connection.execute('select 1 from validation_plans where synthetic=0').fetchone():
+        raise ValueError('Synthetic scheduler forbidden in any database containing real plans')
+    return _tick(store,fixtures=fixtures)
+
+
+def _tick(store: Store, *, fixtures=None) -> dict[str,Any]:
     initialize(store)
     reports = []
     if store.connection.execute("select 1 from sqlite_master where name='experiment_families'").fetchone():
@@ -19,10 +32,10 @@ def tick(store: Store) -> dict[str,Any]:
                                 'reason':str(exc),'next_action':'complete comparisons before final opens; otherwise create a new prospective plan'})
     for variant in store.connection.execute("SELECT variant_id FROM strategy_variants").fetchall():
         row,spec,plan = get_variant(store,variant[0])
-        if row["synthetic"]:
+        if row["synthetic"] and fixtures is None:
             continue
         for stage in ("comparison","final"):
-            if now_ms() < plan[stage]["end_ms"]:
+            if fixtures is None and now_ms() < plan[stage]["end_ms"]:
                 decision(store,row["network"],row["address"],row["coin"],"needs_data",f"{stage} window not complete",
                          {"received_until_ms":plan[stage]["end_ms"]},"evaluate_unchanged_variant",{"variant_id":variant[0]})
                 break
@@ -32,7 +45,7 @@ def tick(store: Store) -> dict[str,Any]:
                     break
                 if stage == "final":
                     try:
-                        reports.append(start_paper(store,variant[0]))
+                        reports.append(start_paper(store,variant[0],synthetic_recipe=fixtures is not None))
                     except ValueError as exc:
                         reports.append({'variant_id':variant[0],'stage':'paper_handover',
                                         'status':'waiting','reason':str(exc),
@@ -43,21 +56,31 @@ def tick(store: Store) -> dict[str,Any]:
                     from .experiments import require_final_selection
                     require_final_selection(store,variant[0])
                 window = plan[stage]
-                events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"])
-                result = evaluate(store,variant[0],stage,classify_regimes(events,plan["criteria"]),provenance="local_archive")
+                if fixtures is None:
+                    events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"])
+                else:
+                    events=fixtures.get(variant[0],{}).get(stage,[])
+                result = evaluate(store,variant[0],stage,classify_regimes(events,plan["criteria"]),provenance="synthetic" if fixtures is not None else "local_archive")
                 reports.append(result)
                 if result["status"] != "passed":
                     break
-                if result["promotable"]:
-                    reports.append(start_paper(store,variant[0]))
+                if result["promotable"] or (fixtures is not None and stage=="final" and result["status"]=="passed"):
+                    reports.append(start_paper(store,variant[0],synthetic_recipe=fixtures is not None))
             except ValueError as exc:
                 decision(store,row["network"],row["address"],row["coin"],"needs_data",str(exc),
                          {"archive_or_plan_correction_required":True},"inspect_validation_evidence",{"variant_id":variant[0],"stage":stage})
                 reports.append({"variant_id":variant[0],"stage":stage,"status":"waiting","reason":str(exc)})
                 break
-    for session in store.connection.execute("SELECT session_id FROM paper_sessions WHERE status='active'").fetchall():
+    for session in store.connection.execute("SELECT session_id,variant_id FROM paper_sessions WHERE status='active'").fetchall():
         try:
-            reports.append(paper_tick(store,session[0]))
+            if fixtures is None:
+                reports.append(paper_tick(store,session[0]))
+            else:
+                from .paper import synthetic_recipe_tick
+                events=fixtures.get(session['variant_id'],{}).get('paper',[])
+                if events:reports.append(synthetic_recipe_tick(store,session[0],events))
         except ValueError as exc:
             reports.append({"session_id":session[0],"status":"waiting","reason":str(exc)})
-    return {"processed":reports,"live_orders_enabled":False}
+    result={"processed":reports,"live_orders_enabled":False}
+    if fixtures is not None:result.update(synthetic_recipe=True,real_strategy_validated=False)
+    return result

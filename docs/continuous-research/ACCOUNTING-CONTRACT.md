@@ -120,3 +120,9 @@ Source : [types ledger et funding officiels](https://hyperliquid.gitbook.io/hype
 ## Disponibilité des conversions de frais
 
 Chaque `fee_conversion` exige `currency`, `rate`, `quote_ms`, `available_ms` et `evidence_ref`. Le taux doit être fini et strictement positif ; les timestamps doivent être des entiers avec `0 <= quote_ms <= event_ms` et `quote_ms <= available_ms <= as_of_ms`. Une cotation historique reçue après le fill peut servir à une analyse rétrospective seulement après sa disponibilité réelle. Une conversion absente, malformée ou indisponible laisse les métriques économiques inconnues. Les rapports déjà conservés restent inchangés ; un nouveau calcul porte un nouveau fingerprint d’entrée.
+
+## Consolidation de pools indépendants
+
+`account_consolidation.consolidate_equity` exige un périmètre attendu documenté et une valorisation de chaque pool à la même date économique. Chaque entrée porte scope_id, capital_pool_id, preuves de pool et de valorisation, devise et disponibilité. Deux scopes partageant le même pool bloquent la somme : un collatéral partagé exige une valorisation autoritative unique de ce pool. Une conversion entre devises exige une cotation contemporaine, positive et disponible au cutoff. Périmètre absent, scope manquant, doublon, date désalignée ou conversion inconnue produisent equity=null avec diagnostics. Les preuves de groupes sont à établir dans les adaptateurs ; attribuer simplement des IDs différents ne démontre pas leur indépendance.
+
+Ce reducer est actuellement vérifié sur fixtures. Il ne produit pas encore une consolidation réelle depuis les inventaires Hyperliquid, ni une preuve de couverture des flux ou de rentabilité.

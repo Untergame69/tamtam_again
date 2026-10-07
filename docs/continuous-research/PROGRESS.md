@@ -344,3 +344,7 @@ Mesure 60 min : 851,37 poids réservés/min, marge locale 48,63/min sur 900 ; so
 ## Budget classé par charge — 2026-10-07
 
 Décomposition reproductible intégrée au rapport capacity : backfill, historique incrémental, inventaires, métadonnées, marchés et ancien collecteur mixte ; tâches inconnues conservées dans unclassified. Trois tests passent. Mesure 60 min : marchés 506,98 poids/min ; ancien collecteur mixte 156,67 ; backfill population 102,67 ; inventaires 82 ; historique incrémental 2,17 ; métadonnées 0,67. Preuve capacity-classified-20261007.json. Hypothèse explicite de réserve de reprise 20 % du budget local : aucune marge supplémentaire mesurée. Cette réserve est une hypothèse de planification configurable, aucune modification du quota runtime ni de la cadence. Capacité soutenable en comptes volontairement inconnue tant que coûts de jobs complets et cycles représentatifs ne sont pas établis. Retour arrière du module/rapport uniquement ; aucune donnée de collecte modifiée.
+
+## Contrat de consolidation testé — 2026-10-07
+
+Reducer de valorisation pour pools indépendants, avec garde contre somme de collatéral partagé, scopes manquants/doublons, dates économiques désalignées et conversions non contemporaines ou futures. Quatre tests dédiés, 39 tests account/accounting passent. Capacité pure sur fixtures uniquement : intégration des preuves réelles de capital et valorisation spot reste à faire ; aucune consolidation réelle revendiquée. Aucune mutation d’archive ni service, rollback du module/documentation.

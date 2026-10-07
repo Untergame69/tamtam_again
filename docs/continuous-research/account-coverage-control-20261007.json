@@ -1,0 +1,12 @@
+{
+  "as_of_ms": 1791368888470,
+  "synthetic": false,
+  "reports": 4,
+  "coverage_counts": {
+    "userFillsByTime:gaps": 4,
+    "userFunding:gaps": 4,
+    "userNonFundingLedgerUpdates:gaps": 4
+  },
+  "retention_proven": false,
+  "economic_validation": false
+}

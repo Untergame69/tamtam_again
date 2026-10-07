@@ -12,6 +12,7 @@ from .discovery import protected_addresses
 from .accounting import reconcile_period,decimal
 from .account_events import normalize_event
 from .collateral import resolve_currency
+from .account_coverage import pagination_coverage
 
 SOURCE='hyperliquid-population-rest-v1'
 def millis(stamp:str)->int:return int(datetime.fromisoformat(stamp).timestamp()*1000)
@@ -74,6 +75,15 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
                         events.append(event)
                     else:ledger_events.append(event)
                 if normalized['status']!='normalized':unsupported.append(normalized)
+    history_coverage={}
+    for endpoint in ('userFillsByTime','userFunding','userNonFundingLedgerUpdates'):
+        pages=[{'start_ms':r['window_start_ms'],'end_ms':r['window_end_ms'],
+                'available_ms':millis(r['observed_at']),
+                'pagination_status':q.get('pagination_status','unknown'),
+                'evidence_ref':'raw_observations:'+str(r['observation_id'])}
+               for r,p,q in records if r['endpoint']==endpoint]
+        history_coverage[endpoint]=pagination_coverage(pages,start_ms=start_ms,
+            end_ms=end_ms,as_of_ms=as_of_ms)
     scopes=sorted(set(boundaries)|{e['scope_id'] for e in events})
     reports=[]
     for scope in scopes:
@@ -105,4 +115,4 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             unsupported.append({'kind':'conflicting_ledger_duplicate','evidence_refs':[old['evidence_ref'],event['evidence_ref']],'event_id':event['id'],'reason':'same identity with different financial fields'})
         ledger_by_id.setdefault(event['id'],event)
     ledger_events=list(ledger_by_id.values())
-    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}
+    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}

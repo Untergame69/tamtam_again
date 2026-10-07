@@ -177,3 +177,35 @@ paquet est au moins celle de toute connaissance qu'il inclut. Son empreinte
 qui déclenche une nouvelle analyse reste fondée sur les observations, pour
 éviter une boucle provoquée par sa propre mémoire. Cette correction ne libère
 aucune réserve et ne réécrit pas les imports existants.
+
+## Raccordement explicite à une famille d'expériences
+
+population-register-experiment.py lie une hypothèse revue contenant un
+executable_spec, sans required_data non résolu, à un nouveau plan du même
+compte/réseau/marché et un profil borné référant cette hypothèse. Le plan porte
+ses critères/budgets et ses nouvelles fenêtres ; aucune valeur universelle
+n'est copiée implicitement des pilotes. Pour les données réelles, le plan est
+créé après revue, la famille est figée avant comparaison et l'exploration couvre
+les informations du paquet. Les mécanismes sans adaptateur intégré restent
+unsupported ; aucune prose n'est traduite automatiquement en leader_delta.
+
+Le lien est immuable et rejouable. La famille est enregistrée atomiquement par
+le composant existant ; si le processus s'arrête après ce commit avant le lien,
+la même requête/profil retrouve la même famille. Un autre profil ou une famille
+existante différente est refusé. Les anciennes variantes/pilotes restent intactes.
+La trace référence la date du lien. Comparaison, sélection unique puis finale
+et promotion sont assurées par les gates existants du pipeline, sans appel IA.
+
+```sh
+PYTHONPATH=src python3 scripts/population-register-experiment.py --db data/tamtam.sqlite3 --request-id REQUETE --plan-id NOUVEAU_PLAN --profile PROFIL.json --output /tmp/population-experiment.json
+```
+
+Recette dédiée : test_population_experiments.py vérifie l'enregistrement, le
+rejeu, refus de données manquantes/pilote existant/comparaison passée, reprise
+après incident, puis comparaison/finale et paper explicitement synthétique.
+Cette capacité ne compile pas encore automatiquement les hypothèses en prose
+et ne crée pas leur plan : le parcours automatique population complète reste
+à finir. Aucun lien réel enregistré pour obtenir artificiellement une promotion.
+Rollback : annuler uniquement le module/script/référence de trace ; préserver
+population_experiment_links, familles, variantes et plans. Ne pas restaurer la
+base de collecte pour annuler ce raccordement.

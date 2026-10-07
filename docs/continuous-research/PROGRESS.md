@@ -492,3 +492,14 @@ du payload. Contrôle réel : 4 requêtes population, 3 imports mémoire, 4 rout
 Preuve procedure-memory-trace-control-20261007.json. Résultat économique de
 procédure inconnu. Suite combinée complète : 244 tests passent en 20,485 s.
 Retour arrière ciblé des modules, conserver tables/registre/mémoire et preuves.
+
+### Hypothèse exécutable vers expériences prospectives — étape 11
+
+Raccordement explicite à une famille bornée, plan et profil distincts, même
+compte/réseau/marché, pas de donnée requise non résolue, revue cohérente sans
+certification économique. Nouvelle comparaison future, exploration couvrant
+l'information exposée, anciennes variantes préservées. Lien immuable/rejouable,
+reprise entre commit famille et lien sans double variante. Recette synthétique
+comparaison→sélection→finale→paper synthétique, refus promotion réelle.
+Compilation automatique des règles en prose et création des plans encore
+manquantes ; aucun plan réel ni pilote modifié par cette recette.

@@ -43,7 +43,8 @@ def registry_trace(store, *, as_of_ms):
         ('population_order_reports','report_id','available_ms','public_orders_available'),
         ('research_knowledge','knowledge_id','created_ms','research_knowledge_created'),
         ('research_period_releases','evaluation_id','released_ms','evaluated_period_released'),
-        ('population_hypothesis_routes','request_id','created_ms','population_hypothesis_routed')):
+        ('population_hypothesis_routes','request_id','created_ms','population_hypothesis_routed'),
+        ('population_experiment_links','request_id','created_ms','population_experiment_registered')):
         if exists(table):
             # Column names are internal constants; no packet/result payload is read.
             for row in store.connection.execute(f'select {identity},{date} from {table} where {date}<=?',(as_of_ms,)):

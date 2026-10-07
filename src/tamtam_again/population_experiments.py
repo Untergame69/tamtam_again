@@ -30,6 +30,8 @@ def _register_experiment(store,request_id,plan_id,profile):
     data=json.loads(plan['plan_json']);packet=json.loads(job['packet_json'])
     hypothesis=json.loads(job['result_json'])['proposal']['hypothesis'];spec=hypothesis['executable_spec']
     if plan['coin']!=spec['market']:raise ValueError('Experiment market differs from hypothesis')
+    from .population_compilation import validate_packet_compilation
+    validate_packet_compilation(hypothesis,profile,packet,request_id)
     if profile.get('hypothesis_id')!=request_id:raise ValueError('Experiment profile must reference its reviewed hypothesis')
     if not plan['synthetic']:
         if plan['created_ms']<job['updated_ms'] or now_ms()>=data['comparison']['start_ms']:

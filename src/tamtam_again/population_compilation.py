@@ -18,11 +18,27 @@ def compiler_contract():
         'limits':['these are current engine capabilities, not universal strategy assumptions',
             'never replace a different mechanism with momentum or leader_delta to fit the engine',
             'do not invent costs, measured delays, risk budgets or missing observations',
+            'measured_reference requires measurement_ref pointing to an execution_delay_reference in sealed system_measurements; REST response time is not execution delay',
             'unknown mechanisms remain hypotheses or unsupported; no economic rejection',
             'promotion criteria and future window policy are supplied separately, never by this output']}
 
 
-def validate_compilation(hypothesis,allowed_refs,*,request_id=None):
+def packet_references(packet):
+    refs=set(packet.get('evidence_refs',[]))
+    observations=packet.get('observations',{})
+    refs.update((observations.get('current_pass_behavior_profile') or {}).get('evidence_refs',[]))
+    for mechanism in observations.get('market_mechanisms',[]):refs.update(mechanism.get('evidence_refs',[]))
+    refs.update(observations.get('system_measurements',{}))
+    return refs
+
+
+def validate_packet_compilation(hypothesis,profile,packet,request_id):
+    return validate_compilation({**hypothesis,'experiment_profile':profile},packet_references(packet),
+        request_id=request_id,measurements=packet.get('observations',{}).get('system_measurements',{}),
+        as_of_ms=packet.get('available_ms'))
+
+
+def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None):
     present={'executable_spec','experiment_profile'}&hypothesis.keys()
     if not present:return None
     if present!={'executable_spec','experiment_profile'}:
@@ -38,6 +54,17 @@ def validate_compilation(hypothesis,allowed_refs,*,request_id=None):
     for axis in profile.get('axes',[]):
         if not isinstance(axis,dict) or not set(axis.get('evidence_refs',[]))<=allowed_refs:
             raise ValueError('Experimental parameter evidence must be supplied in sealed packet')
+        if axis.get('measurement_status')=='measured_reference':
+            reference=axis.get('measurement_ref')
+            proof=(measurements or {}).get(reference)
+            if (not proof or reference not in axis['evidence_refs'] or
+                proof.get('kind')!='execution_delay_reference' or proof.get('parameter')!='latency_ms' or
+                type(proof.get('available_ms')) is not int or type(as_of_ms) is not int or
+                not 0<=proof['available_ms']<=as_of_ms or
+                axis.get('measurement_available_ms')!=proof['available_ms']):
+                raise ValueError('Measured execution-delay reference requires available sealed measurement proof')
+            if type(proof.get('value_ms')) is not int or proof['value_ms']<0:
+                raise ValueError('Explicit measured delay value required')
     supported=capability(spec)
     if supported['state']=='invalid_specification':raise ValueError('Invalid executable compiler specification: '+supported['reason'])
     if supported['state']=='executable':compile_family(profile,spec)

@@ -40,6 +40,9 @@ def _prepare_plan(store,request_id,policy,profile):
             return {'status':decision['state'],'promotion_authorized':False,'next_action':decision['next_action']}
         job=store.connection.execute('select network,address,updated_ms,packet_json,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
         spec=json.loads(job['result_json'])['proposal']['hypothesis']['executable_spec']
+        from .population_compilation import validate_packet_compilation
+        packet=json.loads(job['packet_json'])
+        validate_packet_compilation(json.loads(job['result_json'])['proposal']['hypothesis'],profile,packet,request_id)
         specs=compile_family(profile,spec)
         embargo=max(max(s['horizon_ms'],s['signal'].get('lookback_ms',0))+s['latency_ms'] for s in specs)
         now=now_ms();packet=json.loads(job['packet_json'])

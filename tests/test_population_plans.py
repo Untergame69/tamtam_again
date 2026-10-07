@@ -11,7 +11,7 @@ class PopulationPlanTests(unittest.TestCase):
   self.s.connection.execute('create table population_research_jobs(request_id text,network text,address text,status text,result_json text,updated_ms integer,packet_json text)')
   self.result={'proposal':{'hypothesis':{'required_data':[],'executable_spec':synthetic_spec(),'markets':['SYNTH'],'type':'follower'}},
    'critique':{'decision':'consistent','diagnostic':'fixture','wake':{}},'promotion_authorized':False,'profitability_proven':False}
-  self.s.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?)',('request','synthetic','fixture-only','hypothesis_recorded',json.dumps(self.result),100,json.dumps({'available_ms':50})));self.s.connection.commit()
+  self.s.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?)',('request','synthetic','fixture-only','hypothesis_recorded',json.dumps(self.result),100,json.dumps({'available_ms':50,'evidence_refs':['request']})));self.s.connection.commit()
   self.profile={'schema_version':1,'hypothesis_id':'request','justification':'fixture only','max_variants':2,'selection_rule':'comparison_then_one_final',
    'axes':[{'parameter':'horizon_ms','values':[500,1500],'category':'hypothesis','justification':'fixture coverage','evidence_refs':['request'],'measurement_status':'simulated'}]}
   self.policy={'version':'population-plan-v1','justification':'fixture durations only','max_plans':1,
@@ -49,4 +49,12 @@ class PopulationPlanTests(unittest.TestCase):
  def test_insufficient_duration_budget_creates_no_draft(self):
   policy={**self.policy,'budget':{**self.policy['budget'],'max_duration_ms':1}}
   with self.assertRaises(ValueError):prepare_plan(self.s,'request',policy,self.profile)
+  self.assertEqual(self.s.connection.execute('select count(*) from population_plan_drafts').fetchone()[0],0)
+
+ def test_missing_measurement_proof_is_rejected_before_draft_reservation(self):
+  axis=self.profile['axes'][0]
+  axis.update(parameter='latency_ms',category='system_capacity',values=[1],measurement_status='measured_reference',
+   measurement_ref='request',measurement_available_ms=20)
+  with self.assertRaisesRegex(ValueError,'sealed measurement proof'):
+   prepare_plan(self.s,'request',self.policy,self.profile)
   self.assertEqual(self.s.connection.execute('select count(*) from population_plan_drafts').fetchone()[0],0)

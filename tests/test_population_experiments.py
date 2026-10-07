@@ -12,7 +12,7 @@ class PopulationExperimentTests(unittest.TestCase):
   self.s.connection.execute('create table population_research_jobs(request_id text,network text,address text,status text,result_json text,updated_ms integer,packet_json text)')
   self.result={'proposal':{'hypothesis':{'required_data':[],'executable_spec':synthetic_spec(),'markets':['SYNTH'],'type':'follower'}},
    'critique':{'decision':'consistent','diagnostic':'fixture','wake':{}},'promotion_authorized':False,'profitability_proven':False}
-  self.s.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?)',('request','synthetic','fixture-only','hypothesis_recorded',json.dumps(self.result),100,json.dumps({'available_ms':50})));self.s.connection.commit()
+  self.s.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?)',('request','synthetic','fixture-only','hypothesis_recorded',json.dumps(self.result),100,json.dumps({'available_ms':50,'evidence_refs':['request']})));self.s.connection.commit()
   self.profile={'schema_version':1,'hypothesis_id':'request','justification':'fixture only', 'max_variants':1,'selection_rule':'comparison_then_one_final',
    'axes':[{'parameter':'horizon_ms','values':[500],'category':'hypothesis','justification':'fixture','evidence_refs':['request'],'measurement_status':'simulated'}]}
  def tearDown(self):self.s.close();self.tmp.cleanup()
@@ -70,4 +70,12 @@ class PopulationExperimentTests(unittest.TestCase):
   with patch('tamtam_again.population_experiments.now_ms',return_value=10000):
    with self.assertRaisesRegex(ValueError,'before future comparison'):
     register_experiment(self.s,'request',self.plan,self.profile)
+  self.assertEqual(self.s.connection.execute('select count(*) from strategy_variants').fetchone()[0],0)
+
+ def test_direct_registration_cannot_bypass_measurement_evidence(self):
+  axis=self.profile['axes'][0]
+  axis.update(parameter='latency_ms',category='system_capacity',values=[1],measurement_status='measured_reference',
+   measurement_ref='request',measurement_available_ms=20)
+  with self.assertRaisesRegex(ValueError,'sealed measurement proof'):
+   register_experiment(self.s,'request',self.plan,self.profile)
   self.assertEqual(self.s.connection.execute('select count(*) from strategy_variants').fetchone()[0],0)

@@ -23,3 +23,17 @@ class CompilationTests(unittest.TestCase):
   with self.assertRaises(ValueError):validate_compilation(h,{'report'},request_id='different')
   h['markets']=['OTHER']
   with self.assertRaises(ValueError):validate_compilation(h,{'report'})
+
+ def test_measured_reference_requires_actual_available_execution_proof(self):
+  h=self.hypothesis();axis=h['experiment_profile']['axes'][0]
+  axis.update(parameter='latency_ms',category='system_capacity',values=[1,2],
+   measurement_status='measured_reference',measurement_available_ms=20,measurement_ref='measurement',evidence_refs=['measurement'])
+  h['experiment_profile']['max_variants']=2
+  with self.assertRaises(ValueError):validate_compilation(h,{'measurement'},as_of_ms=20)
+  proof={'kind':'execution_delay_reference','parameter':'latency_ms','available_ms':20,'value_ms':1}
+  r=validate_compilation(h,{'measurement'},measurements={'measurement':proof},as_of_ms=20)
+  self.assertEqual(r['state'],'executable')
+  with self.assertRaises(ValueError):validate_compilation(h,{'measurement'},measurements={'measurement':proof},as_of_ms=19)
+  with self.assertRaises(ValueError):validate_compilation(h,{'measurement'},measurements={'measurement':{**proof,'kind':'rest_response_time'}},as_of_ms=20)
+  axis['measurement_available_ms']=10
+  with self.assertRaises(ValueError):validate_compilation(h,{'measurement'},measurements={'measurement':proof},as_of_ms=20)

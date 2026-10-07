@@ -275,3 +275,17 @@ qualifie aucun mécanisme réel. Les coûts/délais/risques déclarés doivent e
 être attestés par leurs données, une validation de schéma ne prouve pas leur
 réalisme. Le parcours complet et les mécanismes multi-instruments restent à
 raccorder. Rollback ciblé runtime/scheduler, garder réponses, budgets et plans.
+
+Les axes déclarés measured_reference exigent désormais measurement_ref vers
+une preuve execution_delay_reference dans les system_measurements scellés,
+paramètre latency_ms, valeur entière non négative et disponibilité cohérente
+avec le cutoff et measurement_available_ms. Une référence textuelle au rapport
+ne suffit pas ; un temps de réponse REST n'est pas cette preuve. Les valeurs
+explorées autour de la référence restent des scénarios simulés, pas des délais
+réalisés attestés pour chaque ordre. Les paquets actuels n'exportent aucune
+preuve de délai d'exécution : ils ne peuvent donc autoriser cette déclaration.
+
+Le contrôle s'applique au runtime, à la création du draft et à l'enregistrement
+explicite d'une expérience. Des profils sans preuve sont refusés avant réservation
+ou gel, sans rappel IA. Les axes simulés avec justification et références restent
+utilisables. Les plans déjà figés et les réponses anciennes ne sont pas réécrits.

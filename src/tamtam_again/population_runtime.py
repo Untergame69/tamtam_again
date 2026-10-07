@@ -27,12 +27,14 @@ def validate_response(response,packet,*,request_id=None):
     allowed_refs.update(behavior.get('evidence_refs',[]))
     for mechanism in packet['observations'].get('market_mechanisms',[]):
         allowed_refs.update(mechanism.get('evidence_refs',[]))
+    measurements=packet['observations'].get('system_measurements',{})
+    allowed_refs.update(measurements)
     if not hypothesis['evidence_refs'] or not set(hypothesis['evidence_refs'])<=allowed_refs:
         raise ValueError('Hypothesis evidence must refer to sealed packet')
     if any(not hypothesis[k] for k in required-{'required_data'}):
         raise ValueError('Empty testable hypothesis field')
     from .population_compilation import validate_compilation
-    validate_compilation(hypothesis,allowed_refs,request_id=request_id)
+    validate_compilation(hypothesis,allowed_refs,request_id=request_id,measurements=measurements,as_of_ms=packet.get('available_ms'))
 
 
 def run(store,request_id):

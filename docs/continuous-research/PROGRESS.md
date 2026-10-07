@@ -526,3 +526,14 @@ commun sans réacquisition, bornée max_jobs et liens déjà créés ignorés.
 Recette intégrée simulée runtime→mémoire/route→plan, absence sans politique et
 rejeu sans doublon/inférence ; aucun paramètre universel ni fichier de politiques
 activé en production. Les anciennes réponses et variantes sont conservées.
+
+### Preuves de délais déclarés mesurés — étapes 9/11
+
+Le point de compilation exige une référence typée d'exécution disponible dans
+le paquet pour measured_reference, avec cutoff/date exacte/valeur et distinction
+REST vs exécution. Preuves des axes contrôlées aussi sur les chemins explicites
+plan et expérience, avant réservation de draft/gel. Paquets actuels sans preuve
+d'exécution : les délais restent expérimentaux simulés. Tests référence absente,
+future, mauvaise nature/date et contournement direct refusés. Contrat sans
+promotion ni nouvelle inférence ; anciens registres préservés. Le raccordement
+de mesures d'exécution véritables reste à établir avec l'environnement paper.

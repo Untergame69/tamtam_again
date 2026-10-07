@@ -195,6 +195,24 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             paper_tick(self.store,session["session_id"])
 
+    def test_paper_restart_requires_flat_retirement_and_preserves_ledger(self):
+        from tamtam_again.paper import retire_paper
+        self.evaluate("comparison");self.evaluate("final")
+        first=start_paper(self.store,self.variant,synthetic_recipe=True)
+        row=self.store.connection.execute('select state_json from paper_sessions where session_id=?',(first['session_id'],)).fetchone()
+        state=json.loads(row[0]);state['position']='1'
+        self.store.connection.execute("update paper_sessions set status='suspended',state_json=? where session_id=?",(json.dumps(state),first['session_id']));self.store.connection.commit()
+        with self.assertRaises(ValueError):start_paper(self.store,self.variant,synthetic_recipe=True)
+        with self.assertRaises(ValueError):retire_paper(self.store,first['session_id'],reason='fixture switch')
+        state['position']='0';state['cash']='97'
+        self.store.connection.execute('update paper_sessions set state_json=? where session_id=?',(json.dumps(state),first['session_id']));self.store.connection.commit()
+        with self.assertRaises(ValueError):start_paper(self.store,self.variant,synthetic_recipe=True)
+        retire_paper(self.store,first['session_id'],reason='fixture flat retirement')
+        second=start_paper(self.store,self.variant,synthetic_recipe=True,restart_reason='fixture explicit restart')
+        self.assertNotEqual(first['session_id'],second['session_id'])
+        old=self.store.connection.execute('select state_json from paper_sessions where session_id=?',(first['session_id'],)).fetchone()
+        self.assertEqual(json.loads(old[0])['cash'],'97')
+
     def test_negative_cost_edge_rejected(self):
         spec = synthetic_spec()
         spec["fees"]["taker_bps"] = "500"

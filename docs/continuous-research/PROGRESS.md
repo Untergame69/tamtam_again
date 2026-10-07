@@ -372,3 +372,7 @@ Script resource-capacity.py collecte métadonnées SQLite en lecture seule (page
 ## Préparation de la montée en capacité — 2026-10-07
 
 Comparaison REST/flux mutualisés/IP stables/fournisseur/nœud et architecture ingestion/provenance/déduplication préparées dans CAPACITY-DECISION.md. Sources officielles consultées, tarifs Quicknode et modes de facturation distingués ; VPS/nœud restent hypothèses budgétaires non devisées. Deuxième relevé resource : intervalle 59,34 s, croissance logique ~54 874 octets/s, CPU principal ~0,072 cœur, aucune projection soutenable. Recommandation actuelle conserver local et vérifier coût/couverture avant dépense. Aucun achat ou déploiement.
+
+## Changement de session paper protégé — 2026-10-07
+
+Création paper atomique sous BEGIN IMMEDIATE, idempotence même version active ; autres sessions du même compte/marché doivent être retirées, sans position ni ordre pending. Retrait explicite journalisé, état/ledger conservés. Redémarrer une version retirée exige un motif, empêchant la pipeline de réactiver automatiquement une ancienne session. Capital de chaque nouvelle session explicitement indépendant, politique/motif archivés dans paper_session_policy. La pipeline expose les blocages de handover sans interrompre tous les autres jobs. Test synthétique positions ouvertes/retrait/ledger/motif et tests validation : 31 passent. Aucun paper réel activé ; raccordement CLI et politique automatique de suspension/remplacement encore à compléter. Rollback code ciblé, garder tables/sessions ; ne pas effacer des positions simulées.

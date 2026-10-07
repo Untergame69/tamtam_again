@@ -128,24 +128,69 @@ def classify_regimes(events: list[dict[str,Any]], criteria: dict[str,Any]) -> li
     return sorted(result,key=lambda e:(e.get("available_ms",e["received_ms"]),e["received_ms"],str(e["id"])))
 
 
-def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False) -> dict[str,Any]:
+def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False,
+                restart_reason: str | None = None) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
     passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
     if not passed or (row["synthetic"] and not synthetic_recipe):
         raise ValueError("N2 requires real passed N1; synthetic recipe cannot activate real paper")
     if not row["synthetic"] and not json.loads(passed[0])["promotable"]:
         raise ValueError("N1 is not promotable")
-    existing = store.connection.execute("SELECT session_id FROM paper_sessions WHERE variant_id=? AND status='active'",(variant_id,)).fetchone()
-    if existing:
-        return {"session_id":existing[0],"synthetic":bool(row["synthetic"])}
     session_id = uuid4().hex
     started = now_ms()
     state = initial_state(spec)
-    store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,0,utc_now()))
+    store.connection.execute('create table if not exists paper_session_policy '
+        '(session_id text primary key,capital_policy text not null,restart_reason text)')
     store.connection.commit()
+    store.connection.execute('BEGIN IMMEDIATE')
+    try:
+        existing = store.connection.execute("SELECT session_id FROM paper_sessions WHERE variant_id=? AND status='active'",(variant_id,)).fetchone()
+        if existing:
+            store.connection.commit()
+            return {"session_id":existing[0],"synthetic":bool(row["synthetic"])}
+        for prior in store.connection.execute(
+            'select session_id,variant_id,status,state_json from paper_sessions where network=? and address=? and coin=?',
+            (row['network'],row['address'],row['coin'])):
+            previous=json.loads(prior['state_json'])
+            if prior['status']=='active' or number(previous['position'])!=0 or previous['pending']:
+                raise ValueError('Paper handover requires retired flat prior sessions without pending orders')
+            if prior['status']!='retired':
+                raise ValueError('Explicit retirement required before paper replacement')
+            if prior['variant_id']==variant_id and not (restart_reason and restart_reason.strip()):
+                raise ValueError('Restart of a retired version requires an explicit reason')
+        store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,0,utc_now()))
+        store.connection.execute('insert into paper_session_policy values(?,?,?)',
+                                 (session_id,'independent_paper_session',restart_reason))
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback()
+        raise
     if not row["synthetic"]:
         decision(store,row["network"],row["address"],row["coin"],"paper_active","N1 final passed by deterministic engine",{"interruptions":"suspend"},"paper_tick",{"session_id":session_id})
-    return {"session_id":session_id,"synthetic":bool(row["synthetic"]),"started_ms":started}
+    return {"session_id":session_id,"synthetic":bool(row["synthetic"]),"started_ms":started,
+            "capital_policy":"independent_paper_session","restart_reason":restart_reason}
+
+
+def retire_paper(store: Store, session_id: str, *, reason: str) -> dict[str,Any]:
+    """Retire only flat sessions; preserve state, ledger and version attribution."""
+    if not reason.strip():raise ValueError('Explicit retirement reason required')
+    store.connection.execute('create table if not exists paper_retirements '
+        '(session_id text primary key,retired_ms integer not null,reason text not null)')
+    store.connection.commit()
+    store.connection.execute('BEGIN IMMEDIATE')
+    try:
+        session=store.connection.execute('select * from paper_sessions where session_id=?',(session_id,)).fetchone()
+        if not session:raise ValueError('Unknown paper session')
+        state=json.loads(session['state_json'])
+        if number(state['position'])!=0 or state['pending']:
+            raise ValueError('Open positions or pending orders remain attributed to the old session')
+        if session['status']!='retired':
+            store.connection.execute('insert into paper_retirements values(?,?,?)',(session_id,now_ms(),reason))
+            store.connection.execute("update paper_sessions set status='retired',updated_at=? where session_id=?",(utc_now(),session_id))
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback();raise
+    return {'session_id':session_id,'status':'retired','ledger_preserved':True}
 
 
 def paper_tick(store: Store, session_id: str) -> dict[str,Any]:

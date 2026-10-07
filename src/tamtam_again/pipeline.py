@@ -31,7 +31,12 @@ def tick(store: Store) -> dict[str,Any]:
                 if prior["status"] != "passed":
                     break
                 if stage == "final":
-                    reports.append(start_paper(store,variant[0]))
+                    try:
+                        reports.append(start_paper(store,variant[0]))
+                    except ValueError as exc:
+                        reports.append({'variant_id':variant[0],'stage':'paper_handover',
+                                        'status':'waiting','reason':str(exc),
+                                        'next_action':'review prior sessions and preserve position attribution'})
                 continue
             try:
                 if stage=='final':

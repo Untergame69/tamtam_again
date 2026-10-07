@@ -561,3 +561,13 @@ Anciens événements manquants non reconstitués/non rétrodatés. Tests preuve
 changée vs rejouée, date disponible/cutoff, absence de lecture de diagnostic ou
 preuves JSON, statut terminal immuable et chemin erreur réel du moteur sur fixture.
 L'adaptateur complet de sélection/résultats autorisés reste à terminer.
+
+### Coûts de recherche de toute la procédure — étape 12
+
+Adaptateur metadata-only des registres population et isolé, fenêtre explicite,
+inscription/settlement séparés, échecs inclus, coûts manquants non remplacés par
+réservations. Jobs isolés suspendus conservativement inconnus (coût partiel
+possible). Contrôle réel en lecture seule dans procedure-provider-costs-control-
+20261007.json ; aucune donnée réservée ni appel modèle. Agrégat limité aux
+registres, hors infrastructure. Références de procédure et capital continu
+restent à intégrer avant une performance adaptative complète.

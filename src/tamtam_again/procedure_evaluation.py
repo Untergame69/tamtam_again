@@ -26,7 +26,10 @@ def evaluate_procedure(trace):
             if attempt['id'] in attempt_ids:raise ValueError('Research cost counted twice')
             attempt_ids.add(attempt['id'])
             if attempt['available_ms']>decision:raise ValueError('Future research attempt')
-            if attempt.get('cost') is None:
+            cost_available=attempt.get('cost_available_ms',attempt['available_ms'])
+            if cost_available is not None and (type(cost_available) is not int or cost_available<attempt['available_ms']):
+                raise ValueError('Invalid provider-cost availability chronology')
+            if attempt.get('cost') is None or cost_available is None or cost_available>asof:
                 unknown.append('research cost unknown: '+attempt['id'])
             else:
                 cost=decimal(attempt['cost'])

@@ -37,3 +37,11 @@ class ProcedureTests(unittest.TestCase):
     def test_open_positions_rejected(self):
         f=fixture();f['steps'][0]['outcomes']['chosen']['flat_at_boundaries']=False
         with self.assertRaises(ValueError):evaluate_procedure(f)
+
+    def test_expense_settled_after_decision_can_be_known_at_evaluation(self):
+        f=fixture();f['steps'][0]['research_attempts'][0]['cost_available_ms']=25
+        self.assertEqual(evaluate_procedure(f)['adaptive_net_after_research_and_change_costs'],'2')
+        f['steps'][0]['research_attempts'][0]['cost_available_ms']=31
+        self.assertIsNone(evaluate_procedure(f)['adaptive_net_after_research_and_change_costs'])
+        f['steps'][0]['research_attempts'][0]['cost_available_ms']=0
+        with self.assertRaises(ValueError):evaluate_procedure(f)

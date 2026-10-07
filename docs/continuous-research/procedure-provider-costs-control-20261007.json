@@ -1,0 +1,151 @@
+{
+  "version": "registered-provider-costs-v1",
+  "network": "hyperliquid-mainnet",
+  "address": null,
+  "start_ms": 0,
+  "end_ms": 1791376489895,
+  "as_of_ms": 1791376489895,
+  "attribution": "all research registered in this half-open period, regardless of outcome",
+  "attempts": [
+    {
+      "id": "isolated_research:e1d8296cff304705a0ef5e8a0aa8e0af",
+      "available_ms": 1791312538603,
+      "cost_available_ms": 1791312575800,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "needs_data",
+      "evidence_ref": "isolated_research:e1d8296cff304705a0ef5e8a0aa8e0af"
+    },
+    {
+      "id": "isolated_research:84f96fe2454e4db2b8ca60c27676c319",
+      "available_ms": 1791312538809,
+      "cost_available_ms": 1791312771991,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "needs_data",
+      "evidence_ref": "isolated_research:84f96fe2454e4db2b8ca60c27676c319"
+    },
+    {
+      "id": "isolated_research:9f60543904694762b5f15d7c5580d7e6",
+      "available_ms": 1791312539010,
+      "cost_available_ms": 1791312826246,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "needs_data",
+      "evidence_ref": "isolated_research:9f60543904694762b5f15d7c5580d7e6"
+    },
+    {
+      "id": "isolated_research:4432c74a478d4038953e5e1bad6ae5e9",
+      "available_ms": 1791312539264,
+      "cost_available_ms": 1791312864626,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "needs_data",
+      "evidence_ref": "isolated_research:4432c74a478d4038953e5e1bad6ae5e9"
+    },
+    {
+      "id": "isolated_research:5451e53d8b6d423696299d973ac4c914",
+      "available_ms": 1791318688191,
+      "cost_available_ms": 1791318774492,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "ready_to_test",
+      "evidence_ref": "isolated_research:5451e53d8b6d423696299d973ac4c914"
+    },
+    {
+      "id": "isolated_research:dcc29ea5c6414b5f914cfbe78d92ef08",
+      "available_ms": 1791318688411,
+      "cost_available_ms": 1791318859647,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "ready_to_test",
+      "evidence_ref": "isolated_research:dcc29ea5c6414b5f914cfbe78d92ef08"
+    },
+    {
+      "id": "isolated_research:3242728cc01b47c58bd9c141015e68db",
+      "available_ms": 1791318688625,
+      "cost_available_ms": 1791318933453,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "needs_data",
+      "evidence_ref": "isolated_research:3242728cc01b47c58bd9c141015e68db"
+    },
+    {
+      "id": "isolated_research:5cb1842e52ac4449abbb9cbf85a60187",
+      "available_ms": 1791318688867,
+      "cost_available_ms": 1791319004222,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "ready_to_test",
+      "evidence_ref": "isolated_research:5cb1842e52ac4449abbb9cbf85a60187"
+    },
+    {
+      "id": "population_research:f206485d6e70cd3a906a984590b80c6fd1c52438b8f03748862b185672f10ea4",
+      "available_ms": 1791372535132,
+      "cost_available_ms": 1791372605759,
+      "cost": null,
+      "reserved_cost_usd": "2",
+      "status": "suspended",
+      "evidence_ref": "population_research:f206485d6e70cd3a906a984590b80c6fd1c52438b8f03748862b185672f10ea4"
+    },
+    {
+      "id": "population_research:2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807",
+      "available_ms": 1791372768514,
+      "cost_available_ms": 1791372848572,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "hypothesis_recorded",
+      "evidence_ref": "population_research:2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807"
+    },
+    {
+      "id": "population_research:cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e",
+      "available_ms": 1791372871733,
+      "cost_available_ms": 1791372943063,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "hypothesis_recorded",
+      "evidence_ref": "population_research:cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e"
+    },
+    {
+      "id": "population_research:eb8acf3b14a03ef185ecfb9dee93f840a74af01b92047d9cd8d384a0594620f7",
+      "available_ms": 1791373843868,
+      "cost_available_ms": 1791373912914,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "hypothesis_recorded",
+      "evidence_ref": "population_research:eb8acf3b14a03ef185ecfb9dee93f840a74af01b92047d9cd8d384a0594620f7"
+    },
+    {
+      "id": "population_research:980d0533c53008c3d57b363b4fb8e2c592e0aae0accaeb5518044ee8a84d7340",
+      "available_ms": 1791374813870,
+      "cost_available_ms": 1791374883130,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "hypothesis_recorded",
+      "evidence_ref": "population_research:980d0533c53008c3d57b363b4fb8e2c592e0aae0accaeb5518044ee8a84d7340"
+    },
+    {
+      "id": "population_research:369de9ec64e32525795254c63f6848286f16c2bae07c6344311048a6c10e7bfc",
+      "available_ms": 1791375797846,
+      "cost_available_ms": 1791375886146,
+      "cost": "0.0",
+      "reserved_cost_usd": "2",
+      "status": "hypothesis_recorded",
+      "evidence_ref": "population_research:369de9ec64e32525795254c63f6848286f16c2bae07c6344311048a6c10e7bfc"
+    }
+  ],
+  "known_provider_cost_usd": "0.0",
+  "total_provider_cost_usd": null,
+  "observed_reservations_usd": "28",
+  "unknown_cost_attempts": [
+    "population_research:f206485d6e70cd3a906a984590b80c6fd1c52438b8f03748862b185672f10ea4"
+  ],
+  "status": "unknown",
+  "limits": [
+    "reservations are not provider invoices and are never substituted for missing costs",
+    "provider included=0 does not mean no tokens, compute or subscription usage",
+    "scope covers these two registries, not external calls, hosting or total infrastructure expense",
+    "latest mutable cost state cannot reconstruct intermediate historical settlement events"
+  ],
+  "fingerprint": "e0edf00e35f36e20b64df7f70e81a035cdf450731475256eb916361cf6e57d77"
+}

@@ -65,3 +65,29 @@ pas la rentabilité de la sélection/adaptation.
 
 Rollback ciblé code ; conserver pipeline_decisions et evaluation_terminal_events.
 L'ajout du journal est compatible avec les anciens plans et ne les réécrit pas.
+
+## Coûts des registres de recherche
+
+`procedure_costs.provider_cost_ledger` et `scripts/procedure-provider-costs.py`
+exportent uniquement les métadonnées des deux registres IA, en lecture seule,
+sans migrations, paquets ni résultats réservés. Réseau, fenêtre semi-ouverte
+start/end et cutoff obligatoires ; adresse facultative. Tous les essais inscrits
+pendant la fenêtre comptent, y compris rejetés et interrompus. Leur inscription
+et la disponibilité du coût sont deux dates distinctes : une facture disponible
+après la décision peut être comptabilisée au cutoff sans devenir une information
+utilisable lors de cette décision. Les derniers états postérieurs au cutoff sont
+masqués ; les états intermédiaires non journalisés ne sont pas reconstitués.
+
+Une réservation n'est jamais un coût réalisé. État inconnu/en cours ou montant
+manquant : total inconnu, somme des montants connus conservée séparément.
+Les anciens jobs isolés suspendus peuvent contenir seulement le coût des appels
+terminés avant une panne : leur montant est donc conservativement inconnu.
+Les montants fournis par le runtime peuvent être estimés ou inclus dans un
+abonnement, sans constituer une facture. Zéro fournisseur ne signifie ni zéro
+token ni zéro calcul. Le périmètre exclut dépenses externes et infrastructure.
+
+Commande : `PYTHONPATH=src python3 scripts/procedure-provider-costs.py --db
+ data/tamtam.sqlite3 --network hyperliquid-mainnet --start-ms DEBUT --end-ms FIN
+ --as-of-ms CUTOFF --output RAPPORT`. Une fenêtre vide ne prouve aucunement
+l'absence de dépenses hors de ces registres. Aucune modification du runtime ou
+des plans ; rollback code uniquement, conserver les historiques.

@@ -475,3 +475,20 @@ sur DEX standard ; paquet ultérieur prêt et résumé inclus. Les besoins des d
 hypothèses restent non satisfaits. Preuve population-orders-control-20261007.json.
 Trente-quatre tests population passent en 7,205 s. Aucun timer ni collecteur
 redémarré, aucune inférence demandée par ce contrôle.
+
+### Mémoire héritée et chronologie de la procédure
+
+Correction : import population conserve toutes les périodes et preuves de mémoire
+héritée, même pour d'autres comptes. save_knowledge vérifie preuves, dates et
+union explicitement déclarée. Date disponible du paquet >= création des
+connaissances exportées ; empreinte descriptive seule inchangée par mémoire.
+Test d'héritage multi-compte et suppression de période refusée. Aucun import
+antérieur réécrit ni réserve libérée.
+
+Trace metadata-only étendue aux cohortes, ordres, routages, connaissances,
+imports et libérations, avec dates propres. Test de cutoff et absence de lecture
+du payload. Contrôle réel : 4 requêtes population, 3 imports mémoire, 4 routes,
+1 rapport d'ordres au relevé ; huit plans/trois variantes, aucun événement paper.
+Preuve procedure-memory-trace-control-20261007.json. Résultat économique de
+procédure inconnu. Suite combinée complète : 244 tests passent en 20,485 s.
+Retour arrière ciblé des modules, conserver tables/registre/mémoire et preuves.

@@ -35,3 +35,25 @@ class TraceTests(unittest.TestCase):
             s.connection.execute('create table strategy_variants(variant_id text,plan_id text,frozen_ms integer)')
             s.connection.execute("insert into strategy_variants values('future','plan',3000)")
             self.assertEqual(registry_trace(s,as_of_ms=2000)['events'],[])
+
+    def test_memory_routes_cohorts_and_orders_have_own_available_times(self):
+        with tempfile.TemporaryDirectory() as tmp, Store(Path(tmp)/'db') as s:
+            for table,identity,date in (
+                ('population_cohorts','cohort_id','created_ms'),
+                ('population_order_reports','report_id','available_ms'),
+                ('research_knowledge','knowledge_id','created_ms'),
+                ('research_period_releases','evaluation_id','released_ms'),
+                ('population_hypothesis_routes','request_id','created_ms')):
+                s.connection.execute(f'create table {table}({identity} text,{date} integer,payload_json text)')
+                s.connection.execute(f'insert into {table} values(?,?,?)',(table,3000,'secret fixture payload must not be read'))
+            s.connection.execute('create table population_research_memory(request_id text,knowledge_id text,created_ms integer)')
+            s.connection.execute("insert into population_research_memory values('request','knowledge',4000)")
+            self.assertEqual(registry_trace(s,as_of_ms=2999)['events'],[])
+            later=registry_trace(s,as_of_ms=3000)
+            self.assertEqual(len(later['events']),5)
+            statements=[];s.connection.set_trace_callback(statements.append)
+            latest=registry_trace(s,as_of_ms=4000)
+            self.assertEqual(len(latest['events']),6)
+            self.assertNotIn('secret fixture',str(latest))
+            self.assertFalse(any('payload_json' in q for q in statements))
+            self.assertEqual(latest['events'][-1]['kind'],'population_memory_imported')

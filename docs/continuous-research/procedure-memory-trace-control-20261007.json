@@ -1,0 +1,26 @@
+{
+  "as_of_ms": 1791374209447,
+  "trace_fingerprint": "48ea27aa9744132bc10888f1ce58f2caec5b9ade9e4631ee060cc21ed0232bbb",
+  "counts_by_kind": {
+    "research_registered": 8,
+    "research_latest_status": 8,
+    "variant_frozen": 3,
+    "population_attempt_started": 89,
+    "population_attempt_finished": 88,
+    "research_knowledge_created": 4,
+    "population_cohort_created": 1,
+    "population_diagnostic": 38,
+    "population_research_sealed": 4,
+    "population_research_latest_status": 4,
+    "population_memory_imported": 3,
+    "population_hypothesis_routed": 4,
+    "public_orders_available": 1
+  },
+  "net_adaptation_result": null,
+  "limits": [
+    "mutable registries do not reconstruct intermediate historical states",
+    "no raw observations, research packets or evaluation results consumed",
+    "diagnostics and frozen variants are not paper selections",
+    "outcome and policy-selection adapters still required for procedure replay"
+  ]
+}

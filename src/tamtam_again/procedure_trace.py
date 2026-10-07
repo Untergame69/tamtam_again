@@ -38,6 +38,20 @@ def registry_trace(store, *, as_of_ms):
             emit('population_research_latest_status',row['request_id'],row['updated_ms'],
                  {'status':row['status'],'actual_cost_usd':row['actual_cost_usd'],
                   'reserved_cost_usd':row['reserved_cost_usd']})
+    for table,identity,date,kind in (
+        ('population_cohorts','cohort_id','created_ms','population_cohort_created'),
+        ('population_order_reports','report_id','available_ms','public_orders_available'),
+        ('research_knowledge','knowledge_id','created_ms','research_knowledge_created'),
+        ('research_period_releases','evaluation_id','released_ms','evaluated_period_released'),
+        ('population_hypothesis_routes','request_id','created_ms','population_hypothesis_routed')):
+        if exists(table):
+            # Column names are internal constants; no packet/result payload is read.
+            for row in store.connection.execute(f'select {identity},{date} from {table} where {date}<=?',(as_of_ms,)):
+                emit(kind,row[identity],row[date],{'evidence_ref':table+':'+row[identity]})
+    if exists('population_research_memory'):
+        for row in store.connection.execute('select request_id,knowledge_id,created_ms from population_research_memory where created_ms<=?',(as_of_ms,)):
+            emit('population_memory_imported',row['request_id'],row['created_ms'],
+                {'knowledge_id':row['knowledge_id'],'evidence_ref':'population_research_memory:'+row['request_id']})
     if exists('strategy_variants'):
         for row in store.connection.execute('select variant_id,plan_id,frozen_ms from strategy_variants where frozen_ms<=?',(as_of_ms,)):
             emit('variant_frozen',row['variant_id'],row['frozen_ms'],{'plan_id':row['plan_id']})

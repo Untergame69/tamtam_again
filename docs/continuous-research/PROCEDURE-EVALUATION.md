@@ -32,3 +32,11 @@ synthétique explicitement conservée. Un outcome inconnu transmet une inconnue
 au reducer de procédure. Aucun avantage économique réel ne découle de cet
 adaptateur. La complétude des flux et coûts réellement exécutables, le capital
 continu et les choix préenregistrés de toute la procédure restent à établir.
+
+La trace inclut aussi les dates originales des cohortes, ordres publics,
+connaissances, imports en mémoire, libérations de périodes et routages. Lecture
+exclusive de colonnes d'identité/date : aucune synthèse, paquet ou résultat
+réservé n'est consulté pour produire ces événements. Les preuves restent
+référencées, sans rétrodatation ni qualification économique. Ces événements
+complètent la chronologie, mais ne remplacent pas les adaptateurs de sélection
+et de performance de toute la procédure.

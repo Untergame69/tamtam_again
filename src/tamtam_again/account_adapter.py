@@ -11,6 +11,7 @@ from .storage import Store,decode_observation_payload
 from .discovery import protected_addresses
 from .accounting import reconcile_period,decimal
 from .account_events import normalize_event
+from .collateral import resolve_currency
 
 SOURCE='hyperliquid-population-rest-v1'
 def millis(stamp:str)->int:return int(datetime.fromisoformat(stamp).timestamp()*1000)
@@ -18,6 +19,13 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
     address=address.lower();as_of_ms=int(time.time()*1000) if as_of_ms is None else as_of_ms
     if address in protected_addresses(store):raise ValueError('Reserved pilot account excluded from accounting development')
     if not 0<=start_ms<end_ms<=as_of_ms:raise ValueError('Explicit available period required')
+    catalogs=[]
+    if store.connection.execute("select 1 from sqlite_master where type='table' and name='collateral_catalogs'").fetchone():
+        catalogs=[json.loads(r[0]) for r in store.connection.execute('select payload_json from collateral_catalogs where network=? and available_ms<=? order by available_ms',(network,as_of_ms))]
+    def currency_for(stamp, *,coin=None,dex=None):
+        proof=resolve_currency(catalogs,event_ms=stamp,instrument=coin,dex=dex)
+        if proof:return proof['currency']
+        return 'USDC' if dex=='' or coin is not None and ':' not in coin else 'UNVERIFIED_DEX_CURRENCY'
     records=[]
     for r in store.connection.execute('select * from raw_observations where network=? and entity_type=\'account\' and entity_id=? and source=? and observed_at<=? order by observed_at,observation_id',(network,address,SOURCE,datetime.fromtimestamp(as_of_ms/1000,timezone.utc).isoformat())):
         if millis(r['observed_at'])<=as_of_ms:records.append((r,decode_observation_payload(r),json.loads(r['request_json'])))
@@ -33,13 +41,13 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             equity=payload.get('marginSummary',{}).get('accountValue')
             if equity is None or any('unrealizedPnl' not in p for p in positions):continue
             # Equity is API-reported, not a consolidated cross-dex capital claim.
-            boundaries.setdefault(scope,[]).append({'event_ms':stamp,'available_ms':available,'scope_id':scope,'currency':'USDC' if not dex else 'UNVERIFIED_DEX_CURRENCY','equity':str(equity),'unrealized_pnl':str(sum((decimal(p['unrealizedPnl']) for p in positions),decimal(0))),'positions':positions,'evidence_ref':ref})
+            boundaries.setdefault(scope,[]).append({'event_ms':stamp,'available_ms':available,'scope_id':scope,'currency':currency_for(stamp,dex=dex),'equity':str(equity),'unrealized_pnl':str(sum((decimal(p['unrealizedPnl']) for p in positions),decimal(0))),'positions':positions,'evidence_ref':ref})
         if endpoint=='userFillsByTime' and isinstance(payload,list):
             for fill in payload:
                 if not isinstance(fill,dict) or not fill.get('coin'):continue
                 coin=str(fill['coin'])
                 if coin.startswith('@') or '/' in coin:unsupported.append({'kind':'spot_fill','evidence_ref':ref});continue
-                dex=coin.split(':',1)[0] if ':' in coin else '';currency='USDC' if not dex else 'UNVERIFIED_DEX_CURRENCY'
+                dex=coin.split(':',1)[0] if ':' in coin else '';currency=currency_for(int(fill['time']),coin=coin)
                 e={'id':str((fill.get('coin'),fill.get('time'),fill.get('tid',fill.get('hash')))),'kind':'fill','scope_id':'perp:'+dex,'event_ms':int(fill['time']),'available_ms':available,'evidence_ref':ref,'coin':coin,'pnl_currency':currency}
                 if 'closedPnl' in fill:e['closed_pnl']=fill['closedPnl']
                 if 'fee' in fill:e['fee']=fill['fee']
@@ -54,13 +62,16 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
                 if 'event_ms' in normalized and not start_ms<normalized['event_ms']<=end_ms:continue
                 event=normalized.get('event')
                 if event:
-                    if endpoint=='userFunding':events.append(event)
+                    if endpoint=='userFunding':
+                        event['currency']=currency_for(event['event_ms'],coin=event['coin'])
+                        if event['currency']!='UNVERIFIED_DEX_CURRENCY':normalized['status']='normalized'
+                        events.append(event)
                     else:ledger_events.append(event)
                 if normalized['status']!='normalized':unsupported.append(normalized)
     scopes=sorted(set(boundaries)|{e['scope_id'] for e in events})
     reports=[]
     for scope in scopes:
-        currency='USDC' if scope=='perp:' else 'UNVERIFIED_DEX_CURRENCY'
+        currency=currency_for(end_ms,dex=scope.removeprefix('perp:'))
         coverage={k:{'status':'unknown','evidence_refs':[],'reason':'presence of API responses does not establish period completeness'} for k in ('fills','funding','flows','other_income','valuation_scope')}
         report=reconcile_period({'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms,'scope':{'id':scope,'currency':currency,'account_mode':mode,'shared_collateral_model_verified':False},'coverage':coverage,'valuations':boundaries.get(scope,[]),'events':[e for e in events if e['scope_id']==scope]})
         reports.append(report)
@@ -72,4 +83,4 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             unsupported.append({'kind':'conflicting_ledger_duplicate','evidence_refs':[old['evidence_ref'],event['evidence_ref']],'event_id':event['id'],'reason':'same identity with different financial fields'})
         ledger_by_id.setdefault(event['id'],event)
     ledger_events=list(ledger_by_id.values())
-    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}
+    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}

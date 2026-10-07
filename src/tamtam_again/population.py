@@ -36,6 +36,8 @@ def policy_validate(policy: dict[str,Any]):
     if not policy.get('version') or not policy.get('sampling_seed'):raise ValueError('Policy identity required')
     pages=policy.get('history_max_pages_per_endpoint',3)
     if type(pages) is not int or not 1<=pages<=6:raise ValueError('Invalid history page budget')
+    age=policy.get('metadata_refresh_seconds',3600)
+    if type(age) is not int or age<60:raise ValueError('Invalid metadata refresh cadence')
 def enroll(store: Store,network: str,policy: dict[str,Any], *,now_ms: int | None=None):
     policy_validate(policy);migrate(store);now_ms=now_ms if now_ms is not None else int(time.time()*1000)
     blocked=protected_addresses(store)

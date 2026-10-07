@@ -193,3 +193,17 @@ fenêtre et aucune qualification économique. Preuve résumée dans
 account-events-control-20261007.json, règles dans ACCOUNTING-CONTRACT.md.
 Les mécanismes non supportés, la complétude des périodes, le collatéral et la
 valorisation consolidée restent à terminer ; la tâche 6 reste partielle.
+
+## Sixième incrément — métadonnées de collatéral causales
+
+Catalogue public versionné, rafraîchissement partagé dans le worker population,
+deux appels par heure configurée. Preuves de devise par token index/tokenId et
+instrument, sans inférence par position dans les tableaux ni prix FX supposé.
+L'adaptateur utilise uniquement une métadonnée disponible avant l'événement.
+
+123 tests passent, dont garde contre métadonnées futures et réutilisation du
+cache sans réinitialisation de disponibilité. Contrôle réel : 11 DEX et 535
+instruments ; USDC, USDH, USDE et USDT0 rencontrés. Preuve et rollback :
+collateral-control-20261007.json et COLLATERAL-CATALOG.md.
+Anciennes périodes et pilotes non modifiés. La comptabilité reste partielle,
+notamment valorisation, couverture, frais/transferts non normalisés et FX.

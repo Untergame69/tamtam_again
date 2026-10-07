@@ -5,12 +5,15 @@ from pathlib import Path
 from tamtam_again.storage import Store
 from tamtam_again.population import enroll,claim,collect_overview,finish
 from tamtam_again.providers.hyperliquid import HyperliquidInfo
+from tamtam_again.collateral import refresh_catalog
 p=argparse.ArgumentParser();p.add_argument('--db',type=Path,required=True);p.add_argument('--policy',type=Path,required=True);p.add_argument('--output',type=Path);p.add_argument('--enroll-only',action='store_true');a=p.parse_args()
 policy=json.loads(a.policy.read_text());network='hyperliquid-mainnet';results=[]
 HyperliquidInfo.telemetry_path=a.db.with_suffix('.telemetry.sqlite3')
 with Store(a.db) as s:
  enrollment=enroll(s,network,policy)
  if not a.enroll_only:
+  metadata_client=HyperliquidInfo(network)
+  refresh_catalog(s,metadata_client,max_age_seconds=policy.get('metadata_refresh_seconds',3600))
   for _ in range(policy['max_jobs_per_tick']):
    job=claim(s,network)
    if not job:break

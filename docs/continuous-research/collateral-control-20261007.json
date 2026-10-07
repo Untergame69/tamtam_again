@@ -1,0 +1,147 @@
+{
+  "kind": "real_public_collateral_catalog",
+  "available_ms": 1791365192284,
+  "dex_count": 11,
+  "instrument_count": 535,
+  "dexes": {
+    "": {
+      "available_ms": 1791365192284,
+      "collateral_token": 0,
+      "currency": "USDC",
+      "dex": "",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+    },
+    "abcd": {
+      "available_ms": 1791365192284,
+      "collateral_token": 0,
+      "currency": "USDC",
+      "dex": "abcd",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+    },
+    "cash": {
+      "available_ms": 1791365192284,
+      "collateral_token": 268,
+      "currency": "USDT0",
+      "dex": "cash",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x25faedc3f054130dbb4e4203aca63567"
+    },
+    "flx": {
+      "available_ms": 1791365192284,
+      "collateral_token": 360,
+      "currency": "USDH",
+      "dex": "flx",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x54e00a5988577cb0b0c9ab0cb6ef7f4b"
+    },
+    "hyna": {
+      "available_ms": 1791365192284,
+      "collateral_token": 235,
+      "currency": "USDE",
+      "dex": "hyna",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x2e6d84f2d7ca82e6581e03523e4389f7"
+    },
+    "io": {
+      "available_ms": 1791365192284,
+      "collateral_token": 0,
+      "currency": "USDC",
+      "dex": "io",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+    },
+    "km": {
+      "available_ms": 1791365192284,
+      "collateral_token": 360,
+      "currency": "USDH",
+      "dex": "km",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x54e00a5988577cb0b0c9ab0cb6ef7f4b"
+    },
+    "mkts": {
+      "available_ms": 1791365192284,
+      "collateral_token": 0,
+      "currency": "USDC",
+      "dex": "mkts",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+    },
+    "para": {
+      "available_ms": 1791365192284,
+      "collateral_token": 0,
+      "currency": "USDC",
+      "dex": "para",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+    },
+    "vntl": {
+      "available_ms": 1791365192284,
+      "collateral_token": 360,
+      "currency": "USDH",
+      "dex": "vntl",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x54e00a5988577cb0b0c9ab0cb6ef7f4b"
+    },
+    "xyz": {
+      "available_ms": 1791365192284,
+      "collateral_token": 0,
+      "currency": "USDC",
+      "dex": "xyz",
+      "evidence_refs": [
+        "raw_observations:7202604",
+        "raw_observations:7202885"
+      ],
+      "status": "identified",
+      "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+    }
+  },
+  "unknown": [],
+  "economic_validation": false,
+  "limits": [
+    "token identification is not an FX quote",
+    "no historical validity inferred before receipt",
+    "no sum of shared collateral or account valuation"
+  ]
+}

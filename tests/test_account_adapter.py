@@ -31,3 +31,16 @@ class AdapterTests(unittest.TestCase):
   self.assertEqual(len(r['ledger_scope']['normalized_events']),1)
   self.assertEqual(r['ledger_scope']['normalized_events'][0]['amount'],'100')
   self.assertFalse(r['economic_validation'])
+ def test_future_catalog_not_used_to_denominate_hip_funding(self):
+  import json
+  catalog={'available_ms':600,'instruments':{'xyz:GOLD':{'currency':'USDH','status':'identified'}},'dexes':{'xyz':{'currency':'USDH','status':'identified'}}}
+  self.s.connection.execute('create table collateral_catalogs (network text,available_ms integer,payload_json text)')
+  self.s.connection.execute('insert into collateral_catalogs values (?,?,?)',('test',600,json.dumps(catalog)));self.s.connection.commit()
+  payload=[{'time':500,'hash':'h','delta':{'type':'funding','coin':'xyz:GOLD','usdc':'-3'}}]
+  self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,endpoint='userFunding',payload=payload,complete=False)
+  self.s.connection.execute("update raw_observations set observed_at='1970-01-01T00:00:01+00:00'");self.s.connection.commit()
+  r=report_account(self.s,'test',self.addr,0,1000,as_of_ms=2000)
+  self.assertEqual(r['perp_scope_reports'][0]['scope']['currency'],'USDH')
+  self.assertEqual(r['unsupported_events'][0]['status'],'currency_unverified')
+  self.assertEqual(r['perp_scope_reports'][0]['observed']['funding'],'0')
+  self.assertIn('funding denomination/amount unavailable',r['perp_scope_reports'][0]['unknown_reasons'])

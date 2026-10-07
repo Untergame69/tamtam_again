@@ -9,6 +9,7 @@ from uuid import uuid4
 from .engine import canonical, fingerprint, initial_state, metrics, number, reduce_event
 from .storage import Store, decode_observation_payload, utc_now
 from .validation import decision, get_variant, now_ms
+from . import paper_evidence
 
 
 def timestamp(value: str) -> int:
@@ -139,6 +140,7 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     session_id = uuid4().hex
     started = now_ms()
     state = initial_state(spec)
+    paper_evidence.initialize(store)
     store.connection.execute('create table if not exists paper_session_policy '
         '(session_id text primary key,capital_policy text not null,restart_reason text)')
     store.connection.execute('create table if not exists paper_retirements '
@@ -181,6 +183,8 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
         store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,0,utc_now()))
         store.connection.execute('insert into paper_session_policy values(?,?,?)',
                                  (session_id,'independent_paper_session',restart_reason))
+        paper_evidence.record(store,session_id,started,0,state,
+            metrics(state,spec,plan['criteria']['block_ms']))
         if transferred:
             store.connection.execute('insert into paper_handovers values(?,?,?,?)',
                 (session_id,transferred,started,canonical(replacement)))
@@ -223,6 +227,7 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
     row,spec,plan = get_variant(store,session["variant_id"])
     if row["synthetic"]:
         raise ValueError("Synthetic session must never consume a real archive")
+    paper_evidence.initialize(store)
     store.connection.execute('create table if not exists paper_suspensions '
         '(session_id text primary key,suspended_ms integer not null,diagnostics_json text not null)')
     store.connection.commit()
@@ -253,13 +258,15 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
             store.connection.execute('insert into paper_suspensions values(?,?,?)',
                 (session_id,now_ms(),canonical(state['diagnostics'])))
         store.connection.execute("UPDATE paper_sessions SET state_json=?,status=?,last_observation_id=?,updated_at=? WHERE session_id=?",(canonical(state),status,cursor,utc_now(),session_id))
+        observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+        paper_evidence.record(store,session_id,max(now_ms(),state['last_ms']),cursor,state,observed_metrics)
         store.connection.commit()
     except Exception:
         store.connection.rollback()
         raise
     if status == "suspended":
         decision(store,row["network"],row["address"],row["coin"],"suspended","N2 deterministic monitoring stopped the session",{"requires_operator_review":True,"new_session_required":True},"inspect_paper_diagnostics",state["diagnostics"])
-    return {"session_id":session_id,"status":status,"processed_events":len(events),"metrics":metrics(state,spec,plan["criteria"]["block_ms"])}
+    return {"session_id":session_id,"status":status,"processed_events":len(events),"metrics":observed_metrics}
 
 
 def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,Any]]) -> dict[str,Any]:
@@ -273,6 +280,8 @@ def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,A
     row,spec,plan = get_variant(store,session["variant_id"])
     if not row["synthetic"]:
         raise ValueError("Fixture feed forbidden for real variants")
+    paper_evidence.initialize(store)
+    store.connection.commit()
     store.connection.execute("BEGIN IMMEDIATE")
     try:
         session = store.connection.execute("SELECT * FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
@@ -282,8 +291,10 @@ def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,A
         for event in events:
             reduce_event(state,spec,event)
         store.connection.execute("UPDATE paper_sessions SET state_json=?,updated_at=? WHERE session_id=?",(canonical(state),utc_now(),session_id))
+        observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+        paper_evidence.record(store,session_id,max(now_ms(),state['last_ms']),session['last_observation_id'],state,observed_metrics)
         store.connection.commit()
     except Exception:
         store.connection.rollback()
         raise
-    return {"synthetic":True,"session_id":session_id,"metrics":metrics(state,spec,plan["criteria"]["block_ms"])}
+    return {"synthetic":True,"session_id":session_id,"metrics":observed_metrics}

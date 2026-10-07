@@ -257,7 +257,8 @@ class RegistryTests(unittest.TestCase):
         from tamtam_again.validation import get_variant
         from tamtam_again.procedure_trace import registry_trace
         self.evaluate('comparison');self.evaluate('final')
-        session=start_paper(self.store,self.variant,synthetic_recipe=True)
+        with patch('tamtam_again.paper.now_ms',return_value=900):
+            session=start_paper(self.store,self.variant,synthetic_recipe=True)
         row,spec,plan=get_variant(self.store,self.variant)
         # Exercise the real scheduler branch without allowing any archive reads.
         row={**dict(row),'synthetic':False}
@@ -273,6 +274,9 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(journal['suspended_ms'],1000)
         self.assertIn('missing_live_heartbeat',journal['diagnostics_json'])
         self.assertIn('paper_net_loss_budget_exhausted',journal['diagnostics_json'])
+        snapshots=self.store.connection.execute('select available_ms,metrics_json from paper_snapshots order by available_ms').fetchall()
+        self.assertEqual([r['available_ms'] for r in snapshots],[900,1000])
+        self.assertEqual(json.loads(snapshots[-1]['metrics_json'])['net_pnl'],'-5')
         self.assertNotIn('paper_session_suspended',[e['kind'] for e in registry_trace(self.store,as_of_ms=999)['events']])
         self.assertIn('paper_session_suspended',[e['kind'] for e in registry_trace(self.store,as_of_ms=1000)['events']])
         from tamtam_again.paper import synthetic_recipe_tick

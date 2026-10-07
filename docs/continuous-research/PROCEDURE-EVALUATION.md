@@ -165,3 +165,25 @@ ne sont pas automatiquement exécutées, et leurs preuves restent à résoudre p
 l'adaptateur autorisé. Aucun benchmark rétrospectif ne devient prospectif en
 étant inscrit ici. Aucun contrat réel créé lors de cette livraison. Rollback code,
 conserver les deux tables immuables et leurs dates.
+
+## Liaison prospective aux sessions paper
+
+`bind_session` lie une session active déjà démarrée après inscription du contrat,
+avant la période, au rôle adaptive ou au nom d'une référence exécutable. Variante,
+network et address doivent correspondre au contrat/choix. Choix préalable exigé,
+lien immuable et replay sans changement de date. Le nom adaptive est réservé.
+Table additive procedure_session_bindings ; aucun choix après examen de PnL.
+
+`bound_outcomes` résout ces liens vers `paper_outcome` pour chaque rôle à un cutoff
+explicite après la fin de période. Cash déclaré conserve zéro nominal sans intérêt
+ni flux ; absence de lien/instantanés rend les résultats inconnus. Aucun rejeu de
+l'archive, paquet IA ou résultat N1 réservé. Les références exécutable restent des
+sessions N2 soumises aux gates ordinaires ; ce code ne les promeut ni ne les crée.
+
+CLI `scripts/procedure-paper-outcomes.py --db CHEMIN --procedure-id ID
+--period-index INDEX --role ROLE --session-id SESSION` pour lier, ou `--as-of-ms
+CUTOFF --output RAPPORT` pour résoudre. Contrat doit avoir network/address explicites.
+Limite actuelle : même compte pour les références ; témoin de sélection sur une
+cohorte d'autres comptes et raccordement des coûts/reducer entier restent à faire.
+Les résultats sont ceux du modèle paper, pas une preuve d'exécution réelle.
+Aucun lien ou session réel créé. Rollback code uniquement, conserver les liens.

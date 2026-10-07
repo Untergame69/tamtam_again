@@ -598,3 +598,11 @@ après début ou révision d'un choix refusées ; attente précédente non effa�
 Tests de temporalité/idempotence/connaissance future. CLI explicite sans runtime
 ni archive. Exécution des références et adaptateur d'évaluation complet restent
 à raccorder ; aucun contrat réel ou paper créé.
+
+### Liaison prospective des résultats paper — étape 12
+
+Registre additif de sessions liées aux rôles avant période, identité/version/
+scope contrôlés, relecture immuable. Résolution via instantanés paper uniquement,
+période non terminée et preuves absentes inconnues, aucune archive réservée.
+CLI explicite sans lancement de session. Références multi-comptes et raccordement
+complet des coûts au reducer restent ouverts ; aucune liaison réelle créée.

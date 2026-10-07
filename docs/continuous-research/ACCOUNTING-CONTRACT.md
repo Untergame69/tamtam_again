@@ -88,3 +88,31 @@ maintenance unifié nécessite la correspondance dex/collateralToken, les marges
 cross/isolated et les soldes spot. Il ne se confond pas avec le ratio brut
 exposition/accountValue calculé dans l'ancienne qualification descriptive.
 Les anciens rapports demeurent datés, sans qualification rétroactive de leur ratio.
+# Normalisation des événements publics — incrément du 7 octobre
+
+`account_events.py` normalise le funding par instrument et les flux selon une
+frontière explicite : une seule adresse HyperCore, spot et perp inclus.
+Les événements conservent identité transactionnelle, temps, disponibilité et
+référence brute. Les différentes devises ne sont pas converties implicitement.
+
+Le funding standard est libellé USDC. Pour HIP-3, le montant rapporté est
+conservé dans un scope de devise non vérifiée jusqu'à preuve du collatéral ; ce
+montant ne doit pas être présenté comme une valorisation USD consolidée.
+
+Les dépôts sont externes. Un transfert vers une autre adresse est externe à
+notre frontière, y compris subAccountTransfer : aucune consolidation de propriété
+n'est inférée. AccountClassTransfer est interne entre spot/perp et n'est pas un
+revenu. Les flux globaux ne sont jamais recopiés dans chaque scope perp dex.
+
+Les frais de retrait/transfert dont la convention brut/net n'est pas établie,
+les mécanismes de vault, récompenses, liquidation et transferts spot restent
+inconnus avec diagnostic. Une réponse vide n'établit pas leur absence historique.
+Les identités excluent les montants : des événements contradictoires portant la
+même identité sont signalés plutôt que fusionnés silencieusement.
+
+Contrôle réel résumé : `account-events-control-20261007.json`. Le rapport complet
+est reproductible avec `scripts/population-accounting-report.py` et les bornes
+du résumé. Quinze comptes examinés, aucune qualification économique ; les bornes,
+la couverture et la valorisation consolidée restent à établir.
+
+Source : [types ledger et funding officiels](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/websocket/subscriptions).

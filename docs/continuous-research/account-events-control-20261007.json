@@ -1,0 +1,157 @@
+{
+  "kind": "real_normalized_accounting_control",
+  "period": {
+    "start_ms": 1791278383600,
+    "end_ms": 1791364783600
+  },
+  "as_of_ms": 1791365026280,
+  "synthetic": false,
+  "economic_validation": false,
+  "accounts_reported": 15,
+  "accounts": [
+    {
+      "address": "0x012ed994df76022637f79ff9e209d7d44a4d1c8e",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x0675bfaf9faffe3343c08402200d7c75d0fd79e1",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x1bd2d89e4b9a2d373e89d74c8cc02d1562fa9626",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x2607a3909cee65aa8205ca26f7db2d9244389577",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x2618f54fee88adf9bf840a1bb722be286fbd0f15",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x330f0bdeae3514c11fb2e1b6d18ab7939f04a8fb",
+      "mode": "default",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x4a20b9496610941053858bd0b7e92493f44c3c26",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x4ad5ffac22c04a18ab3d8658682f71ab71d89a1c",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x50c5132bbbe67357b74e115f9374d8a683439547",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x570eb8d438bd209b0deeee3d2e0a8559f5d57fb7",
+      "mode": "default",
+      "funding_by_scope": [],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    },
+    {
+      "address": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7",
+      "mode": "unifiedAccount",
+      "funding_by_scope": [
+        {
+          "scope": {
+            "id": "perp:xyz",
+            "currency": "UNVERIFIED_DEX_CURRENCY",
+            "account_mode": "unifiedAccount",
+            "shared_collateral_model_verified": false
+          },
+          "observed_funding": "-1612.382134",
+          "events": 72,
+          "status": "unknown"
+        }
+      ],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 72,
+      "status": "unknown"
+    },
+    {
+      "address": "0x662823f3280bb67da4eec0c4195709caacf20215",
+      "mode": "default",
+      "funding_by_scope": [
+        {
+          "scope": {
+            "id": "perp:",
+            "currency": "USDC",
+            "account_mode": "default",
+            "shared_collateral_model_verified": false
+          },
+          "observed_funding": "-1.953199",
+          "events": 1242,
+          "status": "unknown"
+        }
+      ],
+      "normalized_ledger_events": 0,
+      "unsupported_event_count": 0,
+      "status": "unknown"
+    }
+  ]
+}

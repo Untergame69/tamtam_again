@@ -19,3 +19,15 @@ class AdapterTests(unittest.TestCase):
  def test_other_sources_are_not_consumed(self):
   self.s.save_observation(network='test',source='hyperliquid-websocket-v1',entity_type='account',entity_id=self.addr,endpoint='userFills',payload={'secret_reserved_marker':'never_decode'})
   r=report_account(self.s,'test',self.addr,0,1000,as_of_ms=2000);self.assertEqual(r['evidence_refs'],[])
+ def test_funding_and_ledger_scopes_separate_and_deduplicated(self):
+  funding=[{'time':500,'hash':'h','delta':{'type':'funding','coin':'BTC','usdc':'-3'}}]
+  ledger=[{'time':500,'hash':'d','delta':{'type':'deposit','usdc':'100'}}]
+  for endpoint,payload in [('userFunding',funding),('userFunding',funding),('userNonFundingLedgerUpdates',ledger),('userNonFundingLedgerUpdates',ledger)]:
+   self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,endpoint=endpoint,payload=payload,request_payload={'reception':self.s.connection.execute('select count(*) from raw_observations').fetchone()[0]},complete=False)
+  self.s.connection.execute("update raw_observations set observed_at='1970-01-01T00:00:01+00:00'");self.s.connection.commit()
+  r=report_account(self.s,'test',self.addr,0,1000,as_of_ms=2000)
+  self.assertEqual(r['perp_scope_reports'][0]['observed']['funding'],'-3')
+  self.assertEqual(r['perp_scope_reports'][0]['observed']['external_flows'],'0')
+  self.assertEqual(len(r['ledger_scope']['normalized_events']),1)
+  self.assertEqual(r['ledger_scope']['normalized_events'][0]['amount'],'100')
+  self.assertFalse(r['economic_validation'])

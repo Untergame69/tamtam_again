@@ -178,3 +178,18 @@ sans erreur. Aucun redémarrage du collecteur, aucun changement des pilotes.
 La migration ajoute population_history_cursors ; les pages restent incomplete
 avec rétention inconnue. Procédure et rollback : POPULATION-HISTORY.md.
 Normalisation des transferts/funding et valorisation consolidée restent à faire.
+
+## Cinquième incrément — événements comptables normalisés
+
+Funding signé par instrument, dépôts et transferts selon frontière de l'adresse
+normalisés et reliés aux observations. Les flux HyperCore restent distincts
+des scopes perp, sans allocation arbitraire ni consolidation des sous-comptes.
+Les devises HIP-3, retraits avec frais et autres mécanismes non établis restent
+inconnus. Les contradictions sur une même identité sont conservées en diagnostic.
+
+115 tests passent. Contrôle réel de 15 comptes sur bornes communes : deux scopes
+avec funding observé non nul ; aucun événement ledger normalisé dans cette
+fenêtre et aucune qualification économique. Preuve résumée dans
+account-events-control-20261007.json, règles dans ACCOUNTING-CONTRACT.md.
+Les mécanismes non supportés, la complétude des périodes, le collatéral et la
+valorisation consolidée restent à terminer ; la tâche 6 reste partielle.

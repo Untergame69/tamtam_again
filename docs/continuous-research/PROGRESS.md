@@ -250,3 +250,16 @@ comparaisons et une finale dans une base temporaire. Aucun plan réel ajouté.
 Preuves et rollback : EXPERIMENT-FAMILIES.md et experiment-recipe-20261007.json.
 La tâche 9 reste partielle pour la calibration par mesures réelles ; allocation,
 moteur multi-instruments, adaptation et autres tâches restent à terminer.
+
+## Dixième incrément — premier moteur portefeuille expérimental
+
+Contrat d'extension explicite et état unsupported_mechanism. Référence fixe deux
+perps USDC avec comptabilité partagée, expositions agrégées, funding propre,
+latences et santé par marché, IOC indépendantes, jambe manquante/partielle et
+flatten après timeout. Journal versionné et reprise/idempotence vérifiées.
+
+160 tests passent, y compris reconnexion invalidant la quote précédente. Recette portfolio-recipe-20261007.json
+synthétique normal/stress et clôture de l'inventaire effectif après jambe absente.
+Aucun plan réel ou session paper créé. Contract/rollback dans
+HARNESS-EXTENSIONS.md. Tâche 10 partielle : validation réelle/N2, règles de lots,
+marges/FX et collecte multi-marchés restent à intégrer. Goal complet conservé.

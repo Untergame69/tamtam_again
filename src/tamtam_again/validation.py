@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS paper_sessions (
  last_observation_id INTEGER NOT NULL DEFAULT 0,updated_at TEXT NOT NULL);
 """
 STATES = {"needs_data", "collector_correction", "redo_analysis", "ready_to_test", "rejected",
-          "non_identifiable", "paper_active", "suspended"}
+          "non_identifiable", "unsupported_mechanism", "paper_active", "suspended"}
 
 
 def initialize(store: Store) -> None:

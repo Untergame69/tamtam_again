@@ -1,0 +1,345 @@
+{
+  "synthetic": true,
+  "real_strategy_validated": false,
+  "spec": {
+    "schema_version": 1,
+    "engine": "portfolio_reference_v1",
+    "currency": "USDC",
+    "legs": [
+      {
+        "market": "A",
+        "target_units": "1"
+      },
+      {
+        "market": "B",
+        "target_units": "-1"
+      }
+    ],
+    "capital_usdc": "1000",
+    "max_gross_usdc": "100",
+    "max_loss_usdc": "100",
+    "taker_fee_bps": "1",
+    "slippage_bps": "0",
+    "displayed_size_fraction": "1",
+    "start_ms": 2,
+    "latency_ms": 1,
+    "horizon_ms": 10,
+    "leg_timeout_ms": 2,
+    "heartbeat_timeout_ms": 100,
+    "unhedged_policy": "flatten_on_timeout",
+    "evidence_refs": [
+      "synthetic:reference"
+    ]
+  },
+  "events": [
+    {
+      "id": "('connection', 0, 'A', {'session': 'A', 'connected': True})",
+      "kind": "connection",
+      "event_ms": 0,
+      "received_ms": 0,
+      "market": "A",
+      "session": "A",
+      "connected": true
+    },
+    {
+      "id": "('connection', 0, 'B', {'session': 'B', 'connected': True})",
+      "kind": "connection",
+      "event_ms": 0,
+      "received_ms": 0,
+      "market": "B",
+      "session": "B",
+      "connected": true
+    },
+    {
+      "id": "('bbo', 1, 'A', {'session': 'A', 'bid': '10', 'ask': '10', 'bid_size': '10', 'ask_size': '10'})",
+      "kind": "bbo",
+      "event_ms": 1,
+      "received_ms": 1,
+      "market": "A",
+      "session": "A",
+      "bid": "10",
+      "ask": "10",
+      "bid_size": "10",
+      "ask_size": "10"
+    },
+    {
+      "id": "('bbo', 1, 'B', {'session': 'B', 'bid': '20', 'ask': '20', 'bid_size': '0', 'ask_size': '10'})",
+      "kind": "bbo",
+      "event_ms": 1,
+      "received_ms": 1,
+      "market": "B",
+      "session": "B",
+      "bid": "20",
+      "ask": "20",
+      "bid_size": "0",
+      "ask_size": "10"
+    },
+    {
+      "id": "('timer', 2, None, {})",
+      "kind": "timer",
+      "event_ms": 2,
+      "received_ms": 2
+    },
+    {
+      "id": "('timer', 3, None, {})",
+      "kind": "timer",
+      "event_ms": 3,
+      "received_ms": 3
+    },
+    {
+      "id": "('timer', 6, None, {})",
+      "kind": "timer",
+      "event_ms": 6,
+      "received_ms": 6
+    },
+    {
+      "id": "('timer', 7, None, {})",
+      "kind": "timer",
+      "event_ms": 7,
+      "received_ms": 7
+    }
+  ],
+  "normal": {
+    "state": {
+      "engine": "portfolio_reference_v1",
+      "spec_fingerprint": "890dac7011b714142b2c1a5b65a3735adad32e524a790fc5c64235c799809fa0",
+      "last_ms": 7,
+      "seen": {
+        "('connection', 0, 'A', {'session': 'A', 'connected': True})": "8fabd7139f5dc8a26ba887f35d9a76053dbfa885805791599232bab8eea402f5",
+        "('connection', 0, 'B', {'session': 'B', 'connected': True})": "dfe90e63ae186a0e113ebf4c36f0e42615138466d07f017deef3cb5ff3aed9b2",
+        "('bbo', 1, 'A', {'session': 'A', 'bid': '10', 'ask': '10', 'bid_size': '10', 'ask_size': '10'})": "26d17eb294cd6cf7933e2999419e98a302e4bb4f7a49a86b2e094f285fe2722e",
+        "('bbo', 1, 'B', {'session': 'B', 'bid': '20', 'ask': '20', 'bid_size': '0', 'ask_size': '10'})": "0c57103aa13dc112d5a18cdac8468796fa213a811ce70dda22a365b27f39d812",
+        "('timer', 2, None, {})": "303d5ded9ad0e17b20b7ab4ccc1f471d86009ec4d1e1e9f1a230e714cb96def3",
+        "('timer', 3, None, {})": "3ce050c48fb9d2d15cedb14b39b3792bf7643a344bea409dddcf2b67512c11e3",
+        "('timer', 6, None, {})": "d2963bbe5a4c136b4c9162ac890be014e3a630831774f4c1e0c8d2e6865bc799",
+        "('timer', 7, None, {})": "8e522710723e06bfd38bae0aa4fcc912129c5ccc4364066703f84f23e14906e0"
+      },
+      "phase": "finished",
+      "intent": null,
+      "opened_ms": null,
+      "diagnostics": [
+        {
+          "at_ms": 3,
+          "kind": "no_liquidity",
+          "market": "B"
+        },
+        {
+          "at_ms": 6,
+          "kind": "leg_timeout",
+          "purpose": "open",
+          "positions": {
+            "A": "1",
+            "B": "0"
+          }
+        }
+      ],
+      "risk_halted": true,
+      "peak_equity": "1000",
+      "legs": {
+        "A": {
+          "cash": "-0.002",
+          "position": "0",
+          "average_price": "0",
+          "realized_pnl": "0",
+          "fees": "0.002",
+          "funding": "0",
+          "opened_ms": null,
+          "fills": [
+            {
+              "received_ms": 3,
+              "size": "1",
+              "price": "10",
+              "fee": "0.001",
+              "realized_pnl": "0"
+            },
+            {
+              "received_ms": 7,
+              "size": "-1",
+              "price": "10",
+              "fee": "0.001",
+              "realized_pnl": "0"
+            }
+          ],
+          "quote": {
+            "bid": "10",
+            "ask": "10",
+            "bid_size": "10",
+            "ask_size": "10",
+            "session": "A",
+            "available_ms": 1
+          },
+          "session": "A",
+          "connected": true,
+          "healthy_ms": 0
+        },
+        "B": {
+          "cash": "0",
+          "position": "0",
+          "average_price": "0",
+          "realized_pnl": "0",
+          "fees": "0",
+          "funding": "0",
+          "opened_ms": null,
+          "fills": [],
+          "quote": {
+            "bid": "20",
+            "ask": "20",
+            "bid_size": "0",
+            "ask_size": "10",
+            "session": "B",
+            "available_ms": 1
+          },
+          "session": "B",
+          "connected": true,
+          "healthy_ms": 0
+        }
+      }
+    },
+    "metrics": {
+      "cash_usdc": "999.998",
+      "equity_usdc": "999.998",
+      "gross_exposure_usdc": "0",
+      "net_exposure_usdc": "0",
+      "realized_pnl_usdc": "0",
+      "fees_usdc": "0.002",
+      "funding_usdc": "0",
+      "valuation_status": "observed_exit_quotes",
+      "positions": {
+        "A": "0",
+        "B": "0"
+      },
+      "phase": "finished",
+      "economic_validation": false,
+      "experimental": true
+    },
+    "real_strategy_validated": false,
+    "live_orders_enabled": false,
+    "limits": [
+      "experimental fixed targets; not an inferred arbitrage strategy",
+      "two USDC perpetuals only; no liquidation/margin tiers or lot constraints yet",
+      "no paper promotion via this reference engine"
+    ]
+  },
+  "stress": {
+    "state": {
+      "engine": "portfolio_reference_v1",
+      "spec_fingerprint": "890dac7011b714142b2c1a5b65a3735adad32e524a790fc5c64235c799809fa0",
+      "last_ms": 7,
+      "seen": {
+        "('connection', 0, 'A', {'session': 'A', 'connected': True})": "8fabd7139f5dc8a26ba887f35d9a76053dbfa885805791599232bab8eea402f5",
+        "('connection', 0, 'B', {'session': 'B', 'connected': True})": "dfe90e63ae186a0e113ebf4c36f0e42615138466d07f017deef3cb5ff3aed9b2",
+        "('bbo', 1, 'A', {'session': 'A', 'bid': '10', 'ask': '10', 'bid_size': '10', 'ask_size': '10'})": "26d17eb294cd6cf7933e2999419e98a302e4bb4f7a49a86b2e094f285fe2722e",
+        "('bbo', 1, 'B', {'session': 'B', 'bid': '20', 'ask': '20', 'bid_size': '0', 'ask_size': '10'})": "0c57103aa13dc112d5a18cdac8468796fa213a811ce70dda22a365b27f39d812",
+        "('timer', 2, None, {})": "303d5ded9ad0e17b20b7ab4ccc1f471d86009ec4d1e1e9f1a230e714cb96def3",
+        "('timer', 3, None, {})": "3ce050c48fb9d2d15cedb14b39b3792bf7643a344bea409dddcf2b67512c11e3",
+        "('timer', 6, None, {})": "d2963bbe5a4c136b4c9162ac890be014e3a630831774f4c1e0c8d2e6865bc799",
+        "('timer', 7, None, {})": "8e522710723e06bfd38bae0aa4fcc912129c5ccc4364066703f84f23e14906e0"
+      },
+      "phase": "finished",
+      "intent": null,
+      "opened_ms": null,
+      "diagnostics": [
+        {
+          "at_ms": 3,
+          "kind": "no_liquidity",
+          "market": "B"
+        },
+        {
+          "at_ms": 6,
+          "kind": "leg_timeout",
+          "purpose": "open",
+          "positions": {
+            "A": "1",
+            "B": "0"
+          }
+        }
+      ],
+      "risk_halted": true,
+      "peak_equity": "1000",
+      "legs": {
+        "A": {
+          "cash": "-0.004",
+          "position": "0",
+          "average_price": "0",
+          "realized_pnl": "0",
+          "fees": "0.004",
+          "funding": "0",
+          "opened_ms": null,
+          "fills": [
+            {
+              "received_ms": 3,
+              "size": "1",
+              "price": "10",
+              "fee": "0.002",
+              "realized_pnl": "0"
+            },
+            {
+              "received_ms": 7,
+              "size": "-1",
+              "price": "10",
+              "fee": "0.002",
+              "realized_pnl": "0"
+            }
+          ],
+          "quote": {
+            "bid": "10",
+            "ask": "10",
+            "bid_size": "10",
+            "ask_size": "10",
+            "session": "A",
+            "available_ms": 1
+          },
+          "session": "A",
+          "connected": true,
+          "healthy_ms": 0
+        },
+        "B": {
+          "cash": "0",
+          "position": "0",
+          "average_price": "0",
+          "realized_pnl": "0",
+          "fees": "0",
+          "funding": "0",
+          "opened_ms": null,
+          "fills": [],
+          "quote": {
+            "bid": "20",
+            "ask": "20",
+            "bid_size": "0",
+            "ask_size": "10",
+            "session": "B",
+            "available_ms": 1
+          },
+          "session": "B",
+          "connected": true,
+          "healthy_ms": 0
+        }
+      }
+    },
+    "metrics": {
+      "cash_usdc": "999.996",
+      "equity_usdc": "999.996",
+      "gross_exposure_usdc": "0",
+      "net_exposure_usdc": "0",
+      "realized_pnl_usdc": "0",
+      "fees_usdc": "0.004",
+      "funding_usdc": "0",
+      "valuation_status": "observed_exit_quotes",
+      "positions": {
+        "A": "0",
+        "B": "0"
+      },
+      "phase": "finished",
+      "economic_validation": false,
+      "experimental": true
+    },
+    "real_strategy_validated": false,
+    "live_orders_enabled": false,
+    "limits": [
+      "experimental fixed targets; not an inferred arbitrage strategy",
+      "two USDC perpetuals only; no liquidation/margin tiers or lot constraints yet",
+      "no paper promotion via this reference engine"
+    ]
+  },
+  "scope": "experimental reference only; independent IOC legs with one failed leg, timeout and actual-position flatten"
+}

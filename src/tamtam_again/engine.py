@@ -32,6 +32,8 @@ def number(value: Any) -> Decimal:
 
 
 def validate_spec(spec: dict[str, Any]) -> None:
+    if isinstance(spec,dict) and spec.get('engine','single_perp_v2')!='single_perp_v2':
+        raise ValueError('Unsupported mechanism: dedicated engine requires its own validation adapter')
     required = {"schema_version", "type", "market", "data_sources", "signal", "entry", "exit",
                 "sizing", "max_exposure", "fees", "slippage", "latency_ms", "horizon_ms",
                 "execution", "invalidation_conditions", "starting_capital_usdc"}

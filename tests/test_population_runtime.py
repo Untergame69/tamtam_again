@@ -69,6 +69,26 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(later[0]['item']['experiments'],[])
         self.assertFalse(saved['economic_validation'])
 
+    def test_memory_import_cannot_hide_reserved_period(self):
+        from tamtam_again.population_memory import remember
+        from tamtam_again.recipe import synthetic_plan
+        from tamtam_again.validation import create_plan
+        plan=synthetic_plan()
+        plan['network']='test';plan['address']='account';plan['coin']='BTC'
+        create_plan(self.s,plan)
+        hypothesis={'mechanism':'fixture','markets':['ETH'],'required_data':[],
+            'rejection_criteria':'reject','execution_constraints':'limits','risk':'risk'}
+        result={'proposal':{'hypothesis':hypothesis},'critique':{'decision':'consistent'},
+            'promotion_authorized':False,'profitability_proven':False}
+        packet=json.loads(self.s.connection.execute('select packet_json from population_research_jobs').fetchone()[0])
+        packet['available_ms']=30000
+        self.s.connection.execute("update population_research_jobs set status='hypothesis_recorded',result_json=?,packet_json=?,updated_ms=30",
+            (json.dumps(result),json.dumps(packet)));self.s.connection.commit()
+        with patch('tamtam_again.research_memory.clock',return_value=100000):
+            with self.assertRaisesRegex(ValueError,'unreleased reserved'):remember(self.s,self.request)
+        self.assertEqual(self.s.connection.execute('select count(*) from research_knowledge').fetchone()[0],0)
+        self.assertEqual(self.s.connection.execute('select count(*) from population_research_memory').fetchone()[0],0)
+
     def test_open_hypothesis_and_review_never_promote(self):
         hypothesis={k:'fixture testable specification' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
         hypothesis.update(type='autonomous',markets=['BTC','ETH'],required_data=['causal price paths'],evidence_refs=['account_scope_reports:one'])

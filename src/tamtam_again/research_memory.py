@@ -82,9 +82,14 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
             if not any(p['network']==row['network'] and p['address']==row['entity_id'] and p['market']=='*' and p['start_ms']<=start and end<=p['end_ms'] for p in item['periods']):
                 raise ValueError('Raw source bounds must be contained in declared periods')
         elif proof['kind']=='population_research':
-            row=store.connection.execute('select network,address,status,updated_ms,packet_json from population_research_jobs where request_id=?',(proof['id'],)).fetchone()
+            row=store.connection.execute('select network,address,status,updated_ms,packet_json,result_json from population_research_jobs where request_id=?',(proof['id'],)).fetchone()
             if not row or row['status']!='hypothesis_recorded' or row['updated_ms']>now:
                 raise ValueError('Available reviewed population hypothesis required')
+            result=json.loads(row['result_json'])
+            if (result.get('promotion_authorized') is not False or
+                result.get('profitability_proven') is not False or
+                result.get('critique',{}).get('decision')!='consistent'):
+                raise ValueError('Population evidence must retain reviewed hypothesis status')
             packet=json.loads(row['packet_json'])
             # Conservative union: descriptors can refer to older inventory/history.
             # Never narrow the declared period to just a favorable episode.

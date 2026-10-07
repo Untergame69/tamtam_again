@@ -7,6 +7,7 @@ from pathlib import Path
 from tamtam_again.storage import Store
 from tamtam_again.discovery_rotation import select_markets
 from tamtam_again.discovery_runtime import collect_session
+from tamtam_again.discovery import leaderboard_provenance
 
 p = argparse.ArgumentParser()
 p.add_argument('--db', type=Path, required=True)
@@ -15,6 +16,16 @@ p.add_argument('--output', type=Path, required=True)
 a = p.parse_args()
 network = 'hyperliquid-mainnet'
 with Store(a.db) as store:
+    ranking = store.connection.execute(
+        'select snapshot_id, observed_at from whale_rankings where network=? '
+        'order by observed_at desc limit 1', (network,)).fetchone()
+    if ranking:
+        rows = [dict(r) for r in store.connection.execute(
+            'select address,window,metric,rank from whale_rankings where snapshot_id=?',
+            (ranking['snapshot_id'],))]
+        leaderboard_provenance(store, network, ranking['snapshot_id'],
+                               ranking['observed_at'], rows,
+                               max((r['rank'] for r in rows), default=0))
     row = store.connection.execute(
         'select payload_json from collateral_catalogs where network=? '
         'and available_ms<=? order by available_ms desc limit 1',

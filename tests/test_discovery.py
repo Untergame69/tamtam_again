@@ -46,3 +46,16 @@ class DiscoveryTests(unittest.TestCase):
         with patch('tamtam_again.websocket.time.time',return_value=now):
             accounts,markets,depth=_subscriptions(self.s,'test',30)
         self.assertEqual(markets,['RECENT'])
+
+class LeaderboardProvenanceTests(unittest.TestCase):
+    def test_rankings_preserved_without_financial_metrics(self):
+        from tamtam_again.discovery import leaderboard_provenance
+        with tempfile.TemporaryDirectory() as tmp, Store(Path(tmp)/'db') as store:
+            rows=[{'address':addr(1),'window':'day','metric':'pnl','rank':1,'pnl':'999'},
+                  {'address':addr(1),'window':'week','metric':'roi','rank':2,'roi':'99'}]
+            result=leaderboard_provenance(store,'test','snapshot','2026-10-07T00:00:00+00:00',rows,10)
+            self.assertEqual(result['selected'],1)
+            proof=store.connection.execute('select evidence_json from discovery_provenance').fetchone()[0]
+            self.assertNotIn('999',proof)
+            self.assertIn('snapshot',proof)
+            self.assertEqual(leaderboard_provenance(store,'test','snapshot','2026-10-07T00:00:00+00:00',rows,10)['new_candidates'],0)

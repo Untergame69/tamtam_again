@@ -492,6 +492,9 @@ def _discover_whales(store: Store, limit_per_window: int) -> tuple[str, list[dic
         store.add_candidate(NETWORK_NAME, candidate["address"],
                             "hyperliquid-official-web-stats:leaderboard",
                             candidate["display_name"])
+    from .discovery import leaderboard_provenance
+    leaderboard_provenance(store, NETWORK_NAME, snapshot_id, observed_at,
+                           rankings, limit_per_window)
     return snapshot_id, candidates, len(payload["leaderboardRows"])
 
 

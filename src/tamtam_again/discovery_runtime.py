@@ -85,7 +85,8 @@ def collect_session(store, network, markets, *, seconds=45,
         store.save_observation(network=network, source='hyperliquid-discovery-session-v1',
             entity_type='market', entity_id=coin, endpoint='trades',
             payload={'events': [{'received_at': r, 'message': m} for r, m in batch]},
-            requested_at=start, request_payload=coverage, record_count=len(batch))
+            requested_at=start, request_payload=coverage, record_count=len(batch),
+            complete=False)
         # Include empty sessions, so silence is not mistaken for absent collection.
         record_window(store, network=network, source='hyperliquid-discovery-session-v1',
             market=coin, start_ms=millis(start), end_ms=millis(end),

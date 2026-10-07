@@ -40,7 +40,7 @@ def evaluate_procedure(trace):
         def outcome(variant):
             if variant is None:return decimal(0)
             value=step['outcomes'].get(variant)
-            if not value or value.get('available_ms',asof+1)>asof:
+            if not value or value.get('net_pnl') is None or value.get('available_ms',asof+1)>asof:
                 unknown.append('outcome unavailable: '+variant);return None
             if value['available_ms']<stop:
                 raise ValueError('Period outcome available before period ended')

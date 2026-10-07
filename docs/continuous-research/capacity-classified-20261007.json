@@ -1,0 +1,830 @@
+{
+  "since": 1791365427.8733404,
+  "until": 1791369027.8733404,
+  "window_minutes": 60.0,
+  "groups": [
+    {
+      "task": "population-collateral-metadata",
+      "endpoint": "allPerpMetas",
+      "network": "hyperliquid-mainnet",
+      "attempts": 1,
+      "reserved_weight": 20,
+      "response_weight_bound": 20,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 83142,
+      "mean_request_seconds": 0.34825419398839585,
+      "max_request_seconds": 0.34825419398839585,
+      "wait_seconds": 1.7704472600016743,
+      "response_items": 11
+    },
+    {
+      "task": "population-collateral-metadata",
+      "endpoint": "spotMetaAndAssetCtxs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 1,
+      "reserved_weight": 20,
+      "response_weight_bound": 20,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 322910,
+      "mean_request_seconds": 0.6972126780019607,
+      "max_request_seconds": 0.6972126780019607,
+      "wait_seconds": 2.374129313015146,
+      "response_items": 2
+    },
+    {
+      "task": "population-rest-history_backfill",
+      "endpoint": "userFillsByTime",
+      "network": "hyperliquid-mainnet",
+      "attempts": 33,
+      "reserved_weight": 3960,
+      "response_weight_bound": 1121,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 3398452,
+      "mean_request_seconds": 0.40294536118303903,
+      "max_request_seconds": 1.1466067029978149,
+      "wait_seconds": 57.8593849298486,
+      "response_items": 8946
+    },
+    {
+      "task": "population-rest-history_backfill",
+      "endpoint": "userFunding",
+      "network": "hyperliquid-mainnet",
+      "attempts": 36,
+      "reserved_weight": 1620,
+      "response_weight_bound": 1075,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 1485153,
+      "mean_request_seconds": 0.35938840013922246,
+      "max_request_seconds": 0.9013281980005559,
+      "wait_seconds": 298.1844118089648,
+      "response_items": 6882
+    },
+    {
+      "task": "population-rest-history_backfill",
+      "endpoint": "userNonFundingLedgerUpdates",
+      "network": "hyperliquid-mainnet",
+      "attempts": 29,
+      "reserved_weight": 580,
+      "response_weight_bound": 580,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 549260,
+      "mean_request_seconds": 0.3005521331696996,
+      "max_request_seconds": 0.9990521050058305,
+      "wait_seconds": 130.90529643301852,
+      "response_items": 1395
+    },
+    {
+      "task": "population-rest-incremental",
+      "endpoint": "userFunding",
+      "network": "hyperliquid-mainnet",
+      "attempts": 2,
+      "reserved_weight": 90,
+      "response_weight_bound": 41,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 4236,
+      "mean_request_seconds": 0.24273017900122795,
+      "max_request_seconds": 0.24521259299945086,
+      "wait_seconds": 16.222609072981868,
+      "response_items": 19
+    },
+    {
+      "task": "population-rest-incremental",
+      "endpoint": "userNonFundingLedgerUpdates",
+      "network": "hyperliquid-mainnet",
+      "attempts": 2,
+      "reserved_weight": 40,
+      "response_weight_bound": 40,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 4,
+      "mean_request_seconds": 0.260475826493348,
+      "max_request_seconds": 0.2832169310131576,
+      "wait_seconds": 8.285204301995691,
+      "response_items": 0
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "clearinghouseState",
+      "network": "hyperliquid-mainnet",
+      "attempts": 330,
+      "reserved_weight": 660,
+      "response_weight_bound": 660,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 208695,
+      "mean_request_seconds": 0.2698262532943662,
+      "max_request_seconds": 0.8837291639938485,
+      "wait_seconds": 550.7451294012717,
+      "response_items": null
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "perpDexs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 30,
+      "reserved_weight": 600,
+      "response_weight_bound": 600,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 646558,
+      "mean_request_seconds": 0.30392347686671806,
+      "max_request_seconds": 0.4781750919937622,
+      "wait_seconds": 70.79271650299779,
+      "response_items": 330
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "portfolio",
+      "network": "hyperliquid-mainnet",
+      "attempts": 30,
+      "reserved_weight": 600,
+      "response_weight_bound": 600,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 750077,
+      "mean_request_seconds": 0.32582120066702674,
+      "max_request_seconds": 0.6824417469906621,
+      "wait_seconds": 50.316566854016855,
+      "response_items": 240
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "spotClearinghouseState",
+      "network": "hyperliquid-mainnet",
+      "attempts": 30,
+      "reserved_weight": 60,
+      "response_weight_bound": 60,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 32709,
+      "mean_request_seconds": 0.26144725243114714,
+      "max_request_seconds": 0.39628670099773444,
+      "wait_seconds": 71.3336849520565,
+      "response_items": null
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "subAccounts",
+      "network": "hyperliquid-mainnet",
+      "attempts": 30,
+      "reserved_weight": 600,
+      "response_weight_bound": 600,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 75521,
+      "mean_request_seconds": 0.2979732741009987,
+      "max_request_seconds": 0.8631677009980194,
+      "wait_seconds": 156.45893578603864,
+      "response_items": 66
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "userAbstraction",
+      "network": "hyperliquid-mainnet",
+      "attempts": 30,
+      "reserved_weight": 600,
+      "response_weight_bound": 600,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 429,
+      "mean_request_seconds": 0.28758170079769724,
+      "max_request_seconds": 0.5235215539869387,
+      "wait_seconds": 51.4682478120958,
+      "response_items": null
+    },
+    {
+      "task": "population-rest-overview",
+      "endpoint": "userRole",
+      "network": "hyperliquid-mainnet",
+      "attempts": 30,
+      "reserved_weight": 1800,
+      "response_weight_bound": 1800,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 519,
+      "mean_request_seconds": 0.2689596211295187,
+      "max_request_seconds": 0.44200759098748676,
+      "wait_seconds": 80.14207802689634,
+      "response_items": null
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "candleSnapshot",
+      "network": "hyperliquid-mainnet",
+      "attempts": 1399,
+      "reserved_weight": 29379,
+      "response_weight_bound": 29379,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 1117345,
+      "mean_request_seconds": 0.27300910559013386,
+      "max_request_seconds": 0.9263186790049076,
+      "wait_seconds": 2677.750398377015,
+      "response_items": 8381
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "metaAndAssetCtxs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 44,
+      "reserved_weight": 880,
+      "response_weight_bound": 880,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 807965,
+      "mean_request_seconds": 0.3120044185918893,
+      "max_request_seconds": 0.7251845769933425,
+      "wait_seconds": 87.47782891098177,
+      "response_items": 88
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "perpDexs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 4,
+      "reserved_weight": 80,
+      "response_weight_bound": 80,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 86205,
+      "mean_request_seconds": 0.2523977070086403,
+      "max_request_seconds": 0.25529504599398933,
+      "wait_seconds": 9.756262500042794,
+      "response_items": 44
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "spotMetaAndAssetCtxs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 4,
+      "reserved_weight": 80,
+      "response_weight_bound": 80,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 1291721,
+      "mean_request_seconds": 0.5443556267491658,
+      "max_request_seconds": 0.917840904003242,
+      "wait_seconds": 7.083976408990566,
+      "response_items": 8
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "clearinghouseState",
+      "network": "hyperliquid-mainnet",
+      "attempts": 40,
+      "reserved_weight": 80,
+      "response_weight_bound": 80,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 299655,
+      "mean_request_seconds": 0.2897461521737569,
+      "max_request_seconds": 0.7994623460108414,
+      "wait_seconds": 132.04507284404826,
+      "response_items": null
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "openOrders",
+      "network": "hyperliquid-mainnet",
+      "attempts": 40,
+      "reserved_weight": 800,
+      "response_weight_bound": 800,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 1172196,
+      "mean_request_seconds": 0.29942908552329756,
+      "max_request_seconds": 0.6949604139954317,
+      "wait_seconds": 81.25163903093198,
+      "response_items": 7042
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "portfolio",
+      "network": "hyperliquid-mainnet",
+      "attempts": 40,
+      "reserved_weight": 800,
+      "response_weight_bound": 800,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 1097473,
+      "mean_request_seconds": 0.37176846254660634,
+      "max_request_seconds": 1.1748882459942251,
+      "wait_seconds": 117.77287908096332,
+      "response_items": 320
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "spotClearinghouseState",
+      "network": "hyperliquid-mainnet",
+      "attempts": 40,
+      "reserved_weight": 80,
+      "response_weight_bound": 80,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 50104,
+      "mean_request_seconds": 0.27700526912449275,
+      "max_request_seconds": 0.5494031959970016,
+      "wait_seconds": 71.14645669501624,
+      "response_items": null
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "userFillsByTime",
+      "network": "hyperliquid-mainnet",
+      "attempts": 42,
+      "reserved_weight": 5040,
+      "response_weight_bound": 1598,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 5493543,
+      "mean_request_seconds": 0.4339805756920084,
+      "max_request_seconds": 1.3227458320034202,
+      "wait_seconds": 136.27979632807546,
+      "response_items": 14983
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "userFunding",
+      "network": "hyperliquid-mainnet",
+      "attempts": 40,
+      "reserved_weight": 1800,
+      "response_weight_bound": 818,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 58908,
+      "mean_request_seconds": 0.26042129755078347,
+      "max_request_seconds": 0.5251268110005185,
+      "wait_seconds": 373.11282110997126,
+      "response_items": 267
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "userNonFundingLedgerUpdates",
+      "network": "hyperliquid-mainnet",
+      "attempts": 40,
+      "reserved_weight": 800,
+      "response_weight_bound": 800,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 3512,
+      "mean_request_seconds": 0.24939934900176014,
+      "max_request_seconds": 0.35787562001496553,
+      "wait_seconds": 175.7554689339304,
+      "response_items": 9
+    }
+  ],
+  "reserved_weight_per_minute": 851.15,
+  "charged_weight": "unknown: server does not return charged weight",
+  "response_weight_bound": "documented response-item formula, rounded conservatively; not server measurement",
+  "workload_budget": {
+    "version": "workload-decomposition-v1",
+    "phases": {
+      "shared_metadata": {
+        "reserved_weight": 40,
+        "attempts": 2,
+        "retry_attempts": 0,
+        "rate_limits": 0,
+        "wait_seconds": 4.1445765730168205,
+        "reserved_weight_per_minute": 0.6666666666666666
+      },
+      "history_backfill": {
+        "reserved_weight": 6160,
+        "attempts": 98,
+        "retry_attempts": 0,
+        "rate_limits": 0,
+        "wait_seconds": 486.9490931718319,
+        "reserved_weight_per_minute": 102.66666666666667
+      },
+      "incremental_history": {
+        "reserved_weight": 130,
+        "attempts": 4,
+        "retry_attempts": 0,
+        "rate_limits": 0,
+        "wait_seconds": 24.50781337497756,
+        "reserved_weight_per_minute": 2.1666666666666665
+      },
+      "account_inventory": {
+        "reserved_weight": 4920,
+        "attempts": 510,
+        "retry_attempts": 0,
+        "rate_limits": 0,
+        "wait_seconds": 1031.2573593353736,
+        "reserved_weight_per_minute": 82.0
+      },
+      "market_collection": {
+        "reserved_weight": 30419,
+        "attempts": 1451,
+        "retry_attempts": 0,
+        "rate_limits": 0,
+        "wait_seconds": 2782.06846619703,
+        "reserved_weight_per_minute": 506.98333333333335
+      },
+      "legacy_account_collection_mixed": {
+        "reserved_weight": 9400,
+        "attempts": 282,
+        "retry_attempts": 0,
+        "rate_limits": 0,
+        "wait_seconds": 1087.364134022937,
+        "reserved_weight_per_minute": 156.66666666666666
+      }
+    },
+    "local_reserved_weight_budget_per_minute": 900,
+    "recovery_fraction_assumption": 0.2,
+    "operational_budget_per_minute": 720.0,
+    "measured_reserved_weight_per_minute": 851.15,
+    "additional_headroom_with_recovery_per_minute": 0,
+    "excess_above_operational_budget_per_minute": 131.14999999999998,
+    "expansion_status": "no_measured_margin",
+    "sustainable_account_capacity": null,
+    "limits": [
+      "reserved weight is not measured server charge",
+      "legacy collection mixes backfill and incremental requests",
+      "account capacity needs full job cost, cadence and retention evidence",
+      "recovery reserve is a configurable planning assumption, not an exchange requirement"
+    ]
+  },
+  "sampling_warning": "Startup and backfill are mixed with incremental tasks; observe complete cadence cycles and classify workload before deployment decisions",
+  "official_ip_budget_per_minute": 1200,
+  "local_budget_per_minute": 900,
+  "margin_to_official": 300,
+  "completed_minute_buckets": [
+    {
+      "minute": 29856090,
+      "weight": 539,
+      "attempts": 29
+    },
+    {
+      "minute": 29856091,
+      "weight": 650,
+      "attempts": 31
+    },
+    {
+      "minute": 29856092,
+      "weight": 1034,
+      "attempts": 49
+    },
+    {
+      "minute": 29856093,
+      "weight": 773,
+      "attempts": 31
+    },
+    {
+      "minute": 29856094,
+      "weight": 834,
+      "attempts": 48
+    },
+    {
+      "minute": 29856095,
+      "weight": 857,
+      "attempts": 36
+    },
+    {
+      "minute": 29856096,
+      "weight": 875,
+      "attempts": 45
+    },
+    {
+      "minute": 29856097,
+      "weight": 734,
+      "attempts": 35
+    },
+    {
+      "minute": 29856098,
+      "weight": 873,
+      "attempts": 41
+    },
+    {
+      "minute": 29856099,
+      "weight": 958,
+      "attempts": 32
+    },
+    {
+      "minute": 29856100,
+      "weight": 900,
+      "attempts": 37
+    },
+    {
+      "minute": 29856101,
+      "weight": 837,
+      "attempts": 37
+    },
+    {
+      "minute": 29856102,
+      "weight": 906,
+      "attempts": 30
+    },
+    {
+      "minute": 29856103,
+      "weight": 872,
+      "attempts": 47
+    },
+    {
+      "minute": 29856104,
+      "weight": 819,
+      "attempts": 39
+    },
+    {
+      "minute": 29856105,
+      "weight": 811,
+      "attempts": 42
+    },
+    {
+      "minute": 29856106,
+      "weight": 797,
+      "attempts": 39
+    },
+    {
+      "minute": 29856107,
+      "weight": 917,
+      "attempts": 46
+    },
+    {
+      "minute": 29856108,
+      "weight": 708,
+      "attempts": 42
+    },
+    {
+      "minute": 29856109,
+      "weight": 859,
+      "attempts": 36
+    },
+    {
+      "minute": 29856110,
+      "weight": 812,
+      "attempts": 42
+    },
+    {
+      "minute": 29856111,
+      "weight": 776,
+      "attempts": 37
+    },
+    {
+      "minute": 29856112,
+      "weight": 853,
+      "attempts": 44
+    },
+    {
+      "minute": 29856113,
+      "weight": 912,
+      "attempts": 34
+    },
+    {
+      "minute": 29856114,
+      "weight": 938,
+      "attempts": 41
+    },
+    {
+      "minute": 29856115,
+      "weight": 730,
+      "attempts": 27
+    },
+    {
+      "minute": 29856116,
+      "weight": 899,
+      "attempts": 36
+    },
+    {
+      "minute": 29856117,
+      "weight": 893,
+      "attempts": 37
+    },
+    {
+      "minute": 29856118,
+      "weight": 886,
+      "attempts": 39
+    },
+    {
+      "minute": 29856119,
+      "weight": 874,
+      "attempts": 45
+    },
+    {
+      "minute": 29856120,
+      "weight": 877,
+      "attempts": 40
+    },
+    {
+      "minute": 29856121,
+      "weight": 837,
+      "attempts": 45
+    },
+    {
+      "minute": 29856122,
+      "weight": 730,
+      "attempts": 34
+    },
+    {
+      "minute": 29856123,
+      "weight": 858,
+      "attempts": 45
+    },
+    {
+      "minute": 29856124,
+      "weight": 677,
+      "attempts": 36
+    },
+    {
+      "minute": 29856125,
+      "weight": 863,
+      "attempts": 36
+    },
+    {
+      "minute": 29856126,
+      "weight": 899,
+      "attempts": 45
+    },
+    {
+      "minute": 29856127,
+      "weight": 800,
+      "attempts": 37
+    },
+    {
+      "minute": 29856128,
+      "weight": 1007,
+      "attempts": 44
+    },
+    {
+      "minute": 29856129,
+      "weight": 793,
+      "attempts": 31
+    },
+    {
+      "minute": 29856130,
+      "weight": 1020,
+      "attempts": 35
+    },
+    {
+      "minute": 29856131,
+      "weight": 868,
+      "attempts": 40
+    },
+    {
+      "minute": 29856132,
+      "weight": 943,
+      "attempts": 34
+    },
+    {
+      "minute": 29856133,
+      "weight": 726,
+      "attempts": 40
+    },
+    {
+      "minute": 29856134,
+      "weight": 871,
+      "attempts": 42
+    },
+    {
+      "minute": 29856135,
+      "weight": 874,
+      "attempts": 45
+    },
+    {
+      "minute": 29856136,
+      "weight": 735,
+      "attempts": 35
+    },
+    {
+      "minute": 29856137,
+      "weight": 874,
+      "attempts": 45
+    },
+    {
+      "minute": 29856138,
+      "weight": 709,
+      "attempts": 32
+    },
+    {
+      "minute": 29856139,
+      "weight": 843,
+      "attempts": 43
+    },
+    {
+      "minute": 29856140,
+      "weight": 835,
+      "attempts": 38
+    },
+    {
+      "minute": 29856141,
+      "weight": 836,
+      "attempts": 45
+    },
+    {
+      "minute": 29856142,
+      "weight": 832,
+      "attempts": 47
+    },
+    {
+      "minute": 29856143,
+      "weight": 982,
+      "attempts": 33
+    },
+    {
+      "minute": 29856144,
+      "weight": 879,
+      "attempts": 36
+    },
+    {
+      "minute": 29856145,
+      "weight": 846,
+      "attempts": 35
+    },
+    {
+      "minute": 29856146,
+      "weight": 979,
+      "attempts": 33
+    },
+    {
+      "minute": 29856147,
+      "weight": 889,
+      "attempts": 41
+    },
+    {
+      "minute": 29856148,
+      "weight": 773,
+      "attempts": 36
+    },
+    {
+      "minute": 29856149,
+      "weight": 902,
+      "attempts": 47
+    },
+    {
+      "minute": 29856150,
+      "weight": 386,
+      "attempts": 18
+    }
+  ],
+  "websocket": {
+    "windows": 119,
+    "observed_window_seconds": 3588.995363204187,
+    "frames_per_second": 185.00274667594348,
+    "bytes_per_second": 52257.314657703486,
+    "max_flush_lag_seconds": 4.222233772277832,
+    "queue_peak_messages": 1335,
+    "latest_counts": {
+      "connections": 1,
+      "user_addresses": 10,
+      "subscriptions_sent": 110,
+      "acknowledged_bbo": 30
+    }
+  },
+  "scenario_assumptions": [
+    {
+      "fill_poll_minutes": 5,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 2,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    },
+    {
+      "fill_poll_minutes": 15,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 6,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    },
+    {
+      "fill_poll_minutes": 60,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 24,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    },
+    {
+      "fill_poll_minutes": 360,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 146,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    }
+  ],
+  "measured_local_headroom": 48.85000000000002,
+  "confidence": "window observation; workload completeness must be reviewed"
+}

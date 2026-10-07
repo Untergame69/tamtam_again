@@ -3,6 +3,7 @@
 import argparse,json,time,sqlite3
 from pathlib import Path
 from tamtam_again.telemetry import Telemetry
+from tamtam_again.capacity import workload_budget
 p=argparse.ArgumentParser();p.add_argument('--telemetry',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--minutes',type=int,default=30);a=p.parse_args()
 now=time.time();t=Telemetry(a.telemetry)
 with t.connect() as c:
@@ -10,6 +11,7 @@ with t.connect() as c:
  if first is None:raise SystemExit('No measured attempts yet')
  since=max(first,now-a.minutes*60)
  report=t.report(since,now=now)
+ report['workload_budget']=workload_budget(report)
  c.row_factory=sqlite3.Row
  buckets=[dict(r) for r in c.execute('select cast(started_at/60 as int) minute,sum(reserved_weight) weight,count(*) attempts from collection_attempts where started_at>=? group by minute',(since,))]
  ws=[{'recorded_at':r['recorded_at'],**json.loads(r['metrics_json'])} for r in c.execute("select recorded_at,metrics_json from collector_measurements where collector='websocket' and recorded_at>=?",(since,))]

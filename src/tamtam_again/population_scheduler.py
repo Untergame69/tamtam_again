@@ -38,5 +38,7 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1):
         for request, in store.connection.execute("select request_id from population_research_jobs where status='hypothesis_recorded'").fetchall():
             try:memory.append({'request_id':request,**remember(store,request)})
             except ValueError as exc:memory.append({'request_id':request,'status':'waiting','reason':str(exc)})
-        return {'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
+        from .population_routing import route
+        routes=[route(store,r[0]) for r in store.connection.execute("select request_id from population_research_jobs where network=? and status not in ('sealed','running')",(network,)).fetchall()]
+        return {'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False}

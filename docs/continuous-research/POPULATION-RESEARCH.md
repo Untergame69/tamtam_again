@@ -107,3 +107,28 @@ augmenter son budget global pour intégrer ces fiches. Aucun service modifié.
 Tests : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p
 'test_population_packet.py'`. Retour arrière ciblé du module/script ; conserver
 les fiches et toutes les données de collecte.
+
+## Routage des décisions population
+
+Le scheduler enregistre une route immuable par requête terminale, sans nouvel
+appel IA. Les observations manquantes donnent needs_data et un réveil exigeant
+leur disponibilité ainsi qu'une nouvelle empreinte d'entrée. Ce réveil reste
+un contrat descriptif : il n'est pas encore un vérificateur automatique de
+complétude ni une commande de collecte. Une hypothèse sans règle structurée
+est specification_required ; aucune prose n'est convertie implicitement en
+signal du pilote. Un executable_spec éventuel doit conserver marchés et type
+et passer le contrat de capacité. Un moteur expérimental sans adaptateur N1/N2
+reste unsupported_validation_adapter. Un moteur intégré demande un nouveau
+plan prospectif, critères et budget ; la route ne crée aucun plan/variant/paper.
+
+Table additive population_hypothesis_routes : date, diagnostic, preuve, état,
+réveil et prochaine action. Les routes rejouées conservent leur décision originale.
+Les deux hypothèses réelles ont des besoins de données : preuve
+population-routing-control-20261007.json. Certaines demandes (cibles privées,
+couverture extérieure, priorité de file) peuvent être inaccessibles ; le travail
+suivant doit distinguer ces cas d'une simple attente de collecte. Aucun contrôle
+ne prétend qu'accumuler davantage de fills suffira.
+
+Retour arrière : annuler uniquement les changements de routage/scheduler,
+conserver la table et les requêtes. Le raccordement automatique à un plan puis
+à son évaluation demeure à terminer.

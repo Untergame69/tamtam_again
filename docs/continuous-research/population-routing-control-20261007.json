@@ -1,0 +1,96 @@
+[
+  {
+    "created_ms": 1791373729974,
+    "diagnostic": {
+      "causal_timing": "The proposal correctly excludes retrospective REST event timestamps as actionable signals. Any prospective test must use information availability and receipt times, not merely historical event times.",
+      "finding": "The proposal is causally consistent as a recorded, falsifiable structural hypothesis, not an identified account mechanism or executable strategy. Concentration of observed fills into relatively few orders supports testing order-level partial-fill episodes, but does not establish directional target selection.",
+      "limitations": [
+        "A desired inventory target and its change trigger are unobserved. Coherent opening and closing orders alone cannot distinguish autonomous targeting from manual trading or other observationally equivalent mechanisms.",
+        "The label 'autonomous' is unsupported as an attribution; consistency depends on retaining the proposal's explicit disclaimer that autonomy is not established.",
+        "Verified exchange order identities can establish multiple fills per order, but do not by themselves establish a higher-level parent-order controller.",
+        "Unknown history coverage and missing inventory continuity leave the candidate flat-to-flat episodes unconfirmed. Their durations cannot establish a fixed holding horizon.",
+        "Fixed-unit and fixed-quote sizing tests concern subordinate hypotheses; rejecting both would not alone reject the broader episodic-targeting explanation.",
+        "The described engine cannot reproduce the historical mixed maker/taker execution path or joint multi-instrument execution. A separate executable contract and prospective evaluation are required."
+      ],
+      "scope": "No profitability, actual autonomy, cross-market independence, or execution reproducibility is established."
+    },
+    "economic_rejection": false,
+    "evidence_refs": [
+      "population_research:2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807"
+    ],
+    "next_action": "collect specified observations, then reassess on changed evidence",
+    "promotion_authorized": false,
+    "request_id": "2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807",
+    "required_data": [
+      "Complete paginated fill history with verified coverage and continuity.",
+      "Order identities, original quantities, submission times, amendments, cancellations, remaining quantities, order types, and reduce-only flags.",
+      "Continuous inventory snapshots reconciled against executions, transfers, and liquidation events.",
+      "Received-time BBO and depth surrounding order submissions and fills, plus collection and transport timestamps.",
+      "Market-specific fees, funding observations, contract specifications, and reconciled collateral and margin state.",
+      "Additional complete episodes and non-episode periods to test target stability and competing explanations.",
+      "External hedge observations if a portfolio-level mechanism is to be assessed."
+    ],
+    "source_status": "hypothesis_recorded",
+    "state": "needs_data",
+    "wake": {
+      "kind": "required_observations_available",
+      "new_input_fingerprint_required": true,
+      "observations": [
+        "Complete paginated fill history with verified coverage and continuity.",
+        "Order identities, original quantities, submission times, amendments, cancellations, remaining quantities, order types, and reduce-only flags.",
+        "Continuous inventory snapshots reconciled against executions, transfers, and liquidation events.",
+        "Received-time BBO and depth surrounding order submissions and fills, plus collection and transport timestamps.",
+        "Market-specific fees, funding observations, contract specifications, and reconciled collateral and margin state.",
+        "Additional complete episodes and non-episode periods to test target stability and competing explanations.",
+        "External hedge observations if a portfolio-level mechanism is to be assessed."
+      ]
+    }
+  },
+  {
+    "created_ms": 1791373729975,
+    "diagnostic": {
+      "causal_consistency": "The proposed inventory-to-quote feedback is compatible with the reported maker fills and baseline excursions, but those observations do not establish targets, feedback, or causal direction. The proposal explicitly preserves alternative explanations and does not backdate REST availability.",
+      "remaining_limits": [
+        "Targets, target updates, quote sensitivity, sizing parameters, and precise evaluation criteria remain unspecified; these must be fixed before prospective evaluation.",
+        "Complete inventory reconciliation and order lifecycle, including unfilled orders, are necessary to distinguish feedback from directional scaling or omitted account events.",
+        "The packet reports passive execution simulation as unsupported. The IOC model cannot validate this passive mechanism; execution requires a separate compatible contract.",
+        "Packet claims and evidence references remain unverified observations."
+      ],
+      "status": "Consistent as a recorded, falsifiable behavioral hypothesis only; not an identified mechanism, executable contract, or validated strategy.",
+      "testability": "Training-only target estimation followed by a frozen specification, later order-lifecycle observations, and a market-context-only comparison can test the stated conditional predictions. Such observational comparisons test explanatory contribution, not necessarily a causal effect: inventory and quoting may share unobserved drivers."
+    },
+    "economic_rejection": false,
+    "evidence_refs": [
+      "population_research:cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e"
+    ],
+    "next_action": "collect specified observations, then reassess on changed evidence",
+    "promotion_authorized": false,
+    "request_id": "cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e",
+    "required_data": [
+      "Complete, deduplicated fills with signed side, size, price, order identity, event timestamp, and collection timestamp; pagination and retention continuity checks",
+      "Timestamped submissions, amendments, cancellations, rejections, resting prices and sizes, including orders that never fill",
+      "Synchronized received bid/ask, depth, trades, and market-reference observations around order decisions",
+      "Continuous signed inventory reconciled to starting positions, fills, transfers, and account events",
+      "Target-position configuration if disclosed; otherwise a constrained, training-only target model",
+      "Reconciled cross-margin collateral, spot balances, cashflows, and any observable external hedge positions",
+      "Fees, rebates, funding payments, and independently observed later testing windows",
+      "Latency and queue observations sufficient to validate any subsequent passive execution model"
+    ],
+    "source_status": "hypothesis_recorded",
+    "state": "needs_data",
+    "wake": {
+      "kind": "required_observations_available",
+      "new_input_fingerprint_required": true,
+      "observations": [
+        "Complete, deduplicated fills with signed side, size, price, order identity, event timestamp, and collection timestamp; pagination and retention continuity checks",
+        "Timestamped submissions, amendments, cancellations, rejections, resting prices and sizes, including orders that never fill",
+        "Synchronized received bid/ask, depth, trades, and market-reference observations around order decisions",
+        "Continuous signed inventory reconciled to starting positions, fills, transfers, and account events",
+        "Target-position configuration if disclosed; otherwise a constrained, training-only target model",
+        "Reconciled cross-margin collateral, spot balances, cashflows, and any observable external hedge positions",
+        "Fees, rebates, funding payments, and independently observed later testing windows",
+        "Latency and queue observations sufficient to validate any subsequent passive execution model"
+      ]
+    }
+  }
+]

@@ -450,3 +450,13 @@ Preuve typée population_research admise uniquement pour hypothèse revue dispon
 ### Protection des preuves mémoire population
 
 Le contrôle générique de sauvegarde exige désormais la critique cohérente et les deux drapeaux économiques explicitement faux dans la preuve population, même si un appelant contourne le helper d'import. Test supplémentaire : une hypothèse ETH issue d'une fiche globale ne peut masquer une période BTC réservée du même compte. Le refus ne crée ni connaissance ni lien d'import ; aucun appel IA ni libération de période. Sept tests runtime ciblés passent. Retour arrière : annuler le commit ciblé de code/tests, conserver les connaissances, requêtes et périodes existantes.
+
+### Routage des hypothèses population
+
+Routes persistantes automatiques après revue : données absentes, spécification
+absente, mécanisme/adaptateur absent ou plan prospectif à enregistrer. Aucune
+traduction implicite en leader_delta/momentum, aucun changement aux pilotes.
+Contrôle réel des deux hypothèses revues : needs_data, sans appel ni promotion.
+La condition de réveil descriptive n'est pas une preuve de complétude ; les
+besoins inaccessibles et le raccordement de plans restent à traiter. Tests de
+rejeu immuable, absence de création de variante/plan et capacité structurée.

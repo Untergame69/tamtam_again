@@ -42,6 +42,9 @@ def policy_validate(policy: dict[str,Any]):
     if type(age) is not int or age<60:raise ValueError('Invalid metadata refresh cadence')
 def enroll(store: Store,network: str,policy: dict[str,Any], *,now_ms: int | None=None):
     policy_validate(policy);migrate(store);now_ms=now_ms if now_ms is not None else int(time.time()*1000)
+    if 'allocation' in policy:
+        from .allocation import allocate_population
+        return allocate_population(store,network,policy,now_ms=now_ms)
     blocked=protected_addresses(store)
     eligible=[r for r in store.candidates(network) if r['status']!='tracked' and r['address'].lower() not in blocked]
     ordered=sorted(eligible,key=lambda r:hashlib.sha256((policy['sampling_seed']+r['address']).encode()).hexdigest())
@@ -69,7 +72,13 @@ def claim(store: Store,network: str, *,now_ms: int | None=None):
             p=json.loads(r['policy_json']);token=uuid4().hex;attempt=uuid4().hex
             store.connection.execute("update population_accounts set status='running',lease_token=?,lease_until_ms=? where network=? and address=?",(token,now_ms+p['lease_seconds']*1000,network,r['address']))
             store.connection.execute('insert into population_attempts values (?,?,?,?,?,NULL,?,NULL)',(attempt,network,r['address'],token,now_ms,'running'))
-            store.connection.commit();return {**dict(r),'lease_token':token,'attempt_id':attempt,'policy':p}
+            allocation=None
+            if p.get('allocation'):
+                cohort=store.connection.execute('select cohort_id,snapshot_json from population_cohorts where network=? and epoch=? and policy_json=?',(network,now_ms//p['allocation']['epoch_ms'],json.dumps(p['allocation'],sort_keys=True,separators=(',',':')))).fetchone()
+                if cohort:
+                    group=next((g for g,members in json.loads(cohort['snapshot_json'])['groups'].items() if r['address'] in members),None)
+                    allocation={'cohort_id':cohort['cohort_id'],'group':group}
+            store.connection.commit();return {**dict(r),'lease_token':token,'attempt_id':attempt,'policy':p,'allocation':allocation}
         store.connection.commit();return None
     except BaseException:store.connection.rollback();raise
 
@@ -124,6 +133,7 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
         catalog=store.connection.execute('select payload_json from collateral_catalogs where network=? and available_ms<=? order by available_ms desc limit 1',(network,available)).fetchone()
         if catalog:mechanisms=[mechanism_profile(json.loads(catalog[0]),coin) for coin in sorted(markets)]
     report={'address':address,'mode':mode,'role':responses['userRole'],'subaccounts':responses['subAccounts'],'perp_dexes_observed':list(states),'spot_observed':isinstance(responses['spotClearinghouseState'],dict),'markets':sorted(markets),'simultaneous_position_snapshot':positions,'activity':activity,'poll_interval_seconds':interval,'fills_requested_start_ms':start,'fills_requested_end_ms':fill_history['end_ms'],'histories':histories,'current_pass_behavior_profile':behavior,'market_mechanisms':mechanisms,'fill_coverage':'unknown: bounded pagination, API retention cap, no continuity proof','capital_aggregation':'unknown: do not sum dex equities; account mode and shared collateral need reconciliation','external_hedges':'unknown','performance_status':'not_qualified','reproducibility_status':'unproven','proof_endpoints':proof,'scope':'public inventory only; REST availability is archive insertion, never a live follower signal'}
+    report['allocation']=job.get('allocation')
     finish(store,job,report,interval,now_ms=available)
     return report
 

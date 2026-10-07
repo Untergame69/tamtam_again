@@ -1,0 +1,89 @@
+{
+  "kind": "real_prospective_population_cohort_control",
+  "cohort_id": "f3438569c3dd3dd74878be815a8047dddd26ada44874cbebcca480ba9d220d68",
+  "created_ms": 1791367585487,
+  "policy": {
+    "epoch_ms": 86400000,
+    "justification": "Pilot resource split; no profitability threshold. Rotate discovery, deepen known scopes for accounting, retain uniform and public-ranking controls under one REST policy.",
+    "leaderboard_window": "day",
+    "max_deepen_epochs": 2,
+    "seed": "population-allocation-20261007",
+    "slots": {
+      "control_leaderboard": 4,
+      "control_uniform": 4,
+      "deepen": 12,
+      "explore": 12
+    },
+    "version": "allocation-v1"
+  },
+  "groups": {
+    "control_leaderboard": [
+      "0xb83de012dba672c76a7dbbbf3e459cb59d7d6e36",
+      "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+      "0xfc27136e42af1732ddc9ce2605ea9bff1b959d9d"
+    ],
+    "control_uniform": [
+      "0x61ceef212ff4a86933c69fb6aca2fe35d8f2a62b",
+      "0xe7d96b5fdab3dcb6ab5cb8b14b291e03a8ac496b",
+      "0xf662cba3a7b1146f0d995fecc9db88c0eda9fdae",
+      "0x7fb0ef87b69de2b7d05282e427a1188fa55293eb"
+    ],
+    "deepen": [
+      "0x662823f3280bb67da4eec0c4195709caacf20215",
+      "0xba535b96d0cf05ca6e609ce704a192739019bc61",
+      "0x2618f54fee88adf9bf840a1bb722be286fbd0f15",
+      "0x7bfee91193d9df2ac0bfe90191d40f23c773c060",
+      "0x50c5132bbbe67357b74e115f9374d8a683439547",
+      "0x4a20b9496610941053858bd0b7e92493f44c3c26",
+      "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "0xdcd49713b5aa0752b603086df1ad27bc9da5f8d9",
+      "0x570eb8d438bd209b0deeee3d2e0a8559f5d57fb7",
+      "0x6cf4ddb4a311f0f6bbd2e9395bcd8c8b1511eb3d",
+      "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7",
+      "0xfdfe0924c6f065a8efcfc769b2a318882a2670df"
+    ],
+    "explore": [
+      "0x8ba36dc70901abd54c0b375bd3f73dd1e1109dcf",
+      "0x1cb0057083ffd5339222002d46ec78cac1a3aef8",
+      "0x31bf570216cf65ae2ea612361f7f5d4072d42d97",
+      "0x878079c5f38051884f1b1d8fc2a61f328a6dae82",
+      "0xbfc79c444c41a74516bf31237ebf586a231480b4",
+      "0xf288825240c8b3a614c26f0f98fd1eeefbec6ca0",
+      "0x21e1a010405fefb61d62e4141d9c3b2e916d35af",
+      "0xf02d16a272a842f8bac1d9a9e773aba1933454c6",
+      "0xa9573153547af5ac1520bd8f43132043ea8a9683",
+      "0xe38461ceb8ebd1013eb954c6bb5b73c34eda8a32",
+      "0x8cbed8837fb511a89373dbde2373c773722ceea7",
+      "0x5b4de68d586678c9ddb21d7a655fbf61957cbba2"
+    ]
+  },
+  "decisions_retained": 970,
+  "leaderboard_snapshot_id": "0d85ef5e4a1140ba8649a4287eab3dba",
+  "population_status_counts": {
+    "retired": 20,
+    "scheduled": 32
+  },
+  "direct_accounts": 10,
+  "economic_qualification": false,
+  "capacity_control": {
+    "window_minutes": 30.0,
+    "reserved_weight_per_minute": 847.0333333333333,
+    "local_budget_per_minute": 900,
+    "rate_limits": 0,
+    "confidence": "window observation; workload completeness must be reviewed"
+  },
+  "limits": [
+    "candidate and cohort decisions remain archived, including nonselected accounts",
+    "cohort membership allocates collection, not strategy promotion",
+    "retired REST accounts may develop coverage gaps; later resumption does not prove historical completeness"
+  ],
+  "completed_runtime_control": {
+    "attempt_id": "5258a3f8dcea4356aede59483292eb59",
+    "completed_ms": 1791367799547,
+    "allocation": {
+      "cohort_id": "f3438569c3dd3dd74878be815a8047dddd26ada44874cbebcca480ba9d220d68",
+      "group": "explore"
+    }
+  }
+}

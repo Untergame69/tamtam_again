@@ -1,5 +1,5 @@
 {
-  "version": "population-rest-v1",
+  "version": "population-rest-v2",
   "max_rest_accounts": 32,
   "max_jobs_per_tick": 1,
   "default_poll_seconds": 3600,
@@ -13,5 +13,19 @@
   "history_max_pages_per_endpoint": 3,
   "metadata_refresh_seconds": 3600,
   "sampling_seed": "population-first-20261007",
-  "justification": "Bounded first expansion. Unique-address stable sampling, independent of PnL/fill count. Cadence adapts to observed recent fill rate and conservative retention headroom. No assumption that short API responses prove historical completeness."
+  "justification": "Bounded first expansion. Unique-address stable sampling, independent of PnL/fill count. Cadence adapts to observed recent fill rate and conservative retention headroom. No assumption that short API responses prove historical completeness.",
+  "allocation": {
+    "version": "allocation-v1",
+    "seed": "population-allocation-20261007",
+    "justification": "Pilot resource split; no profitability threshold. Rotate discovery, deepen known scopes for accounting, retain uniform and public-ranking controls under one REST policy.",
+    "epoch_ms": 86400000,
+    "max_deepen_epochs": 2,
+    "leaderboard_window": "day",
+    "slots": {
+      "explore": 12,
+      "deepen": 12,
+      "control_uniform": 4,
+      "control_leaderboard": 4
+    }
+  }
 }

@@ -277,3 +277,18 @@ archivé/exporté, aucune période pilote libérée, aucun nouveau dispatch IA.
 Preuves/rollback : RESEARCH-MEMORY.md et memory-control-20261007.json.
 Ingestion automatique/revue/utilité de la mémoire, procédure adaptative complète
 et autres tâches restent à livrer. Goal demeure actif.
+
+## Douzième incrément — allocation et témoins datés
+
+Politique quotidienne configurable 12 exploration/12 approfondissement/4
+uniformes/4 classement public, cap deux époques d'approfondissement, décisions
+séparant états inconnus/blocages/adverse/performance/observabilité/reproductibilité.
+Application aux slots REST sans dépasser 32 en présence de baux running,
+retraits conservés et snapshots immuables. Références des cohortes dans les jobs.
+
+175 tests passent. Cohorte réelle avec 970 décisions, quatre budgets remplis,
+32 REST actifs, 20 retirés et dix directs préservés. Mesure 30 min avant activation :
+847 poids réservés/min sur budget local 900, aucune 429 ; marge faible, charge de
+rattrapage de la rotation à surveiller. Preuves/rollback ALLOCATION-POLICY.md et
+allocation-control-20261007.json. Qualification économique, appariement des
+témoins et évaluation de la sélection/adaptation restent à terminer.

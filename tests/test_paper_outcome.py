@@ -26,6 +26,7 @@ class OutcomeTests(unittest.TestCase):
     def test_net_difference_and_exact_boundaries(self):
         outcome=period_outcome(self.s,'session',start_ms=10,end_ms=20,as_of_ms=20)
         self.assertEqual(outcome['net_pnl'],'2');self.assertTrue(outcome['synthetic'])
+        self.assertEqual(outcome['opening_capital'],'101');self.assertEqual(outcome['closing_capital'],'103')
         from tamtam_again.procedure_evaluation import evaluate_procedure
         trace={'as_of_ms':20,'policy_version':'fixture','baseline_evidence_ref':'fixture predeclared',
             'baseline_available_ms':0,'fixed_variant_id':'variant','risk_budget_id':outcome['risk_budget_id'],
@@ -33,6 +34,9 @@ class OutcomeTests(unittest.TestCase):
                 'knowledge_available_ms':[0],'selected_variant_id':'variant','considered_variant_ids':['variant'],
                 'research_attempts':[],'change_cost':'0','outcomes':{'variant':outcome}}]}
         self.assertEqual(evaluate_procedure(trace)['adaptive_net_after_research_and_change_costs'],'2')
+        trace['capital_contract']={'currency':'USDC','external_flows':'none','initial_capital':'101',
+            'available_ms':10,'evidence_ref':'fixture capital snapshot'}
+        self.assertEqual(evaluate_procedure(trace)['trading_capital']['adaptive'],'103')
         trace['steps'][0]['outcomes']['variant']=period_outcome(self.s,'session',start_ms=11,end_ms=20,as_of_ms=20)
         self.assertIsNone(evaluate_procedure(trace)['adaptive_net_after_research_and_change_costs'])
         for start,end,cutoff in ((11,20,20),(10,21,21),(10,20,19)):

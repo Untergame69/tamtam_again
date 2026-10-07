@@ -91,3 +91,26 @@ Commande : `PYTHONPATH=src python3 scripts/procedure-provider-costs.py --db
  --as-of-ms CUTOFF --output RAPPORT`. Une fenêtre vide ne prouve aucunement
 l'absence de dépenses hors de ces registres. Aucune modification du runtime ou
 des plans ; rollback code uniquement, conserver les historiques.
+
+## Continuité du capital fournie par les observations
+
+Le reducer accepte `capital_contract` explicite : initial_capital positif,
+currency USDC, external_flows none, preuve et date disponible avant la première
+décision. Chaque résultat doit fournir opening_capital/closing_capital, même
+devise et absence de flux. La différence doit égaler le PnL net et l'ouverture
+suivre la clôture précédente, pour l'adaptatif et sa référence séparément.
+Les périodes sont contiguës ; attente cash sans intérêt/flux explicite.
+Une réinitialisation de session ne passe pas silencieusement : capital initial
+identique à l'ancien contrat ne signifie pas continuité après gains/pertes.
+Bornes manquantes rendent l'agrégat inconnu. Les traces anciennes restent
+compatibles mais signalent capital_continuity_status unverified.
+
+paper_outcome expose les bornes du modèle : capital initial immuable plus PnL
+cumulé aux instantanés exacts plats. Ce calcul n'est pas une valorisation réelle.
+Le capital de trading et la richesse de procédure après dépenses externes de
+recherche/changement restent séparés : aucun financement des sessions n'est
+simulé par cette déduction. Les dépenses exprimées en USD sont ici comparées
+nominalement à USDC, sans modélisation de dépeg ou conversion exécutée. Le
+transfert réel de capital aux remplacements et les références contemporaines
+restent à implémenter ; cette vérification ne les invente pas. Pas de rendement
+composé ou drawdown prétendu à partir des seules bornes.

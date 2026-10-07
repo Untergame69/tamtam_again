@@ -1,0 +1,112 @@
+{
+  "synthetic": true,
+  "real_strategy_validated": false,
+  "input": {
+    "as_of_ms": 30,
+    "policy_version": "fixture-v1",
+    "fixed_variant_id": "fixed",
+    "baseline_available_ms": 0,
+    "baseline_evidence_ref": "fixture:baseline",
+    "risk_budget_id": "fixture-risk",
+    "steps": [
+      {
+        "decision_ms": 1,
+        "start_ms": 10,
+        "end_ms": 20,
+        "evidence_refs": [
+          "fixture:decision"
+        ],
+        "knowledge_available_ms": [
+          0
+        ],
+        "selected_variant_id": "chosen",
+        "considered_variant_ids": [
+          "chosen",
+          "failed"
+        ],
+        "change_cost": "1",
+        "research_attempts": [
+          {
+            "id": "failed",
+            "available_ms": 1,
+            "cost": "2"
+          }
+        ],
+        "outcomes": {
+          "chosen": {
+            "net_pnl": "5",
+            "available_ms": 30,
+            "flat_at_boundaries": true,
+            "risk_budget_id": "fixture-risk",
+            "evidence_ref": "fixture:outcome",
+            "costs_included": true,
+            "opening_capital": "100",
+            "closing_capital": "105",
+            "currency": "USDC",
+            "external_flows": "none"
+          },
+          "fixed": {
+            "net_pnl": "3",
+            "available_ms": 30,
+            "flat_at_boundaries": true,
+            "risk_budget_id": "fixture-risk",
+            "evidence_ref": "fixture:outcome",
+            "costs_included": true,
+            "opening_capital": "100",
+            "closing_capital": "103",
+            "currency": "USDC",
+            "external_flows": "none"
+          }
+        }
+      }
+    ],
+    "capital_contract": {
+      "currency": "USDC",
+      "external_flows": "none",
+      "initial_capital": "100",
+      "available_ms": 0,
+      "evidence_ref": "fixture:capital"
+    }
+  },
+  "result": {
+    "version": "recorded-procedure-replay-v1",
+    "status": "evaluated_inputs",
+    "adaptive_net_after_research_and_change_costs": "2",
+    "fixed_net": "3",
+    "cash_net": "0",
+    "observed_research_cost": "2",
+    "observed_change_cost": "1",
+    "capital_continuity_status": "verified_supplied_boundaries",
+    "trading_capital": {
+      "adaptive": "105",
+      "fixed": "103"
+    },
+    "procedure_wealth_after_external_research_and_change_costs": "102",
+    "wait_periods": 0,
+    "research_attempts": 1,
+    "ledger": [
+      {
+        "start_ms": 10,
+        "end_ms": 20,
+        "decision_ms": 1,
+        "selected_variant_id": "chosen",
+        "considered_variant_ids": [
+          "chosen",
+          "failed"
+        ],
+        "changed": true,
+        "net_pnl_observed": "5",
+        "evidence_refs": [
+          "fixture:decision"
+        ]
+      }
+    ],
+    "unknown_reasons": [],
+    "input_fingerprint": "ac8ce9ac9542b2596427b72abeca80cd45626ef16a43f8231c59d4bc71ad4e74",
+    "limits": [
+      "flat positions required at period boundaries; open-position switching unsupported",
+      "input evidence must be independently verified by archive adapter",
+      "evaluation of supplied choices, no proof of statistical advantage"
+    ]
+  }
+}

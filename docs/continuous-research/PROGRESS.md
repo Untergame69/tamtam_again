@@ -571,3 +571,12 @@ possible). Contrôle réel en lecture seule dans procedure-provider-costs-contro
 20261007.json ; aucune donnée réservée ni appel modèle. Agrégat limité aux
 registres, hors infrastructure. Références de procédure et capital continu
 restent à intégrer avant une performance adaptative complète.
+
+### Vérification des bornes de capital — étape 12
+
+Contrat facultatif strict du reducer : capital initial disponible, bornes USDC
+sans flux, périodes contiguës et réconciliation PnL ; remise à zéro rejetée,
+borne absente inconnue, ancienne trace explicitement non vérifiée. L'adaptateur
+paper fournit capital initial du modèle plus PnL cumulatif aux instantanés plats.
+Coûts externes séparés de la balance du moteur. Transfert entre sessions et
+comparateurs contemporains toujours manquants ; aucune stratégie réelle validée.

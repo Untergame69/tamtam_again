@@ -11,7 +11,7 @@ class RegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, Store(Path(tmp)/'db') as s:
             s.connection.execute('create table account_scope_reports(report_id text,network text,address text,available_ms integer,payload_json text)')
             policy={'version':'population-research-v1','max_requests':2,'max_packet_chars':10000,
-                'minimum_interval_ms':10,'timeout_seconds':1,'max_output_tokens':100,
+                'minimum_interval_ms':10,'timeout_seconds':1,'max_output_tokens':100,'max_request_age_ms':1000,
                 'model':'fixture','call_reservation_usd':'1'}
             report={'markets':['BTC','ETH'],'activity':{'observed_unique_fills':1,
                 'observed_fill_content_fingerprint':'one'}}

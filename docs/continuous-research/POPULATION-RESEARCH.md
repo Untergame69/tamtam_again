@@ -53,7 +53,23 @@ Réponses/usage conservés, timeout terminal sans retry ; coût incomplet reste
 inconnu et réservation conservée. Aucune inférence si vérification d'isolation
 échoue. Les comptes devenus protégés sont refusés avant lecture du paquet.
 
-Reste à raccorder : ordonnanceur, reprise des appels interrompus sans relance,
+`population_scheduler.tick` détient le même verrou kernel pendant préparation
+et appels. Après acquisition, toute requête running laissée par un ancien
+worker coopérant devient interrupted, réservation et checkpoints conservés,
+coût total inconnu et aucun retry. Le verrou prouve l'absence du worker local
+coopérant ; il ne prouve pas que le fournisseur distant n'a engagé aucun coût.
+Les réponses/usage sont checkpointés après chaque appel retourné. Une requête
+sealed trop ancienne expire avant vérification ou inférence ; sa politique doit
+déclarer max_request_age_ms. Pas de nouveau paquet sur une entrée inchangée.
+
+La préparation concerne les comptes population actifs, hors réserves, avec
+plafond de nouveaux paquets et appels par tick. Fallback aux fiches disponibles
+pour les bases de recette sans ordonnanceur population. Commande :
+`PYTHONPATH=src .venv/bin/python scripts/population-research-tick.py --db CHEMIN
+--policy POLITIQUE --max-jobs 1`. Ajouter --prepare-only pour ne pas appeler de
+modèle. Aucun timer ni fichier de politique de production activé à ce stade.
+
+Reste à raccorder : politique d'exploitation et activation mesurée, puis
 routage vers famille d'expérience ou mécanisme unsupported, critères et nouvelles
 fenêtres prospectives. La préparation IA existante reste liée au pilote ; ne pas
 augmenter son budget global pour intégrer ces fiches. Aucun service modifié.

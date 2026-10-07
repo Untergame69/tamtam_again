@@ -15,7 +15,7 @@ def initialize(store):
 
 def validate_policy(policy):
     if policy.get('version')!='population-research-v1':raise ValueError('Versioned population research policy required')
-    for key in ('max_requests','max_packet_chars','minimum_interval_ms','timeout_seconds','max_output_tokens'):
+    for key in ('max_requests','max_packet_chars','minimum_interval_ms','timeout_seconds','max_output_tokens','max_request_age_ms'):
         if type(policy.get(key)) is not int or policy[key]<1:raise ValueError('Positive population research budget required: '+key)
     if not isinstance(policy.get('model'),str) or not policy['model'].strip():raise ValueError('Explicit isolated model required')
     cost=number(policy.get('call_reservation_usd'))

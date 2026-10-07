@@ -15,12 +15,30 @@ class RuntimeTests(unittest.TestCase):
         report={'markets':['BTC','ETH'],'activity':{'observed_unique_fills':1,'observed_fill_content_fingerprint':'fixture'}}
         self.s.connection.execute('insert into account_scope_reports values(?,?,?,?,?)',('one','test','account',10,json.dumps(report)));self.s.connection.commit()
         policy={'version':'population-research-v1','max_requests':2,'max_packet_chars':10000,
-            'minimum_interval_ms':10,'timeout_seconds':1,'max_output_tokens':100,
+            'minimum_interval_ms':10,'timeout_seconds':1,'max_output_tokens':100,'max_request_age_ms':1000,
             'model':'fixture','call_reservation_usd':'1'}
         self.request=seal(self.s,'test','account',policy,clock_ms=20)['request_id']
+        self.policy=policy
+        self.clock=patch('tamtam_again.population_runtime.now_ms',return_value=30);self.clock.start()
         self.usage={'cost_usd':0,'cost_status':'included','duration_ms':1}
 
-    def tearDown(self):self.s.close();self.tmp.cleanup()
+    def tearDown(self):self.clock.stop();self.s.close();self.tmp.cleanup()
+
+    def test_scheduler_recovers_interrupted_without_retry_or_losing_checkpoint(self):
+        from tamtam_again.population_scheduler import tick
+        self.s.connection.execute("update population_research_jobs set status='running',reserved_cost_usd='2',result_json=?,usage_json=?",(json.dumps({'raw_proposal':'fixture checkpoint'}),json.dumps([self.usage])));self.s.connection.commit()
+        with patch('tamtam_again.population_scheduler.now_ms',return_value=30),patch('tamtam_again.population_runtime.call') as call:
+            result=tick(self.s,'test',self.policy,dispatch=False)
+            call.assert_not_called()
+        self.assertEqual(result['interrupted_without_retry'],[self.request])
+        row=self.s.connection.execute('select * from population_research_jobs').fetchone()
+        self.assertEqual(row['status'],'interrupted');self.assertEqual(row['reserved_cost_usd'],'2')
+        self.assertIsNone(row['actual_cost_usd']);self.assertIn('fixture checkpoint',row['result_json'])
+
+    def test_expired_request_does_not_infer(self):
+        with patch('tamtam_again.population_runtime.now_ms',return_value=1021),patch('tamtam_again.population_runtime.verify') as verify,patch('tamtam_again.population_runtime.call') as call:
+            self.assertEqual(run(self.s,self.request)['status'],'expired')
+            verify.assert_not_called();call.assert_not_called()
 
     def test_open_hypothesis_and_review_never_promote(self):
         hypothesis={k:'fixture testable specification' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}

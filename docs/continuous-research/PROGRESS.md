@@ -298,3 +298,7 @@ témoins et évaluation de la sélection/adaptation restent à terminer.
 Ajout de `discovery_rotation.select_markets` : calendrier déterministe indépendant des cohortes de comptes, entrelacement des DEX et rotation des instruments, exclusion des marchés réservés et délistés, refus de catalogues disponibles après la décision. Chaque sélection expose version, époque, références du catalogue et biais. Le budget concerne les marchés observés, pas une population uniforme de comptes.
 
 Vérification : quatre tests ciblés passent (couverture de rotation, déterminisme, causalité du catalogue, univers vide/petit). Cette étape prépare la découverte continue ; aucun nouveau timer ni service activé. La connexion, les limites de tampon, la conservation des fenêtres sans activité et la recette réelle restent à intégrer.
+
+## Sessions de découverte bornées — 2026-10-07
+
+`discovery_runtime.collect_session` conserve chaque session et ses fenêtres sans activité, borne les octets et messages conservés, limite la file WebSocket, active le heartbeat du transport et journalise les erreurs par classe sans recopier leur texte. Exclusion des marchés réservés avant connexion et partition des messages par instrument. Couverture explicitement non exhaustive, provenance des participants séparée. Douze tests de découverte passent après correction du schéma de fixture. Aucun service supplémentaire activé ; raccordement au calendrier et recette réelle encore nécessaires.

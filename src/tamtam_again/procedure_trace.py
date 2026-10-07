@@ -31,6 +31,10 @@ def registry_trace(store, *, as_of_ms):
             # Current mutable status is exported only at its latest update time.
             emit('research_latest_status',row['run_id'],stamp(row['updated_at']),
                  {'status':row['status'],'actual_cost_usd':row['actual_cost_usd']})
+    if exists('population_research_jobs'):
+        for row in store.connection.execute('select request_id,created_ms,input_fingerprint from population_research_jobs where created_ms<=?',(as_of_ms,)):
+            emit('population_research_sealed',row['request_id'],row['created_ms'],
+                 {'input_fingerprint':row['input_fingerprint'],'evidence_ref':'population_research_jobs:'+row['request_id']})
     if exists('strategy_variants'):
         for row in store.connection.execute('select variant_id,plan_id,frozen_ms from strategy_variants where frozen_ms<=?',(as_of_ms,)):
             emit('variant_frozen',row['variant_id'],row['frozen_ms'],{'plan_id':row['plan_id']})

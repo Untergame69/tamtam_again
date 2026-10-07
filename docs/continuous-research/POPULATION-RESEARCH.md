@@ -32,8 +32,18 @@ lexical avec activité observée non nulle, trois marchés/1041 fills observés,
 PnL. Paquet complet local /tmp/population-research-packet.json ; aucune archive
 brute ou réserve lue, aucun appel IA.
 
-Reste à raccorder : registre/quotas de requêtes indépendant du pilote, détection
-de nouveauté pertinente, runtime isolé pour hypothèses ouvertes, revue,
+`population_research.seal` conserve le paquet et la politique dans un registre
+indépendant, avec plafond global de requêtes et cooldown par compte. Identité
+d'entrée commune aux diagnostics population, incluant le contenu des fills :
+un nouveau report_id ou une nouvelle disponibilité sans changement descriptif
+ne crée pas de requête. Les anciens rapports sans digest de contenu attendent
+une nouvelle collecte. Les rapports sans activité ne motivent pas d'inférence.
+Le plafond compte également les échecs et ne se réinitialise pas en changeant
+de version de politique. La requête reste sealed ; cette fonction ne dépense
+rien et ne démarre pas un modèle. Table additive population_research_jobs ;
+créations exportées dans la trace metadata-only.
+
+Reste à raccorder : ordonnanceur et runtime isolé pour hypothèses ouvertes, revue,
 routage vers famille d'expérience ou mécanisme unsupported, critères et nouvelles
 fenêtres prospectives. La préparation IA existante reste liée au pilote ; ne pas
 augmenter son budget global pour intégrer ces fiches. Aucun service modifié.

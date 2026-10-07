@@ -13,16 +13,20 @@ def initialize(store):
         'on adaptation_events(network,address,available_ms)')
 
 
-def observe_population(store, job, report, available_ms):
-    """Caller owns the transaction; emit once per changed descriptive input."""
-    if type(available_ms) is not int or available_ms<0:
-        raise ValueError('Explicit diagnostic availability required')
-    descriptor={'mode':report.get('mode'),'markets':sorted(set(report.get('markets',[]))),
+def population_descriptor(report):
+    return {'mode':report.get('mode'),'markets':sorted(set(report.get('markets',[]))),
         'activity':report.get('activity',{}).get('observed_unique_fills'),
         'fill_content_fingerprint':report.get('activity',{}).get('observed_fill_content_fingerprint'),
         'history_states':{k:v.get('pagination_status') for k,v in report.get('histories',{}).items()},
         'performance_status':report.get('performance_status'),
         'reproducibility_status':report.get('reproducibility_status')}
+
+
+def observe_population(store, job, report, available_ms):
+    """Caller owns the transaction; emit once per changed descriptive input."""
+    if type(available_ms) is not int or available_ms<0:
+        raise ValueError('Explicit diagnostic availability required')
+    descriptor=population_descriptor(report)
     digest=fingerprint(descriptor)
     prior=store.connection.execute('select input_fingerprint,payload_json,available_ms from adaptation_events '
         'where network=? and address=? order by available_ms desc,rowid desc limit 1',

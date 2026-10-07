@@ -29,7 +29,9 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
             'simultaneous_position_snapshot','activity','current_pass_behavior_profile',
             'market_mechanisms','fill_coverage','capital_aggregation','external_hedges')
     observations={k:report[k] for k in fields if k in report}
+    from .adaptation import population_descriptor
     packet={'schema_version':'population-descriptive-v1','network':network,'address':address,
+        'research_input_fingerprint':fingerprint(population_descriptor(report)),
         'available_ms':row['available_ms'],'evidence_refs':['account_scope_reports:'+row['report_id']],
         'observations':observations,'qualification':{'performance':'unproven',
             'observability':'partial_public_inventory','reproducibility':'unproven'},

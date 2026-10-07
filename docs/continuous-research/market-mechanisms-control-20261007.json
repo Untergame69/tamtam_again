@@ -1,0 +1,27 @@
+{
+  "kind": "real_public_mechanism_profile_control",
+  "as_of_ms": 1791365788388,
+  "profile_count": 535,
+  "metadata_available_ms": 1791365745750,
+  "precision_known": 535,
+  "only_isolated_true": 233,
+  "delisted": 199,
+  "economic_validation": false,
+  "sources": [
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/error-responses",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding"
+  ],
+  "evidence_refs": [
+    "raw_observations:7202604",
+    "raw_observations:7232394"
+  ],
+  "pilot_preservation_check": "metadata-only hash comparison against baseline; eight plans and three specs/criteria unchanged",
+  "limits": {
+    "single_instrument_ioc": "implemented conservative visible-liquidity model",
+    "passive_queue": "unsupported; zero simulated fills",
+    "non_usdc_accounting": "unsupported in legacy strategy engine",
+    "isolated_margin_tiers": "unsupported",
+    "multi_instrument": "extension required"
+  }
+}

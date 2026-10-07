@@ -221,3 +221,18 @@ comptes, 9428 fills observés, 999 excursions d'inventaire ; couverture inconnue
 et aucune validation. Preuves : behavior-control-20261007.json et
 BEHAVIOR-PROFILES.md. Tâche 7 partielle : mécanismes de marché et trajectoire de
 risque consolidée restent à livrer, ainsi que les autres exigences du Goal.
+
+## Huitième incrément — mécanismes et précision d'exécution
+
+Fiches depuis métadonnées publiques, intégrées aux inventaires population ;
+535 instruments décrits avec limites explicites. Extension optionnelle des
+nouvelles specs v2 : precision/lot/minimum et borne de levier du marché,
+disponibilité causale et refus de comptabilité non-USDC. Les anciennes specs
+ne sont pas modifiées et gardent leurs limites documentées.
+
+139 tests passent après intégration dans les inventaires population.
+Comparaison explicite baseline : huit plans et trois specs/critères identiques,
+sans lecture brute réservée. Contrôle réel dans
+market-mechanisms-control-20261007.json, procédure dans MARKET-MECHANISMS.md.
+La liquidation exacte, marge isolée par tiers, références spécifiques HIP-3,
+profils d'expériences et moteur multi-instruments restent à compléter.

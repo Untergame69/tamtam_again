@@ -10,6 +10,7 @@ from .discovery import protected_addresses
 from .providers.hyperliquid import HyperliquidInfo
 from .population_history import collect_history, ENDPOINTS
 from .behavior import profile_behavior
+from .market_rules import mechanism_profile
 
 SCHEMA='''
 CREATE TABLE IF NOT EXISTS population_accounts (
@@ -118,7 +119,11 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
     markets.update(str(f.get('coin')) for f in fills if isinstance(f,dict) and f.get('coin'))
     available=int(time.time()*1000)
     behavior=profile_behavior([{'fill':f,'available_ms':available,'evidence_ref':'population_attempts:'+job['attempt_id']} for f in fills],start_ms=start,end_ms=fill_history['end_ms'],as_of_ms=available) if start<fill_history['end_ms'] else None
-    report={'address':address,'mode':mode,'role':responses['userRole'],'subaccounts':responses['subAccounts'],'perp_dexes_observed':list(states),'spot_observed':isinstance(responses['spotClearinghouseState'],dict),'markets':sorted(markets),'simultaneous_position_snapshot':positions,'activity':activity,'poll_interval_seconds':interval,'fills_requested_start_ms':start,'fills_requested_end_ms':fill_history['end_ms'],'histories':histories,'current_pass_behavior_profile':behavior,'fill_coverage':'unknown: bounded pagination, API retention cap, no continuity proof','capital_aggregation':'unknown: do not sum dex equities; account mode and shared collateral need reconciliation','external_hedges':'unknown','performance_status':'not_qualified','reproducibility_status':'unproven','proof_endpoints':proof,'scope':'public inventory only; REST availability is archive insertion, never a live follower signal'}
+    mechanisms=[]
+    if store.connection.execute("select 1 from sqlite_master where name='collateral_catalogs' and type='table'").fetchone():
+        catalog=store.connection.execute('select payload_json from collateral_catalogs where network=? and available_ms<=? order by available_ms desc limit 1',(network,available)).fetchone()
+        if catalog:mechanisms=[mechanism_profile(json.loads(catalog[0]),coin) for coin in sorted(markets)]
+    report={'address':address,'mode':mode,'role':responses['userRole'],'subaccounts':responses['subAccounts'],'perp_dexes_observed':list(states),'spot_observed':isinstance(responses['spotClearinghouseState'],dict),'markets':sorted(markets),'simultaneous_position_snapshot':positions,'activity':activity,'poll_interval_seconds':interval,'fills_requested_start_ms':start,'fills_requested_end_ms':fill_history['end_ms'],'histories':histories,'current_pass_behavior_profile':behavior,'market_mechanisms':mechanisms,'fill_coverage':'unknown: bounded pagination, API retention cap, no continuity proof','capital_aggregation':'unknown: do not sum dex equities; account mode and shared collateral need reconciliation','external_hedges':'unknown','performance_status':'not_qualified','reproducibility_status':'unproven','proof_endpoints':proof,'scope':'public inventory only; REST availability is archive insertion, never a live follower signal'}
     finish(store,job,report,interval,now_ms=available)
     return report
 

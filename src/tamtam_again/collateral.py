@@ -43,6 +43,7 @@ def build_catalog(perp_payload: Any, spot_payload: Any, *, available_ms: int,
             if asset['name'] in instruments:raise ValueError('Duplicate instrument metadata')
             instruments[asset['name']]={**proof,'instrument':asset['name'],
                 'sz_decimals':asset.get('szDecimals'),'max_leverage':asset.get('maxLeverage'),
+                'only_isolated':asset.get('onlyIsolated'),'margin_tables':meta.get('marginTables'),
                 'margin_mode':asset.get('marginMode'),'is_delisted':asset.get('isDelisted',False)}
     return {'schema_version':1,'available_ms':available_ms,'instruments':instruments,'dexes':dexes,
             'unknown':unknown,'evidence_refs':evidence_refs,

@@ -57,6 +57,9 @@ def validate_spec(spec: dict[str, Any]) -> None:
         raise ValueError("Unsupported entry/exit rules")
     if spec["execution"].get("kind") not in {"market_ioc", "passive_conservative"}:
         raise ValueError("Unsupported execution model")
+    if 'market_rules' in spec['execution']:
+        from .market_rules import validate_execution_rules
+        validate_execution_rules(spec['execution']['market_rules'],spec['market'])
     for key in ("latency_ms", "horizon_ms"):
         if type(spec[key]) is not int or spec[key] < (1 if key == "horizon_ms" else 0):
             raise ValueError(f"Invalid {key}")
@@ -148,6 +151,12 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
             state["missed_orders"] += 1
             continue
         q = state["quote"]
+        rules=spec['execution'].get('market_rules')
+        if rules:
+            from .market_rules import valid_price,round_size
+            if rules['available_ms']>now or not all(valid_price(q[side],rules['sz_decimals']) for side in ('bid','ask')):
+                state['missed_orders']+=1
+                continue
         target = number(order["target"])
         limit = number(spec["max_exposure"]["notional_usdc"])
         # Check exposure against the adverse side including simulated slippage.
@@ -155,11 +164,16 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
         pos = number(state["position"])
         equity = number(state["cash"]) + pos * (number(q["bid"] if pos >= 0 else q["ask"]) - number(state["average_price"]))
         limit = min(limit, max(Decimal(0), equity) * number(spec["max_exposure"]["max_leverage"]))
+        if rules:limit=min(limit,max(Decimal(0),equity)*number(rules['max_leverage']))
         target = max(-limit / mark, min(limit / mark, target))
         delta = target - number(state["position"])
+        if rules:delta=round_size(delta,rules['sz_decimals'])
         if not delta:
             continue
         buy = delta > 0
+        if rules and abs(delta)*number(q['ask'] if buy else q['bid'])<number(rules['minimum_order_usdc']):
+            state['missed_orders']+=1
+            continue
         passive = spec["execution"]["kind"] == "passive_conservative"
         if passive:
             # Public depth does not establish queue priority. Default no fill,
@@ -170,6 +184,7 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
         available_key = "ask_size" if buy else "bid_size"
         available = number(q.get(available_key, 0)) * number(spec["execution"]["displayed_size_fraction"]) / stress
         size = min(abs(delta), max(Decimal(0), available)) * (1 if buy else -1)
+        if rules:size=round_size(size,rules['sz_decimals'])
         if not size:
             state["missed_orders"] += 1
             continue

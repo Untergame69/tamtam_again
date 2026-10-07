@@ -1,0 +1,31 @@
+{
+  "request_id": "cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e",
+  "status": "hypothesis_recorded",
+  "reserved_cost_usd": "2",
+  "actual_cost_usd": "0.0",
+  "observed_ms": 1791372983651,
+  "usage": [
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 55285,
+      "input_tokens": 19499,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 1621
+    },
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 15070,
+      "input_tokens": 20837,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 378
+    }
+  ],
+  "error_type": null,
+  "promotion_authorized": false,
+  "profitability_proven": false,
+  "systemd": "MainPID=0\nResult=success\nId=tamtam-again-population-research.service\nActiveState=inactive\nSubState=dead\n\nResult=success\nId=tamtam-again-population-research.timer\nActiveState=active\nSubState=waiting\n"
+}

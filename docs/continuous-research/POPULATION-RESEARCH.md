@@ -86,7 +86,20 @@ requêtes/réponses/budgets et archives. Présence antérieure des unités consi
 dans data/rollback/population-research-20261007 ; collecteur et autres timers
 ne doivent pas être arrêtés pour ce rollback.
 
-Reste à raccorder : politique d'exploitation et activation mesurée, puis
+Les hypothèses revues sont importées idempotemment dans research_knowledge avec
+source population_research et origine/période complètes. Période conservatrice
+de zéro jusqu'à la disponibilité du paquet incluse : aucun épisode favorable
+ne réduit le périmètre déclaré. Cette large période peut empêcher une réutilisation
+si elle recoupe une réserve non libérée ; le contrôle temporel reste obligatoire.
+Statut hypothesis, aucune expérience réussie inventée ou certification économique.
+Le scheduler reprend aussi les imports manquants sans rappeler un modèle.
+
+Les paquets suivants peuvent inclure des entrées autorisées et déjà disponibles,
+entières, par ordre chronologique dans le budget restant. La mémoire seule ne
+change pas le fingerprint descriptif déclenchant une nouvelle requête : une
+hypothèse auto-produite ne justifie pas une boucle d'auto-réanalyse.
+
+Reste à raccorder :
 routage vers famille d'expérience ou mécanisme unsupported, critères et nouvelles
 fenêtres prospectives. La préparation IA existante reste liée au pilote ; ne pas
 augmenter son budget global pour intégrer ces fiches. Aucun service modifié.

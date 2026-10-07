@@ -33,5 +33,10 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1):
                 if request['address'] in blocked:continue
                 processed.append(_run(store,request['request_id']))
                 if len(processed)>=max_jobs:break
-        return {'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,
+        from .population_memory import remember
+        memory=[]
+        for request, in store.connection.execute("select request_id from population_research_jobs where status='hypothesis_recorded'").fetchall():
+            try:memory.append({'request_id':request,**remember(store,request)})
+            except ValueError as exc:memory.append({'request_id':request,'status':'waiting','reason':str(exc)})
+        return {'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False}

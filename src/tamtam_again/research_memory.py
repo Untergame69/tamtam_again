@@ -81,6 +81,17 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
             end=row['window_end_ms'] if row['window_end_ms'] is not None else available
             if not any(p['network']==row['network'] and p['address']==row['entity_id'] and p['market']=='*' and p['start_ms']<=start and end<=p['end_ms'] for p in item['periods']):
                 raise ValueError('Raw source bounds must be contained in declared periods')
+        elif proof['kind']=='population_research':
+            row=store.connection.execute('select network,address,status,updated_ms,packet_json from population_research_jobs where request_id=?',(proof['id'],)).fetchone()
+            if not row or row['status']!='hypothesis_recorded' or row['updated_ms']>now:
+                raise ValueError('Available reviewed population hypothesis required')
+            packet=json.loads(row['packet_json'])
+            # Conservative union: descriptors can refer to older inventory/history.
+            # Never narrow the declared period to just a favorable episode.
+            if not any(p['network']==row['network'] and p['address']==row['address'] and
+                       p['market']=='*' and p['start_ms']==0 and
+                       p['end_ms']>=packet['available_ms']+1 for p in item['periods']):
+                raise ValueError('Whole population packet source period must remain explicit')
         elif proof['kind']=='knowledge':
             row=store.connection.execute('select item_json from research_knowledge where knowledge_id=?',(proof['id'],)).fetchone()
             if not row:raise ValueError('Unknown related knowledge')

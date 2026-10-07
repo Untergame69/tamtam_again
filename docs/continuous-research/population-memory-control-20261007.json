@@ -1,0 +1,37 @@
+{
+  "observed_ms": 1791373179949,
+  "imports": [
+    {
+      "request_id": "2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807",
+      "status": "recorded",
+      "knowledge_id": "9d3cd696a0202eb134c0de47d04d3726c2fc68976fd57ca39f78bdc2b47b3eee",
+      "economic_validation": false,
+      "created_ms": 1791373179943
+    },
+    {
+      "request_id": "cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e",
+      "status": "recorded",
+      "knowledge_id": "37847f9f55f731ea3cfc64dc19ef649c19ccf2f06c1315102b876b5b065573e6",
+      "economic_validation": false,
+      "created_ms": 1791373179947
+    }
+  ],
+  "replay": [
+    {
+      "request_id": "2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807",
+      "status": "already_recorded",
+      "knowledge_id": "9d3cd696a0202eb134c0de47d04d3726c2fc68976fd57ca39f78bdc2b47b3eee"
+    },
+    {
+      "request_id": "cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e",
+      "status": "already_recorded",
+      "knowledge_id": "37847f9f55f731ea3cfc64dc19ef649c19ccf2f06c1315102b876b5b065573e6"
+    }
+  ],
+  "new_model_calls": 0,
+  "economic_validation": false,
+  "period_releases": 0,
+  "validation_plans": 8,
+  "variants": 3,
+  "paper_sessions": 0
+}

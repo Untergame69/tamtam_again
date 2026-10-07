@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from tamtam_again.storage import Store
 from tamtam_again.population_packet import packet_for_account
@@ -35,3 +36,12 @@ class PacketTests(unittest.TestCase):
         statements=[];self.s.connection.set_trace_callback(statements.append)
         with self.assertRaises(ValueError):packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)
         self.assertFalse(any('account_scope_reports' in q for q in statements))
+
+    def test_optional_memory_does_not_reopen_descriptive_input(self):
+        original=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']
+        self.s.connection.execute('create table research_knowledge(knowledge_id text)')
+        with patch('tamtam_again.research_memory.export_knowledge',return_value=[{'knowledge_id':'fixture','item':{'status':'hypothesis'}}]) as export:
+            new=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=10000)['packet']
+        self.assertEqual(original['research_input_fingerprint'],new['research_input_fingerprint'])
+        self.assertIn('research_memory',new)
+        self.assertEqual(export.call_args.kwargs['as_of_ms'],20)

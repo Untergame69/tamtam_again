@@ -44,6 +44,16 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
             'no complete raw execution path or public queue position supplied',
             'multiple instruments and unknown mechanisms may be hypothesized; execution requires a separate contract',
             'no comparison/final observations or evaluation outcomes exported']}
+    if store.connection.execute("select 1 from sqlite_master where name='research_knowledge'").fetchone():
+        from .research_memory import export_knowledge
+        memory=export_knowledge(store,as_of_ms=as_of_ms,network=network,address=address,market='*')
+        eligible=len(memory)
+        while memory and len(canonical({**packet,'research_memory':memory}))>max_chars-512:
+            memory.pop()
+        if memory:packet['research_memory']=memory
+        packet['memory_selection']={'eligible_exported_items':eligible,'included_items':len(memory),
+            'method':'whole authorized items in chronological order within remaining packet budget',
+            'new_memory_alone_does_not_reopen_unchanged_population_input':True}
     packet['fingerprint']=fingerprint(packet)
     if len(canonical(packet))>max_chars:
         return {'status':'needs_data','reason':'complete descriptive report exceeds packet budget',

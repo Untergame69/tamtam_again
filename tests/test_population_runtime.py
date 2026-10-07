@@ -50,6 +50,25 @@ class RuntimeTests(unittest.TestCase):
         hypothesis['evidence_refs']=['invented']
         with self.assertRaises(ValueError):validate_response(response,packet)
 
+    def test_memory_import_preserves_hypothesis_and_cutoff(self):
+        from tamtam_again.population_memory import remember
+        from tamtam_again.research_memory import export_knowledge
+        hypothesis={'mechanism':'fixture multi-market hypothesis','markets':['BTC','ETH'],
+            'required_data':['causal prices'],'rejection_criteria':'fixture reject condition',
+            'execution_constraints':'fixture execution limits','risk':'fixture risk'}
+        result={'proposal':{'hypothesis':hypothesis},'critique':{'decision':'consistent'},
+            'promotion_authorized':False,'profitability_proven':False}
+        self.s.connection.execute("update population_research_jobs set status='hypothesis_recorded',result_json=?,updated_ms=30",(json.dumps(result),));self.s.connection.commit()
+        with patch('tamtam_again.research_memory.clock',return_value=100):
+            saved=remember(self.s,self.request)
+            self.assertEqual(remember(self.s,self.request)['status'],'already_recorded')
+            early=export_knowledge(self.s,as_of_ms=99,network='test',address='account',market='BTC')
+            later=export_knowledge(self.s,as_of_ms=100,network='test',address='account',market='ETH')
+        self.assertEqual(early,[]);self.assertEqual(later[0]['knowledge_id'],saved['knowledge_id'])
+        self.assertEqual(later[0]['item']['status'],'hypothesis')
+        self.assertEqual(later[0]['item']['experiments'],[])
+        self.assertFalse(saved['economic_validation'])
+
     def test_open_hypothesis_and_review_never_promote(self):
         hypothesis={k:'fixture testable specification' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
         hypothesis.update(type='autonomous',markets=['BTC','ETH'],required_data=['causal price paths'],evidence_refs=['account_scope_reports:one'])

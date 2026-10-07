@@ -1,0 +1,23 @@
+{
+  "as_of_ms": 1791371962990,
+  "nonreserved_inventoried_accounts": 52,
+  "packet_status_counts": {
+    "packet_ready": 51,
+    "needs_data": 1
+  },
+  "selection": "first address in lexical order with nonzero observed fill count; functionality control, not financial selection",
+  "raw_archives_read": false,
+  "model_calls": 0,
+  "packet_fingerprint": "ace264a2f57aa47c5899666149866535f44d7bc3bc8ae695c6611e792a6e8bdd",
+  "evidence_refs": [
+    "account_scope_reports:36cfcb0ea0b84f3eaac589e8077597f1"
+  ],
+  "packet_chars": 178790,
+  "markets": [
+    "BTC",
+    "ETH",
+    "SOL"
+  ],
+  "observed_fills": 1041,
+  "live_follower_signal": false
+}

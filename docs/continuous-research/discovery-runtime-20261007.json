@@ -1,0 +1,132 @@
+{
+  "session": "b3294cefe68f4d6a870449c022517e75",
+  "started_at": "2026-10-07T10:19:20.488+00:00",
+  "ended_at": "2026-10-07T10:19:25.711+00:00",
+  "markets": [
+    "para:CIEN",
+    "xyz:AAPL",
+    "HYPER",
+    "io:GPRO",
+    "mkts:US500"
+  ],
+  "outcome": "duration_elapsed",
+  "bytes_received": 42196,
+  "frames_received": 10,
+  "invalid_messages": 0,
+  "subscriptions_acknowledged": [
+    "HYPER",
+    "io:GPRO",
+    "mkts:US500",
+    "para:CIEN",
+    "xyz:AAPL"
+  ],
+  "new_candidates": 47,
+  "live_user_slots_used": 0,
+  "reports": [
+    {
+      "window_id": "942c30bb9af131e33aba2086cbf890748b754b10ce0afbf080425df7b30bebf7",
+      "selected": 18,
+      "new_candidates": 18,
+      "coverage": {
+        "status": "bounded_session_no_gap_proof",
+        "sessions": [
+          "b3294cefe68f4d6a870449c022517e75"
+        ],
+        "window_bucket_ms": 1791368340000,
+        "observed_unique_eligible": 18,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "6b160a5db6af95eb2ae40f6c9c72efc245c69b7820512471107075c96dbd2380",
+      "selected": 10,
+      "new_candidates": 7,
+      "coverage": {
+        "status": "bounded_session_no_gap_proof",
+        "sessions": [
+          "b3294cefe68f4d6a870449c022517e75"
+        ],
+        "window_bucket_ms": 1791368340000,
+        "observed_unique_eligible": 10,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "ea5ed9d5be10a1f2dbfd3f24d678bfa1f575d4555b042e5bf8a7901de6cad55e",
+      "selected": 15,
+      "new_candidates": 9,
+      "coverage": {
+        "status": "bounded_session_no_gap_proof",
+        "sessions": [
+          "b3294cefe68f4d6a870449c022517e75"
+        ],
+        "window_bucket_ms": 1791368340000,
+        "observed_unique_eligible": 15,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "30556c4380f9e40fcd070e5708850056b08bcdcd247a22ccaa5405c7b34e7154",
+      "selected": 18,
+      "new_candidates": 9,
+      "coverage": {
+        "status": "bounded_session_no_gap_proof",
+        "sessions": [
+          "b3294cefe68f4d6a870449c022517e75"
+        ],
+        "window_bucket_ms": 1791368340000,
+        "observed_unique_eligible": 18,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "d6b19c46a5dbbb5436860bd3e88693bceff2e59209a3d78e30b984f47cb5d60e",
+      "selected": 15,
+      "new_candidates": 4,
+      "coverage": {
+        "status": "bounded_session_no_gap_proof",
+        "sessions": [
+          "b3294cefe68f4d6a870449c022517e75"
+        ],
+        "window_bucket_ms": 1791368340000,
+        "observed_unique_eligible": 15,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    }
+  ],
+  "selection": {
+    "version": "catalog-round-robin-v1",
+    "epoch": 1990409,
+    "interval_ms": 900000,
+    "markets": [
+      "para:CIEN",
+      "xyz:AAPL",
+      "HYPER",
+      "io:GPRO",
+      "mkts:US500"
+    ],
+    "eligible_markets": 332,
+    "catalog_available_ms": 1791365745750,
+    "catalog_evidence_refs": [
+      "raw_observations:7202604",
+      "raw_observations:7232394"
+    ],
+    "protected_markets": [
+      "HYPE",
+      "XRP",
+      "xyz:BRENTOIL",
+      "xyz:CL"
+    ],
+    "bias": "equal scheduled market time; active participants remain easier to observe; DEX sizes differ"
+  }
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=tamtam_again bounded public market participant discovery
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/discovery-tick.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --output /home/Untergame/tamtam_again/data/discovery-latest.json
+TimeoutStartSec=120
+NoNewPrivileges=true
+

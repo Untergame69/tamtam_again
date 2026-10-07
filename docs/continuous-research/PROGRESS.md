@@ -302,3 +302,9 @@ Vérification : quatre tests ciblés passent (couverture de rotation, détermini
 ## Sessions de découverte bornées — 2026-10-07
 
 `discovery_runtime.collect_session` conserve chaque session et ses fenêtres sans activité, borne les octets et messages conservés, limite la file WebSocket, active le heartbeat du transport et journalise les erreurs par classe sans recopier leur texte. Exclusion des marchés réservés avant connexion et partition des messages par instrument. Couverture explicitement non exhaustive, provenance des participants séparée. Douze tests de découverte passent après correction du schéma de fixture. Aucun service supplémentaire activé ; raccordement au calendrier et recette réelle encore nécessaires.
+
+## Découverte périodique activée — 2026-10-07
+
+Script `discovery-tick.py` raccordé au catalogue public déjà collecté, sans appels REST supplémentaires. Recette réelle de cinq secondes : cinq marchés para:CIEN, xyz:AAPL, HYPER, io:GPRO, mkts:US500 ; 47 nouveaux candidats, 42 196 octets reçus, arrêt normal. Preuve dans `discovery-runtime-20261007.json`. Douze tests ciblés passent. Timer utilisateur `tamtam-again-discovery.timer` activé : sessions de 45 secondes, intervalle de 900 secondes après chaque terminaison, un maximum de cinq marchés et une connexion supplémentaire temporaire. Sessions et choix archivés en SQLite ; zéro abonnement utilisateur supplémentaire. Collecteurs et timer population constatés actifs avant activation.
+
+Retour arrière : `systemctl --user disable --now tamtam-again-discovery.timer` puis `systemctl --user stop tamtam-again-discovery.service` ; conserver les observations et registres. La recette courte ne démontre pas une capacité soutenable ; les prochaines sessions nécessitent une mesure de charge. Le classement reste une seconde voie existante, mais son intégration complète au registre de provenance comparable reste à finir.

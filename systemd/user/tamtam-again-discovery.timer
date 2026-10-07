@@ -1,0 +1,11 @@
+[Unit]
+Description=tamtam_again diversified market discovery every fifteen minutes
+
+[Timer]
+OnBootSec=180
+OnUnitInactiveSec=900
+AccuracySec=5
+Unit=tamtam-again-discovery.service
+
+[Install]
+WantedBy=timers.target

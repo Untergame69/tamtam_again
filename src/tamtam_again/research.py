@@ -243,10 +243,11 @@ This is discovery, not proof: a plausible observable mechanism may become a fals
 For schema v2, episodes contain complete archived paths in compact rows with all availability timestamps and public leader inventory before fills.
 Rows after a signal are exploration outcomes only, never permissible future decision inputs. Missing funding remains unknown.
 Our simulated portfolio starts flat; follower deltas adjust our target, not the leader's full inventory. Do not demand proof of positive returns at this stage.
-Return strict JSON, no markdown: {"decision":"propose|needs_data|non_identifiable|reject", "diagnostic":"...", "wake":{"observation":"...","decision_enabled":"..."}, "strategy_spec":{...}}.
+Return strict JSON, no markdown: {"decision":"propose|needs_data|non_identifiable|unsupported_mechanism|reject", "diagnostic":"...", "wake":{"observation":"...","decision_enabled":"..."}, "strategy_spec":{...}}.
 Include strategy_spec only when decision=propose. Never claim profitability or validation.
 The template fixes fees, slippage, latency, capital, max_exposure, execution and market EXACTLY.
 Only supported signals: follower leader_delta; autonomous momentum with lookback_ms, threshold_bps and sizing.units <=1.
+If an observable hypothesis requires other signals or multiple instruments, return unsupported_mechanism with the required capability and a precise wake condition. Engine incapacity is not economic rejection.
 Keep holding/lookback <=template horizon, sizing.scale <=template scale. Entry target_position and exit horizon_or_target only.
 Explain observations supporting the mechanism, distinguish inventory excursions from total PnL.
 If evidence is insufficient or the mechanism inaccessible, say so and specify the missing observation.
@@ -257,7 +258,7 @@ Packet:\n'''+canonical(packet)
         artifacts['proposal'] = proposal
         outcome = proposal.get('decision')
         if outcome != 'propose':
-            state = {'needs_data':'needs_data','non_identifiable':'non_identifiable','reject':'rejected'}.get(outcome)
+            state = {'needs_data':'needs_data','non_identifiable':'non_identifiable','unsupported_mechanism':'unsupported_mechanism','reject':'rejected'}.get(outcome)
             if not state or not isinstance(proposal.get('wake'),dict) or not proposal.get('diagnostic'):
                 raise ValueError('Explicit diagnostic/wake required')
             finish(store,job,state,proposal,usage)
@@ -267,7 +268,7 @@ Packet:\n'''+canonical(packet)
 You receive only sealed EXPLORATION evidence and a proposal. No tools exist.
 Check causal available-time decisions, follower entry after reception, observable inputs, execution/risk constraints,
 inventory versus portfolio PnL, and testability. Do not rewrite rules or optimize parameters.
-Return ONLY strict JSON: {"decision":"accept|reject|needs_data|non_identifiable", "diagnostic":"...", "wake":{"observation":"...","decision_enabled":"..."}}.
+Return ONLY strict JSON: {"decision":"accept|reject|needs_data|non_identifiable|unsupported_mechanism", "diagnostic":"...", "wake":{"observation":"...","decision_enabled":"..."}}.
 Accept means structurally testable only. Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
         raw,critic_usage = call(policy,prompt);usage.append(critic_usage)
         artifacts['raw_critic_response'] = raw
@@ -276,7 +277,7 @@ Accept means structurally testable only. Packet:\n'''+canonical(packet)+'\nPropo
         if not critique.get('diagnostic') or not isinstance(critique.get('wake'),dict):
             raise ValueError('Explicit critic diagnostic and wake required')
         if critique.get('decision') != 'accept':
-            state={'reject':'rejected','needs_data':'needs_data','non_identifiable':'non_identifiable'}.get(critique.get('decision'))
+            state={'reject':'rejected','needs_data':'needs_data','non_identifiable':'non_identifiable','unsupported_mechanism':'unsupported_mechanism'}.get(critique.get('decision'))
             if not state or not critique.get('diagnostic') or not isinstance(critique.get('wake'),dict):
                 raise ValueError('Invalid critic decision')
             finish(store,job,state,{'proposal':proposal,'critique':critique,**critique},usage)
@@ -311,7 +312,8 @@ def finish(store: Store, job: Any, state: str, result: dict[str, Any], usage: li
     store.connection.execute('UPDATE automation_runs SET status=?,decision=?,updated_at=? WHERE run_id=?',('isolated_'+state,result.get('diagnostic',''),utc_now(),job['run_id']))
     store.connection.commit()
     decision(store,job['network'],job['address'],job['coin'],state,result.get('diagnostic','Explicit isolated review result'),result.get('wake',{'requires':'inspect review'}),
-             'wait_for_prospective_evaluation' if state=='ready_to_test' else 'inspect_recorded_evidence',{'run_id':job['run_id'],'usage':usage})
+             'wait_for_prospective_evaluation' if state=='ready_to_test' else
+             'assess_engine_extension' if state=='unsupported_mechanism' else 'inspect_recorded_evidence',{'run_id':job['run_id'],'usage':usage})
 
 def tick(store: Store, *, prepare_plans: bool = True) -> dict[str, Any]:
     with scheduler_lock(store):

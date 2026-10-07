@@ -71,6 +71,18 @@ class ResearchTests(unittest.TestCase):
         row=self.store.connection.execute('SELECT reserved_cost_usd,actual_cost_usd FROM isolated_research_jobs').fetchone()
         self.assertEqual(row[0],'2');self.assertIsNone(row[1])
 
+    def test_unsupported_mechanism_is_terminal_without_economic_rejection(self):
+        job=self.prepared_job()
+        response={'decision':'unsupported_mechanism','diagnostic':'fixture requires two instruments',
+                  'wake':{'observation':'causal second instrument feed','decision_enabled':'extend execution adapter'}}
+        usage={'cost_usd':0,'cost_status':'included','duration_ms':1}
+        with patch('tamtam_again.research.verify'),patch('tamtam_again.research.call',return_value=(json.dumps(response),usage)) as call:
+            self.assertEqual(run_job(self.store,job['run_id'])['status'],'unsupported_mechanism')
+            self.assertEqual(run_job(self.store,job['run_id'])['status'],'unchanged_no_inference')
+            self.assertEqual(call.call_count,1)
+        self.assertEqual(self.store.connection.execute('select count(*) from strategy_variants').fetchone()[0],0)
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_sessions').fetchone()[0],0)
+
     def test_invalid_response_is_preserved_with_measured_usage(self):
         job=self.prepared_job()
         usage={'cost_usd':0,'cost_status':'included','duration_ms':1}

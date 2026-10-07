@@ -13,6 +13,7 @@ from uuid import uuid4
 from websockets.sync.client import connect
 
 from .storage import Store, decode_observation_payload, utc_now
+from .telemetry import Telemetry
 
 
 WEBSOCKET_URLS = {
@@ -244,6 +245,20 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
         raise ValueError("max-depth-markets doit être compris entre 1 et max-stream-markets.")
     retry_delay = 1.0
     store = Store(db_path)
+    telemetry = Telemetry(db_path.with_suffix(".telemetry.sqlite3"))
+    metrics = {"frames": 0, "bytes": 0, "queue_peak_messages": 0, "max_flush_lag_seconds": 0.0, "flush_seconds": 0.0, "reconnections": 0}
+    measurement_started = time.monotonic()
+    def flush_measured():
+        started = time.monotonic()
+        queued = sum(len(events) for events in pending.values())
+        metrics["queue_peak_messages"] = max(metrics["queue_peak_messages"], queued)
+        for events in pending.values():
+            if events:
+                from datetime import datetime
+                lag = time.time()-datetime.fromisoformat(events[0][0]).timestamp()
+                metrics["max_flush_lag_seconds"] = max(metrics["max_flush_lag_seconds"], lag)
+        _flush_market_events(store, network, pending)
+        metrics["flush_seconds"] += time.monotonic()-started
     while not stop_event.is_set():
         pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]] = {}
         connected_at: float | None = None
@@ -340,11 +355,13 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                         raw = websocket.recv(timeout=1)
                     except TimeoutError:
                         if time.monotonic() >= next_flush:
-                            _flush_market_events(store, network, pending)
+                            flush_measured()
                             next_flush = time.monotonic() + 1
                         continue
                     if not isinstance(raw, str):
                         continue
+                    metrics["frames"] += 1
+                    metrics["bytes"] += len(raw.encode("utf-8"))
                     message = json.loads(raw)
                     last_server_message = time.monotonic()
                     if message.get("channel") == "subscriptionResponse":
@@ -356,6 +373,13 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             elif ack.get("method") == "unsubscribe":
                                 acknowledged_bbo.discard(sub["coin"])
                     if message.get("channel") == "pong":
+                        telemetry.measure("websocket", {**metrics, "window_seconds": time.monotonic()-measurement_started,
+                            "user_addresses": len(accounts), "subscriptions_sent": len(active),
+                            "acknowledged_bbo": len(acknowledged_bbo), "connections": 1,
+                            "queue_current_messages": sum(len(v) for v in pending.values()),
+                            "session": user_fills_session_id})
+                        measurement_started = time.monotonic()
+                        metrics = {k: 0 for k in metrics}
                         _stream_health(store, network, user_fills_session_id, "heartbeat", sorted(acknowledged_bbo))
                     message["_stream"] = {"connection_id": user_fills_session_id}
                     stream_metadata = None
@@ -374,9 +398,11 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                             }
                     _save_message(store, network, message, pending, stream_metadata)
                     if time.monotonic() >= next_flush:
-                        _flush_market_events(store, network, pending)
+                        flush_measured()
                         next_flush = time.monotonic() + 1
         except Exception as exc:
+            metrics["reconnections"] += 1
+            telemetry.measure("websocket_error", {"type": type(exc).__name__, "session": user_fills_session_id})
             if not stop_event.is_set():
                 if connected_at is not None and time.monotonic() - connected_at >= 60:
                     retry_delay = 1.0

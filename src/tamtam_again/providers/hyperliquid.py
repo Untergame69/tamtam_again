@@ -8,6 +8,8 @@ from email.utils import parsedate_to_datetime
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from pathlib import Path
+from ..telemetry import Telemetry
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -63,6 +65,7 @@ class HyperliquidInfo:
 
     _rate_lock = threading.Lock()
     _global_next_request_at = 0.0
+    telemetry_path: Path | None = None
 
     def __init__(self, network: str, timeout: float = 30.0):
         if network not in NETWORKS:
@@ -70,6 +73,8 @@ class HyperliquidInfo:
         self.network = network
         self.base_url = NETWORKS[network]
         self.timeout = timeout
+        self.telemetry = Telemetry(self.telemetry_path) if self.telemetry_path else None
+        self.task = threading.current_thread().name
 
     def post_info(self, payload: dict[str, Any]) -> Any:
         query_type = payload.get("type")
@@ -84,22 +89,51 @@ class HyperliquidInfo:
         )
         weight = _request_weight(payload)
         for attempt in range(MAX_RETRIES + 1):
-            _wait_for_global_slot(weight)
+            started_at = time.time()
+            wait_started = time.monotonic()
+            if self.telemetry:
+                delay = self.telemetry.reserve(weight, budget_per_minute=INFO_WEIGHT_LIMIT_PER_MINUTE)
+                if delay: time.sleep(delay)
+            else:
+                _wait_for_global_slot(weight)
+            wait_seconds = time.monotonic() - wait_started
+            sent_at = time.monotonic()
+            status, outcome, raw, result = None, "unexpected_error", b"", None
             try:
                 with urlopen(request, timeout=self.timeout) as response:
-                    return json.loads(response.read().decode("utf-8"))
+                    status = getattr(response, "status", 200)
+                    raw = response.read()
+                    result = json.loads(raw.decode("utf-8"))
+                    outcome = "ok"
+                    return result
             except HTTPError as exc:
+                status, outcome = exc.code, "http_error"
                 if exc.code not in {429, 500, 502, 503, 504} or attempt >= MAX_RETRIES:
                     raise ProviderError(f"Hyperliquid /info a répondu HTTP {exc.code}.") from exc
                 retry_after = _retry_after_seconds(exc.headers.get("Retry-After"))
-                _defer_global_requests(retry_after if retry_after is not None
-                                       else min(30.0, 2.0 ** attempt))
+                delay = retry_after if retry_after is not None else min(30.0, 2.0 ** attempt)
+                if self.telemetry: self.telemetry.defer(delay)
+                else: _defer_global_requests(delay)
             except (URLError, TimeoutError) as exc:
+                outcome = "connection_error"
                 if attempt >= MAX_RETRIES:
                     raise ProviderError("Connexion à Hyperliquid impossible ou expirée.") from exc
-                _defer_global_requests(min(30.0, 2.0 ** attempt))
+                delay = min(30.0, 2.0 ** attempt)
+                if self.telemetry: self.telemetry.defer(delay)
+                else: _defer_global_requests(delay)
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                outcome = "decode_error"
                 raise ProviderError("Réponse Hyperliquid illisible; rien n’a été enregistré.") from exc
+            finally:
+                if self.telemetry:
+                    items = len(result) if isinstance(result, list) else None
+                    self.telemetry.attempt(started_at=started_at, completed_at=time.time(),
+                        task=self.task, endpoint=str(query_type), network=self.network,
+                        reserved_weight=weight,
+                        response_weight_bound=response_weight_bound(payload, items) if outcome == "ok" else None,
+                        retry=attempt, outcome=outcome, http_status=status,
+                        elapsed_seconds=time.monotonic()-sent_at, wait_seconds=wait_seconds,
+                        response_bytes=len(raw), response_items=items)
         raise ProviderError("Échec inattendu des reprises Hyperliquid.")
 
     def collect_market_snapshot(self) -> Any:
@@ -236,7 +270,7 @@ def _request_weight(payload: dict[str, Any]) -> int:
         return 2
     if query_type == "userFillsByTime":
         return 20 + (MAX_PAGE_ROWS_BY_ENDPOINT[query_type] + 19) // 20
-    if query_type in {"userFunding", "userNonFundingLedgerUpdates"}:
+    if query_type == "userFunding":
         limit = MAX_PAGE_ROWS_BY_ENDPOINT[query_type]
         return 20 + (limit + 19) // 20
     if query_type == "candleSnapshot":
@@ -286,3 +320,12 @@ def retained_recent_windows(pages: list[Page], requested_start_ms: int) -> list[
     for page in pages:
         result.append(Page(page.endpoint,{**page.request,"coverage_status":"returned_recent_suffix"},page.rows,max(first,page.start_ms),page.end_ms,page.complete,page.resume_cursor_ms))
     return result
+
+
+def response_weight_bound(payload: dict[str, Any], items: int | None) -> int:
+    """Conservative bound from documented items; charged weight remains unknown."""
+    kind = payload.get("type")
+    base = 2 if kind in LIGHT_INFO_TYPES else 60 if kind == "userRole" else 20
+    if kind == "candleSnapshot": return base + ((items or 0) + 59) // 60
+    if kind in {"userFillsByTime", "userFunding"}: return base + ((items or 0) + 19) // 20
+    return base

@@ -605,6 +605,7 @@ def _last_observed_fill_ms(store: Store, address: str,
 
 
 def _run_collectors(args: argparse.Namespace) -> None:
+    HyperliquidInfo.telemetry_path = args.db.with_suffix(".telemetry.sqlite3")
     if args.market_every_seconds < 15 or args.whale_every_seconds < 300:
         raise ValueError("Cadence minimale : marché 15 s; baleines 300 s.")
     if args.ranking_refresh_seconds < 300:

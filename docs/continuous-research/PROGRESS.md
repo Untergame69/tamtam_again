@@ -157,3 +157,24 @@ La tâche 6 reste partielle : les fondations de calcul et le diagnostic réel so
 livrés, mais il faut normaliser et collecter les preuves manquantes, démontrer
 la valuation par mode et tester des cas réels contrastés réconciliables.
 Aucune modification des règles de promotion ni des périodes réservées.
+
+## Quatrième incrément — historiques bornés et reprenables
+
+Les fills, fundings et ledger non-funding disposent désormais de curseurs
+indépendants, avec trois pages maximum par endpoint/passage. Les pages précèdent
+l'avancement des curseurs ; reprises inclusives, backlog à borne stable et baux
+empêchent les sauts après interruption et les écritures d'un ancien worker.
+Une saturation au même timestamp est explicitement bloquée, sans saut de 1 ms.
+La télémétrie distingue ces historiques entre rattrapage et incrémental.
+
+105 tests passent. Contrôle réel achevé : 72 événements de funding, zéro fill
+et zéro ledger retournés pour ce compte sur la fenêtre demandée. Ce sont des
+comptes de réponses, pas une preuve d'absence d'activité ou de complétude.
+14 comptes distincts ont un inventaire achevé au contrôle ; ils ne sont pas
+économiquement qualifiés. Preuve : population-history-control-20261007.json.
+
+Le collecteur et le timer population sont actifs, le passage réel a terminé
+sans erreur. Aucun redémarrage du collecteur, aucun changement des pilotes.
+La migration ajoute population_history_cursors ; les pages restent incomplete
+avec rétention inconnue. Procédure et rollback : POPULATION-HISTORY.md.
+Normalisation des transferts/funding et valorisation consolidée restent à faire.

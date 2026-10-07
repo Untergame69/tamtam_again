@@ -8,6 +8,7 @@ from typing import Any
 from .storage import Store,utc_now
 from .discovery import protected_addresses
 from .providers.hyperliquid import HyperliquidInfo
+from .population_history import collect_history, ENDPOINTS
 
 SCHEMA='''
 CREATE TABLE IF NOT EXISTS population_accounts (
@@ -33,6 +34,8 @@ def policy_validate(policy: dict[str,Any]):
     if not policy['min_poll_seconds']<=policy['default_poll_seconds']<=policy['max_poll_seconds']:raise ValueError('Invalid population intervals')
     if not 0<policy.get('retention_fraction',0)<1:raise ValueError('Invalid retention headroom')
     if not policy.get('version') or not policy.get('sampling_seed'):raise ValueError('Policy identity required')
+    pages=policy.get('history_max_pages_per_endpoint',3)
+    if type(pages) is not int or not 1<=pages<=6:raise ValueError('Invalid history page budget')
 def enroll(store: Store,network: str,policy: dict[str,Any], *,now_ms: int | None=None):
     policy_validate(policy);migrate(store);now_ms=now_ms if now_ms is not None else int(time.time()*1000)
     blocked=protected_addresses(store)
@@ -77,7 +80,6 @@ def cadence(policy:dict[str,Any],fills: list[dict[str,Any]],start_ms:int,end_ms:
 def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,now_ms:int|None=None):
     address=job['address'];network=job['network'];policy=job['policy'];now_ms=now_ms if now_ms is not None else int(time.time()*1000)
     if address in protected_addresses(store):raise ValueError('Reserved pilot account excluded from population research')
-    start=job['last_success_ms'] if job['last_success_ms'] is not None else max(0,now_ms-policy['initial_lookback_seconds']*1000)
     responses={};proof=[]
     queries=[{'type':'userAbstraction','user':address},{'type':'userRole','user':address},{'type':'subAccounts','user':address},{'type':'spotClearinghouseState','user':address},{'type':'portfolio','user':address},{'type':'perpDexs'}]
     for query in queries:
@@ -94,10 +96,16 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
         if name:query['dex']=name
         receipt=utc_now();state=client.post_info(query);states[name]=state
         store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account',entity_id=address,endpoint='clearinghouseState',payload=state,request_payload={**query,'transport':'rest','phase':'scope_inventory'},requested_at=receipt)
-    query={'type':'userFillsByTime','user':address,'startTime':start,'endTime':now_ms};receipt=utc_now();fills=client.post_info(query)
-    if not isinstance(fills,list):raise ValueError('Invalid fill response')
-    store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account',entity_id=address,endpoint='userFillsByTime',payload=fills,request_payload={**query,'transport':'rest','coverage_status':'single_page_retention_unknown','phase':'incremental' if job['last_success_ms'] is not None else 'initial_probe'},requested_at=receipt,window_start_ms=start,window_end_ms=now_ms,record_count=len(fills),complete=False)
-    interval,activity=cadence(policy,fills,start,now_ms)
+    histories={};fills=[]
+    for endpoint in ENDPOINTS:
+        rows,history=collect_history(store,client,job,endpoint,now_ms)
+        histories[endpoint]=history
+        if endpoint=='userFillsByTime':fills=rows
+    fill_history=histories['userFillsByTime']
+    start=fill_history['start_ms']
+    interval,activity=cadence(policy,fills,start,fill_history['end_ms'])
+    if any(h['pagination_status']!='pagination_exhausted' for h in histories.values()):
+        interval=min(interval,policy['retry_seconds'])
     mode=responses['userAbstraction'];markets=set();positions=[]
     for dex,state in states.items():
         if not isinstance(state,dict):continue
@@ -106,7 +114,7 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
             if coin:markets.add(coin);positions.append({'dex':dex,'position':pos})
     markets.update(str(f.get('coin')) for f in fills if isinstance(f,dict) and f.get('coin'))
     available=int(time.time()*1000)
-    report={'address':address,'mode':mode,'role':responses['userRole'],'subaccounts':responses['subAccounts'],'perp_dexes_observed':list(states),'spot_observed':isinstance(responses['spotClearinghouseState'],dict),'markets':sorted(markets),'simultaneous_position_snapshot':positions,'activity':activity,'poll_interval_seconds':interval,'fills_requested_start_ms':start,'fills_requested_end_ms':now_ms,'fill_coverage':'unknown: single page, API retention cap, no continuity proof','capital_aggregation':'unknown: do not sum dex equities; account mode and shared collateral need reconciliation','external_hedges':'unknown','performance_status':'not_qualified','reproducibility_status':'unproven','proof_endpoints':proof,'scope':'public inventory only; REST availability is archive insertion, never a live follower signal'}
+    report={'address':address,'mode':mode,'role':responses['userRole'],'subaccounts':responses['subAccounts'],'perp_dexes_observed':list(states),'spot_observed':isinstance(responses['spotClearinghouseState'],dict),'markets':sorted(markets),'simultaneous_position_snapshot':positions,'activity':activity,'poll_interval_seconds':interval,'fills_requested_start_ms':start,'fills_requested_end_ms':fill_history['end_ms'],'histories':histories,'fill_coverage':'unknown: bounded pagination, API retention cap, no continuity proof','capital_aggregation':'unknown: do not sum dex equities; account mode and shared collateral need reconciliation','external_hedges':'unknown','performance_status':'not_qualified','reproducibility_status':'unproven','proof_endpoints':proof,'scope':'public inventory only; REST availability is archive insertion, never a live follower signal'}
     finish(store,job,report,interval,now_ms=available)
     return report
 

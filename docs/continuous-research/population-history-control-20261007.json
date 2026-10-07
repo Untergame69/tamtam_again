@@ -1,0 +1,86 @@
+{
+  "kind": "real_public_history_transport_control",
+  "completed_ms": 1791364834572,
+  "account_mode": "unifiedAccount",
+  "histories": {
+    "userFillsByTime": {
+      "coverage_status": "unknown",
+      "cursor_ms": 1791364783600,
+      "end_ms": 1791364783600,
+      "endpoint": "userFillsByTime",
+      "pages": [
+        {
+          "next_cursor_ms": 1791364783600,
+          "request": {
+            "endTime": 1791364783600,
+            "startTime": 1791278383600,
+            "type": "userFillsByTime",
+            "user": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7"
+          },
+          "requested_at": "2026-10-07T09:20:19.245+00:00",
+          "rows": 0,
+          "status": "pagination_exhausted"
+        }
+      ],
+      "pagination_status": "pagination_exhausted",
+      "phase": "history_backfill",
+      "reason": "Pagination cannot prove absent historical events or retained prefix completeness",
+      "retention_proven": false,
+      "start_ms": 1791278383600
+    },
+    "userFunding": {
+      "coverage_status": "unknown",
+      "cursor_ms": 1791364783600,
+      "end_ms": 1791364783600,
+      "endpoint": "userFunding",
+      "pages": [
+        {
+          "next_cursor_ms": 1791364783600,
+          "request": {
+            "endTime": 1791364783600,
+            "startTime": 1791278383600,
+            "type": "userFunding",
+            "user": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7"
+          },
+          "requested_at": "2026-10-07T09:20:20.761+00:00",
+          "rows": 72,
+          "status": "pagination_exhausted"
+        }
+      ],
+      "pagination_status": "pagination_exhausted",
+      "phase": "history_backfill",
+      "reason": "Pagination cannot prove absent historical events or retained prefix completeness",
+      "retention_proven": false,
+      "start_ms": 1791278383600
+    },
+    "userNonFundingLedgerUpdates": {
+      "coverage_status": "unknown",
+      "cursor_ms": 1791364783600,
+      "end_ms": 1791364783600,
+      "endpoint": "userNonFundingLedgerUpdates",
+      "pages": [
+        {
+          "next_cursor_ms": 1791364783600,
+          "request": {
+            "endTime": 1791364783600,
+            "startTime": 1791278383600,
+            "type": "userNonFundingLedgerUpdates",
+            "user": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7"
+          },
+          "requested_at": "2026-10-07T09:20:30.156+00:00",
+          "rows": 0,
+          "status": "pagination_exhausted"
+        }
+      ],
+      "pagination_status": "pagination_exhausted",
+      "phase": "history_backfill",
+      "reason": "Pagination cannot prove absent historical events or retained prefix completeness",
+      "retention_proven": false,
+      "start_ms": 1791278383600
+    }
+  },
+  "performance_status": "not_qualified",
+  "economic_validation": false,
+  "completed_population_attempts": 14,
+  "unique_inventory_accounts": 14
+}

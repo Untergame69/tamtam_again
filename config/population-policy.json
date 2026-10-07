@@ -10,6 +10,7 @@
   "lease_seconds": 600,
   "retry_seconds": 300,
   "initial_lookback_seconds": 86400,
+  "history_max_pages_per_endpoint": 3,
   "sampling_seed": "population-first-20261007",
   "justification": "Bounded first expansion. Unique-address stable sampling, independent of PnL/fill count. Cadence adapts to observed recent fill rate and conservative retention headroom. No assumption that short API responses prove historical completeness."
 }

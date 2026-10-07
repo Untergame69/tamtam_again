@@ -47,7 +47,8 @@ class PopulationTests(unittest.TestCase):
   self.assertEqual(report['mode'],'unifiedAccount');self.assertTrue(report['capital_aggregation'].startswith('unknown'))
   self.assertEqual(self.s.connection.execute('select count(*) from account_scope_reports').fetchone()[0],1)
   raw=self.s.connection.execute("select complete,request_json from raw_observations where endpoint='userFillsByTime'").fetchone()
-  self.assertFalse(raw['complete']);self.assertIn('single_page_retention_unknown',raw['request_json'])
+  self.assertFalse(raw['complete']);self.assertIn('pagination_only_retention_unknown',raw['request_json'])
+  self.assertEqual(set(report['histories']),{'userFillsByTime','userFunding','userNonFundingLedgerUpdates'})
  def test_cursor_ends_at_request_not_later_processing(self):
   enroll(self.s,'test',{**P,'max_rest_accounts':1},now_ms=1000);job=claim(self.s,'test',now_ms=1000)
   finish(self.s,job,{'fills_requested_end_ms':2000},300,now_ms=8000)

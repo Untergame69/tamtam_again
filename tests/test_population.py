@@ -54,3 +54,18 @@ class PopulationTests(unittest.TestCase):
   finish(self.s,job,{'fills_requested_end_ms':2000},300,now_ms=8000)
   row=self.s.connection.execute('select last_success_ms,next_due_ms from population_accounts').fetchone()
   self.assertEqual(row['last_success_ms'],2000);self.assertEqual(row['next_due_ms'],308000)
+ def test_history_cutoff_after_inventory_calls(self):
+  from unittest.mock import patch
+  enroll(self.s,'test',{**P,'max_rest_accounts':1},now_ms=1000);job=claim(self.s,'test',now_ms=1000)
+  clock=[2.0]
+  class Client:
+   def post_info(self,q):
+    if q['type']=='perpDexs':return [None]
+    if q['type']=='clearinghouseState':
+     clock[0]=5.0
+     return {'time':4000,'marginSummary':{'accountValue':'100'},'assetPositions':[]}
+    return []
+  with patch('tamtam_again.population.time.time',side_effect=lambda:clock[0]):
+   report=collect_overview(self.s,Client(),job)
+  self.assertEqual(report['fills_requested_end_ms'],5000)
+  self.assertTrue(all(h['end_ms']==5000 for h in report['histories'].values()))

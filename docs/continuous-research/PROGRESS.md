@@ -334,3 +334,9 @@ Sélection versionnée de fenêtres adjacentes entre valorisations horodatées, 
 ## Diagnostics de couverture des historiques — 2026-10-07
 
 Les rapports comptables exposent désormais par endpoint la réunion des fenêtres dont la pagination est terminée, les lacunes exactes, pages inachevées et références disponibles au cutoff. Une pagination couvrant la période ne devient jamais une preuve de rétention ou de périmètre économique. Quatre tests dédiés contrôlent chevauchement, trou interne, page saturée et page reçue trop tard ; 35 tests account/accounting passent. Rapports réels aux bornes observées régénérés dans /tmp uniquement ; preuve agrégée account-coverage-control-20261007.json. Aucune archive modifiée, aucun pilote lu, aucun critère de validation assoupli. Retour arrière du code uniquement.
+
+## Lacunes de fin de passage et capacité actuelle — 2026-10-07
+
+Diagnostic réel : les quatre périodes avaient une queue non interrogée de 15–20 secondes, car now_ms était capturé avant les inventaires ; deux avaient aussi un rattrapage des fills non achevé. Correction : cutoff historique après les appels d’inventaire, en conservant les targets des backlogs et le temps fixe injecté des recettes. Test ciblé simule des appels avançant l’horloge et vérifie les trois endpoints ; 16 tests population passent. Les données déjà archivées ne sont pas requalifiées. Prochain worker oneshot chargera le code sans restart du collecteur principal.
+
+Mesure 60 min : 851,37 poids réservés/min, marge locale 48,63/min sur 900 ; source capacity-current-20261007.json. Flux principal : environ 184,67 frames/s, 52 184,87 octets/s, queue max 1335 messages et flush max 4,22 s. Ces mesures ne représentent pas encore la totalité de la découverte séparée ni une preuve de capacité maximale soutenable. Aucun changement de cadence ni dépense ; privilégier fermeture du rattrapage et classification du budget. Retour arrière code ciblé, archives/cursors conservés.

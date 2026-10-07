@@ -91,6 +91,7 @@ def cadence(policy:dict[str,Any],fills: list[dict[str,Any]],start_ms:int,end_ms:
     return interval,{'observed_unique_fills':len(unique),'window_seconds':seconds,'fills_per_second':rate,'risk':'unknown retention/history completeness; rate may be underestimated if API response saturated','needs_faster_than_minimum':bool(rate and policy['retention_fills']*policy['retention_fraction']/rate<policy['min_poll_seconds'])}
 
 def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,now_ms:int|None=None):
+    fixed_clock=now_ms is not None
     address=job['address'];network=job['network'];policy=job['policy'];now_ms=now_ms if now_ms is not None else int(time.time()*1000)
     if address in protected_addresses(store):raise ValueError('Reserved pilot account excluded from population research')
     responses={};proof=[]
@@ -109,9 +110,13 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
         if name:query['dex']=name
         receipt=utc_now();state=client.post_info(query);states[name]=state
         store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account',entity_id=address,endpoint='clearinghouseState',payload=state,request_payload={**query,'transport':'rest','phase':'scope_inventory'},requested_at=receipt)
+    # Inventory calls may wait behind the shared quota. Bound history after
+    # their completion, so a completed page can include those valuations.
+    # Using job-start time leaves a systematic unqueried tail at every pass.
+    history_end_ms=now_ms if fixed_clock else int(time.time()*1000)
     histories={};fills=[]
     for endpoint in ENDPOINTS:
-        rows,history=collect_history(store,client,job,endpoint,now_ms)
+        rows,history=collect_history(store,client,job,endpoint,history_end_ms)
         histories[endpoint]=history
         if endpoint=='userFillsByTime':fills=rows
     fill_history=histories['userFillsByTime']

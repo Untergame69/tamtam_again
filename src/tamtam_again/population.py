@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS population_attempts (
  attempt_id TEXT PRIMARY KEY,network TEXT NOT NULL,address TEXT NOT NULL,
  lease_token TEXT NOT NULL,started_ms INTEGER NOT NULL,completed_ms INTEGER,
  status TEXT NOT NULL,result_json TEXT);
+CREATE TABLE IF NOT EXISTS population_state_corrections (
+ correction_id INTEGER PRIMARY KEY,created_at TEXT NOT NULL,address TEXT NOT NULL,
+ old_cursor_ms INTEGER,new_cursor_ms INTEGER,reason TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS account_scope_reports (
  report_id TEXT PRIMARY KEY,network TEXT NOT NULL,address TEXT NOT NULL,
  available_ms INTEGER NOT NULL,payload_json TEXT NOT NULL);
@@ -119,3 +122,17 @@ def finish(store:Store,job:dict[str,Any],result:dict[str,Any],interval:int, *,no
         store.connection.execute("update population_accounts set status='scheduled',interval_seconds=?,next_due_ms=?,lease_token=NULL,lease_until_ms=NULL,last_success_ms=case when ?='complete' then ? else last_success_ms end where network=? and address=?",(interval,now_ms+interval*1000,status,result.get('fills_requested_end_ms',now_ms),job['network'],job['address']))
         store.connection.commit()
     except BaseException:store.connection.rollback();raise
+
+
+def inventory(store: Store,network: str) -> dict[str,Any]:
+    migrate(store)
+    tables={r[0] for r in store.connection.execute("select name from sqlite_master where type='table'")}
+    direct=[r['address'] for r in store.candidates(network) if r['status']=='tracked']
+    rest=[dict(r) for r in store.connection.execute('select address,status,interval_seconds,next_due_ms,last_success_ms from population_accounts where network=?',(network,))]
+    analysis=[dict(r) for r in store.connection.execute('select plan_id,address,coin,synthetic from validation_plans where network=?',(network,))] if 'validation_plans' in tables else []
+    paper=[dict(r) for r in store.connection.execute('select session_id,variant_id,address,coin,status from paper_sessions where network=?',(network,))] if 'paper_sessions' in tables else []
+    return {'network':network,'discovered_accounts':len(store.candidates(network)),
+            'rest_population':rest,'direct_subscription_candidates':direct,
+            'direct_subscription_note':'desired cohort, actual subscriptions measured separately by websocket telemetry',
+            'analysis_plans':analysis,'paper_sessions':paper,
+            'qualification_note':'inventory completion is not an economic validation'}

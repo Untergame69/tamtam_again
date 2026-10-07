@@ -94,3 +94,43 @@ les commits ciblés dans l'ordre inverse), redémarrer avec l'unité sauvegardé
 provenance et les candidats : anciennes versions peuvent ignorer ces tables.
 Ne pas restaurer la base entière et ne pas supprimer les nouvelles observations.
 Les unités installées n'ont pas changé ; le code chargé par le service a changé.
+
+## Deuxième incrément — population REST indépendante
+
+Commit f19cd26 : population-policy v1, ordonnanceur à bail transactionnel,
+32 comptes REST supplémentaires sélectionnés par adresse avec graine versionnée.
+Les 10 comptes directs et les adresses des plans réels sont exclus de cet
+élargissement. Cadence pilote 1 h, bornée 5 min–6 h ; réserve de rétention
+choisie à 50 % des 10000 fills. Paramètres exploratoires configurables,
+ni garantie de complétude historique ni seuils économiques.
+
+Inventaire public : mode userAbstraction, userRole (poids 60), subAccounts,
+spot, portfolio, liste des dex et clearinghouseState pour chaque dex.
+Aucun collatéral de dex n'est additionné. Le probe de fills est une page unique,
+explicitement incomplète ; pagination/rattrapage complets restent à intégrer
+à la qualification périodique. Le signal follower n'accepte pas cette source REST.
+
+82 tests passent : population >10, baux concurrents, reprise d'une interruption,
+rejet d'une ancienne complétion, rétention, compte unifié multi-dex sans addition
+de capital et curseur à la borne de requête, pas à l'heure de traitement ultérieure.
+Premier tick réel livré dans population-first-tick-20261007.json : compte unified,
+11 dex publics interrogés, performance non qualifiée. Deux inventaires achevés
+au contrôle suivant, 32 comptes planifiés et dix abonnements directs conservés.
+
+Le premier tick était déjà exécuté quand le test a identifié l'écart entre
+borne de fills et fin du traitement : le curseur a été reculé à la borne réelle
+avec un enregistrement population_state_corrections. L'essai et son rapport
+originaux restent immuables. Cette correction conserve la fenêtre intermédiaire
+au lieu de la perdre ; elle ne déclare pas de nouvelles observations complètes.
+
+Nouveau service/timer local tamtam-again-population (oneshot, un job/tick,
+prochain tick 60 s après fin, timeout/bail 600 s) installé et activé.
+Même base de quota que le collecteur existant. L'ajout peut allonger les cycles
+REST existants ; la capacité doit être revue sur mesures avant élargissement.
+Aucun redémarrage du collecteur nécessaire pour cette étape.
+
+Retour arrière propre à cet incrément : arrêter/désactiver
+`tamtam-again-population.timer`, arrêter son service, conserver tables,
+observations et tentatives. Les anciens collecteurs et les pilotes continuent.
+Les fiches de périmètre, la comptabilité comparable et les autres exigences
+restent à terminer ; les comptes inventoriés ne sont pas déclarés rentables.

@@ -1,0 +1,65 @@
+{
+  "at_ms": 1791363578836,
+  "enrollment": {
+    "enrolled": [
+      "0x570eb8d438bd209b0deeee3d2e0a8559f5d57fb7",
+      "0x6cf4ddb4a311f0f6bbd2e9395bcd8c8b1511eb3d",
+      "0xba535b96d0cf05ca6e609ce704a192739019bc61",
+      "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7",
+      "0xcf16183d5c4b4aefc9f0a4cf1ebbc2c310c99fd2",
+      "0xfdfe0924c6f065a8efcfc769b2a318882a2670df",
+      "0xed33c96ae3b0b06382e3fd3354fc9e40e7a9e56c",
+      "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "0x4a20b9496610941053858bd0b7e92493f44c3c26",
+      "0x7bfee91193d9df2ac0bfe90191d40f23c773c060",
+      "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "0x8cdcb10fd5dda93f5110c4e5acaa09858892bd13",
+      "0x330f0bdeae3514c11fb2e1b6d18ab7939f04a8fb",
+      "0x6adbdaae3f9fa8761b83aef4aeb0bf1352a451be",
+      "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+      "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "0x0675bfaf9faffe3343c08402200d7c75d0fd79e1",
+      "0x4ad5ffac22c04a18ab3d8658682f71ab71d89a1c",
+      "0x764d42da0d23457bc6da50fb8ab1aebc3e635000",
+      "0x012ed994df76022637f79ff9e209d7d44a4d1c8e",
+      "0x99be668b46cba8798cff97e2013c30ba74ae9cad",
+      "0x662823f3280bb67da4eec0c4195709caacf20215",
+      "0xba5d9cc840745aeeeeedac5712e32f13ab8ea352",
+      "0xdcd49713b5aa0752b603086df1ad27bc9da5f8d9",
+      "0x2618f54fee88adf9bf840a1bb722be286fbd0f15",
+      "0x1bd2d89e4b9a2d373e89d74c8cc02d1562fa9626",
+      "0x7eac6c34afc4f218729c5a714134e11280cc1abf",
+      "0xe867fbdad3291530e41530301ecb77693850c78e",
+      "0xd80da302010a415586d92532a00a9544cfde70be",
+      "0x2607a3909cee65aa8205ca26f7db2d9244389577",
+      "0x88560b720239179d7f3f9e49ca934a4861593d7f",
+      "0x50c5132bbbe67357b74e115f9374d8a683439547"
+    ],
+    "rest_accounts": 32,
+    "direct_slots_changed": false
+  },
+  "results": [
+    {
+      "address": "0x012ed994df76022637f79ff9e209d7d44a4d1c8e",
+      "status": "complete",
+      "mode": "unifiedAccount",
+      "perp_dexes_observed": [
+        "",
+        "xyz",
+        "flx",
+        "vntl",
+        "hyna",
+        "km",
+        "abcd",
+        "cash",
+        "para",
+        "mkts",
+        "io"
+      ],
+      "markets": [],
+      "poll_interval_seconds": 3600,
+      "performance_status": "not_qualified"
+    }
+  ],
+  "live_user_slots_changed": false
+}

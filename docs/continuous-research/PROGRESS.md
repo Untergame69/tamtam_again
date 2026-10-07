@@ -360,3 +360,7 @@ Chaque fin de job population enregistre transactionnellement une décision immua
 ## Évaluation de procédure : premier reducer — 2026-10-07
 
 Rejeu de choix datés, coûts des essais échoués et changements, attentes, références fixe/cash ; garde temporelle et inconnues explicites. Quatre tests synthétiques passent. Aucune trace réelle ou avantage mesuré ; export causal depuis registres et positions ouvertes encore à intégrer. Journal adaptation réel vérifié : un événement needs_data, aucun appel IA ni promotion autorisé ; preuve adaptation-runtime-control-20261007.json. Pas de nouvelle promotion ou lecture de réserve. Retour arrière code ciblé, journal conservé.
+
+## Export chronologique réel des registres — 2026-10-07
+
+Trace metadata-only raccordée aux registres existants et CLI reproductible, cutoff causal, derniers états mutables jamais rétrodatés. Contrôle réel : huit créations IA, huit derniers états, trois variantes figées, 53 débuts population/52 fins et deux diagnostics ; aucun début paper. Performance inconnue, aucune sélection/issue reconstruite rétrospectivement. Six tests procedure passent. Preuve procedure-trace-control-20261007.json et trace complète /tmp/tamtam-procedure-trace.json. Export des connaissances détaillées, sélections de politique et résultats autorisés au reducer encore à terminer. Archives/réserves intactes ; rollback code ciblé.

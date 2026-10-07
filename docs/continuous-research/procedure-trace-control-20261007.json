@@ -1,0 +1,14 @@
+{
+  "as_of_ms": 1791369573799,
+  "fingerprint": "353cd62f183c0ea23a1ece8af61727e54f1d4026db3745b9936b3b005b2858bb",
+  "event_counts": {
+    "research_registered": 8,
+    "research_latest_status": 8,
+    "variant_frozen": 3,
+    "population_attempt_started": 53,
+    "population_attempt_finished": 52,
+    "population_diagnostic": 2
+  },
+  "synthetic": false,
+  "performance_status": "unknown"
+}

@@ -292,3 +292,9 @@ retraits conservés et snapshots immuables. Références des cohortes dans les j
 rattrapage de la rotation à surveiller. Preuves/rollback ALLOCATION-POLICY.md et
 allocation-control-20261007.json. Qualification économique, appariement des
 témoins et évaluation de la sélection/adaptation restent à terminer.
+
+## Rotation des marchés de découverte — 2026-10-07
+
+Ajout de `discovery_rotation.select_markets` : calendrier déterministe indépendant des cohortes de comptes, entrelacement des DEX et rotation des instruments, exclusion des marchés réservés et délistés, refus de catalogues disponibles après la décision. Chaque sélection expose version, époque, références du catalogue et biais. Le budget concerne les marchés observés, pas une population uniforme de comptes.
+
+Vérification : quatre tests ciblés passent (couverture de rotation, déterminisme, causalité du catalogue, univers vide/petit). Cette étape prépare la découverte continue ; aucun nouveau timer ni service activé. La connexion, les limites de tampon, la conservation des fenêtres sans activité et la recette réelle restent à intégrer.

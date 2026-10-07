@@ -1,0 +1,11 @@
+{
+  "as_of_ms": 1791368789255,
+  "synthetic": false,
+  "accounts": 42,
+  "accounts_with_periods": 4,
+  "observed_periods": 4,
+  "rejected_observations": 0,
+  "conflicting_timestamps": 0,
+  "economic_validation": false,
+  "rule": "adjacent-observed-valuations-v1; standard perp DEX only; reserved accounts excluded before raw query"
+}

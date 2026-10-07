@@ -380,3 +380,7 @@ Création paper atomique sous BEGIN IMMEDIATE, idempotence même version active 
 ## Commandes de retrait et redémarrage paper — 2026-10-07
 
 CLI raccordée aux mêmes gardes transactionnelles : `PYTHONPATH=src .venv/bin/python -m tamtam_again --db CHEMIN paper-retire SESSION --reason MOTIF`, puis, pour la même version retirée, `paper-start VARIANTE --restart-reason MOTIF`. Retrait refusé avec position ou ordre en attente ; pas de liquidation implicite. Historique conservé et nouvelle session à capital indépendant. Aides CLI vérifiées et suite complète : 214 tests passent en 17,453 s. Aucune commande exécutée sur une session réelle. Cette interface permet une action opérateur ; la politique automatique de remplacement et la mesure du capital continu de procédure restent à compléter. Retour arrière du seul code CLI sans effacer les tables ni les journaux.
+
+## Retraits dans la trace de procédure — 2026-10-07
+
+Export metadata-only des retraits immuables à leur date propre, avec référence au journal ; ni motif libre, ni état courant, ni résultat réservé exporté. Test avant/après cutoff : un retrait futur ne modifie pas une trace passée. Sept tests procedure passent. L'absence de table reste compatible avec les anciennes bases. Les issues économiques et les choix de politique restent à raccorder avant toute comparaison réelle de la procédure. Retour arrière du module uniquement, journal de retrait conservé.

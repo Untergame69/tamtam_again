@@ -139,6 +139,10 @@ def _parser() -> argparse.ArgumentParser:
     evaluation.add_argument("--synthetic-events", type=Path, help="Only accepted for synthetic plans")
     paper_start = commands.add_parser("paper-start", help="Start N2 only after passed real N1 final")
     paper_start.add_argument("variant_id")
+    paper_start.add_argument("--restart-reason", help="Required when restarting a retired version")
+    paper_retire = commands.add_parser("paper-retire", help="Retire a flat session and preserve its ledger")
+    paper_retire.add_argument("session_id")
+    paper_retire.add_argument("--reason", required=True)
     paper_tick_cmd = commands.add_parser("paper-tick", help="Process received archive events once")
     paper_tick_cmd.add_argument("session_id")
     decision_cmd = commands.add_parser("pipeline-decision", help="Record an explicit rejection, wait or non-identifiable diagnosis")
@@ -173,9 +177,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validation-recipe":
             from .recipe import run_recipe
             print(json.dumps(run_recipe(args.output),ensure_ascii=False,indent=2))
-        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
+        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-retire", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
             from .validation import create_plan, register_variant, evaluate, get_variant, initialize
-            from .paper import archive_events, classify_regimes, start_paper, paper_tick
+            from .paper import archive_events, classify_regimes, start_paper, retire_paper, paper_tick
             from .qualification import qualify, snapshot_cohort
             with Store(args.db) as store:
                 initialize(store)
@@ -197,7 +201,9 @@ def main(argv: list[str] | None = None) -> int:
                         provenance = "local_archive"
                     result = evaluate(store,args.variant_id,args.stage,events,provenance=provenance)
                 elif args.command == "paper-start":
-                    result = start_paper(store,args.variant_id)
+                    result = start_paper(store,args.variant_id,restart_reason=args.restart_reason)
+                elif args.command == "paper-retire":
+                    result = retire_paper(store,args.session_id,reason=args.reason)
                 elif args.command == "paper-tick":
                     result = paper_tick(store,args.session_id)
                 elif args.command == "qualify":

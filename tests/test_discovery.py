@@ -35,3 +35,14 @@ class DiscoveryTests(unittest.TestCase):
         participants(self.s,'test','BTC',[(receipt,event(1))])
         record_window(self.s,network='test',source='leaderboard',market='*',start_ms=2000,end_ms=2000,available_ms=2000,version='ranking-v1',coverage={'status':'snapshot_only'},evidence={addr(1):{'rank':3}})
         self.assertEqual(self.s.connection.execute('select count(*) from discovery_provenance where address=?',(addr(1),)).fetchone()[0],2)
+    def test_subscription_ranking_ignores_old_fills(self):
+        from unittest.mock import patch
+        from tamtam_again.websocket import _subscriptions
+        from tamtam_again.storage import utc_now
+        self.s.add_candidate('test',addr(1),'fixture')
+        self.s.connection.execute("update candidates set status='tracked' where address=?",(addr(1),));self.s.connection.commit()
+        now=200000
+        self.s.save_observation(network='test',source='fixture',entity_type='account',entity_id=addr(1),endpoint='userFillsByTime',payload=[{'coin':'OLD','time':1,'px':'100000','sz':'1000','tid':1},{'coin':'RECENT','time':int(now*1000)-100,'px':'1','sz':'1','tid':2}],requested_at=utc_now())
+        with patch('tamtam_again.websocket.time.time',return_value=now):
+            accounts,markets,depth=_subscriptions(self.s,'test',30)
+        self.assertEqual(markets,['RECENT'])

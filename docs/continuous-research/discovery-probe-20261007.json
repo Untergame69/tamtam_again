@@ -1,0 +1,178 @@
+{
+  "session": "0885a73281c443f98aac696742fea26e",
+  "started_at": 1791363203.455852,
+  "ended_at": 1791363248.7945373,
+  "markets": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "xyz:SP500",
+    "xyz:GOLD"
+  ],
+  "subscriptions_acknowledged": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "xyz:GOLD",
+    "xyz:SP500"
+  ],
+  "frames": {
+    "BTC": 73,
+    "ETH": 49,
+    "SOL": 21,
+    "xyz:SP500": 12,
+    "xyz:GOLD": 10
+  },
+  "bytes_received": 148015,
+  "reports": [
+    {
+      "window_id": "b5587fbe1fc71a797294b9421515f34cd7fe39ffd6e50070514a66e0be6e1618",
+      "selected": 100,
+      "new_candidates": 97,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363180000,
+        "observed_unique_eligible": 158,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "ec0702959810fb1c6235b3b9c33b465ba216f800dc8f2d80294a13c53eb79312",
+      "selected": 30,
+      "new_candidates": 23,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363240000,
+        "observed_unique_eligible": 30,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "81acd054ee5b635fd566cfc8d20e6457c135406a0565b35186c96a225b642153",
+      "selected": 96,
+      "new_candidates": 76,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363180000,
+        "observed_unique_eligible": 96,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "941fa4c90dffd71e1a93a51a44ccfe49d02031846bb695a4769af8e5b9f47a18",
+      "selected": 15,
+      "new_candidates": 6,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363240000,
+        "observed_unique_eligible": 15,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "1a653d7fa89f6b66baa704e4744a8ff402407e2713b99191055ae506279f4c1b",
+      "selected": 69,
+      "new_candidates": 46,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363180000,
+        "observed_unique_eligible": 69,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "7d7a1e253fa8c50335a6e3a647f068214bdf2a4e9069886b5dd0b63e65215674",
+      "selected": 7,
+      "new_candidates": 3,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363240000,
+        "observed_unique_eligible": 7,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "17ec2f5068c451fcca18b7189f9a65310b04627666a0ae7019caf7ee852e373f",
+      "selected": 28,
+      "new_candidates": 23,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363180000,
+        "observed_unique_eligible": 28,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "6501837767cb22bc2bc4d256ffccaca3d0fe2fae8b72b78406d14f9af19fe41d",
+      "selected": 14,
+      "new_candidates": 11,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363180000,
+        "observed_unique_eligible": 14,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    },
+    {
+      "window_id": "41594aadccf68d8380c3607251fb6f6f1b8dda886746506e4c32ea5876c0219b",
+      "selected": 5,
+      "new_candidates": 1,
+      "coverage": {
+        "status": "bounded_probe_no_gap_proof",
+        "sessions": [
+          "0885a73281c443f98aac696742fea26e"
+        ],
+        "window_bucket_ms": 1791363240000,
+        "observed_unique_eligible": 5,
+        "cap_per_archived_batch": 100,
+        "protected_pilot_accounts_excluded": true,
+        "bias": "market activity and observed partial window; sampling unique addresses, not fills"
+      }
+    }
+  ],
+  "new_candidates": 286,
+  "protected_pilot_accounts_excluded": true,
+  "live_user_slots_used": 0,
+  "scope": "public participants discovered, no profitability claim; at most 100 unique addresses per market per observed batch minute",
+  "bias": "five explicitly chosen markets, 45-second activity window; infrequent traders less likely to appear"
+}

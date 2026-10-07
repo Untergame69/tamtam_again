@@ -1,0 +1,269 @@
+{
+  "since": 1791362974.4267864,
+  "until": 1791363330.7851722,
+  "window_minutes": 5.939306430021921,
+  "groups": [
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "candleSnapshot",
+      "network": "hyperliquid-mainnet",
+      "attempts": 73,
+      "reserved_weight": 1533,
+      "response_weight_bound": 1533,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 58196,
+      "mean_request_seconds": 0.26889532438697844,
+      "max_request_seconds": 0.5750052880030125,
+      "wait_seconds": 235.92019678806537,
+      "response_items": 438
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "metaAndAssetCtxs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 22,
+      "reserved_weight": 440,
+      "response_weight_bound": 440,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 403797,
+      "mean_request_seconds": 0.33690248104341497,
+      "max_request_seconds": 0.6780087590159383,
+      "wait_seconds": 57.52812292001909,
+      "response_items": 44
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "perpDexs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 2,
+      "reserved_weight": 40,
+      "response_weight_bound": 40,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 43104,
+      "mean_request_seconds": 0.25061919749714434,
+      "max_request_seconds": 0.25346033700043336,
+      "wait_seconds": 0.018852670007618144,
+      "response_items": 22
+    },
+    {
+      "task": "tamtam-market-collector",
+      "endpoint": "spotMetaAndAssetCtxs",
+      "network": "hyperliquid-mainnet",
+      "attempts": 2,
+      "reserved_weight": 40,
+      "response_weight_bound": 40,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 645653,
+      "mean_request_seconds": 0.8028376705042319,
+      "max_request_seconds": 1.1206252929987386,
+      "wait_seconds": 6.436258358007763,
+      "response_items": 4
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "clearinghouseState",
+      "network": "hyperliquid-mainnet",
+      "attempts": 13,
+      "reserved_weight": 26,
+      "response_weight_bound": 26,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 96384,
+      "mean_request_seconds": 0.2857278716087771,
+      "max_request_seconds": 0.6477948039828334,
+      "wait_seconds": 31.559519131988054,
+      "response_items": null
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "openOrders",
+      "network": "hyperliquid-mainnet",
+      "attempts": 13,
+      "reserved_weight": 260,
+      "response_weight_bound": 260,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 304897,
+      "mean_request_seconds": 0.2604826626954421,
+      "max_request_seconds": 0.2930991479952354,
+      "wait_seconds": 15.072436595044564,
+      "response_items": 1831
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "portfolio",
+      "network": "hyperliquid-mainnet",
+      "attempts": 13,
+      "reserved_weight": 260,
+      "response_weight_bound": 260,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 356259,
+      "mean_request_seconds": 0.34754252807873015,
+      "max_request_seconds": 0.6526279039971996,
+      "wait_seconds": 30.656198074982967,
+      "response_items": 104
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "spotClearinghouseState",
+      "network": "hyperliquid-mainnet",
+      "attempts": 13,
+      "reserved_weight": 26,
+      "response_weight_bound": 26,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 16174,
+      "mean_request_seconds": 0.2573958026075091,
+      "max_request_seconds": 0.2886569629772566,
+      "wait_seconds": 16.044136304000858,
+      "response_items": null
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "userFillsByTime",
+      "network": "hyperliquid-mainnet",
+      "attempts": 14,
+      "reserved_weight": 1680,
+      "response_weight_bound": 327,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 329286,
+      "mean_request_seconds": 0.29201602878414895,
+      "max_request_seconds": 0.5117699399997946,
+      "wait_seconds": 30.66373120294884,
+      "response_items": 886
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "userFunding",
+      "network": "hyperliquid-mainnet",
+      "attempts": 14,
+      "reserved_weight": 630,
+      "response_weight_bound": 280,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 28,
+      "mean_request_seconds": 0.248398820435146,
+      "max_request_seconds": 0.28551567101385444,
+      "wait_seconds": 124.84719137602951,
+      "response_items": 0
+    },
+    {
+      "task": "tamtam-whale-collector",
+      "endpoint": "userNonFundingLedgerUpdates",
+      "network": "hyperliquid-mainnet",
+      "attempts": 13,
+      "reserved_weight": 260,
+      "response_weight_bound": 260,
+      "retry_attempts": 0,
+      "http_errors": 0,
+      "rate_limits": 0,
+      "response_bytes": 26,
+      "mean_request_seconds": 0.24961814030897445,
+      "max_request_seconds": 0.2869192579819355,
+      "wait_seconds": 53.18941948696738,
+      "response_items": 0
+    }
+  ],
+  "reserved_weight_per_minute": 874.681254656333,
+  "charged_weight": "unknown: server does not return charged weight",
+  "response_weight_bound": "documented response-item formula, rounded conservatively; not server measurement",
+  "sampling_warning": "Startup and backfill are mixed with incremental tasks; observe complete cadence cycles and classify workload before deployment decisions",
+  "official_ip_budget_per_minute": 1200,
+  "local_budget_per_minute": 900,
+  "margin_to_official": 300,
+  "completed_minute_buckets": [
+    {
+      "minute": 29856049,
+      "weight": 429,
+      "attempts": 17
+    },
+    {
+      "minute": 29856050,
+      "weight": 956,
+      "attempts": 32
+    },
+    {
+      "minute": 29856051,
+      "weight": 837,
+      "attempts": 33
+    },
+    {
+      "minute": 29856052,
+      "weight": 959,
+      "attempts": 33
+    },
+    {
+      "minute": 29856053,
+      "weight": 679,
+      "attempts": 31
+    },
+    {
+      "minute": 29856054,
+      "weight": 959,
+      "attempts": 32
+    },
+    {
+      "minute": 29856055,
+      "weight": 376,
+      "attempts": 14
+    }
+  ],
+  "websocket": {
+    "windows": 8,
+    "observed_window_seconds": 302.8305299509957,
+    "frames_per_second": 139.02165018438748,
+    "bytes_per_second": 43219.06051585327,
+    "max_flush_lag_seconds": 11.037030935287476,
+    "queue_peak_messages": 2024,
+    "latest_counts": {
+      "connections": 1,
+      "user_addresses": 10,
+      "subscriptions_sent": 110,
+      "acknowledged_bbo": 30
+    }
+  },
+  "scenario_assumptions": [
+    {
+      "fill_poll_minutes": 5,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 1,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    },
+    {
+      "fill_poll_minutes": 15,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 3,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    },
+    {
+      "fill_poll_minutes": 60,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 12,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    },
+    {
+      "fill_poll_minutes": 360,
+      "reserved_weight_per_poll": 120,
+      "marginal_accounts_upper_bound": 75,
+      "scope": "fill polls only; account snapshots, scopes, funding, backfill and compute costs excluded; not a sustainable population claim"
+    }
+  ],
+  "measured_local_headroom": 25.318745343667047,
+  "confidence": "initial measurement only"
+}

@@ -38,6 +38,11 @@ def register(store,contract):
     for r in references:
         if r.get('kind') not in {'cash','fixed_rule','selection_control'} or not r.get('evidence_ref') or type(r.get('available_ms')) is not int or not 0<=r['available_ms']<=stamp:
             raise ValueError('Reference unavailable at registration')
+        scope=r.get('scope')
+        if scope is not None and (not isinstance(scope,dict) or not all(isinstance(scope.get(k),str) and scope[k].strip() for k in ('network','address'))):
+            raise ValueError('Explicit reference network/account scope required')
+        if r['kind']=='selection_control' and (scope is None or not r.get('cohort_evidence_ref') or not r.get('matching_justification')):
+            raise ValueError('Selection control requires predeclared scope, cohort proof and matching rationale')
         if r['kind']!='cash' and not r.get('variant_id'):
             raise ValueError('Executable reference identity required')
     if decimal(contract['initial_capital_usdc'])<=0 or not contract.get('risk_budget_id'):
@@ -90,15 +95,17 @@ def bind_session(store,procedure_id,period_index,role,session_id):
     if type(period_index) is not int or not 0<=period_index<len(contract['periods']):raise ValueError('Invalid period index')
     if not choice['available_ms']<=stamp<contract['periods'][period_index]['start_ms']:
         raise ValueError('Session binding must precede the period')
+    scope=contract
     if role=='adaptive':expected=json.loads(choice['choice_json'])['selected_variant_id']
     else:
         refs=[r for r in contract['references'] if r['name']==role and r['kind']!='cash']
         if len(refs)!=1:raise ValueError('Unknown executable reference role')
         expected=refs[0]['variant_id']
+        scope=refs[0].get('scope',contract)
     session=store.connection.execute('select variant_id,network,address,started_ms,status from paper_sessions where session_id=?',(session_id,)).fetchone()
     if not session or session['variant_id']!=expected or not row['registered_ms']<=session['started_ms']<=stamp or session['status']!='active':
         raise ValueError('Matching active prospective paper session required')
-    if session['network']!=contract.get('network') or session['address']!=contract.get('address'):
+    if session['network']!=scope.get('network') or session['address']!=scope.get('address'):
         raise ValueError('Explicit procedure network/account scope mismatch')
     store.connection.execute('insert into procedure_session_bindings values(?,?,?,?,?)',(procedure_id,period_index,role,session_id,stamp))
     store.connection.commit()

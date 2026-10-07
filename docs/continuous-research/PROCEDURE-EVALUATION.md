@@ -187,3 +187,20 @@ Limite actuelle : même compte pour les références ; témoin de sélection sur
 cohorte d'autres comptes et raccordement des coûts/reducer entier restent à faire.
 Les résultats sont ceux du modèle paper, pas une preuve d'exécution réelle.
 Aucun lien ou session réel créé. Rollback code uniquement, conserver les liens.
+
+## Témoins de sélection sur un autre compte
+
+Chaque référence exécutable peut déclarer scope {network,address} avant observation.
+Sans scope, une règle fixe conserve le périmètre du contrat. Pour selection_control,
+scope, cohort_evidence_ref et matching_justification sont obligatoires. La liaison
+à une session vérifie alors le compte du témoin et sa variante, sans fusionner
+comptes, positions ou résultats. Le scope et la justification font partie de
+l'identité immutable du contrat ; aucun remplacement rétrospectif du témoin.
+
+Ce contrat permet désormais des témoins sur plusieurs comptes ; il ne construit
+pas automatiquement une cohorte économiquement comparable. La preuve de cohorte
+et le raisonnement de matching doivent être vérifiés indépendamment, notamment
+activité, marchés, couverture et capacité d'exécution. Une justification présente
+ne prouve pas la comparabilité. Aucun témoin réel créé ou promu ; les gates N1/N2
+ordinaires restent nécessaires. Les scripts existants acceptent ce champ dans
+le contrat JSON. Tests de liaison bon/mauvais compte et matching manquant.

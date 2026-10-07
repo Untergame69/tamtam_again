@@ -606,3 +606,10 @@ scope contrôlés, relecture immuable. Résolution via instantanés paper unique
 période non terminée et preuves absentes inconnues, aucune archive réservée.
 CLI explicite sans lancement de session. Références multi-comptes et raccordement
 complet des coûts au reducer restent ouverts ; aucune liaison réelle créée.
+
+### Périmètres explicites de témoins — étape 12
+
+Références avec scope network/address immutable ; témoin de sélection exige
+preuve de cohorte datée et justification de matching. Liaison contrôlée au scope
+prévu plutôt qu'au compte adaptatif. Sans fusion de positions/résultats ni
+promotion ; comparabilité économique et assemblage coût/reducer encore ouverts.

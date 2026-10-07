@@ -82,3 +82,22 @@ class RegistryTests(unittest.TestCase):
    self.assertEqual(r['outcomes']['adaptive']['net_pnl'],'2')
    self.assertTrue(r['outcomes']['fixed']['synthetic'])
   finally:fixture.tearDown()
+
+ def test_control_scope_is_predeclared_and_binding_checked(self):
+  from tamtam_again.procedure_registry import bind_session
+  self.contract.update(network='synthetic',address='adaptive-account')
+  self.contract['references'].append({'name':'control','kind':'selection_control','variant_id':'control-v',
+   'available_ms':0,'evidence_ref':'fixture:control','scope':{'network':'synthetic','address':'control-account'},
+   'cohort_evidence_ref':'fixture:dated-cohort','matching_justification':'same observed market and risk policy; fixture only'})
+  i=self.register()
+  with patch('tamtam_again.procedure_registry.now_ms',return_value=2):record_choice(self.s,i,0,self.choice)
+  self.s.connection.execute('create table paper_sessions(session_id text,variant_id text,network text,address text,started_ms integer,status text)')
+  self.s.connection.execute("insert into paper_sessions values('wrong','control-v','synthetic','adaptive-account',2,'active')")
+  self.s.connection.execute("insert into paper_sessions values('right','control-v','synthetic','control-account',2,'active')")
+  with patch('tamtam_again.procedure_registry.now_ms',return_value=3):
+   with self.assertRaisesRegex(ValueError,'scope'):bind_session(self.s,i,0,'control','wrong')
+   bind_session(self.s,i,0,'control','right')
+ def test_control_without_matching_rationale_rejected(self):
+  self.contract['references'].append({'name':'control','kind':'selection_control','variant_id':'v',
+   'available_ms':0,'evidence_ref':'fixture','scope':{'network':'synthetic','address':'control'}})
+  with self.assertRaisesRegex(ValueError,'matching'):self.register()

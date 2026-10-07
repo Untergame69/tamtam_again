@@ -6,7 +6,7 @@ import time
 from uuid import uuid4
 from typing import Any
 from .storage import Store,utc_now
-from .discovery import protected_addresses
+from .discovery import protected_addresses, fingerprint
 from .providers.hyperliquid import HyperliquidInfo
 from .population_history import collect_history, ENDPOINTS
 from .behavior import profile_behavior
@@ -84,11 +84,14 @@ def claim(store: Store,network: str, *,now_ms: int | None=None):
 
 def cadence(policy:dict[str,Any],fills: list[dict[str,Any]],start_ms:int,end_ms:int):
     unique={(f.get('coin'),f.get('time'),f.get('tid',f.get('hash'))) for f in fills if isinstance(f,dict) and start_ms<=int(f.get('time',-1))<=end_ms}
+    # Preserve content changes (including corrections), ignoring page order and repeats.
+    content=sorted({json.dumps(f,sort_keys=True,separators=(',',':')) for f in fills
+                    if isinstance(f,dict) and start_ms<=int(f.get('time',-1))<=end_ms})
     seconds=max((end_ms-start_ms)/1000,1)
     rate=len(unique)/seconds
     interval=policy['default_poll_seconds'] if not rate else int(policy['retention_fills']*policy['retention_fraction']/rate)
     interval=max(policy['min_poll_seconds'],min(policy['default_poll_seconds'],policy['max_poll_seconds'],interval))
-    return interval,{'observed_unique_fills':len(unique),'window_seconds':seconds,'fills_per_second':rate,'risk':'unknown retention/history completeness; rate may be underestimated if API response saturated','needs_faster_than_minimum':bool(rate and policy['retention_fills']*policy['retention_fraction']/rate<policy['min_poll_seconds'])}
+    return interval,{'observed_unique_fills':len(unique),'observed_fill_content_fingerprint':fingerprint(content),'window_seconds':seconds,'fills_per_second':rate,'risk':'unknown retention/history completeness; rate may be underestimated if API response saturated','needs_faster_than_minimum':bool(rate and policy['retention_fills']*policy['retention_fraction']/rate<policy['min_poll_seconds'])}
 
 def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,now_ms:int|None=None):
     fixed_clock=now_ms is not None

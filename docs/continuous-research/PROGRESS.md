@@ -384,3 +384,7 @@ CLI raccordée aux mêmes gardes transactionnelles : `PYTHONPATH=src .venv/bin/p
 ## Retraits dans la trace de procédure — 2026-10-07
 
 Export metadata-only des retraits immuables à leur date propre, avec référence au journal ; ni motif libre, ni état courant, ni résultat réservé exporté. Test avant/après cutoff : un retrait futur ne modifie pas une trace passée. Sept tests procedure passent. L'absence de table reste compatible avec les anciennes bases. Les issues économiques et les choix de politique restent à raccorder avant toute comparaison réelle de la procédure. Retour arrière du module uniquement, journal de retrait conservé.
+
+## Détection de contenu à volume égal — 2026-10-07
+
+Le rapport population conserve désormais un fingerprint du contenu des fills de la passe, canonique et indépendant de leur ordre ou répétition. Le diagnostic l'inclut : une correction ou de nouveaux fills à compteur égal ne sont plus considérés comme une entrée inchangée. Deux tests adaptation et seize tests population passent. Pas de nouveau droit d'appel IA ou de promotion. Les anciens rapports sans fingerprint restent lisibles ; la première passe au nouveau format peut produire un diagnostic de changement de descriptor, sans modifier les anciens événements. Les fenêtres de passe restent différentes d'un historique cumulatif complet. Aucun redémarrage du collecteur direct ; prochain worker oneshot charge le code. Rollback code ciblé, rapports et événements conservés.

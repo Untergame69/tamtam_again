@@ -19,6 +19,7 @@ def observe_population(store, job, report, available_ms):
         raise ValueError('Explicit diagnostic availability required')
     descriptor={'mode':report.get('mode'),'markets':sorted(set(report.get('markets',[]))),
         'activity':report.get('activity',{}).get('observed_unique_fills'),
+        'fill_content_fingerprint':report.get('activity',{}).get('observed_fill_content_fingerprint'),
         'history_states':{k:v.get('pagination_status') for k,v in report.get('histories',{}).items()},
         'performance_status':report.get('performance_status'),
         'reproducibility_status':report.get('reproducibility_status')}

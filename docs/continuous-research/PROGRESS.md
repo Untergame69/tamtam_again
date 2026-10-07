@@ -503,3 +503,14 @@ reprise entre commit famille et lien sans double variante. Recette synthétique
 comparaison→sélection→finale→paper synthétique, refus promotion réelle.
 Compilation automatique des règles en prose et création des plans encore
 manquantes ; aucun plan réel ni pilote modifié par cette recette.
+
+### Création prospective bornée — étape 11
+
+Préparation plan+famille depuis hypothèse exécutable et politique/profil explicites.
+Ancre et contrat immuables en population_plan_drafts avant commits dépendants,
+reprise sans décaler finale, plafond global de plans, embargo couvrant toutes
+les variantes et budget couvrant fenêtres/comparaisons/finale. Refus des données
+non disponibles et des besoins unresolved ; aucun nouveau plan réel ni appel IA.
+Cinq tests plans dédiés, 46 tests population ciblés passent (9,627 s avant dernier
+contrôle de disponibilité). Compilation IA et profils par hypothèse encore à
+raccorder ; aucun paramètre universel ajouté au timer. Trace référence les drafts.

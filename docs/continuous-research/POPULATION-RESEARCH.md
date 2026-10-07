@@ -209,3 +209,40 @@ et ne crée pas leur plan : le parcours automatique population complète reste
 Rollback : annuler uniquement le module/script/référence de trace ; préserver
 population_experiment_links, familles, variantes et plans. Ne pas restaurer la
 base de collecte pour annuler ce raccordement.
+
+## Création des plans population
+
+population-prepare-plan.py crée le plan et sa famille à partir d'une politique
+population-plan-v1 et d'un profil explicitement justifiés. Aucun horizon de deux
+minutes ni durée de pilote réutilisé par défaut. Champs requis : justification,
+max_plans, comparison_delay_ms, comparison_duration_ms, selection_gap_ms,
+final_duration_ms, criteria, budget et isolation. Ces valeurs sont des choix
+expérimentaux, pas des seuils universels de robustesse. Le profil reste le
+contrat existant (axes classés, justifiés, avec preuves et nombre maximal).
+
+L'embargo couvre le maximum horizon/lookback plus latence de toutes les
+combinaisons préenregistrées. Exploration inclut disponibilité du paquet et de
+sa revue ; comparaison future après embargo ; finale après comparaison et un
+délai de sélection au moins égal à l'embargo. Le budget de durée couvre ces
+fenêtres et celui d'évaluations couvre toutes les comparaisons plus une finale.
+Les informations de la revue doivent déjà être disponibles.
+
+population_plan_drafts conserve une fois l'ancre, critères, origine et fenêtres.
+Une interruption ne les décale pas ; une politique/profil modifié est refusé
+pour la même requête. max_plans compte globalement ces réservations, y compris
+une préparation interrompue. Les liens déjà enregistrés sont rejouables. Si une
+préparation réelle manque sa comparaison avant d'avoir terminé, elle est refusée
+par les gates prospectifs ; une nouvelle hypothèse/expérience justifiée est
+nécessaire, sans rendre vierge une ancienne période. Aucun appel IA ni abonnement
+utilisateur n'est lancé par cette commande.
+
+```sh
+PYTHONPATH=src python3 scripts/population-prepare-plan.py --db data/tamtam.sqlite3 --request-id REQUETE --policy POLITIQUE.json --profile PROFIL.json --output /tmp/population-plan.json
+```
+
+Les hypothèses sans executable_spec ou avec required_data restent dans leur
+état explicite et ne créent aucun draft. Le timer n'a pas reçu de politique
+universelle : compiler les règles et produire des profils justifiés pour chaque
+piste reste à intégrer. Fixtures seules pour cette recette ; aucun nouveau plan
+réel ajouté. Rollback ciblé : module/script/appel, conserver drafts, liens et
+familles. L'adaptateur réutilise le verrou commun sans le réacquérir en cascade.

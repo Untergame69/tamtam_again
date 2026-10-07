@@ -514,3 +514,15 @@ non disponibles et des besoins unresolved ; aucun nouveau plan réel ni appel IA
 Cinq tests plans dédiés, 46 tests population ciblés passent (9,627 s avant dernier
 contrôle de disponibilité). Compilation IA et profils par hypothèse encore à
 raccorder ; aucun paramètre universel ajouté au timer. Trace référence les drafts.
+
+### Runtime vers préparation automatique — étape 11
+
+Contrat optionnel executable_spec+experiment_profile dans les deux rôles
+existants, sans nouvel appel ajouté : fidélité marchés/type, identité requête,
+preuves axes du paquet, validation capacité/profil. Unknown mechanism reste
+unsupported sans rejet économique ni conversion forcée. Scheduler prépare les
+plans avec une politique explicite par requête fournie hors modèle, sous verrou
+commun sans réacquisition, bornée max_jobs et liens déjà créés ignorés.
+Recette intégrée simulée runtime→mémoire/route→plan, absence sans politique et
+rejeu sans doublon/inférence ; aucun paramètre universel ni fichier de politiques
+activé en production. Les anciennes réponses et variantes sont conservées.

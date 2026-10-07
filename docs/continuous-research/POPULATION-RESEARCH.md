@@ -246,3 +246,32 @@ universelle : compiler les règles et produire des profils justifiés pour chaqu
 piste reste à intégrer. Fixtures seules pour cette recette ; aucun nouveau plan
 réel ajouté. Rollback ciblé : module/script/appel, conserver drafts, liens et
 familles. L'adaptateur réutilise le verrou commun sans le réacquérir en cascade.
+
+## Sortie IA structurée et préparation par scheduler
+
+Le runtime population v2 peut fournir executable_spec et experiment_profile en
+plus de l'hypothèse descriptive, uniquement ensemble et avec paramètres justifiés.
+Le code vérifie périmètre/type, request_id du profil, preuves des axes présentes
+dans le paquet scellé, capacité et budget cartésien des profils exécutables.
+La critique reçoit ces objets pour vérifier fidélité et causalité ; elle ne les
+réécrit pas. Le contrat décrit les capacités actuelles sans imposer leur choix :
+un mécanisme différent reste unsupported, jamais converti pour entrer dans
+momentum/leader_delta. Les anciens résultats et paquets restent immuables.
+
+Le scheduler accepte optionnellement --plan-policies FICHIER, dictionnaire
+request_id→politique population-plan-v1 fourni séparément du modèle. Seules les
+routes prospective_plan_required avec profil justifié sont préparées, au plus
+max_jobs par passage ; les liens déjà créés sont ignorés pour ne pas empêcher
+la préparation des suivants. Critères/fenêtres/budgets ne sont pas choisis par
+le modèle. Aucun fichier de ce type n'est activé dans le timer de production.
+Une politique absente ou un mécanisme non intégré laisse une prochaine action
+explicite. --prepare-only n'appelle aucun modèle mais peut préparer les plans
+explicitement autorisés par ce fichier.
+
+Test intégré synthétique : deux rôles IA simulés→hypothèse structurée→mémoire et
+route→absence de plan sans politique→création avec politique→rejeu sans doublon,
+sans appel supplémentaire ni paper. Ce test porte sur l'orchestration ; il ne
+qualifie aucun mécanisme réel. Les coûts/délais/risques déclarés doivent encore
+être attestés par leurs données, une validation de schéma ne prouve pas leur
+réalisme. Le parcours complet et les mécanismes multi-instruments restent à
+raccorder. Rollback ciblé runtime/scheduler, garder réponses, budgets et plans.

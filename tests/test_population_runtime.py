@@ -148,6 +148,35 @@ class RuntimeTests(unittest.TestCase):
             item['periods'].remove(inherited_period)
             with self.assertRaisesRegex(ValueError,'inherited periods'):save_knowledge(self.s,item)
 
+    def test_scheduler_compiled_hypothesis_prepares_plan_only_with_external_policy(self):
+        from tamtam_again.recipe import synthetic_spec,synthetic_plan
+        from tamtam_again.population_scheduler import tick
+        packet=json.loads(self.s.connection.execute('select packet_json from population_research_jobs').fetchone()[0])
+        packet['network']='synthetic'
+        self.s.connection.execute('update population_research_jobs set network=?,packet_json=?',('synthetic',json.dumps(packet)));self.s.connection.commit()
+        spec=synthetic_spec();spec['market']='BTC'
+        profile={'schema_version':1,'hypothesis_id':self.request,'justification':'fixture only','max_variants':1,'selection_rule':'comparison_then_one_final',
+            'axes':[{'parameter':'horizon_ms','values':[500],'category':'hypothesis','justification':'fixture','evidence_refs':['account_scope_reports:one'],'measurement_status':'simulated'}]}
+        hypothesis={k:'fixture' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
+        hypothesis.update(type='follower',markets=['BTC'],required_data=[],evidence_refs=['account_scope_reports:one'],executable_spec=spec,experiment_profile=profile)
+        proposal={'decision':'hypothesis','diagnostic':'fixture','wake':{},'hypothesis':hypothesis}
+        critique={'decision':'consistent','diagnostic':'fixture','wake':{}}
+        with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',side_effect=[(json.dumps(proposal),self.usage),(json.dumps(critique),self.usage)]):
+            self.assertEqual(run(self.s,self.request)['status'],'hypothesis_recorded')
+        without=tick(self.s,'synthetic',self.policy,dispatch=False)
+        self.assertEqual(without['plans'],[])
+        self.assertEqual(self.s.connection.execute('select count(*) from validation_plans').fetchone()[0],0)
+        policy={'version':'population-plan-v1','justification':'fixture only','max_plans':1,'comparison_delay_ms':100,
+            'comparison_duration_ms':6000,'selection_gap_ms':2000,'final_duration_ms':6000,
+            'criteria':synthetic_plan()['criteria'],'budget':synthetic_plan()['budget'],'isolation':'unavailable'}
+        with patch('tamtam_again.population_runtime.call') as call:
+            result=tick(self.s,'synthetic',self.policy,dispatch=False,plan_policies={self.request:policy})
+            self.assertEqual(result['plans'][0]['status'],'registered');call.assert_not_called()
+            again=tick(self.s,'synthetic',self.policy,dispatch=False,plan_policies={self.request:policy})
+            self.assertEqual(again['plans'],[])
+        self.assertEqual(self.s.connection.execute('select count(*) from strategy_variants').fetchone()[0],1)
+        self.assertEqual(self.s.connection.execute('select count(*) from paper_sessions').fetchone()[0],0)
+
     def test_open_hypothesis_and_review_never_promote(self):
         hypothesis={k:'fixture testable specification' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
         hypothesis.update(type='autonomous',markets=['BTC','ETH'],required_data=['causal price paths'],evidence_refs=['account_scope_reports:one'])

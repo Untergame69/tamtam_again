@@ -144,12 +144,16 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
 
 def finish(store:Store,job:dict[str,Any],result:dict[str,Any],interval:int, *,now_ms:int|None=None,status:str='complete'):
     now_ms=now_ms if now_ms is not None else int(time.time()*1000)
+    from .adaptation import initialize as initialize_adaptation, observe_population
+    initialize_adaptation(store)
+    store.connection.commit()
     store.connection.execute('begin immediate')
     try:
         row=store.connection.execute('select lease_token from population_accounts where network=? and address=?',(job['network'],job['address'])).fetchone()
         if not row or row['lease_token']!=job['lease_token']:raise ValueError('Stale population lease')
         if status=='complete':
             store.connection.execute('insert into account_scope_reports values (?,?,?,?,?)',(uuid4().hex,job['network'],job['address'],now_ms,json.dumps(result,sort_keys=True)))
+            observe_population(store,job,result,now_ms)
         store.connection.execute('update population_attempts set status=?,completed_ms=?,result_json=? where attempt_id=? and status=\'running\'',(status,now_ms,json.dumps(result,sort_keys=True),job['attempt_id']))
         store.connection.execute("update population_accounts set status='scheduled',interval_seconds=?,next_due_ms=?,lease_token=NULL,lease_until_ms=NULL,last_success_ms=case when ?='complete' then ? else last_success_ms end where network=? and address=?",(interval,now_ms+interval*1000,status,result.get('fills_requested_end_ms',now_ms),job['network'],job['address']))
         store.connection.commit()

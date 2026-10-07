@@ -43,7 +43,17 @@ de version de politique. La requête reste sealed ; cette fonction ne dépense
 rien et ne démarre pas un modèle. Table additive population_research_jobs ;
 créations exportées dans la trace metadata-only.
 
-Reste à raccorder : ordonnanceur et runtime isolé pour hypothèses ouvertes, revue,
+`population_runtime.run` utilise le runtime isolé vérifié du pilote, avec verrou
+partagé et réservation de deux appels avant le premier. Il propose un mécanisme
+ouvert puis fait une revue de cohérence ; `hypothesis_recorded` est une hypothèse,
+pas une variante, validation ou promotion. Les réponses doivent déclarer type,
+marchés observés, signal, entrée/sortie, dimensionnement, risque, horizon justifié,
+données requises, limites d'exécution, rejet et preuves présentes dans le paquet.
+Réponses/usage conservés, timeout terminal sans retry ; coût incomplet reste
+inconnu et réservation conservée. Aucune inférence si vérification d'isolation
+échoue. Les comptes devenus protégés sont refusés avant lecture du paquet.
+
+Reste à raccorder : ordonnanceur, reprise des appels interrompus sans relance,
 routage vers famille d'expérience ou mécanisme unsupported, critères et nouvelles
 fenêtres prospectives. La préparation IA existante reste liée au pilote ; ne pas
 augmenter son budget global pour intégrer ces fiches. Aucun service modifié.

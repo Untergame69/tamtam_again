@@ -356,3 +356,7 @@ Documentation officielle relue : en unified/portfolio margin, spotClearinghouseS
 ## Journal de diagnostic population raccordé — 2026-10-07
 
 Chaque fin de job population enregistre transactionnellement une décision immuable si mode, marchés, volume observé ou état de pagination changent. Identité source attempt, fingerprint descriptif, preuve, diagnostic, condition de réveil et prochaine action de collecte/qualification conservés ; contenu inchangé ne rouvre aucune analyse. Aucun appel IA ni promotion autorisé par ce diagnostic. Test dédié couvre replay/idempotence/entrée inchangée/changement ; 16 tests population passent. Migration additive adaptation_events et index, chargée par le prochain oneshot ; aucune relance du collecteur direct. La boucle proposition/comparaison/promotion/surveillance demeure partielle, ce journal n’en atteste pas l’achèvement. Rollback arrêt du worker population si nécessaire, retour du code, garder la table et toutes les preuves.
+
+## Évaluation de procédure : premier reducer — 2026-10-07
+
+Rejeu de choix datés, coûts des essais échoués et changements, attentes, références fixe/cash ; garde temporelle et inconnues explicites. Quatre tests synthétiques passent. Aucune trace réelle ou avantage mesuré ; export causal depuis registres et positions ouvertes encore à intégrer. Journal adaptation réel vérifié : un événement needs_data, aucun appel IA ni promotion autorisé ; preuve adaptation-runtime-control-20261007.json. Pas de nouvelle promotion ou lecture de réserve. Retour arrière code ciblé, journal conservé.

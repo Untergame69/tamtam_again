@@ -1,0 +1,14 @@
+{
+  "checked_at_ms": 1791369508627,
+  "synthetic": false,
+  "events": 2,
+  "states": [
+    "needs_data"
+  ],
+  "ai_calls_authorized": false,
+  "promotion_authorized": false,
+  "evidence_ids": [
+    "c8cfac3121b93422570e89cca69ebe92ace7355b3d8b8799d317d261c52927a0",
+    "e69c63efd981a2a2c3949b1e8a082cd00da305e512aa009c15a528f8300fd537"
+  ]
+}

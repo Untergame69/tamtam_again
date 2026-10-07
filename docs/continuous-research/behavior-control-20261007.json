@@ -1,0 +1,1113 @@
+{
+  "synthetic": false,
+  "economic_validation": false,
+  "as_of_ms": 1791365492198,
+  "period": {
+    "start_ms": 1791278383600,
+    "end_ms": 1791364783600
+  },
+  "accounts": [
+    {
+      "address": "0x012ed994df76022637f79ff9e209d7d44a4d1c8e",
+      "fingerprint": "b836eaa6a44f030049f156c0b723434f26835a4d0bcdad1b5bf161147b2a35de",
+      "observed_fills": 0,
+      "market_count": 0,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [],
+      "markets": []
+    },
+    {
+      "address": "0x0675bfaf9faffe3343c08402200d7c75d0fd79e1",
+      "fingerprint": "5aa67472021cb95c6303f94187f735bbc20b4bc1126b82bb0bc9db0588c261b7",
+      "observed_fills": 1071,
+      "market_count": 3,
+      "observed_inventory_episodes": 415,
+      "multi_market_groups": 66,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7119169"
+      ],
+      "markets": [
+        {
+          "market": "BTC",
+          "fills": 267,
+          "maker": 264,
+          "taker": 3,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "4211",
+              "median": "57204",
+              "max": "21978242"
+            }
+          }
+        },
+        {
+          "market": "ETH",
+          "fills": 287,
+          "maker": 281,
+          "taker": 6,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "3832",
+              "median": "66754",
+              "max": "14251927"
+            }
+          }
+        },
+        {
+          "market": "SOL",
+          "fills": 517,
+          "maker": 513,
+          "taker": 4,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "3171",
+              "median": "120402",
+              "max": "5548593"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "fingerprint": "bc8e331eff5924f1c21f051ec3425dd48dc4bf46744efbb9039d5a0a1910e803",
+      "observed_fills": 79,
+      "market_count": 1,
+      "observed_inventory_episodes": 1,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7124732"
+      ],
+      "markets": [
+        {
+          "market": "SOL",
+          "fills": 79,
+          "maker": 0,
+          "taker": 79,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "6461845",
+              "median": "6461845",
+              "max": "6461845"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x1bd2d89e4b9a2d373e89d74c8cc02d1562fa9626",
+      "fingerprint": "f8102d0d9f400c74e287e38c0462c4d15a168bda72ef393371730daa4e547505",
+      "observed_fills": 298,
+      "market_count": 2,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7128639"
+      ],
+      "markets": [
+        {
+          "market": "DOGE",
+          "fills": 210,
+          "maker": 0,
+          "taker": 210,
+          "duration_ms": {}
+        },
+        {
+          "market": "PONS",
+          "fills": 88,
+          "maker": 0,
+          "taker": 88,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x2607a3909cee65aa8205ca26f7db2d9244389577",
+      "fingerprint": "2e99bf5af031f39b1412ebefc0bad24294424e7213688756dac3e9902a1f908d",
+      "observed_fills": 14,
+      "market_count": 1,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7134004"
+      ],
+      "markets": [
+        {
+          "market": "BTC",
+          "fills": 14,
+          "maker": 0,
+          "taker": 14,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x2618f54fee88adf9bf840a1bb722be286fbd0f15",
+      "fingerprint": "4a40d699b4801f7ff5fffb06be8a68b2fffe68c80299077648c7e56e3485fdec",
+      "observed_fills": 359,
+      "market_count": 1,
+      "observed_inventory_episodes": 158,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7138373"
+      ],
+      "markets": [
+        {
+          "market": "BTC",
+          "fills": 359,
+          "maker": 186,
+          "taker": 173,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "1885",
+              "median": "124078",
+              "max": "455187"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x330f0bdeae3514c11fb2e1b6d18ab7939f04a8fb",
+      "fingerprint": "69053f030591f32ffcdf33c064c4db0c9e1c61bc6e0d7f46eafd4a6ab07491b5",
+      "observed_fills": 36,
+      "market_count": 29,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7143781"
+      ],
+      "markets": [
+        {
+          "market": "ALGO",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "APT",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ARB",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "ASTER",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ATOM",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "AVAX",
+          "fills": 2,
+          "maker": 2,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "BCH",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "BNB",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "BTC",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "CAKE",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "CC",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ETC",
+          "fills": 3,
+          "maker": 3,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ETH",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "ETHFI",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "HBAR",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "HYPE",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "ICP",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "JUP",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "LTC",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "MNT",
+          "fills": 5,
+          "maker": 3,
+          "taker": 2,
+          "duration_ms": {}
+        },
+        {
+          "market": "ONDO",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "POL",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "RENDER",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "SOL",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "SUI",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "TRUMP",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "TRX",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "UNI",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ZEC",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+      "fingerprint": "b836eaa6a44f030049f156c0b723434f26835a4d0bcdad1b5bf161147b2a35de",
+      "observed_fills": 0,
+      "market_count": 0,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [],
+      "markets": []
+    },
+    {
+      "address": "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "fingerprint": "0170239c266d4fd697ba8d0197bdc742cfebfe5355a7a45ce92a70b0cc0f5a76",
+      "observed_fills": 162,
+      "market_count": 1,
+      "observed_inventory_episodes": 2,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7158607"
+      ],
+      "markets": [
+        {
+          "market": "ZEC",
+          "fills": 162,
+          "maker": 0,
+          "taker": 162,
+          "duration_ms": {
+            "baseline_excursion": {
+              "min": "11210254",
+              "median": "11210254",
+              "max": "27418004"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x4a20b9496610941053858bd0b7e92493f44c3c26",
+      "fingerprint": "1fe2f5132cb9801200a0d56db059b7bfc5af89b3d93ebd5e6157ba7a5136d952",
+      "observed_fills": 488,
+      "market_count": 1,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7164000"
+      ],
+      "markets": [
+        {
+          "market": "SOL",
+          "fills": 488,
+          "maker": 258,
+          "taker": 230,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x4ad5ffac22c04a18ab3d8658682f71ab71d89a1c",
+      "fingerprint": "7039ac4787e14768ed0abd96ce0fb6ef8a2a2ffa7fba45676d50ac5e8958b524",
+      "observed_fills": 35,
+      "market_count": 2,
+      "observed_inventory_episodes": 2,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7169069"
+      ],
+      "markets": [
+        {
+          "market": "para:VST",
+          "fills": 13,
+          "maker": 13,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "xyz:MRVL",
+          "fills": 22,
+          "maker": 2,
+          "taker": 20,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "562347",
+              "median": "562347",
+              "max": "961936"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x50c5132bbbe67357b74e115f9374d8a683439547",
+      "fingerprint": "749c1e44abbe52a1a0d0dcd0230aa09c9d7b0ee1cfcd85600f74a24fd12d4793",
+      "observed_fills": 92,
+      "market_count": 2,
+      "observed_inventory_episodes": 4,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7173738"
+      ],
+      "markets": [
+        {
+          "market": "HYPE",
+          "fills": 82,
+          "maker": 11,
+          "taker": 71,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "612215",
+              "median": "731469",
+              "max": "1177508"
+            }
+          }
+        },
+        {
+          "market": "xyz:SP500",
+          "fills": 10,
+          "maker": 3,
+          "taker": 7,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "482802",
+              "median": "482802",
+              "max": "482802"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x570eb8d438bd209b0deeee3d2e0a8559f5d57fb7",
+      "fingerprint": "67156cc2a5b1abf23d83e0e687c95ac238d74b18eebaac47d3e979efd93787eb",
+      "observed_fills": 526,
+      "market_count": 14,
+      "observed_inventory_episodes": 5,
+      "multi_market_groups": 22,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7178893"
+      ],
+      "markets": [
+        {
+          "market": "ADA",
+          "fills": 42,
+          "maker": 40,
+          "taker": 2,
+          "duration_ms": {}
+        },
+        {
+          "market": "BNB",
+          "fills": 43,
+          "maker": 43,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "BTC",
+          "fills": 28,
+          "maker": 28,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "DOGE",
+          "fills": 58,
+          "maker": 57,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "ENA",
+          "fills": 6,
+          "maker": 6,
+          "taker": 0,
+          "duration_ms": {
+            "baseline_excursion": {
+              "min": "5089207",
+              "median": "5089207",
+              "max": "5089207"
+            }
+          }
+        },
+        {
+          "market": "ETH",
+          "fills": 46,
+          "maker": 46,
+          "taker": 0,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "7315465",
+              "median": "7315465",
+              "max": "7315465"
+            }
+          }
+        },
+        {
+          "market": "HYPE",
+          "fills": 71,
+          "maker": 69,
+          "taker": 2,
+          "duration_ms": {
+            "baseline_excursion": {
+              "min": "15236618",
+              "median": "15236618",
+              "max": "15236618"
+            }
+          }
+        },
+        {
+          "market": "NEAR",
+          "fills": 73,
+          "maker": 66,
+          "taker": 7,
+          "duration_ms": {
+            "baseline_excursion": {
+              "min": "40030956",
+              "median": "40030956",
+              "max": "40030956"
+            }
+          }
+        },
+        {
+          "market": "PUMP",
+          "fills": 24,
+          "maker": 24,
+          "taker": 0,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "14711433",
+              "median": "14711433",
+              "max": "14711433"
+            }
+          }
+        },
+        {
+          "market": "SAND",
+          "fills": 8,
+          "maker": 8,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "SOL",
+          "fills": 60,
+          "maker": 59,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "SUI",
+          "fills": 21,
+          "maker": 21,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "XRP",
+          "fills": 39,
+          "maker": 38,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "ZEC",
+          "fills": 7,
+          "maker": 7,
+          "taker": 0,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7",
+      "fingerprint": "b836eaa6a44f030049f156c0b723434f26835a4d0bcdad1b5bf161147b2a35de",
+      "observed_fills": 0,
+      "market_count": 0,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [],
+      "markets": []
+    },
+    {
+      "address": "0x662823f3280bb67da4eec0c4195709caacf20215",
+      "fingerprint": "9a23985aac63be8996c0effda1dacc82d4593f463eec041d69a2d5b37e238a1d",
+      "observed_fills": 42,
+      "market_count": 36,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7187755"
+      ],
+      "markets": [
+        {
+          "market": "AAVE",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ALGO",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "ARB",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ASTER",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ATOM",
+          "fills": 2,
+          "maker": 2,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "BCH",
+          "fills": 2,
+          "maker": 2,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "BTC",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "CAKE",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "CC",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "CRV",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "DOT",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ENA",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ETC",
+          "fills": 2,
+          "maker": 2,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ETH",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "FIL",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "HBAR",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "HYPE",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "INJ",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "JUP",
+          "fills": 2,
+          "maker": 2,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "KAS",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "LINK",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "LTC",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "MNT",
+          "fills": 2,
+          "maker": 1,
+          "taker": 1,
+          "duration_ms": {}
+        },
+        {
+          "market": "MORPHO",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "NEAR",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "ONDO",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "POL",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "SKY",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "SOL",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "SUI",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "TAO",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "UNI",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "VVV",
+          "fills": 2,
+          "maker": 2,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "WLD",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "WLFI",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        },
+        {
+          "market": "XLM",
+          "fills": 1,
+          "maker": 1,
+          "taker": 0,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "fingerprint": "ffa9dc1a7f9b19d7abead7fdf60f87f68bcd0da29c2106d478b8bc66006891b3",
+      "observed_fills": 5998,
+      "market_count": 2,
+      "observed_inventory_episodes": 408,
+      "multi_market_groups": 19,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7196410",
+        "raw_observations:7196993",
+        "raw_observations:7197684"
+      ],
+      "markets": [
+        {
+          "market": "ETH",
+          "fills": 5632,
+          "maker": 4759,
+          "taker": 873,
+          "duration_ms": {
+            "baseline_excursion": {
+              "min": "0",
+              "median": "23264",
+              "max": "647972"
+            },
+            "flat_to_flat": {
+              "min": "48",
+              "median": "68232",
+              "max": "2735742"
+            }
+          }
+        },
+        {
+          "market": "xyz:DRAM",
+          "fills": 366,
+          "maker": 366,
+          "taker": 0,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "2283",
+              "median": "81292",
+              "max": "427097"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "address": "0x6adbdaae3f9fa8761b83aef4aeb0bf1352a451be",
+      "fingerprint": "b836eaa6a44f030049f156c0b723434f26835a4d0bcdad1b5bf161147b2a35de",
+      "observed_fills": 0,
+      "market_count": 0,
+      "observed_inventory_episodes": 0,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [],
+      "markets": []
+    },
+    {
+      "address": "0x6cf4ddb4a311f0f6bbd2e9395bcd8c8b1511eb3d",
+      "fingerprint": "9f70df7766174c7e19673c898f64feeb88306bd74205541ffa704acffabd9eef",
+      "observed_fills": 17,
+      "market_count": 3,
+      "observed_inventory_episodes": 1,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7212028"
+      ],
+      "markets": [
+        {
+          "market": "ETH",
+          "fills": 2,
+          "maker": 0,
+          "taker": 2,
+          "duration_ms": {}
+        },
+        {
+          "market": "NEAR",
+          "fills": 14,
+          "maker": 0,
+          "taker": 14,
+          "duration_ms": {
+            "baseline_excursion": {
+              "min": "33378159",
+              "median": "33378159",
+              "max": "33378159"
+            }
+          }
+        },
+        {
+          "market": "ZEC",
+          "fills": 1,
+          "maker": 0,
+          "taker": 1,
+          "duration_ms": {}
+        }
+      ]
+    },
+    {
+      "address": "0x764d42da0d23457bc6da50fb8ab1aebc3e635000",
+      "fingerprint": "a2d54d6c42908251da6ff7d4129045d4b32833c1105b63118cbbe4b2a4788580",
+      "observed_fills": 211,
+      "market_count": 5,
+      "observed_inventory_episodes": 3,
+      "multi_market_groups": 0,
+      "conflicts": 0,
+      "evidence_refs": [
+        "raw_observations:7216816"
+      ],
+      "markets": [
+        {
+          "market": "ENA",
+          "fills": 9,
+          "maker": 0,
+          "taker": 9,
+          "duration_ms": {}
+        },
+        {
+          "market": "NEAR",
+          "fills": 56,
+          "maker": 0,
+          "taker": 56,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "9382681",
+              "median": "9382681",
+              "max": "9382681"
+            }
+          }
+        },
+        {
+          "market": "PUMP",
+          "fills": 52,
+          "maker": 0,
+          "taker": 52,
+          "duration_ms": {}
+        },
+        {
+          "market": "UNI",
+          "fills": 71,
+          "maker": 0,
+          "taker": 71,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "3535317",
+              "median": "3535317",
+              "max": "3535317"
+            }
+          }
+        },
+        {
+          "market": "XMR",
+          "fills": 23,
+          "maker": 0,
+          "taker": 23,
+          "duration_ms": {
+            "flat_to_flat": {
+              "min": "1957345",
+              "median": "1957345",
+              "max": "1957345"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

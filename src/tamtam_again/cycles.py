@@ -17,6 +17,7 @@ def reconstruct_position_cycles(
     complete_history_intervals: list[tuple[int, int]],
     *,
     bbo_tolerance_ms: int = 1_000,
+    include_unexploitable: bool = False,
 ) -> list[dict[str, Any]]:
     """Return complete flat-to-flat or baseline-return perp excursions.
 
@@ -26,6 +27,8 @@ def reconstruct_position_cycles(
     position, a cycle may be an opening excursion that later returns to its
     observed starting position; closes against the pre-existing baseline alone
     do not count. Ambiguous or truncated episodes are discarded.
+    include_unexploitable exposes descriptive paths with failed coverage flags;
+    the default remains restricted to exploitable episodes.
     """
     unique: dict[tuple[str, str], dict[str, Any]] = {}
     for fill in fills:
@@ -148,7 +151,7 @@ def reconstruct_position_cycles(
                     active["closed_position"] = True
                     active["ending_position"] = after
                     episode = _finish_episode(active, bbo_tolerance_ms)
-                    if episode["exploitable"]:
+                    if episode["exploitable"] or include_unexploitable:
                         output.append(episode)
                     active = None
                     baseline = after
@@ -187,7 +190,7 @@ def reconstruct_position_cycles(
                     active["closed_position"] = True
                     active["ending_position"] = episode_baseline
                     episode = _finish_episode(active, bbo_tolerance_ms)
-                    if episode["exploitable"]:
+                    if episode["exploitable"] or include_unexploitable:
                         output.append(episode)
                     active = None
                     baseline = after

@@ -207,3 +207,17 @@ instruments ; USDC, USDH, USDE et USDT0 rencontrés. Preuve et rollback :
 collateral-control-20261007.json et COLLATERAL-CATALOG.md.
 Anciennes périodes et pilotes non modifiés. La comptabilité reste partielle,
 notamment valorisation, couverture, frais/transferts non normalisés et FX.
+
+## Septième incrément — comportements observés
+
+Profils causaux par marché, maker/taker/inconnu, tailles et rythmes, concentration
+des notionnels observés, ordres multi-fills et excursions d'inventaire séparées
+de la performance. Groupes multi-marchés descriptifs et questions explicites,
+sans affirmation d'arbitrage. Intégration au rapport de chaque passage population
+et commande d'analyse de toutes les pages archivées, protégée des pilotes.
+
+131 tests passent après retrait des champs monétaires descriptifs. Contrôle réel final : 19
+comptes, 9428 fills observés, 999 excursions d'inventaire ; couverture inconnue
+et aucune validation. Preuves : behavior-control-20261007.json et
+BEHAVIOR-PROFILES.md. Tâche 7 partielle : mécanismes de marché et trajectoire de
+risque consolidée restent à livrer, ainsi que les autres exigences du Goal.

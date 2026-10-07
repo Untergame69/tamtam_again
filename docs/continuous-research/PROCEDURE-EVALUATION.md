@@ -141,3 +141,27 @@ Rollback : revenir sur le code seulement pour sessions indépendantes. Avec une
 session carry_flat_cash déjà créée, conserver le support de sa base de capital
 et les liens jusqu'à sa retraite ; ne jamais supprimer le champ ni réinterpréter
 son PnL depuis le capital du contrat historique.
+
+## Préenregistrement prospectif de la procédure et de ses références
+
+`procedure_registry.register` fige un contrat content-addressed
+prospective-procedure-v1 : policy_version, justification, initial_capital_usdc,
+risk_budget_id, périodes contiguës entièrement futures et références nommées
+cash/fixed_rule/selection_control. Références disponibles lors de l'inscription,
+avec preuve et variant_id hors cash. L'identité et date originale restent
+inchangées lors d'une relecture, même après les périodes.
+
+`record_choice` inscrit avant chaque période les candidats considérés, version
+sélectionnée (ou null pour attente), diagnostic, preuves et dates des connaissances
+accessibles. Une décision inscrite n'est plus modifiable ; une attente ne peut
+être supprimée pour sauter à la période suivante. Aucune date utilisateur ne
+remplace l'horloge locale de l'inscription. Les choix ne contiennent pas de résultat.
+
+Commande `PYTHONPATH=src python3 scripts/procedure-register.py --db CHEMIN --input
+CONTRAT.json`, puis `--input CHOIX.json --procedure-id ID --period-index INDEX`.
+Tables additives procedure_contracts/procedure_choices. Pas de lecture d'archive,
+paquet ou résultat réservé ; pas d'appel modèle/paper. Les références déclarées
+ne sont pas automatiquement exécutées, et leurs preuves restent à résoudre par
+l'adaptateur autorisé. Aucun benchmark rétrospectif ne devient prospectif en
+étant inscrit ici. Aucun contrat réel créé lors de cette livraison. Rollback code,
+conserver les deux tables immuables et leurs dates.

@@ -589,3 +589,12 @@ avec retraite/lien/session, base de capital propre au nouveau state et compteurs
 séparés. Anciennes règles inchangées, anciens plans indépendants par défaut.
 Aucune activation réelle ; limites risque comparatif/coûts externes et rollback
 spécifique aux sessions transférées dans PROCEDURE-EVALUATION.md.
+
+### Préenregistrement de procédure et références — étape 12
+
+Registre additif content-addressed avec périodes futures, références disponibles
+et choix immuables datés par l'horloge locale. Relecture conserve dates, écriture
+après début ou révision d'un choix refusées ; attente précédente non effaçable.
+Tests de temporalité/idempotence/connaissance future. CLI explicite sans runtime
+ni archive. Exécution des références et adaptateur d'évaluation complet restent
+à raccorder ; aucun contrat réel ou paper créé.

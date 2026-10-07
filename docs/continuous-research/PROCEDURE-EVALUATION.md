@@ -204,3 +204,31 @@ activité, marchés, couverture et capacité d'exécution. Une justification pr�
 ne prouve pas la comparabilité. Aucun témoin réel créé ou promu ; les gates N1/N2
 ordinaires restent nécessaires. Les scripts existants acceptent ce champ dans
 le contrat JSON. Tests de liaison bon/mauvais compte et matching manquant.
+
+## Rapport raccordé à la procédure inscrite
+
+`procedure_report.registered_report` lit le contrat et chaque choix immuable,
+résout les résultats des sessions liées, puis applique le reducer de capital
+pour chaque référence préenregistrée. Les rôles ont des identités distinctes,
+même si une variante apparaît dans plusieurs sessions. Période finale future :
+waiting ; choix manquant : unknown, jamais omission silencieuse. Capital initial
+et risque commun viennent du contrat, bornes des sessions viennent des snapshots.
+
+Tous les essais IA du réseau/compte inscrits entre enregistrement du contrat et
+fin de procédure sont comptés, y compris après la dernière décision, échecs
+compris. Ils ne deviennent pas pour autant des informations accessibles à cette
+décision. Coûts manquants rendent le net inconnu ; réservations ne les remplacent
+pas. change_cost doit être fourni dans le choix lorsqu'une version change ;
+absence rend le net inconnu. La valeur reste une attestation de modèle à vérifier,
+pas une facture exécutée. Les coûts fournisseur sont attribués par compte/fenêtre,
+sans prétendre les isoler d'autres recherches concurrentes sur le même compte.
+
+CLI read-only sans migrations : `PYTHONPATH=src python3 scripts/procedure-report.py
+--db CHEMIN --procedure-id ID --as-of-ms CUTOFF --output RAPPORT`.
+Les comparaisons conservent le statut synthétique des observations. Dépenses
+externes des références non incluses : une référence ayant sa propre recherche
+nécessite son propre rapport. Pas de replay d'archives ou lecture de finale N1.
+Coûts/choix/cohortes fournis restent sujets à revue indépendante ; aucune preuve
+de performance statistique. Exécution automatique des références et observation
+réelle prospective toujours nécessaires. Aucun rapport réel de rentabilité créé.
+Rollback code uniquement, conserver contrats/choix/liens/instantanés.

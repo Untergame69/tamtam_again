@@ -613,3 +613,12 @@ Références avec scope network/address immutable ; témoin de sélection exige
 preuve de cohorte datée et justification de matching. Liaison contrôlée au scope
 prévu plutôt qu'au compte adaptatif. Sans fusion de positions/résultats ni
 promotion ; comparabilité économique et assemblage coût/reducer encore ouverts.
+
+### Rapport de procédure raccordé aux registres — étape 12
+
+Lecture contrat/choix immuables, liens paper puis reducer par référence. Coûts
+fournisseur de tous les essais de la fenêtre inclus même après dernier choix ;
+unknown sur coût manquant/changement non chiffré/choix absent, waiting avant fin.
+CLI lecture seule. Attribution réseau/compte et fenêtre, coût de référence séparé,
+preuves de matching et coûts de changement à revoir indépendamment. Aucun rapport
+réel ni exécution automatique de référence ajouté.

@@ -318,3 +318,7 @@ Correction : les nouvelles archives de sessions portent explicitement complete=F
 ## Causalité des conversions de frais — 2026-10-07
 
 Correction du reducer comptable : une date de cotation antérieure au fill ne suffit plus ; disponibilité effective <= date de décision explicitement exigée, avec horodatages cohérents et taux fini positif. Formats invalides bloquent les métriques sans inventer une conversion. Vingt-sept tests account/accounting passent, dont connaissance ultérieure du même taux historique, timestamp invalide et taux nul/négatif/non fini. Aucun rapport historique ou donnée brute modifié, aucun pilote consulté. La consolidation des valorisations et les preuves de couverture restent partielles.
+
+## Qualification descriptive héritée : périmètre corrigé — 2026-10-07
+
+Le résumé legacy ne calcule plus le ratio totalNtlPos/accountValue comme levier : le capital soutenant les positions et le mode de compte ne sont pas prouvés. Les snapshots HIP-3 sont exclus du dernier état standard, et les fills HIP-3/spot identifiables par leur symbole sont exclus des sommes monétaires standard. Les limites sont explicites au rapport ; disponibilité basée sur observed_at plutôt que requested_at. Deux tests synthétiques ciblés passent. Aucun rapport ancien recalculé, aucune observation réservée lue, aucun service redémarré. Cette correction empêche des indicateurs trompeurs ; elle ne remplace pas la qualification comptable consolidée encore à terminer. Retour arrière : code ciblé, données conservées.

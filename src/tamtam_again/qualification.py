@@ -23,17 +23,25 @@ def qualify(store: Store, network: str, address: str) -> dict[str,Any]:
     for row in store.observations(network,"account",address):
         payload = decode_observation_payload(row)
         endpoint = row["endpoint"]
-        last_receipt = max(last_receipt or row["requested_at"],row["requested_at"])
+        last_receipt = max(last_receipt or row["observed_at"],row["observed_at"])
+        request = json.loads(row['request_json'])
         if endpoint == "clearinghouseState":
-            snapshots[endpoint] = payload
+            # A HIP-3 state may use another currency or shared collateral.
+            # Keep only the standard DEX in this legacy descriptive view.
+            if not request.get('dex'):
+                snapshots[endpoint] = payload
         if endpoint in {"userFills","userFillsByTime"}:
             for fill in _fills_from_observation(endpoint,payload):
+                coin = fill.get('coin')
+                if not isinstance(coin,str) or ':' in coin or coin.startswith('@') or '/' in coin:
+                    continue
                 identity = (fill.get("coin"),fill.get("time"),fill.get("tid",fill.get("hash")))
                 fills[identity] = fill
         if endpoint == "userFunding" and isinstance(payload,list):
             for item in payload:
                 delta = item.get("delta",item)
-                if "usdc" in delta:
+                coin = delta.get('coin')
+                if "usdc" in delta and isinstance(coin,str) and ':' not in coin and not coin.startswith('@'):
                     funding[(item.get("time"),delta.get("coin"))] = number(delta["usdc"])
         if endpoint == "userNonFundingLedgerUpdates":
             ledger_present = True
@@ -64,8 +72,9 @@ def qualify(store: Store, network: str, address: str) -> dict[str,Any]:
             observed["unrealized_pnl"] = str(sum(number(p["unrealizedPnl"]) for p in positions))
         elif "assetPositions" in state and not positions:
             observed["unrealized_pnl"] = "0"
-        if observed["account_value"] and observed["exposure_usdc"] and number(observed["account_value"]) > 0:
-            observed["leverage"] = str(number(observed["exposure_usdc"])/number(observed["account_value"]))
+        # A per-DEX accountValue is not proof of the capital supporting exposure.
+        # In particular, unified/PM accounts can share collateral elsewhere.
+        # Consolidated risk ratios require the accounting adapter's scope proof.
     candidate = store.get_candidate(network,address)
     selected_at = None
     if store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='cohort_membership_decisions'").fetchone():
@@ -73,7 +82,10 @@ def qualify(store: Store, network: str, address: str) -> dict[str,Any]:
     return {"network":network,"address":address,"selected_status":candidate["status"] if candidate else "unknown",
             "discovered_at":candidate["added_at"] if candidate else None,"selection_first_recorded_at":selected_at,"as_of":last_receipt,
             "performance":{"status":"descriptive_only","observed":observed,"unknown":[k for k,v in observed.items() if v is None],
-                           "scope":"observed perpetual fills and latest perp state; not lifetime/whole-platform return"},
+                           "scope":"standard DEX observed perpetual fills and latest state only; not lifetime or consolidated return",
+                           "limits":["account mode and supporting capital not verified; leverage unknown",
+                                     "HIP-3 and spot excluded from this legacy monetary summary",
+                                     "fill history completeness and comparable accounting period not proven"]},
             "observability":{"status":"partially_observable" if fills else "unknown","fills":len(fills),
                              "ledger_present":ledger_present,"external_hedges":"unknown","queue_priority":"unknown"},
             "reproducibility":{"status":"unproven","requires":"frozen strategy with passed real N1 and measured N2"}}

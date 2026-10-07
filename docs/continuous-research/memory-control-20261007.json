@@ -1,0 +1,13 @@
+{
+  "real_public_memory_control": true,
+  "raw_payloads_accessed": false,
+  "knowledge": {
+    "knowledge_id": "09b6239cb4faf8eaca097c7fd390576b163c0824d7c3d0c1c6dc2e3c8e7788f2",
+    "economic_validation": false,
+    "created_ms": 1791367004214
+  },
+  "exported_items": 1,
+  "source_observation_id": 7294716,
+  "original_pilot_periods_released": false,
+  "economic_validation": false
+}

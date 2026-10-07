@@ -263,3 +263,17 @@ synthétique normal/stress et clôture de l'inventaire effectif après jambe abs
 Aucun plan réel ou session paper créé. Contract/rollback dans
 HARNESS-EXTENSIONS.md. Tâche 10 partielle : validation réelle/N2, règles de lots,
 marges/FX et collecte multi-marchés restent à intégrer. Goal complet conservé.
+
+## Onzième incrément — mémoire causale
+
+Bibliothèque structurée et preuves typées, releases explicites de périodes
+terminales selon politique versionnée, sans effacer résultat ou burn original.
+Contrôles d'accès avant écriture/export, scope account-wide pour observations
+multi-marchés, cutoff de création et taille bornée. Intégration optionnelle aux
+futurs paquets de recherche, sans changement des jobs scellés.
+
+169 tests passent. Contrôle réel metadata-only : un descripteur de population
+archivé/exporté, aucune période pilote libérée, aucun nouveau dispatch IA.
+Preuves/rollback : RESEARCH-MEMORY.md et memory-control-20261007.json.
+Ingestion automatique/revue/utilité de la mémoire, procédure adaptative complète
+et autres tâches restent à livrer. Goal demeure actif.

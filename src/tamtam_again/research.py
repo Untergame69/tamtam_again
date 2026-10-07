@@ -177,6 +177,13 @@ def _prepare(store: Store, policy: dict[str, Any], status: dict[str, Any] | None
                      {'requires':'new live leader fills with available BBO in sample window'},'collect_live_sample',{'policy':policy['version']})
             continue
         packet = packet_for(plan,cycles,events,policy)
+        from .research_memory import export_knowledge
+        memory=export_knowledge(store,as_of_ms=clock,network=policy['network'],address=address,market=coin)
+        # Knowledge is optional and must not truncate causal episodes. Existing
+        # sealed jobs are unchanged; only future packets receive authorized items.
+        while memory and len(canonical({**packet,'research_memory':memory}))>policy['max_packet_chars']:
+            memory.pop()
+        if memory:packet['research_memory']=memory
         # Check size and evidence BEFORE creating the immutable plan.
         record = create_plan(store,plan)
         run_id = uuid4().hex; stamp = utc_now(); input_fp = fingerprint(packet)

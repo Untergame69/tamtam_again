@@ -1,0 +1,10 @@
+[Unit]
+Description=Bounded public population hypothesis research cadence
+
+[Timer]
+OnBootSec=180
+OnUnitInactiveSec=900
+Unit=tamtam-again-population-research.service
+
+[Install]
+WantedBy=timers.target

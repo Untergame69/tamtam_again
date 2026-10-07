@@ -1,0 +1,27 @@
+{
+  "request_id": "f206485d6e70cd3a906a984590b80c6fd1c52438b8f03748862b185672f10ea4",
+  "status": "suspended",
+  "reserved_cost_usd": "2",
+  "actual_cost_usd": null,
+  "observed_ms": 1791372750531,
+  "usage": [
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 58089,
+      "input_tokens": 37365,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 1586
+    }
+  ],
+  "error_type": "ValueError",
+  "revised_contract_structurally_checked": true,
+  "original_terminal_state_preserved": true,
+  "model_relaunches": 0,
+  "promotion_authorized": false,
+  "validation_plans": 8,
+  "variants": 3,
+  "paper_sessions": 0,
+  "timer_activated": false
+}

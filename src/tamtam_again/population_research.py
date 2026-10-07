@@ -18,6 +18,8 @@ def validate_policy(policy):
     for key in ('max_requests','max_packet_chars','minimum_interval_ms','timeout_seconds','max_output_tokens','max_request_age_ms'):
         if type(policy.get(key)) is not int or policy[key]<1:raise ValueError('Positive population research budget required: '+key)
     if not isinstance(policy.get('model'),str) or not policy['model'].strip():raise ValueError('Explicit isolated model required')
+    if 'max_prompt_chars' in policy and (type(policy['max_prompt_chars']) is not int or policy['max_prompt_chars']<policy['max_packet_chars']):
+        raise ValueError('Prompt budget must accommodate the population packet')
     cost=number(policy.get('call_reservation_usd'))
     if not cost.is_finite() or cost<=0:raise ValueError('Finite positive call reservation required')
 

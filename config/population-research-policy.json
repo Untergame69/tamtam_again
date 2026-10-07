@@ -1,0 +1,13 @@
+{
+  "version": "population-research-v1",
+  "description": "First bounded tranche of eight public population hypotheses, independent of the immutable pilot. Chosen resource budgets, not evidence thresholds. New tranche requires explicit policy review; no automatic budget increase.",
+  "model": "gpt-6.1-sol",
+  "max_requests": 8,
+  "max_packet_chars": 225000,
+  "max_prompt_chars": 260000,
+  "minimum_interval_ms": 86400000,
+  "max_request_age_ms": 3600000,
+  "timeout_seconds": 120,
+  "max_output_tokens": 5000,
+  "call_reservation_usd": "1"
+}

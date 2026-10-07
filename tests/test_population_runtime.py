@@ -40,10 +40,20 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(run(self.s,self.request)['status'],'expired')
             verify.assert_not_called();call.assert_not_called()
 
+    def test_projected_evidence_allowed_and_invented_reference_rejected(self):
+        from tamtam_again.population_runtime import validate_response
+        hypothesis={k:'fixture' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
+        hypothesis.update(type='autonomous',markets=['BTC'],required_data=[],evidence_refs=['projected'])
+        response={'decision':'hypothesis','diagnostic':{'observed':'fixture'},'wake':{},'hypothesis':hypothesis}
+        packet={'evidence_refs':['report'],'observations':{'markets':['BTC'],'market_mechanisms':[{'evidence_refs':['projected']}]}}
+        validate_response(response,packet)
+        hypothesis['evidence_refs']=['invented']
+        with self.assertRaises(ValueError):validate_response(response,packet)
+
     def test_open_hypothesis_and_review_never_promote(self):
         hypothesis={k:'fixture testable specification' for k in ('mechanism','signal','entry','exit','sizing','risk','horizon_justification','execution_constraints','rejection_criteria')}
         hypothesis.update(type='autonomous',markets=['BTC','ETH'],required_data=['causal price paths'],evidence_refs=['account_scope_reports:one'])
-        proposal={'decision':'hypothesis','diagnostic':'fixture only','wake':{},'hypothesis':hypothesis}
+        proposal={'decision':'hypothesis','diagnostic':{'observations':['fixture only']},'wake':{},'hypothesis':hypothesis}
         critique={'decision':'consistent','diagnostic':'testable fixture','wake':{}}
         with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',side_effect=[(json.dumps(proposal),self.usage),(json.dumps(critique),self.usage)]) as call:
             result=run(self.s,self.request)

@@ -1,0 +1,29 @@
+{
+  "sample": {
+    "sampled_at": 1791369671.8066576,
+    "database_identity": [
+      66306,
+      195957818
+    ],
+    "logical_allocated_bytes": 7574216704,
+    "logical_live_page_bytes": 7574216704,
+    "file_bytes": {
+      "": 7574155264,
+      "-wal": 56732432,
+      "-shm": 32768
+    },
+    "disk_free_bytes": 2246432096256,
+    "process": {
+      "pid": 447350,
+      "start_ticks": 14241699,
+      "cpu_seconds": 817.06,
+      "resident_bytes": 568164352
+    },
+    "limits": [
+      "process sample excludes children and other workers",
+      "live pages include indexes; not payload bytes",
+      "WAL/file sizes can fluctuate during checkpoints"
+    ]
+  },
+  "change": null
+}

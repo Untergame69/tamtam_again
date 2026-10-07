@@ -236,3 +236,17 @@ sans lecture brute réservée. Contrôle réel dans
 market-mechanisms-control-20261007.json, procédure dans MARKET-MECHANISMS.md.
 La liquidation exacte, marge isolée par tiers, références spécifiques HIP-3,
 profils d'expériences et moteur multi-instruments restent à compléter.
+
+## Neuvième incrément — familles expérimentales
+
+Profils justifiés/bornés sur horizon, délai et taille, provenance et catégories
+distinctes, échecs conservés et gel des combinaisons sur un nouveau plan.
+Sélection unique sur comparaisons terminales passées, classement stress net PnL
+fixé par contrat et refus de finale des autres variantes avant lecture pipeline
+ou consommation de réserve moteur. Budgets existants conservés.
+
+147 tests passent au premier contrôle ; recette synthétique complète huit
+comparaisons et une finale dans une base temporaire. Aucun plan réel ajouté.
+Preuves et rollback : EXPERIMENT-FAMILIES.md et experiment-recipe-20261007.json.
+La tâche 9 reste partielle pour la calibration par mesures réelles ; allocation,
+moteur multi-instruments, adaptation et autres tâches restent à terminer.

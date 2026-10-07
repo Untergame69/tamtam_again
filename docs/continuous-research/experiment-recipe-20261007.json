@@ -1,0 +1,188 @@
+{
+  "synthetic": true,
+  "real_strategy_validated": false,
+  "family": {
+    "family_id": "8e217902da9654b0cec28a8d82b6beb6f5f0fc10bfd3b0297ee80e70e3a440e2",
+    "plan_id": "3ea507e86a2969ff3363913f09d204787aef9c9212ede6ba383ee67bbb86d306",
+    "created_ms": 1791366121388,
+    "attempts": [
+      {
+        "attempt_index": 0,
+        "status": "frozen",
+        "variant_id": "3f952c9a192ade23fa17d87be9926a26b8c7a0d108a62f66f0c057cc3e70175a",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 1,
+        "status": "frozen",
+        "variant_id": "967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 2,
+        "status": "frozen",
+        "variant_id": "fb1b427f8c64cb11ceed096d6e1262d2fd4656f0a5280cf55911dc0f1c04e240",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 3,
+        "status": "frozen",
+        "variant_id": "cf2c5914ecfe58b3a7790ad0fb6a6a59894749a9b989be0d3f342fc6f151c4d3",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 4,
+        "status": "frozen",
+        "variant_id": "22a97b714697ff614959ac0f8d1eca34bcc5d0a717c7357bd4d7d7a93014a3f8",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 5,
+        "status": "frozen",
+        "variant_id": "e96dfc73ed64cc6bc9920522dbfb5cd7048def54a8b7873f1fc0252bcfec2548",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 6,
+        "status": "frozen",
+        "variant_id": "8e8f466a7d04d9a872e3b51e7b876336d231d05bd80597c635ab481a0153598d",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      },
+      {
+        "attempt_index": 7,
+        "status": "frozen",
+        "variant_id": "23242e781c1e8160e43c467a143866e3923275bec95f0fca3e3b911ca627ec04",
+        "diagnostic": "await preregistered comparison; no economic promotion"
+      }
+    ],
+    "selection_status": "comparison_required",
+    "economic_validation": false,
+    "limits": [
+      "a measured reference does not make experimental delays observed execution latency",
+      "failed specifications count as attempts",
+      "one final winner must be selected before holdout evaluation"
+    ]
+  },
+  "comparisons": [
+    {
+      "variant_id": "3f952c9a192ade23fa17d87be9926a26b8c7a0d108a62f66f0c057cc3e70175a",
+      "status": "passed",
+      "net_pnl": "3.678740076",
+      "stress_net_pnl": "3.557480304"
+    },
+    {
+      "variant_id": "967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8",
+      "status": "passed",
+      "net_pnl": "7.357480152",
+      "stress_net_pnl": "7.114960608"
+    },
+    {
+      "variant_id": "fb1b427f8c64cb11ceed096d6e1262d2fd4656f0a5280cf55911dc0f1c04e240",
+      "status": "passed",
+      "net_pnl": "3.678740076",
+      "stress_net_pnl": "3.557480304"
+    },
+    {
+      "variant_id": "cf2c5914ecfe58b3a7790ad0fb6a6a59894749a9b989be0d3f342fc6f151c4d3",
+      "status": "passed",
+      "net_pnl": "7.357480152",
+      "stress_net_pnl": "7.114960608"
+    },
+    {
+      "variant_id": "22a97b714697ff614959ac0f8d1eca34bcc5d0a717c7357bd4d7d7a93014a3f8",
+      "status": "passed",
+      "net_pnl": "3.678740076",
+      "stress_net_pnl": "3.557480304"
+    },
+    {
+      "variant_id": "e96dfc73ed64cc6bc9920522dbfb5cd7048def54a8b7873f1fc0252bcfec2548",
+      "status": "passed",
+      "net_pnl": "7.357480152",
+      "stress_net_pnl": "7.114960608"
+    },
+    {
+      "variant_id": "8e8f466a7d04d9a872e3b51e7b876336d231d05bd80597c635ab481a0153598d",
+      "status": "passed",
+      "net_pnl": "3.678740076",
+      "stress_net_pnl": "3.557480304"
+    },
+    {
+      "variant_id": "23242e781c1e8160e43c467a143866e3923275bec95f0fca3e3b911ca627ec04",
+      "status": "passed",
+      "net_pnl": "7.357480152",
+      "stress_net_pnl": "7.114960608"
+    }
+  ],
+  "selection": {
+    "family_id": "8e217902da9654b0cec28a8d82b6beb6f5f0fc10bfd3b0297ee80e70e3a440e2",
+    "variant_id": "23242e781c1e8160e43c467a143866e3923275bec95f0fca3e3b911ca627ec04",
+    "selected_ms": 1791366121493,
+    "status": "selected",
+    "evidence_json": "{\"comparison_evidence\":[{\"evaluation_id\":\"e80c651ae2e6053110cfd164f31ac7ddb65ccaec0207949e9e4dbb507718c064\",\"status\":\"passed\",\"variant_id\":\"3f952c9a192ade23fa17d87be9926a26b8c7a0d108a62f66f0c057cc3e70175a\"},{\"evaluation_id\":\"75e480076ca0cc47699b80c77d731ac600ae0e683d946af3cfe91244c869bc1a\",\"status\":\"passed\",\"variant_id\":\"967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8\"},{\"evaluation_id\":\"19584a75db2d6477276590c4fe8f76b2aa6842134bb51e1567ae92c966523ab0\",\"status\":\"passed\",\"variant_id\":\"fb1b427f8c64cb11ceed096d6e1262d2fd4656f0a5280cf55911dc0f1c04e240\"},{\"evaluation_id\":\"338fdd3e621b7d3d00ba8c09ca8d38fdfb7157a2b6d2536f13e0d6d51149dce3\",\"status\":\"passed\",\"variant_id\":\"cf2c5914ecfe58b3a7790ad0fb6a6a59894749a9b989be0d3f342fc6f151c4d3\"},{\"evaluation_id\":\"aa2eb1d81c3ea9ea5792f9c94169a4cfd44f3673608d8652c7c57880b1cd7a43\",\"status\":\"passed\",\"variant_id\":\"22a97b714697ff614959ac0f8d1eca34bcc5d0a717c7357bd4d7d7a93014a3f8\"},{\"evaluation_id\":\"cb4c04f53e5b78f4680a0181e0fd5442073bf17c9836214e5c4ef2c427c88802\",\"status\":\"passed\",\"variant_id\":\"e96dfc73ed64cc6bc9920522dbfb5cd7048def54a8b7873f1fc0252bcfec2548\"},{\"evaluation_id\":\"d9380c9791d77e5818856d69e535dd576604c7724b17301302df278594826ffe\",\"status\":\"passed\",\"variant_id\":\"8e8f466a7d04d9a872e3b51e7b876336d231d05bd80597c635ab481a0153598d\"},{\"evaluation_id\":\"305feb10a08943e811a0eae547adf99aecd5be538fad45dec9f6159ee63d55e1\",\"status\":\"passed\",\"variant_id\":\"23242e781c1e8160e43c467a143866e3923275bec95f0fca3e3b911ca627ec04\"}],\"final_results_used\":false,\"ranking\":\"passed comparisons, descending stressed net PnL; variant-id tie break\"}"
+  },
+  "final": {
+    "evaluation_id": "ed2f2c36716c21c545eb06a826ac366266466598b48ff8bb17ea6504ab4cc858",
+    "variant_id": "23242e781c1e8160e43c467a143866e3923275bec95f0fca3e3b911ca627ec04",
+    "stage": "final",
+    "status": "passed",
+    "synthetic": true,
+    "promotable": false,
+    "failures": [],
+    "metrics": {
+      "net_pnl": "7.357480152",
+      "realized_pnl": "7.51916",
+      "unrealized_pnl": "0E-9",
+      "fees": "0.161679848",
+      "funding": "0",
+      "drawdown_usdc": "0.160629962",
+      "block_count": 4,
+      "block_mean_lower_95_descriptive": 1.839370038,
+      "largest_positive_block_share": 0.25,
+      "regimes": [
+        "quiet",
+        "up"
+      ],
+      "fills": 8,
+      "missed_orders": 0,
+      "partial_orders": 0,
+      "flat_end": true,
+      "pending_end": 0,
+      "funding_events": 0,
+      "diagnostics": [],
+      "processing_lag_max_ms": 0,
+      "confidence_alpha": 0.005,
+      "uncertainty_assumption": "descriptive block estimate; independence is not established",
+      "benchmark_cash_net_pnl": "0",
+      "benchmark_matched_size_buy_hold_pnl": "1.839370038"
+    },
+    "stress_metrics": {
+      "net_pnl": "7.114960608",
+      "realized_pnl": "7.43832",
+      "unrealized_pnl": "0E-9",
+      "fees": "0.323359392",
+      "funding": "0",
+      "drawdown_usdc": "0.221259848",
+      "block_count": 4,
+      "block_mean_lower_95_descriptive": 1.778740152,
+      "largest_positive_block_share": 0.25,
+      "regimes": [
+        "quiet",
+        "up"
+      ],
+      "fills": 8,
+      "missed_orders": 0,
+      "partial_orders": 0,
+      "flat_end": true,
+      "pending_end": 0,
+      "funding_events": 0,
+      "diagnostics": [],
+      "processing_lag_max_ms": 0,
+      "confidence_alpha": 0.005,
+      "uncertainty_assumption": "descriptive block estimate; independence is not established",
+      "benchmark_cash_net_pnl": "0",
+      "benchmark_matched_size_buy_hold_pnl": "1.778740152"
+    },
+    "input_fingerprint": "d32cf654ffd41c84b551ea8e57be67a1105c964991c2222730200ba1de859305",
+    "criteria_fingerprint": "e8287ed54fd6e5a39b0327b1f0a86a29c3caad5845ac9380f554962c8ed2c351"
+  }
+}

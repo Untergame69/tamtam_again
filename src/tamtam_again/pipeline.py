@@ -10,6 +10,13 @@ from .validation import decision, evaluate, get_variant, initialize, now_ms
 def tick(store: Store) -> dict[str,Any]:
     initialize(store)
     reports = []
+    if store.connection.execute("select 1 from sqlite_master where name='experiment_families'").fetchone():
+        from .experiments import select_final
+        for family, in store.connection.execute('select family_id from experiment_families').fetchall():
+            try:select_final(store,family)
+            except ValueError as exc:
+                reports.append({'family_id':family,'stage':'selection','status':'waiting',
+                                'reason':str(exc),'next_action':'complete comparisons before final opens; otherwise create a new prospective plan'})
     for variant in store.connection.execute("SELECT variant_id FROM strategy_variants").fetchall():
         row,spec,plan = get_variant(store,variant[0])
         if row["synthetic"]:
@@ -27,6 +34,9 @@ def tick(store: Store) -> dict[str,Any]:
                     reports.append(start_paper(store,variant[0]))
                 continue
             try:
+                if stage=='final':
+                    from .experiments import require_final_selection
+                    require_final_selection(store,variant[0])
                 window = plan[stage]
                 events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"])
                 result = evaluate(store,variant[0],stage,classify_regimes(events,plan["criteria"]),provenance="local_archive")

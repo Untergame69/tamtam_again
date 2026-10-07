@@ -201,6 +201,8 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
     if not row["synthetic"] and now_ms() < interval["end_ms"]:
         raise ValueError("Evaluation window has not finished")
     if stage == "final":
+        from .experiments import require_final_selection
+        require_final_selection(store,variant_id)
         comparison = store.connection.execute("SELECT 1 FROM validation_evaluations WHERE variant_id=? AND stage='comparison' AND status='passed'",(variant_id,)).fetchone()
         if not comparison:
             raise ValueError("Final requires a passed comparison for this exact frozen variant")

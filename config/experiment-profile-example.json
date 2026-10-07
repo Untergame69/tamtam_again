@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "synthetic-reference-only",
+  "justification": "Fixture illustrating bounded hypotheses; not calibrated to any real account or market.",
+  "max_variants": 8,
+  "selection_rule": "comparison_then_one_final",
+  "axes": [
+    {
+      "parameter": "horizon_ms",
+      "values": [500, 750],
+      "category": "hypothesis",
+      "justification": "Compare two fixture exit horizons within its explicit embargo.",
+      "evidence_refs": ["synthetic:scripted-price-path"],
+      "measurement_status": "simulated"
+    },
+    {
+      "parameter": "latency_ms",
+      "values": [1, 10],
+      "category": "system_capacity",
+      "justification": "Simulated delay sensitivity; these values are not measured production latency.",
+      "evidence_refs": ["synthetic:delay-scenario"],
+      "measurement_status": "simulated"
+    },
+    {
+      "parameter": "scale",
+      "values": ["0.5", "1"],
+      "category": "risk_budget",
+      "justification": "Chosen fixture size sensitivity; capital/exposure limits stay fixed.",
+      "evidence_refs": ["synthetic:risk-budget"],
+      "measurement_status": "simulated"
+    }
+  ]
+}

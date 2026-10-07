@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from decimal import Decimal, InvalidOperation
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -38,9 +39,11 @@ def _subscriptions(store: Store, network: str, market_limit: int,
             f"""SELECT * FROM raw_observations
                 WHERE network=? AND entity_type='account'
                   AND endpoint IN ('userFillsByTime', 'userFills')
-                  AND entity_id IN ({placeholders})""",
-            [network, *accounts],
-        ).fetchall()
+                  AND entity_id IN ({placeholders})
+                  AND observed_at>=?
+                  AND (window_end_ms IS NULL OR window_end_ms>=?)""",
+            [network, *accounts, datetime.fromtimestamp(usage_cutoff_ms/1000, timezone.utc).isoformat(), usage_cutoff_ms],
+        )
         unique: dict[tuple[str, str, str, str], dict[str, Any]] = {}
         for row in rows:
             try:
@@ -53,6 +56,11 @@ def _subscriptions(store: Store, network: str, market_limit: int,
                 continue
             for fill in payload:
                 if not isinstance(fill, dict) or not fill.get("coin"):
+                    continue
+                try:
+                    if int(fill.get("time", 0)) < usage_cutoff_ms:
+                        continue
+                except (TypeError, ValueError):
                     continue
                 key = (row["entity_id"], str(fill["coin"]), str(fill.get("time", "")),
                        str(fill.get("tid", fill.get("hash", ""))))
@@ -254,7 +262,6 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
         metrics["queue_peak_messages"] = max(metrics["queue_peak_messages"], queued)
         for events in pending.values():
             if events:
-                from datetime import datetime
                 lag = time.time()-datetime.fromisoformat(events[0][0]).timestamp()
                 metrics["max_flush_lag_seconds"] = max(metrics["max_flush_lag_seconds"], lag)
         _flush_market_events(store, network, pending)

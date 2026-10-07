@@ -45,6 +45,10 @@ def registry_trace(store, *, as_of_ms):
         for row in store.connection.execute('select session_id,suspended_ms from paper_suspensions where suspended_ms<=?',(as_of_ms,)):
             emit('paper_session_suspended',row['session_id'],row['suspended_ms'],
                  {'evidence_ref':'paper_suspensions:'+row['session_id']})
+    if exists('paper_handovers'):
+        for row in store.connection.execute('select new_session_id,prior_session_id,available_ms from paper_handovers where available_ms<=?',(as_of_ms,)):
+            emit('paper_handover',row['new_session_id'],row['available_ms'],
+                 {'prior_session_id':row['prior_session_id'],'evidence_ref':'paper_handovers:'+row['new_session_id']})
     events.sort(key=lambda e:(e['available_ms'],e['kind'],e['id']))
     result={'version':'registry-metadata-trace-v1','as_of_ms':as_of_ms,'events':events,
             'performance_status':'unknown','net_adaptation_result':None,

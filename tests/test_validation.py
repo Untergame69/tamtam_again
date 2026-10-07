@@ -133,6 +133,46 @@ class EngineTests(unittest.TestCase):
 
 
 class RegistryTests(unittest.TestCase):
+    def test_predeclared_handover_preserves_old_session_and_is_idempotent(self):
+        self.evaluate('comparison');self.evaluate('final')
+        with patch('tamtam_again.paper.now_ms',return_value=1000):
+            first=start_paper(self.store,self.variant,synthetic_recipe=True)
+        plan=synthetic_plan()
+        for stage in ('exploration','comparison','final'):
+            for bound in ('start_ms','end_ms'):plan[stage][bound]+=100000
+        plan['paper_replacement']={'version':'suspended-flat-handover-v1',
+            'predecessor_variant_id':self.variant,'minimum_session_age_ms':500,
+            'justification':'fixture replacement following prospective validation'}
+        new_plan=create_plan(self.store,plan)
+        target=register_variant(self.store,new_plan['plan_id'],synthetic_spec())['variant_id']
+        for stage in ('comparison','final'):
+            self.assertEqual(evaluate(self.store,target,stage,synthetic_events(plan[stage]['start_ms']),provenance='synthetic')['status'],'passed')
+        self.store.connection.execute("update paper_sessions set status='suspended' where session_id=?",(first['session_id'],))
+        self.store.connection.commit()
+        with patch('tamtam_again.paper.now_ms',return_value=1499):
+            with self.assertRaises(ValueError):start_paper(self.store,target,synthetic_recipe=True)
+        before=self.store.connection.execute('select state_json from paper_sessions where session_id=?',(first['session_id'],)).fetchone()[0]
+        opened=json.loads(before);opened['position']='1'
+        self.store.connection.execute('update paper_sessions set state_json=? where session_id=?',(json.dumps(opened),first['session_id']));self.store.connection.commit()
+        with patch('tamtam_again.paper.now_ms',return_value=1500):
+            with self.assertRaises(ValueError):start_paper(self.store,target,synthetic_recipe=True)
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_retirements').fetchone()[0],0)
+        self.store.connection.execute('update paper_sessions set state_json=? where session_id=?',(before,first['session_id']));self.store.connection.commit()
+        self.store.connection.execute("create trigger fixture_handover_failure before insert on paper_sessions begin select raise(abort,'fixture incident'); end")
+        self.store.connection.commit()
+        import sqlite3
+        with patch('tamtam_again.paper.now_ms',return_value=1500):
+            with self.assertRaises(sqlite3.IntegrityError):start_paper(self.store,target,synthetic_recipe=True)
+        self.assertEqual(self.store.connection.execute('select status from paper_sessions where session_id=?',(first['session_id'],)).fetchone()[0],'suspended')
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_retirements').fetchone()[0],0)
+        self.store.connection.execute('drop trigger fixture_handover_failure');self.store.connection.commit()
+        with patch('tamtam_again.paper.now_ms',return_value=1500):
+            new=start_paper(self.store,target,synthetic_recipe=True)
+            self.assertEqual(start_paper(self.store,target,synthetic_recipe=True)['session_id'],new['session_id'])
+        old=self.store.connection.execute('select status,state_json from paper_sessions where session_id=?',(first['session_id'],)).fetchone()
+        self.assertEqual(old['status'],'retired');self.assertEqual(old['state_json'],before)
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_handovers').fetchone()[0],1)
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.directory.name)/"test.sqlite3")

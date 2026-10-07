@@ -141,6 +141,11 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     state = initial_state(spec)
     store.connection.execute('create table if not exists paper_session_policy '
         '(session_id text primary key,capital_policy text not null,restart_reason text)')
+    store.connection.execute('create table if not exists paper_retirements '
+        '(session_id text primary key,retired_ms integer not null,reason text not null)')
+    store.connection.execute('create table if not exists paper_handovers '
+        '(new_session_id text primary key,prior_session_id text not null unique,'
+        'available_ms integer not null,policy_json text not null)')
     store.connection.commit()
     store.connection.execute('BEGIN IMMEDIATE')
     try:
@@ -148,9 +153,22 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
         if existing:
             store.connection.commit()
             return {"session_id":existing[0],"synthetic":bool(row["synthetic"])}
-        for prior in store.connection.execute(
-            'select session_id,variant_id,status,state_json from paper_sessions where network=? and address=? and coin=?',
-            (row['network'],row['address'],row['coin'])):
+        priors=store.connection.execute(
+            'select session_id,variant_id,status,state_json,started_ms from paper_sessions where network=? and address=? and coin=?',
+            (row['network'],row['address'],row['coin'])).fetchall()
+        replacement=plan.get('paper_replacement')
+        transferred=None
+        for prior in priors:
+            if replacement and prior['status']!='retired':
+                from .paper_handover import eligible
+                if transferred is not None or not eligible(replacement,prior,started):
+                    raise ValueError('Predeclared replacement waits for a suspended flat predecessor and cooldown')
+                store.connection.execute('insert into paper_retirements values(?,?,?)',
+                    (prior['session_id'],started,'predeclared replacement: '+replacement['justification']))
+                store.connection.execute("update paper_sessions set status='retired',updated_at=? where session_id=?",
+                    (utc_now(),prior['session_id']))
+                transferred=prior['session_id']
+                continue
             previous=json.loads(prior['state_json'])
             if prior['status']=='active' or number(previous['position'])!=0 or previous['pending']:
                 raise ValueError('Paper handover requires retired flat prior sessions without pending orders')
@@ -158,9 +176,14 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
                 raise ValueError('Explicit retirement required before paper replacement')
             if prior['variant_id']==variant_id and not (restart_reason and restart_reason.strip()):
                 raise ValueError('Restart of a retired version requires an explicit reason')
+        if replacement and transferred is None:
+            raise ValueError('Predeclared replacement requires its suspended predecessor session')
         store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,0,utc_now()))
         store.connection.execute('insert into paper_session_policy values(?,?,?)',
                                  (session_id,'independent_paper_session',restart_reason))
+        if transferred:
+            store.connection.execute('insert into paper_handovers values(?,?,?,?)',
+                (session_id,transferred,started,canonical(replacement)))
         store.connection.commit()
     except BaseException:
         store.connection.rollback()

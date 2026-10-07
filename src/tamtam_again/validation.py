@@ -95,6 +95,13 @@ def create_plan(store: Store, plan: dict[str, Any]) -> dict[str, Any]:
     if 'paper_monitoring' in plan:
         from .paper_monitor import validate_policy
         validate_policy(plan['paper_monitoring'])
+    if 'paper_replacement' in plan:
+        from .paper_handover import validate_policy
+        validate_policy(plan['paper_replacement'])
+        predecessor=store.connection.execute('select p.network,p.address,p.coin,p.synthetic from strategy_variants v join validation_plans p on p.plan_id=v.plan_id where v.variant_id=?',
+            (plan['paper_replacement']['predecessor_variant_id'],)).fetchone()
+        if not predecessor or any(predecessor[k]!=plan[k] for k in ('network','address','coin','synthetic')):
+            raise ValueError('Replacement requires an existing predecessor in the same scope and provenance')
     if not plan["synthetic"]:
         from .providers.hyperliquid import NETWORKS, validate_address
         if plan["network"] not in NETWORKS:

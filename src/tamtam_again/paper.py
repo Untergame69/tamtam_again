@@ -200,9 +200,14 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
     row,spec,plan = get_variant(store,session["variant_id"])
     if row["synthetic"]:
         raise ValueError("Synthetic session must never consume a real archive")
+    store.connection.execute('create table if not exists paper_suspensions '
+        '(session_id text primary key,suspended_ms integer not null,diagnostics_json text not null)')
+    store.connection.commit()
     store.connection.execute("BEGIN IMMEDIATE")
     try:
         session = store.connection.execute("SELECT * FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
+        if session["status"] != "active":
+            raise ValueError("Paper session changed before the tick acquired its lock")
         state = json.loads(session["state_json"])
         events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),after_observation_id=session["last_observation_id"])
         processed_ms = now_ms()
@@ -217,6 +222,9 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
         if healthy is None or now_ms()-healthy > spec["execution"]["heartbeat_timeout_ms"]:
             state["diagnostics"].append("missing_live_heartbeat")
         status = "suspended" if state["diagnostics"] else "active"
+        if status == "suspended":
+            store.connection.execute('insert into paper_suspensions values(?,?,?)',
+                (session_id,now_ms(),canonical(state['diagnostics'])))
         store.connection.execute("UPDATE paper_sessions SET state_json=?,status=?,last_observation_id=?,updated_at=? WHERE session_id=?",(canonical(state),status,cursor,utc_now(),session_id))
         store.connection.commit()
     except Exception:
@@ -233,14 +241,16 @@ def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,A
     Not exposed as a real feed: this function explicitly rejects real variants.
     """
     session = store.connection.execute("SELECT * FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
-    if not session:
-        raise ValueError("Unknown recipe session")
+    if not session or session['status'] != 'active':
+        raise ValueError("Recipe session unknown or inactive")
     row,spec,plan = get_variant(store,session["variant_id"])
     if not row["synthetic"]:
         raise ValueError("Fixture feed forbidden for real variants")
     store.connection.execute("BEGIN IMMEDIATE")
     try:
         session = store.connection.execute("SELECT * FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
+        if session['status'] != 'active':
+            raise ValueError("Recipe session changed before the tick acquired its lock")
         state = json.loads(session["state_json"])
         for event in events:
             reduce_event(state,spec,event)

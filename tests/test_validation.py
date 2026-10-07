@@ -213,6 +213,27 @@ class RegistryTests(unittest.TestCase):
         old=self.store.connection.execute('select state_json from paper_sessions where session_id=?',(first['session_id'],)).fetchone()
         self.assertEqual(json.loads(old[0])['cash'],'97')
 
+    def test_suspension_is_journaled_with_state_atomically(self):
+        from tamtam_again.validation import get_variant
+        from tamtam_again.procedure_trace import registry_trace
+        self.evaluate('comparison');self.evaluate('final')
+        session=start_paper(self.store,self.variant,synthetic_recipe=True)
+        row,spec,plan=get_variant(self.store,self.variant)
+        # Exercise the real scheduler branch without allowing any archive reads.
+        row={**dict(row),'synthetic':False}
+        with patch('tamtam_again.paper.get_variant',return_value=(row,spec,plan)), \
+             patch('tamtam_again.paper.archive_events',return_value=([],0)), \
+             patch('tamtam_again.paper.now_ms',return_value=1000):
+            result=paper_tick(self.store,session['session_id'])
+        self.assertEqual(result['status'],'suspended')
+        journal=self.store.connection.execute('select * from paper_suspensions').fetchone()
+        self.assertEqual(journal['suspended_ms'],1000)
+        self.assertIn('missing_live_heartbeat',journal['diagnostics_json'])
+        self.assertNotIn('paper_session_suspended',[e['kind'] for e in registry_trace(self.store,as_of_ms=999)['events']])
+        self.assertIn('paper_session_suspended',[e['kind'] for e in registry_trace(self.store,as_of_ms=1000)['events']])
+        from tamtam_again.paper import synthetic_recipe_tick
+        with self.assertRaises(ValueError):synthetic_recipe_tick(self.store,session['session_id'],[])
+
     def test_negative_cost_edge_rejected(self):
         spec = synthetic_spec()
         spec["fees"]["taker_bps"] = "500"

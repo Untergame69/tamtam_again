@@ -5,6 +5,7 @@ import json
 import sqlite3
 import threading
 import zlib
+from uuid import uuid4
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -42,9 +43,7 @@ CREATE TABLE IF NOT EXISTS raw_observations (
     response_sha256 TEXT NOT NULL,
     response_json TEXT NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uq_raw_observation
-    ON raw_observations(network, source, entity_type, entity_id, endpoint,
-       ifnull(window_start_ms, -1), ifnull(window_end_ms, -1), response_sha256);
+
 CREATE INDEX IF NOT EXISTS idx_observations_entity_time
     ON raw_observations(network, entity_type, entity_id, observed_at);
 CREATE INDEX IF NOT EXISTS idx_observations_source_endpoint
@@ -166,6 +165,15 @@ class Store:
                     "ALTER TABLE raw_observations ADD COLUMN response_encoding "
                     "TEXT NOT NULL DEFAULT 'json'"
                 )
+            # Legacy rows retain exactly their recorded provenance. Missing old
+            # receipts cannot be reconstructed from a repeated content hash.
+            if "receipt_id" not in columns:
+                self.connection.execute("ALTER TABLE raw_observations ADD COLUMN receipt_id TEXT NOT NULL DEFAULT ''")
+            self.connection.execute("DROP INDEX IF EXISTS uq_raw_observation")
+            self.connection.execute("""CREATE UNIQUE INDEX IF NOT EXISTS uq_raw_receipt
+                ON raw_observations(network, source, entity_type, entity_id, endpoint,
+                ifnull(window_start_ms,-1), ifnull(window_end_ms,-1), response_sha256,
+                request_json, receipt_id)""")
             market_columns = {row[1] for row in self.connection.execute(
                 "PRAGMA table_info(market_rankings)"
             )}
@@ -237,12 +245,12 @@ class Store:
             """INSERT OR IGNORE INTO raw_observations
                (network, source, entity_type, entity_id, endpoint, request_json,
                 requested_at, observed_at, window_start_ms, window_end_ms,
-                record_count, complete, response_encoding, response_sha256, response_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                record_count, complete, response_encoding, response_sha256, response_json, receipt_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (network, source, entity_type, entity_id, endpoint, request_json,
              requested_at or utc_now(), utc_now(), window_start_ms,
              window_end_ms, record_count, int(complete), "zlib+json", digest,
-             compressed_response),
+             compressed_response, uuid4().hex if source == "hyperliquid-population-rest-v1" else ""),
         )
         self.connection.commit()
         return cursor.rowcount == 1

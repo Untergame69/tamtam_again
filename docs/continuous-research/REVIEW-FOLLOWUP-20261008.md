@@ -440,3 +440,36 @@ confirmée sur cette fenêtre ; stabilité durable et charge de nouvelle infére
 non démontrées. Collecte conservée active. Aucun critère, budget ou réserve
 modifié. Prochaine action : matrice documentaire des sept hypothèses et plan
 réel proposé sans activation, puis checkpoint décisionnel de la tranche.
+
+
+## Checkpoint décisionnel de la tranche CADRAGE-LUNA-e13ac29
+
+| Livrable | État et preuve | Limites / prochaine décision |
+| --- | --- | --- |
+| Cause SQLite minimale | Ancien processus pré-R1 reconstruisait index supprimé ; reproduction concurrente, reload gracieux,438 tests ; f52d5dd/db8088c/032071a | Pas de nouvelle couche retry/timeout ; interruption de reconnexion conservée |
+| Observation avant/après | d4c2056 :1800 samples chaque fenêtre ; population10/9→13/0, discovery2 terminés après, pending0 ; aucun storage_error après |30min seulement, pas triple chevauchement ni nouvelle inférence ; reprise pending pas réexercée après |
+| Qualification de durée | d2b2e83/9a6a938 :6h fixées avant lecture,69admissibles,14périodes,31fins anciennes,12débuts absents,12sans deux bornes |0périmètre mesuré sur6h ; trous ledger/non-classification et collateral partagé ; qualification économique globale non accomplie |
+| Tri des sept dossiers |8c38983/6770ba9 : source immuable hachée, sept questions minimales, données/capacités/privé/coûts/décisions séparés | Questions réduites proposées comme nouveaux enfants, aucune modification des anciens résultats |
+| Prochaine expérience | D1/HYPE et D3/POL : structure d’ordres partiels,4requêtes logiques max,24tentatives max avec retries existants,30min max,0appel IA | Proposition non activée ; protection et archive à vérifier avant lecture, réutiliser rapport D1 si pertinent |
+| Qualification→allocation | Écart documenté et proposition deepen par question comptable résoluble, rotation/exploration/témoins conservés | Aucune nouvelle politique générale implémentée, pas classement par capital brut |
+
+Tests438 OK48,621s exécutés avant les seules additions documentaires suivantes.
+Ce dernier lot documentaire n’a déclenché aucun test ou appel de modèle/API de
+collecte ; navigation officielle seulement pour vérifier API/coûts réservés.
+Zéro ordre réel, achat, VPS ou budget IA supplémentaire ; huit essais restent
+consommés, sept hypothèses et un essai suspendu, aucun paper réel validé.
+Collecteur PID920368 actif au contrôle final. Worktree propre avant ce CR.
+
+La tranche fournit un checkpoint pour revue, pas une preuve que tous les quinze
+objectifs initiaux sont terminés. La qualification économique exploitable sur
+durée demeure incomplète ; prochaine décision après revue : résoudre les
+lacunes comptables précises et/ou autoriser le sous-test descriptif proposé.
+Les hypothèses passives complètes restent non identifiées ; ajouter tous leurs
+adaptateurs sans discrimination préalable n’est pas autorisé par ce cadrage.
+Retour arrière docs/tests par revert ; unité inchangée, données conservées ;
+ne pas restaurer la base ou le processus/index pré-R1.
+
+Revue : comparer manifests/results SQLite, test_stale_collector_schema.py,
+rapport de durée r3-six-hour-public-scope-20261008.json et matrice
+SEVEN-HYPOTHESES-TRIAGE-20261008.md. Sources temporaires des deux mesures
+hachées dans les preuves ; données réservées non nécessaires à cette revue.

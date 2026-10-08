@@ -2,9 +2,74 @@
 
 **État : livraison partielle, Goal actif et incomplet.** Ce rapport rassemble
 les preuves pour une revue ; il ne constitue ni une approbation indépendante,
-ni une certification économique. Code arrêté pour cette revue : **87f184f**. Dernière suite : **349 tests OK en 28,802 s**. Aucune nouvelle modification fonctionnelle pendant la préparation de ce CR. Référence intégrale :
+ni une certification économique. Code initial de revue : **87f184f** ; checkpoint actualisé : **6637ec3**. Dernière suite : **371 tests OK en 29,627 s**. Aucune nouvelle modification fonctionnelle pendant la préparation de ce CR. Référence intégrale :
 OBJECTIVE.md et pièce jointe utilisateur conservée. Aucun ordre réel, signature,
 wallet, abonnement, VPS externe ou reprise POLY.
+
+## Checkpoint demandé avant revue indépendante
+
+**Code fonctionnel arrêté : `6637ec3`.** La dernière modification engagée est
+terminée à son périmètre annoncé : scellement d'une demande paper sous politique
+explicite, idempotence/budget, contrôle temporel de toutes les réserves du compte
+avant lecture du diagnostic/règle, et journal metadata. **Le worker IA et le
+raccordement à une nouvelle comparaison prospective ne sont pas implémentés.**
+Aucune nouvelle extension n'est engagée à ce checkpoint.
+
+Vérification fraîche : **371 tests passent en 29,627 s** sur ce code ; tests
+synthétiques du scellement, aucune démonstration d'un parcours paper réel.
+Worktree propre avant les seuls changements documentaires de ce checkpoint.
+Onze contrôles plans/variants contre le baseline sont vrais. Collecteur
+active/running ; timers population/discovery actifs. Aucun arrêt ou redémarrage
+ni changement de cadence/budget effectué pour cette remise.
+
+| État réel au checkpoint | Valeur |
+| --- | --- |
+| Candidats | 3362 |
+| Comptes inventoriés | 69 |
+| Places REST | 31 scheduled + un running, 37 comptes retirés conservés |
+| Recherche population | Sept hypotheses_recorded, un suspended ; aucun budget réarmé |
+| Plans / variantes | Huit / trois, inchangés |
+| Sessions paper | Zéro |
+| Jobs paper_research réels | Aucun ; table pas encore créée dans la base réelle |
+| Qualification économique exploitable démontrée | Aucune |
+
+Preuves actuelles : `checkpoint-inventory-20261008.json` et
+`checkpoint-state-20261008.json`, en lecture seule, sans payload réservé.
+Les chiffres et mesures du premier CR ci-dessous restent des relevés datés ;
+ils ne remplacent pas l'état actuel. Les fixtures ne qualifient aucun compte.
+
+### Changements depuis le CR initial
+
+| Commit | Livraison | Limite |
+| --- | --- | --- |
+| 5a504ce | Témoin userFills indépendant pour rétention récente, raccordé à pagination | Couverture fills sur un cas réel, pas capital/funding/flux |
+| 7f8a7a1 | Collecte ciblée borrowLendUserState et composants borrow/supply | Pas addition au spot ni equity ; deux contrôles réels |
+| 9d642e8 | Données lending disponibles au cutoff dans paquet IA | Contenu identique ne relance pas ; aucun appel IA exécuté |
+| f506dd5 | Spot inventory complet dans nouveaux rapports/paquets | Neuf balances réelles vérifiées ; conventions de dette/valorisation encore ouvertes |
+| 6637ec3 | Demande paper scellée avec contrôle réserves et budget distinct | Preuve synthétique ; worker et décision prospective encore manquants |
+
+Le CR initial a été poussé dans `8f543c1`. Ce checkpoint documentaire sera un
+commit séparé, avec la vérification ci-dessus et ce CR actualisé. Pas de migration
+réelle supplémentaire ni politique paper activée. Pour revenir avant ces
+changements, appliquer les rollbacks ciblés des contrats, conserver observations,
+registres et budgets ; ne pas restaurer une ancienne base accumulée.
+
+### Priorités de reprise décidées par l'utilisateur
+
+1. **Qualification économique exploitable de quelques comptes réels**, avec
+   périmètres explicites, conventions comptables vérifiées, sources aux bornes,
+   flux et incertitudes. Démontrer ce qui est utilisable et ce qui reste inconnu,
+   au lieu d'attendre une complétude globale sans condition atteignable.
+2. **Parcours complet de reprise après diagnostic jusqu'à une nouvelle décision
+   prospective**, sans décisions essentielles injectées manuellement. Inclure
+   proposition bornée, comparaison prédéclarée, décision calculée, échecs et
+   reprise ; préserver les positions et historiques de l'ancienne version.
+
+Supervision, dimensionnement et nouvelles extensions viennent après ces deux
+jalons, sauf obstacle direct démontré. La collecte reste active. **Les travaux
+de développement attendent la revue indépendante avant reprise** ; aucune
+approbation ni fin du Goal n'est revendiquée. La revue doit décider s'il faut
+conserver, simplifier ou réorienter les briques pour atteindre ces deux preuves.
 
 ## 0. Historique depuis le début et lecture critique
 
@@ -286,7 +351,7 @@ Derniers commits substantiels :
 
 ## 7. Tests et revue reproductible
 
-Dernière suite : **349 tests OK, 28,802 s** sur le code 87f184f ; les tests ne
+Dernière suite au checkpoint : **371 tests OK, 29,627 s** sur le code 6637ec3 ; les tests ne
 prouvent pas les exigences réelles absentes. Couverture : comptabilité/flux/
 FX/modes/pools, causalité, mémoire/réserves/héritage, pagination/retries/quotas,
 matching, multicompte/multi-instruments de référence, promotion/risk suspension/
@@ -311,8 +376,8 @@ python3 scripts/research-baseline.py --db data/tamtam.sqlite3 \
 PYTHONPATH=src .venv/bin/python scripts/sustained-capacity.py \
   --telemetry data/tamtam.telemetry.sqlite3 --db data/tamtam.sqlite3 \
   --hours 24 --output /tmp/review-capacity.json
-git diff --stat fdb1264 87f184f
-git log --oneline fdb1264..87f184f
+git diff --stat fdb1264 6637ec3
+git log --oneline fdb1264..6637ec3
 systemctl --user list-timers --all --no-pager
 ```
 
@@ -400,17 +465,17 @@ qualifier leur performance/observabilité/reproductibilité, décrire leurs
 comportements, proposer des hypothèses, les comparer prospectivement, puis paper
 et adaptation continue. Aucun trading réel n'est autorisé.
 
-Lis ce CR complet et OBJECTIVE.md (15 exigences), puis le code `87f184f` et les
+Lis ce CR complet et OBJECTIVE.md (15 exigences), puis le code `6637ec3` et les
 preuves citées. Historique complet et diff du Goal dans
 external-review-inventory-20261008.json ; état metadata actuel dans
-external-review-state-20261008.json. Ne consulte aucune donnée/résultat réservé
+checkpoint-state-20261008.json (état actuel), checkpoint-inventory-20261008.json (services, checks et tests). Ne consulte aucune donnée/résultat réservé
 pour développer des règles. Git prime sur les déclarations du CR.
 
-Le projet dispose de 3324 candidats, 69 inventaires, 32 slots REST, dix suivis
+Au checkpoint, le projet dispose de 3362 candidats, 69 inventaires, 32 slots REST, dix suivis
 utilisateur directs, huit plans et trois variantes pilotes immuables. Sept
 hypothèses population sont needs_data, une suspended ; huit essais consommés,
 budget non réarmé. Aucune qualification économique et aucune session paper
-réelle. Dernière suite 349 tests ; nombreuses preuves synthétiques et contrôles
+réelle. Dernière suite 371 tests ; nombreuses preuves synthétiques et contrôles
 réels descriptifs. Le nombre de tests n'est pas une preuve d'avantage financier.
 
 Examine prioritairement :

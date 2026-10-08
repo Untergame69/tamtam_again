@@ -1,0 +1,1322 @@
+{
+  "generated_at": "2026-10-08T09:05:56.514833+00:00",
+  "raw_payloads_accessed": false,
+  "git_head": "6637ec3d5f4f317410f7fcc0626b508267bb21e9",
+  "database_bytes": 12304674816,
+  "wal_bytes": 63518072,
+  "candidate_status": [
+    {
+      "network": "hyperliquid-mainnet",
+      "status": "candidate",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "count": 754
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "status": "candidate",
+      "discovery_source": "hyperliquid-public-trades",
+      "count": 2598
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "status": "tracked",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "count": 10
+    }
+  ],
+  "active_accounts": [
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x5b5d51203a0f9079f8aeb098a6523a13f298c060",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T13:56:52.359+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x7fdafde5cfb5465924316eced2d3715494c517d1",
+      "label": "BobbyBigSize",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T13:56:52.390+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0xe928927c0a4086909a753a6a85a5f9296d9826e8",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T13:56:52.523+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x30afce2f6842bf183c7e3fe7162e279ff0b6393e",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T13:56:52.569+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T13:56:52.683+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x9794bbbc222b6b93c1417d01aa1ff06d42e5333b",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T13:56:52.693+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x936cf4fb95c30ce83f658b5bbb247e4bb381bb0f",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T14:38:00.314+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x020ca66c30bec2c4fe3861a94e4db4a498a35872",
+      "label": "MachiBigBrother",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T14:38:00.546+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x880ac484a1743862989a441d6d867238c7aa311c",
+      "label": "x.com/SilkBtc",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T14:38:00.637+00:00"
+    },
+    {
+      "network": "hyperliquid-mainnet",
+      "address": "0x59905d5d085e0caf031ba883b821ba354e51f95e",
+      "label": "",
+      "discovery_source": "hyperliquid-official-web-stats:leaderboard",
+      "added_at": "2026-10-01T19:38:00.272+00:00"
+    }
+  ],
+  "endpoint_metadata": [
+    {
+      "source": "hyperliquid-discovery-probe-v1",
+      "endpoint": "trades",
+      "observations": 5,
+      "reported_records": 165,
+      "first_available": "2026-10-07T08:54:09.015+00:00",
+      "last_available": "2026-10-07T08:54:09.161+00:00"
+    },
+    {
+      "source": "hyperliquid-discovery-session-v1",
+      "endpoint": "trades",
+      "observations": 440,
+      "reported_records": 2163,
+      "first_available": "2026-10-07T10:19:25.711+00:00",
+      "last_available": "2026-10-08T08:57:21.156+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "candleSnapshot:1m",
+      "observations": 119447,
+      "reported_records": 711332,
+      "first_available": "2026-10-01T13:56:46.675+00:00",
+      "last_available": "2026-10-08T09:05:55.914+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "clearinghouseState",
+      "observations": 2923,
+      "reported_records": null,
+      "first_available": "2026-10-01T13:56:54.392+00:00",
+      "last_available": "2026-10-08T08:58:38.711+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "l2Book",
+      "observations": 5356,
+      "reported_records": null,
+      "first_available": "2026-10-01T13:56:46.382+00:00",
+      "last_available": "2026-10-02T07:55:00.247+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "metaAndAssetCtxs",
+      "observations": 2256,
+      "reported_records": null,
+      "first_available": "2026-10-01T13:40:56.259+00:00",
+      "last_available": "2026-10-08T08:55:40.931+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "openOrders",
+      "observations": 1150,
+      "reported_records": null,
+      "first_available": "2026-10-01T14:19:09.230+00:00",
+      "last_available": "2026-10-08T08:57:36.450+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "perpDexs",
+      "observations": 445,
+      "reported_records": null,
+      "first_available": "2026-10-01T14:28:51.857+00:00",
+      "last_available": "2026-10-08T08:55:40.913+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "portfolio",
+      "observations": 2923,
+      "reported_records": null,
+      "first_available": "2026-10-01T13:56:54.408+00:00",
+      "last_available": "2026-10-08T08:58:38.713+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "spotClearinghouseState",
+      "observations": 1882,
+      "reported_records": null,
+      "first_available": "2026-10-01T14:19:09.223+00:00",
+      "last_available": "2026-10-08T08:58:01.241+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "spotMetaAndAssetCtxs",
+      "observations": 447,
+      "reported_records": null,
+      "first_available": "2026-10-01T14:28:51.989+00:00",
+      "last_available": "2026-10-08T08:55:40.941+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "userFillsByTime",
+      "observations": 4219,
+      "reported_records": 2003104,
+      "first_available": "2026-10-01T13:56:53.047+00:00",
+      "last_available": "2026-10-08T08:58:03.887+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "userFunding",
+      "observations": 3497,
+      "reported_records": 322933,
+      "first_available": "2026-10-01T13:56:53.328+00:00",
+      "last_available": "2026-10-08T08:58:13.411+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "endpoint": "userNonFundingLedgerUpdates",
+      "observations": 2977,
+      "reported_records": 73969,
+      "first_available": "2026-10-01T13:56:53.618+00:00",
+      "last_available": "2026-10-08T08:58:26.284+00:00"
+    },
+    {
+      "source": "hyperliquid-official-web-stats-v1",
+      "endpoint": "leaderboard",
+      "observations": 1,
+      "reported_records": 46955,
+      "first_available": "2026-10-01T13:56:52.301+00:00",
+      "last_available": "2026-10-01T13:56:52.301+00:00"
+    },
+    {
+      "source": "hyperliquid-official-web-stats-v1",
+      "endpoint": "leaderboard-daily-raw",
+      "observations": 6,
+      "reported_records": 283442,
+      "first_available": "2026-10-02T00:38:00.567+00:00",
+      "last_available": "2026-10-08T00:08:20.405+00:00"
+    },
+    {
+      "source": "hyperliquid-population-orders-rest-v1",
+      "endpoint": "frontendOpenOrders",
+      "observations": 1,
+      "reported_records": 2,
+      "first_available": "2026-10-07T11:52:27.348+00:00",
+      "last_available": "2026-10-07T11:52:27.348+00:00"
+    },
+    {
+      "source": "hyperliquid-population-orders-rest-v1",
+      "endpoint": "historicalOrders",
+      "observations": 1,
+      "reported_records": 1890,
+      "first_available": "2026-10-07T11:52:18.259+00:00",
+      "last_available": "2026-10-07T11:52:18.259+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "allPerpMetas",
+      "observations": 2,
+      "reported_records": null,
+      "first_available": "2026-10-07T09:26:26.923+00:00",
+      "last_available": "2026-10-07T16:45:30.188+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "borrowLendUserState",
+      "observations": 2,
+      "reported_records": null,
+      "first_available": "2026-10-08T08:49:23.853+00:00",
+      "last_available": "2026-10-08T08:50:01.337+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "clearinghouseState",
+      "observations": 8006,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:35.626+00:00",
+      "last_available": "2026-10-08T09:05:11.104+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "perpDexs",
+      "observations": 725,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:34.530+00:00",
+      "last_available": "2026-10-08T09:05:07.238+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "portfolio",
+      "observations": 728,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:33.181+00:00",
+      "last_available": "2026-10-08T09:05:05.691+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "spotClearinghouseState",
+      "observations": 490,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:32.693+00:00",
+      "last_available": "2026-10-08T09:05:05.425+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "spotMetaAndAssetCtxs",
+      "observations": 25,
+      "reported_records": null,
+      "first_available": "2026-10-07T09:26:32.154+00:00",
+      "last_available": "2026-10-08T08:59:38.964+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "subAccounts",
+      "observations": 197,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:31.370+00:00",
+      "last_available": "2026-10-08T09:03:14.470+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "userAbstraction",
+      "observations": 69,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:24.659+00:00",
+      "last_available": "2026-10-08T00:44:08.777+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "userFills",
+      "observations": 1,
+      "reported_records": 2000,
+      "first_available": "2026-10-08T08:45:49.039+00:00",
+      "last_available": "2026-10-08T08:45:49.039+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "userFillsByTime",
+      "observations": 816,
+      "reported_records": 183795,
+      "first_available": "2026-10-07T08:59:38.799+00:00",
+      "last_available": "2026-10-08T09:05:11.356+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "userFunding",
+      "observations": 742,
+      "reported_records": 33391,
+      "first_available": "2026-10-07T09:20:30.154+00:00",
+      "last_available": "2026-10-08T09:05:19.359+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "userNonFundingLedgerUpdates",
+      "observations": 716,
+      "reported_records": 2513,
+      "first_available": "2026-10-07T09:20:34.567+00:00",
+      "last_available": "2026-10-08T09:05:23.919+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "endpoint": "userRole",
+      "observations": 69,
+      "reported_records": null,
+      "first_available": "2026-10-07T08:59:27.372+00:00",
+      "last_available": "2026-10-08T00:44:11.491+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "endpoint": "bbo",
+      "observations": 4787664,
+      "reported_records": 28616622,
+      "first_available": "2026-10-02T07:58:07.181+00:00",
+      "last_available": "2026-10-08T09:05:56.511+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "endpoint": "l2Book",
+      "observations": 4329259,
+      "reported_records": 10619019,
+      "first_available": "2026-10-02T07:55:02.515+00:00",
+      "last_available": "2026-10-08T09:05:56.512+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "endpoint": "streamHealth",
+      "observations": 7779,
+      "reported_records": null,
+      "first_available": "2026-10-06T13:42:33.396+00:00",
+      "last_available": "2026-10-08T09:05:44.940+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "endpoint": "trades",
+      "observations": 1885573,
+      "reported_records": 3232474,
+      "first_available": "2026-10-02T07:55:02.503+00:00",
+      "last_available": "2026-10-08T09:05:56.495+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "endpoint": "userFills",
+      "observations": 696054,
+      "reported_records": null,
+      "first_available": "2026-10-02T07:56:02.482+00:00",
+      "last_available": "2026-10-08T09:05:55.732+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "endpoint": "userFundings",
+      "observations": 478,
+      "reported_records": null,
+      "first_available": "2026-10-06T13:42:33.617+00:00",
+      "last_available": "2026-10-08T09:00:01.457+00:00"
+    }
+  ],
+  "last_day_ingestion": [
+    {
+      "utc_hour": "2026-10-07T09",
+      "source": "hyperliquid-info-v1",
+      "observations": 1515,
+      "records": 21192
+    },
+    {
+      "utc_hour": "2026-10-07T09",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 551,
+      "records": 18583
+    },
+    {
+      "utc_hour": "2026-10-07T09",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 173105,
+      "records": 581289
+    },
+    {
+      "utc_hour": "2026-10-07T10",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 48
+    },
+    {
+      "utc_hour": "2026-10-07T10",
+      "source": "hyperliquid-info-v1",
+      "observations": 1675,
+      "records": 22830
+    },
+    {
+      "utc_hour": "2026-10-07T10",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 570,
+      "records": 25391
+    },
+    {
+      "utc_hour": "2026-10-07T10",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 192850,
+      "records": 652467
+    },
+    {
+      "utc_hour": "2026-10-07T11",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 243
+    },
+    {
+      "utc_hour": "2026-10-07T11",
+      "source": "hyperliquid-info-v1",
+      "observations": 1690,
+      "records": 19954
+    },
+    {
+      "utc_hour": "2026-10-07T11",
+      "source": "hyperliquid-population-orders-rest-v1",
+      "observations": 2,
+      "records": 1892
+    },
+    {
+      "utc_hour": "2026-10-07T11",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 484,
+      "records": 30342
+    },
+    {
+      "utc_hour": "2026-10-07T11",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 194168,
+      "records": 693748
+    },
+    {
+      "utc_hour": "2026-10-07T12",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 87
+    },
+    {
+      "utc_hour": "2026-10-07T12",
+      "source": "hyperliquid-info-v1",
+      "observations": 1714,
+      "records": 24880
+    },
+    {
+      "utc_hour": "2026-10-07T12",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 511,
+      "records": 1486
+    },
+    {
+      "utc_hour": "2026-10-07T12",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 197630,
+      "records": 726349
+    },
+    {
+      "utc_hour": "2026-10-07T13",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 15,
+      "records": 55
+    },
+    {
+      "utc_hour": "2026-10-07T13",
+      "source": "hyperliquid-info-v1",
+      "observations": 1700,
+      "records": 31052
+    },
+    {
+      "utc_hour": "2026-10-07T13",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 501,
+      "records": 4237
+    },
+    {
+      "utc_hour": "2026-10-07T13",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 212575,
+      "records": 937817
+    },
+    {
+      "utc_hour": "2026-10-07T14",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 169
+    },
+    {
+      "utc_hour": "2026-10-07T14",
+      "source": "hyperliquid-info-v1",
+      "observations": 1709,
+      "records": 24954
+    },
+    {
+      "utc_hour": "2026-10-07T14",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 493,
+      "records": 4228
+    },
+    {
+      "utc_hour": "2026-10-07T14",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 209940,
+      "records": 899068
+    },
+    {
+      "utc_hour": "2026-10-07T15",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 171
+    },
+    {
+      "utc_hour": "2026-10-07T15",
+      "source": "hyperliquid-info-v1",
+      "observations": 1697,
+      "records": 24072
+    },
+    {
+      "utc_hour": "2026-10-07T15",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 506,
+      "records": 4002
+    },
+    {
+      "utc_hour": "2026-10-07T15",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 210254,
+      "records": 791465
+    },
+    {
+      "utc_hour": "2026-10-07T16",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 94
+    },
+    {
+      "utc_hour": "2026-10-07T16",
+      "source": "hyperliquid-info-v1",
+      "observations": 1687,
+      "records": 22240
+    },
+    {
+      "utc_hour": "2026-10-07T16",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 495,
+      "records": 4602
+    },
+    {
+      "utc_hour": "2026-10-07T16",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 202815,
+      "records": 730100
+    },
+    {
+      "utc_hour": "2026-10-07T17",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 65
+    },
+    {
+      "utc_hour": "2026-10-07T17",
+      "source": "hyperliquid-info-v1",
+      "observations": 1703,
+      "records": 21253
+    },
+    {
+      "utc_hour": "2026-10-07T17",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 507,
+      "records": 10640
+    },
+    {
+      "utc_hour": "2026-10-07T17",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 200236,
+      "records": 725857
+    },
+    {
+      "utc_hour": "2026-10-07T18",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 15,
+      "records": 100
+    },
+    {
+      "utc_hour": "2026-10-07T18",
+      "source": "hyperliquid-info-v1",
+      "observations": 1679,
+      "records": 21734
+    },
+    {
+      "utc_hour": "2026-10-07T18",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 506,
+      "records": 5251
+    },
+    {
+      "utc_hour": "2026-10-07T18",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 199554,
+      "records": 664113
+    },
+    {
+      "utc_hour": "2026-10-07T19",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 65
+    },
+    {
+      "utc_hour": "2026-10-07T19",
+      "source": "hyperliquid-info-v1",
+      "observations": 1721,
+      "records": 22655
+    },
+    {
+      "utc_hour": "2026-10-07T19",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 508,
+      "records": 7006
+    },
+    {
+      "utc_hour": "2026-10-07T19",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 201749,
+      "records": 675871
+    },
+    {
+      "utc_hour": "2026-10-07T20",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 94
+    },
+    {
+      "utc_hour": "2026-10-07T20",
+      "source": "hyperliquid-info-v1",
+      "observations": 1701,
+      "records": 21881
+    },
+    {
+      "utc_hour": "2026-10-07T20",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 495,
+      "records": 3512
+    },
+    {
+      "utc_hour": "2026-10-07T20",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 182766,
+      "records": 518905
+    },
+    {
+      "utc_hour": "2026-10-07T21",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 97
+    },
+    {
+      "utc_hour": "2026-10-07T21",
+      "source": "hyperliquid-info-v1",
+      "observations": 1704,
+      "records": 22233
+    },
+    {
+      "utc_hour": "2026-10-07T21",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 517,
+      "records": 3015
+    },
+    {
+      "utc_hour": "2026-10-07T21",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 172039,
+      "records": 442826
+    },
+    {
+      "utc_hour": "2026-10-07T22",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 58
+    },
+    {
+      "utc_hour": "2026-10-07T22",
+      "source": "hyperliquid-info-v1",
+      "observations": 1726,
+      "records": 18994
+    },
+    {
+      "utc_hour": "2026-10-07T22",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 519,
+      "records": 1177
+    },
+    {
+      "utc_hour": "2026-10-07T22",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 177158,
+      "records": 487156
+    },
+    {
+      "utc_hour": "2026-10-07T23",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 15,
+      "records": 80
+    },
+    {
+      "utc_hour": "2026-10-07T23",
+      "source": "hyperliquid-info-v1",
+      "observations": 1730,
+      "records": 16968
+    },
+    {
+      "utc_hour": "2026-10-07T23",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 520,
+      "records": 4769
+    },
+    {
+      "utc_hour": "2026-10-07T23",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 179767,
+      "records": 488522
+    },
+    {
+      "utc_hour": "2026-10-08T00",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 121
+    },
+    {
+      "utc_hour": "2026-10-08T00",
+      "source": "hyperliquid-info-v1",
+      "observations": 1668,
+      "records": 18247
+    },
+    {
+      "utc_hour": "2026-10-08T00",
+      "source": "hyperliquid-official-web-stats-v1",
+      "observations": 1,
+      "records": 47204
+    },
+    {
+      "utc_hour": "2026-10-08T00",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 566,
+      "records": 33649
+    },
+    {
+      "utc_hour": "2026-10-08T00",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 193927,
+      "records": 614150
+    },
+    {
+      "utc_hour": "2026-10-08T01",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 105
+    },
+    {
+      "utc_hour": "2026-10-08T01",
+      "source": "hyperliquid-info-v1",
+      "observations": 1671,
+      "records": 18669
+    },
+    {
+      "utc_hour": "2026-10-08T01",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 536,
+      "records": 17640
+    },
+    {
+      "utc_hour": "2026-10-08T01",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 195606,
+      "records": 667532
+    },
+    {
+      "utc_hour": "2026-10-08T02",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 80
+    },
+    {
+      "utc_hour": "2026-10-08T02",
+      "source": "hyperliquid-info-v1",
+      "observations": 1713,
+      "records": 16191
+    },
+    {
+      "utc_hour": "2026-10-08T02",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 521,
+      "records": 5596
+    },
+    {
+      "utc_hour": "2026-10-08T02",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 188006,
+      "records": 593814
+    },
+    {
+      "utc_hour": "2026-10-08T03",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 69
+    },
+    {
+      "utc_hour": "2026-10-08T03",
+      "source": "hyperliquid-info-v1",
+      "observations": 1720,
+      "records": 21480
+    },
+    {
+      "utc_hour": "2026-10-08T03",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 517,
+      "records": 4356
+    },
+    {
+      "utc_hour": "2026-10-08T03",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 194639,
+      "records": 624238
+    },
+    {
+      "utc_hour": "2026-10-08T04",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 15,
+      "records": 51
+    },
+    {
+      "utc_hour": "2026-10-08T04",
+      "source": "hyperliquid-info-v1",
+      "observations": 1701,
+      "records": 29653
+    },
+    {
+      "utc_hour": "2026-10-08T04",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 527,
+      "records": 7645
+    },
+    {
+      "utc_hour": "2026-10-08T04",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 201969,
+      "records": 718909
+    },
+    {
+      "utc_hour": "2026-10-08T05",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 73
+    },
+    {
+      "utc_hour": "2026-10-08T05",
+      "source": "hyperliquid-info-v1",
+      "observations": 1722,
+      "records": 23183
+    },
+    {
+      "utc_hour": "2026-10-08T05",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 511,
+      "records": 5483
+    },
+    {
+      "utc_hour": "2026-10-08T05",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 196963,
+      "records": 687348
+    },
+    {
+      "utc_hour": "2026-10-08T06",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 58
+    },
+    {
+      "utc_hour": "2026-10-08T06",
+      "source": "hyperliquid-info-v1",
+      "observations": 1716,
+      "records": 19623
+    },
+    {
+      "utc_hour": "2026-10-08T06",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 528,
+      "records": 5941
+    },
+    {
+      "utc_hour": "2026-10-08T06",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 195970,
+      "records": 685315
+    },
+    {
+      "utc_hour": "2026-10-08T07",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 108
+    },
+    {
+      "utc_hour": "2026-10-08T07",
+      "source": "hyperliquid-info-v1",
+      "observations": 1702,
+      "records": 20305
+    },
+    {
+      "utc_hour": "2026-10-08T07",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 526,
+      "records": 5242
+    },
+    {
+      "utc_hour": "2026-10-08T07",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 193759,
+      "records": 694291
+    },
+    {
+      "utc_hour": "2026-10-08T08",
+      "source": "hyperliquid-discovery-session-v1",
+      "observations": 20,
+      "records": 72
+    },
+    {
+      "utc_hour": "2026-10-08T08",
+      "source": "hyperliquid-info-v1",
+      "observations": 1700,
+      "records": 17942
+    },
+    {
+      "utc_hour": "2026-10-08T08",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 518,
+      "records": 6391
+    },
+    {
+      "utc_hour": "2026-10-08T08",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 190817,
+      "records": 683178
+    },
+    {
+      "utc_hour": "2026-10-08T09",
+      "source": "hyperliquid-info-v1",
+      "observations": 178,
+      "records": 1065
+    },
+    {
+      "utc_hour": "2026-10-08T09",
+      "source": "hyperliquid-population-rest-v1",
+      "observations": 65,
+      "records": 47
+    },
+    {
+      "utc_hour": "2026-10-08T09",
+      "source": "hyperliquid-websocket-v1",
+      "observations": 19530,
+      "records": 69493
+    }
+  ],
+  "cursor_status": [
+    {
+      "endpoint": "userFillsByTime",
+      "count": 120,
+      "earliest": 1788532812942,
+      "latest": 1791449612165
+    },
+    {
+      "endpoint": "userFunding",
+      "count": 119,
+      "earliest": 1790863940245,
+      "latest": 1791449612165
+    },
+    {
+      "endpoint": "userNonFundingLedgerUpdates",
+      "count": 119,
+      "earliest": 1790863940245,
+      "latest": 1791449612165
+    }
+  ],
+  "plans": [
+    {
+      "plan_id": "a93e1575338293b2524c145d48ac78a8a3387f02c27b3b755a11a8436e55e5e0",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "xyz:CL",
+      "created_ms": 1791312538598,
+      "synthetic": 0,
+      "immutable_plan_sha256": "a93e1575338293b2524c145d48ac78a8a3387f02c27b3b755a11a8436e55e5e0",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312538367,
+          "start_ms": 1791281720151
+        },
+        "comparison": {
+          "end_ms": 1791401038367,
+          "start_ms": 1791314638367
+        },
+        "final": {
+          "end_ms": 1791574138367,
+          "start_ms": 1791401338367
+        }
+      }
+    },
+    {
+      "plan_id": "d7577abbedb3e8e8df22b36a48eceb49d8d60c446437dc602c68b69620786aee",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "XRP",
+      "created_ms": 1791312538808,
+      "synthetic": 0,
+      "immutable_plan_sha256": "d7577abbedb3e8e8df22b36a48eceb49d8d60c446437dc602c68b69620786aee",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312538607,
+          "start_ms": 1790966699534
+        },
+        "comparison": {
+          "end_ms": 1791401038607,
+          "start_ms": 1791314638607
+        },
+        "final": {
+          "end_ms": 1791574138607,
+          "start_ms": 1791401338607
+        }
+      }
+    },
+    {
+      "plan_id": "21ee42446adadf7063563176de698d18759f7d6af204ff967e4224d9da3512c2",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "xyz:BRENTOIL",
+      "created_ms": 1791312539009,
+      "synthetic": 0,
+      "immutable_plan_sha256": "21ee42446adadf7063563176de698d18759f7d6af204ff967e4224d9da3512c2",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312538813,
+          "start_ms": 1791288781896
+        },
+        "comparison": {
+          "end_ms": 1791401038813,
+          "start_ms": 1791314638813
+        },
+        "final": {
+          "end_ms": 1791574138813,
+          "start_ms": 1791401338813
+        }
+      }
+    },
+    {
+      "plan_id": "59b3fc4b761a54087face89ad96d52520c3dbbb2fefa9be62e18b5b8bdd8f08b",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "HYPE",
+      "created_ms": 1791312539230,
+      "synthetic": 0,
+      "immutable_plan_sha256": "59b3fc4b761a54087face89ad96d52520c3dbbb2fefa9be62e18b5b8bdd8f08b",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312539014,
+          "start_ms": 1790968103435
+        },
+        "comparison": {
+          "end_ms": 1791401039014,
+          "start_ms": 1791314639014
+        },
+        "final": {
+          "end_ms": 1791574139014,
+          "start_ms": 1791401339014
+        }
+      }
+    },
+    {
+      "plan_id": "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "xyz:CL",
+      "created_ms": 1791318688185,
+      "synthetic": 0,
+      "immutable_plan_sha256": "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312538367,
+          "start_ms": 1791281720151
+        },
+        "comparison": {
+          "end_ms": 1791407188148,
+          "start_ms": 1791320788148
+        },
+        "final": {
+          "end_ms": 1791580288148,
+          "start_ms": 1791407488148
+        }
+      }
+    },
+    {
+      "plan_id": "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "XRP",
+      "created_ms": 1791318688409,
+      "synthetic": 0,
+      "immutable_plan_sha256": "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312538607,
+          "start_ms": 1790966699534
+        },
+        "comparison": {
+          "end_ms": 1791407188390,
+          "start_ms": 1791320788390
+        },
+        "final": {
+          "end_ms": 1791580288390,
+          "start_ms": 1791407488390
+        }
+      }
+    },
+    {
+      "plan_id": "7470c3dc3050684e127419491c38ec748042d2742aa08ce5f556d7233ca01a68",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "xyz:BRENTOIL",
+      "created_ms": 1791318688623,
+      "synthetic": 0,
+      "immutable_plan_sha256": "7470c3dc3050684e127419491c38ec748042d2742aa08ce5f556d7233ca01a68",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312538813,
+          "start_ms": 1791288781896
+        },
+        "comparison": {
+          "end_ms": 1791407188605,
+          "start_ms": 1791320788605
+        },
+        "final": {
+          "end_ms": 1791580288605,
+          "start_ms": 1791407488605
+        }
+      }
+    },
+    {
+      "plan_id": "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      "network": "hyperliquid-mainnet",
+      "address": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "coin": "HYPE",
+      "created_ms": 1791318688866,
+      "synthetic": 0,
+      "immutable_plan_sha256": "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      "windows": {
+        "exploration": {
+          "end_ms": 1791312539014,
+          "start_ms": 1790968103435
+        },
+        "comparison": {
+          "end_ms": 1791407188843,
+          "start_ms": 1791320788843
+        },
+        "final": {
+          "end_ms": 1791580288843,
+          "start_ms": 1791407488843
+        }
+      }
+    }
+  ],
+  "variants": [
+    {
+      "variant_id": "b5a0734a112b0b4061391852be7cb0759216e3af3c194e9b3410d791bbeff12a",
+      "plan_id": "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      "frozen_ms": 1791318774491,
+      "research_run_id": "5451e53d8b6d423696299d973ac4c914",
+      "spec_sha256": "6636fe4504b7b7113cd045530e4398fe7467c71098acb392f7c74273191b31f8",
+      "criteria_sha256": "db34d2b5df067872d50756028762c1cea7343481da6471d6c2dc48e55accede9"
+    },
+    {
+      "variant_id": "0398eb5b94773f5eec0e65ee73586842c27a0ae49f203722be21dfe0d321dee1",
+      "plan_id": "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      "frozen_ms": 1791318859646,
+      "research_run_id": "dcc29ea5c6414b5f914cfbe78d92ef08",
+      "spec_sha256": "026d54b9d2c1608c05fe36117541285f752b70adc0a53b8f3838d276023380ef",
+      "criteria_sha256": "db34d2b5df067872d50756028762c1cea7343481da6471d6c2dc48e55accede9"
+    },
+    {
+      "variant_id": "341f4acbfd295dd064408cf8721898d0694ffc9a2c163bd94f6e77c865f43bee",
+      "plan_id": "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      "frozen_ms": 1791319004221,
+      "research_run_id": "5cb1842e52ac4449abbb9cbf85a60187",
+      "spec_sha256": "12ab57f89dda6456d54ae0472010aa39dc24ad46a5b66aedb177cd609c2b08c6",
+      "criteria_sha256": "db34d2b5df067872d50756028762c1cea7343481da6471d6c2dc48e55accede9"
+    }
+  ],
+  "evaluation_metadata": [],
+  "paper_metadata": [],
+  "research_metadata": [
+    {
+      "run_id": "e1d8296cff304705a0ef5e8a0aa8e0af",
+      "plan_id": "a93e1575338293b2524c145d48ac78a8a3387f02c27b3b755a11a8436e55e5e0",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T18:48:58.603+00:00",
+      "updated_at": "2026-10-06T18:49:35.800+00:00"
+    },
+    {
+      "run_id": "84f96fe2454e4db2b8ca60c27676c319",
+      "plan_id": "d7577abbedb3e8e8df22b36a48eceb49d8d60c446437dc602c68b69620786aee",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T18:48:58.809+00:00",
+      "updated_at": "2026-10-06T18:52:51.991+00:00"
+    },
+    {
+      "run_id": "9f60543904694762b5f15d7c5580d7e6",
+      "plan_id": "21ee42446adadf7063563176de698d18759f7d6af204ff967e4224d9da3512c2",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T18:48:59.010+00:00",
+      "updated_at": "2026-10-06T18:53:46.246+00:00"
+    },
+    {
+      "run_id": "4432c74a478d4038953e5e1bad6ae5e9",
+      "plan_id": "59b3fc4b761a54087face89ad96d52520c3dbbb2fefa9be62e18b5b8bdd8f08b",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T18:48:59.264+00:00",
+      "updated_at": "2026-10-06T18:54:24.626+00:00"
+    },
+    {
+      "run_id": "5451e53d8b6d423696299d973ac4c914",
+      "plan_id": "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      "status": "ready_to_test",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T20:31:28.191+00:00",
+      "updated_at": "2026-10-06T20:32:54.492+00:00"
+    },
+    {
+      "run_id": "dcc29ea5c6414b5f914cfbe78d92ef08",
+      "plan_id": "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      "status": "ready_to_test",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T20:31:28.411+00:00",
+      "updated_at": "2026-10-06T20:34:19.647+00:00"
+    },
+    {
+      "run_id": "3242728cc01b47c58bd9c141015e68db",
+      "plan_id": "7470c3dc3050684e127419491c38ec748042d2742aa08ce5f556d7233ca01a68",
+      "status": "needs_data",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T20:31:28.625+00:00",
+      "updated_at": "2026-10-06T20:35:33.453+00:00"
+    },
+    {
+      "run_id": "5cb1842e52ac4449abbb9cbf85a60187",
+      "plan_id": "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      "status": "ready_to_test",
+      "reserved_cost_usd": "2",
+      "actual_cost_usd": "0.0",
+      "created_at": "2026-10-06T20:31:28.867+00:00",
+      "updated_at": "2026-10-06T20:36:44.222+00:00"
+    }
+  ],
+  "services": "MainPID=447350\nExecStart={ path=/home/Untergame/tamtam_again/.venv/bin/python ; argv[]=/home/Untergame/tamtam_again/.venv/bin/python -m tamtam_again --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 run-collectors --market-every-seconds 60 --ranking-refresh-seconds 900 --whale-every-seconds 900 --whale-limit-per-window 25 --max-whale-accounts 10 --max-stream-markets 30 --max-depth-markets 30 --lookback-days 30 --cohort-output /home/Untergame/supervision/html/docs/tamtam-whales.json ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\nMemoryCurrent=5775085568\nCPUUsageNSec=11290542005000\nId=tamtam-again-collectors.service\nActiveState=active\n\nId=tamtam-again-research.timer\nActiveState=active\n\nId=tamtam-again-paper.timer\nActiveState=active\n",
+  "measurements_missing": [
+    "REST actual charged weight, retries, response items by attempt",
+    "WS input bytes, queue peak, flush latency",
+    "Process-isolated quota consumption from other tools sharing the IP"
+  ],
+  "note": "Reported record_count is archive metadata, not unique fills or independent episodes. Hashes preserve pilot identity; no results or raw reserved observations exported."
+}

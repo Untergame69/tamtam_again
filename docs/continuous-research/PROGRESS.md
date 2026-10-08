@@ -848,3 +848,12 @@ guards temporels tous marchés avant lecture diagnostic/règle, budget conservé
 idempotence et trace metadata. Aucune politique réelle/timer/modèle déclenché.
 Worker IA et proposition→plan→comparaison restent le prochain raccordement,
 non revendiqués comme terminés. Tests synthétiques uniquement, zéro paper réel.
+
+### Checkpoint avant revue indépendante demandé par utilisateur
+
+Code arrêté à 6637ec3, 371 tests OK29,627s, collecte active et onze checks pilotes
+inchangés. CR EXTERNAL-REVIEW actualisé avec changements depuis remise8f543c1,
+preuves checkpoint-inventory/state et limites de scellement paper (worker absent).
+Reprise après revue : priorité qualification réelle exploitable puis parcours
+diagnostic→nouvelle décision prospective sans injection manuelle essentielle.
+Supervision/dimensionnement/extensions différés sauf blocage direct.

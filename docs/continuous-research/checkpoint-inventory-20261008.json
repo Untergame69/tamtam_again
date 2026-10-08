@@ -1,0 +1,137 @@
+{
+  "as_of_ms": 1791450401715,
+  "code_head": "6637ec3d5f4f317410f7fcc0626b508267bb21e9",
+  "reserved_payloads_read": false,
+  "model_calls": 0,
+  "provider_calls": 0,
+  "candidates": 3362,
+  "inventoried_accounts": 69,
+  "population_statuses": [
+    {
+      "status": "retired",
+      "count": 37
+    },
+    {
+      "status": "running",
+      "count": 1
+    },
+    {
+      "status": "scheduled",
+      "count": 31
+    }
+  ],
+  "population_research_statuses": [
+    {
+      "status": "hypothesis_recorded",
+      "count": 7
+    },
+    {
+      "status": "suspended",
+      "count": 1
+    }
+  ],
+  "paper_sessions": 0,
+  "paper_research_jobs": null,
+  "latest_receipts": [
+    {
+      "source": "hyperliquid-discovery-probe-v1",
+      "last_available": "2026-10-07T08:54:09.161+00:00"
+    },
+    {
+      "source": "hyperliquid-discovery-session-v1",
+      "last_available": "2026-10-08T08:57:21.156+00:00"
+    },
+    {
+      "source": "hyperliquid-info-v1",
+      "last_available": "2026-10-08T09:06:40.341+00:00"
+    },
+    {
+      "source": "hyperliquid-official-web-stats-v1",
+      "last_available": "2026-10-08T00:08:20.405+00:00"
+    },
+    {
+      "source": "hyperliquid-population-orders-rest-v1",
+      "last_available": "2026-10-07T11:52:27.348+00:00"
+    },
+    {
+      "source": "hyperliquid-population-rest-v1",
+      "last_available": "2026-10-08T09:06:39.012+00:00"
+    },
+    {
+      "source": "hyperliquid-websocket-v1",
+      "last_available": "2026-10-08T09:06:41.601+00:00"
+    }
+  ],
+  "project_units": "Id=tamtam-again-collectors.service\nActiveState=active\nSubState=running\n\nId=tamtam-again-population.timer\nActiveState=active\nSubState=running\n\nId=tamtam-again-discovery.timer\nActiveState=active\nSubState=waiting\n\nId=tamtam-again-population-research.timer\nActiveState=active\nSubState=waiting\n\nId=tamtam-again-research.timer\nActiveState=active\nSubState=waiting\n\nId=tamtam-again-paper.timer\nActiveState=active\nSubState=running\n\nId=tamtam-again-resources.timer\nActiveState=active\nSubState=waiting\n",
+  "changes_since_review": [
+    "8f543c1 Deliver complete project history and candid external review handover",
+    "5a504ce Establish recent fill coverage using an independent latest-fill retention witness",
+    "7f8a7a1 Collect public borrow and supply components for account qualification",
+    "9d642e8 Include causal lending evidence in bounded population research packets",
+    "f506dd5 Preserve spot balances and lending fields in population research inventory",
+    "6637ec3 Seal bounded paper diagnostic research with temporal reserve guards"
+  ],
+  "pilot_checks": [
+    {
+      "kind": "plans",
+      "id": "a93e1575338293b2524c145d48ac78a8a3387f02c27b3b755a11a8436e55e5e0",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "d7577abbedb3e8e8df22b36a48eceb49d8d60c446437dc602c68b69620786aee",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "21ee42446adadf7063563176de698d18759f7d6af204ff967e4224d9da3512c2",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "59b3fc4b761a54087face89ad96d52520c3dbbb2fefa9be62e18b5b8bdd8f08b",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "7470c3dc3050684e127419491c38ec748042d2742aa08ce5f556d7233ca01a68",
+      "unchanged": true
+    },
+    {
+      "kind": "plans",
+      "id": "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      "unchanged": true
+    },
+    {
+      "kind": "variants",
+      "id": "b5a0734a112b0b4061391852be7cb0759216e3af3c194e9b3410d791bbeff12a",
+      "unchanged": true
+    },
+    {
+      "kind": "variants",
+      "id": "0398eb5b94773f5eec0e65ee73586842c27a0ae49f203722be21dfe0d321dee1",
+      "unchanged": true
+    },
+    {
+      "kind": "variants",
+      "id": "341f4acbfd295dd064408cf8721898d0694ffc9a2c163bd94f6e77c865f43bee",
+      "unchanged": true
+    }
+  ],
+  "tests": {
+    "command": ".venv/bin/python -m unittest discover -s tests -q",
+    "passed": 371,
+    "seconds": 29.627,
+    "code_head": "6637ec3d5f4f317410f7fcc0626b508267bb21e9"
+  }
+}

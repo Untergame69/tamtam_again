@@ -1,0 +1,15 @@
+{
+  "version": "sqlite-contention-window-v1",
+  "start_ms": 1791482735143,
+  "end_ms": 1791484535143,
+  "duration_seconds": 1800,
+  "sample_seconds": 1,
+  "purpose": "after replacing the pre-R1 collector process; same cadence and quotas",
+  "database": "/home/Untergame/tamtam_again/data/tamtam.sqlite3",
+  "units": [
+    "tamtam-again-discovery.service",
+    "tamtam-again-population.service",
+    "tamtam-again-population-research.service"
+  ],
+  "result_read_before_end": false
+}

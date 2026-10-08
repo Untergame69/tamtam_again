@@ -1,0 +1,20 @@
+{
+  "as_of_ms": 1791449566836,
+  "synthetic": false,
+  "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+  "status": "packet_ready",
+  "max_packet_chars": 225000,
+  "model_calls": 0,
+  "provider_calls": 0,
+  "reserved_payloads_read": false,
+  "scope": "read-only export with existing nonreserved lending proof; no job registered or budget rearmed",
+  "packet_fingerprint": "9aeb540d4e4ba50a1d671c36dbec6b68167d2135736843ea0a55005451aa35bd",
+  "research_input_fingerprint": "cf95a92e309a2b927fbd83b36c5db93e945ca1a8b54175606a0514cea9db2449",
+  "public_lending_included": true,
+  "token_entries": 2,
+  "evidence_refs": [
+    "account_scope_reports:33e827bc30f146b69fa758bdb4db7cd9",
+    "raw_observations:11816823"
+  ],
+  "available_ms": 1791449401337
+}

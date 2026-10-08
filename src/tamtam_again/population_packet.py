@@ -58,6 +58,40 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
             packet['research_input_fingerprint']=fingerprint({'scope':packet['research_input_fingerprint'],
                 'public_orders':public_orders['descriptor']['content_fingerprint']})
             packet['limits'].extend(public_orders['limits'])
+    # Targeted lending evidence is independent of the periodic inventory report.
+    # Same-content receipts must not create another eligible research input.
+    from datetime import datetime,timezone
+    from .account_adapter import SOURCE,millis
+    from .account_lending import summarize as summarize_lending
+    from .storage import decode_observation_payload
+    cutoff=datetime.fromtimestamp(as_of_ms/1000,timezone.utc).isoformat()
+    for lending in store.connection.execute(
+        "select * from raw_observations where network=? and source=? and entity_type='account' "
+        "and entity_id=? and endpoint='borrowLendUserState' and observed_at<=? "
+        "order by observed_at desc,observation_id desc",(network,SOURCE,address,cutoff)):
+        received=millis(lending['observed_at'])
+        query=json.loads(lending['request_json'])
+        if received>as_of_ms or query.get('type')!='borrowLendUserState' or query.get('user','').lower()!=address:
+            continue
+        evidence=summarize_lending(decode_observation_payload(lending),available_ms=received,
+            as_of_ms=as_of_ms,evidence_ref='raw_observations:'+str(lending['observation_id']))
+        packet['observations']['public_lending']=evidence
+        packet['evidence_refs'].append(evidence['evidence_ref'])
+        packet['available_ms']=max(packet['available_ms'],received)
+        content={k:evidence[k] for k in ('status','unknown_reasons','reported_health')}
+        from .accounting import decimal
+        def amount(value):
+            value=decimal(value)
+            if value==0:return '0'
+            text=format(value,'f')
+            return text.rstrip('0').rstrip('.') if '.' in text else text
+        content['tokens']=[{'token':entry['token'],**{kind:{key:amount(value)
+            for key,value in entry[kind].items()} for kind in ('borrow','supply')}}
+            for entry in sorted(evidence['tokens'],key=lambda x:x['token'])]
+        packet['research_input_fingerprint']=fingerprint({
+            'scope':packet['research_input_fingerprint'],'public_lending':content})
+        packet['limits'].extend(evidence['limits'])
+        break
     if store.connection.execute("select 1 from sqlite_master where name='research_knowledge'").fetchone():
         from .research_memory import export_knowledge
         memory=export_knowledge(store,as_of_ms=as_of_ms,network=network,address=address,market='*')

@@ -320,3 +320,24 @@ exécutabilité économique. Les demandes réelles non résolues, l'adaptation
 multi-instrument et la qualification consolidée restent des travaux distincts.
 Rollback : code/script recette ciblés ; aucun service activé et aucune table
 ajoutée à la production par la recette. Ne pas recopier sa base vers la collecte.
+
+### Preuves borrow/supply ciblées dans les paquets
+
+`packet_for_account` inclut la dernière observation population borrowLendUserState
+accessible au cutoff, de la même adresse/réseau. Le garde des réserves précède
+la requête et le décodage. Le paquet conserve référence, disponibilité, token,
+composantes rapportées et limites ; pas de valorisation ou rendement déduit.
+Les contenus sont des observations non fiables, jamais des instructions.
+
+L'empreinte d'entrée dépend des montants normalisés sans arrondi, de la santé
+rapportée et des anomalies, pas de la nouvelle date/référence d'une réception
+identique. Réordonner les tokens ou changer uniquement les zéros décimaux ne
+crée pas une nouvelle entrée. L'empreinte du paquet complet conserve sa propre
+provenance. Le budget de taille s'applique au paquet entier : dépassement produit
+needs_data, sans tronquer silencieusement cette preuve. Une entrée différente
+ne réarme pas la tranche de huit jobs et n'autorise aucune promotion.
+
+Contrôle réel readonly : lending-packet-control-20261008.json, deux tokens
+inclus, zéro modèle/fournisseur/job. Ce raccordement ne signifie pas que le
+runtime a déjà analysé ces nouvelles observations. Rollback : retirer la section
+public_lending de l'export, conserver archives/essais et budgets.

@@ -59,3 +59,39 @@ class PacketTests(unittest.TestCase):
         self.assertNotEqual(later['research_input_fingerprint'],original['research_input_fingerprint'])
         self.assertEqual(later['available_ms'],25)
         self.assertFalse(later['observations']['public_orders']['order_lifecycle_complete'])
+
+    def lending(self,value,available,source='hyperliquid-population-rest-v1'):
+        from datetime import datetime,timezone
+        stamp=datetime.fromtimestamp(available/1000,timezone.utc).isoformat()
+        self.s.save_observation(network='test',source=source,entity_type='account',entity_id='account',
+            endpoint='borrowLendUserState',payload={'tokenToState':[[0,{'borrow':{'basis':'10','value':value},'supply':{'basis':'0','value':'0'}}]],'health':'atRisk'},
+            request_payload={'type':'borrowLendUserState','user':'account','receipt_marker':available},requested_at=stamp,complete=False)
+        self.s.connection.execute('update raw_observations set observed_at=? where observation_id=(select max(observation_id) from raw_observations)',(stamp,))
+        self.s.connection.commit()
+
+    def test_lending_cutoff_and_content_change_not_receipt(self):
+        original=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=20000)['packet']
+        self.lending('11',25)
+        early=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=20000)['packet']
+        first=packet_for_account(self.s,'test','account',as_of_ms=25,max_chars=20000)['packet']
+        self.assertEqual(original['research_input_fingerprint'],early['research_input_fingerprint'])
+        self.assertNotEqual(original['research_input_fingerprint'],first['research_input_fingerprint'])
+        self.assertEqual(first['observations']['public_lending']['tokens'][0]['borrow']['reported_value'],'11')
+        self.assertEqual(first['available_ms'],25)
+        self.lending('11.00',26)
+        same=packet_for_account(self.s,'test','account',as_of_ms=26,max_chars=20000)['packet']
+        self.assertEqual(first['research_input_fingerprint'],same['research_input_fingerprint'])
+        self.lending('12',27)
+        changed=packet_for_account(self.s,'test','account',as_of_ms=27,max_chars=20000)['packet']
+        self.assertNotEqual(same['research_input_fingerprint'],changed['research_input_fingerprint'])
+        self.assertIsNone(changed['observations']['public_lending']['equity'])
+        self.assertFalse(changed['research_contract']['profitability_claim_authorized'])
+
+    def test_lending_other_source_not_exported_and_full_budget_required(self):
+        self.lending('11',25,source='other-source')
+        packet=packet_for_account(self.s,'test','account',as_of_ms=25,max_chars=20000)['packet']
+        self.assertNotIn('public_lending',packet['observations'])
+        self.lending('12',26)
+        result=packet_for_account(self.s,'test','account',as_of_ms=26,max_chars=1000)
+        self.assertEqual(result['status'],'needs_data')
+        self.assertIn('budget',result['reason'])

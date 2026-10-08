@@ -823,3 +823,11 @@ requête20 poids, aucune nouvelle cadence. Dette/supply désormais observables,
 sans addition au spot/equity ni qualification. Contrôle réel même compte choisi
 avant sur inventaire, sans sélection de performance ; lending-control daté.
 Changement postérieur au CR externe arrêté à 87f184f, à examiner séparément.
+
+### Données lending raccordées à la recherche — 8 octobre
+
+Dernière preuve ciblée non réservée disponible au cutoff incluse dans le paquet
+population et son empreinte d'entrée. Réception identique/formats décimaux égaux
+ne changent pas l'entrée. Contrôle réel readonly paquet prêt avec deux tokens,
+aucun job/model/provider ni réarmement. Tests causalité/source/contenu/budget.
+Limites comptables et statut hypothèse conservés. Changement postérieur au CR.

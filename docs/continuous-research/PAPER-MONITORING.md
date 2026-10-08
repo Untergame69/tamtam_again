@@ -68,3 +68,34 @@ de répétition au même cutoff ; arrivée d'une preuve ; visibilité chronologi
 Retour arrière : restaurer recovery/trace, conserver la nouvelle table sans la
 supprimer. Aucun historique, position ou snapshot n'est modifié par ce rollback.
 La proposition IA après diagnostic reste à raccorder sous politique bornée.
+
+## Demande de recherche paper séparée de la population
+
+`PYTHONPATH=src .venv/bin/python scripts/paper-research-seal.py --db data/tamtam.sqlite3 --adaptation-request-id ID --policy POLICY.json`
+
+La commande scelle seulement une demande, sans appel IA. Politique explicite
+`version=paper-adaptation-research-v1`, justification et budgets requis :
+max_requests, max_packet_chars, minimum_interval_ms, timeout_seconds,
+max_output_tokens, max_request_age_ms, model, call_reservation_usd ; éventuel
+max_prompt_chars doit couvrir le paquet. Aucun nouveau défaut de budget ni timer
+n'est activé. Le registre additif paper_research_jobs ne réarme pas les huit
+jobs population : tous les essais paper scellés comptent, même si la politique
+change, et une suspension conserve une seule demande.
+
+Seul research_budget_required est éligible. Panne collecte/signal/budget ou
+mapping inconnu conserve sa route existante. Le paquet contient la règle gelée,
+le diagnostic/snapshot paper, identité et période de la session, preuves et
+limites. Métadonnées compte/temps sont contrôlées avant lecture du diagnostic et
+de la règle ; toute intersection avec comparaison/finale non libérée sur un
+marché du même compte bloque. Aucune observation brute ni résultat réservé
+n'est consulté. Les preuves doivent être disponibles, la règle gelée avant le
+paper et le snapshot chronologiquement compatible. Pas de période économique
+inventée ni de mutation ancienne règle/positions/session.
+
+Scellement transactionnel et idempotent ; dépassement taille/budget reste
+explicite. Trace metadata-only paper_research_sealed à created_ms. Les tests
+synthétiques couvrent scellement/replay, budgets, causalité/réserves, dépassement
+et routes non performance. Ce registre n'est **pas encore un worker IA ni une
+comparaison prospective automatique** ; ces raccordements restent à terminer.
+Aucune session réelle ne démontre ce parcours à ce stade. Rollback retire
+commande/exports et garde table et preuves, sans relancer de job scellé.

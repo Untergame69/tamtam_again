@@ -1,0 +1,10 @@
+{
+  "as_of_ms": 1791450270024,
+  "read_only": true,
+  "reserved_payloads_read": false,
+  "provider_calls": 0,
+  "model_calls": 0,
+  "paper_sessions": 0,
+  "paper_research_jobs": null,
+  "demonstration": "synthetic only; no real policy activated or job sealed"
+}

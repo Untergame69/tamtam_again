@@ -840,3 +840,11 @@ et paquet raccordés, variation de contenu pertinente pour recherche, formats
 identiques non relance. Preuve réelle : neuf balances dont total/hold négatifs,
 composantes borrow/supply disponibles sans aucun appel supplémentaire. Pas
 d'equity calculée, relation avec dette non inférée. Anciennes fiches inchangées.
+
+### Première liaison diagnostic paper → demande de recherche — 8 octobre
+
+Nouveau registre séparé paper_research_jobs et scellement sous politique explicite,
+guards temporels tous marchés avant lecture diagnostic/règle, budget conservé,
+idempotence et trace metadata. Aucune politique réelle/timer/modèle déclenché.
+Worker IA et proposition→plan→comparaison restent le prochain raccordement,
+non revendiqués comme terminés. Tests synthétiques uniquement, zéro paper réel.

@@ -51,6 +51,7 @@ def registry_trace(store, *, as_of_ms):
         ('population_hypothesis_routes','request_id','created_ms','population_hypothesis_routed'),
         ('population_experiment_links','request_id','created_ms','population_experiment_registered'),
         ('population_plan_drafts','request_id','created_ms','population_plan_preregistered'),
+        ('paper_research_jobs','request_id','created_ms','paper_research_sealed'),
         ('paper_adaptation_requests','request_id','created_ms','paper_adaptation_diagnosed'),
         ('evaluation_terminal_events','evaluation_id','available_ms','evaluation_terminal_recorded')):
         if exists(table):

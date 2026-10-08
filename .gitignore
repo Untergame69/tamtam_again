@@ -16,3 +16,4 @@ data/rollback/
 data/*.research.lock
 data/discovery-latest.json
 data/discovery-latest.tmp
+data/discovery-pending/

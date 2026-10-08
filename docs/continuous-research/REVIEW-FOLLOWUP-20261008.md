@@ -195,3 +195,24 @@ Tests : contrats complets et sans doublons, refus de mapping partiel/budget IA, 
 Migration additive : `research_observation_plans`. Aucun service ni cadence modifié, collecteur principal actif. Retour arrière : retirer ce raccordement metadata et revenir au précédent runtime/scheduler ; conserver le registre, les propositions et essais.
 
 Suite complète finale : **416 tests OK en 37,627 s**. Les fixtures de demandes ne qualifient aucune stratégie réelle.
+
+## R4 — acquisitions bornées et réveil vers le paquet population
+
+Le service population reçoit `--needs-policy config/research-need-collection-policy.json`. La politique immuable `history-needs-pilot-v1` alloue une demande par job existant, une page par tentative, six tentatives au plus par demande. Ces valeurs sont des budgets choisis, pas des critères de preuve économique. Le client et le bail sont ceux du collecteur population ; le quota REST/IP partagé demeure inchangé. Aucun abonnement utilisateur ou tranche IA ajouté. Les comptes hors ordonnanceur n'obtiennent pas de nouveau slot par ce module.
+
+Les demandes utilisent des curseurs `need:<empreinte>:<endpoint>` séparés des curseurs ordinaires. Le dernier timestamp est repris inclusivement ; les pages brutes sont conservées avant avancement du curseur. Source/proof non supportée, fenêtre future, réserve active, budget épuisé et timestamp saturé ont des attentes explicites. Un timestamp saturé non résolu n'est pas interrogé indéfiniment. Aucun payload réservé lu. Le garde existe aussi dans le collecteur scoped, avant appel fournisseur.
+
+Chaque tentative est conservée dans `research_need_collection_attempts`, y compris erreurs et bail révoqué. Un ancien worker ne publie pas le réveil après reprise de son bail. Les états courants et plafonds conservés ne réarment aucun essai. La politique, les états et les réveils ont des tables additives (`research_need_collection_policies`, `research_need_collection_states`, `research_observation_wakes`).
+
+Le réveil exige la preuve de toutes les demandes. Pour les trois endpoints actuellement raccordés, seule la couverture de pagination est prouvée ; rétention, inventaire et complétude économique restent distincts. [Documentation officielle Info, vérifiée le 8 octobre](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint) : reprise au dernier timestamp ; userFillsByTime limité aux 10 000 derniers fills, 2 000 au plus par réponse. Aucun relâchement de ces limites.
+
+Le paquet population exporte les pages promises après nouvelle vérification des périodes, identités, bornes et disponibilités. L'empreinte du réveil modifie l'entrée de recherche ; un nouveau scellement reste soumis au plafond commun, à l'intervalle minimal et à la déduplication. Un réveil ne promeut jamais une stratégie. Le paquet est refusé s'il dépasse le budget plutôt que tronqué silencieusement. Ce raccordement de réanalyse porte sur le paquet population ; une réanalyse spécifique paper enrichie de données externes demeure à vérifier séparément.
+
+### Preuves
+
+- Sept tests dédiés : totalité des contrats avant réveil, idempotence, pagination inclusive/reprise et curseur ordinaire inchangé, erreur consommant le budget, réserve avant accès raw/appel, reprise de bail avec essais conservés, preuve modifiant le paquet et un seul nouveau scellement sous budget existant, cutoff antérieur et nouvelle réserve refusant l'export avant payload.
+- Suite complète fraîche : **423 tests OK en 43,039 s**. Aucun modèle/fournisseur réel dans ces tests.
+- Service réel : premier lancement échoué sur la contention SQLite de l'allocation existante ; cycle suivant réussi (`Result=success`, `ExecMainStatus=0`), avec `observation_acquisitions` dans le rapport et zéro acquisition/réveil pour ce compte. Collecteur principal actif. La cause générale SQLite reste ouverte.
+- Préflight recherche réel : zéro scellement, appel ou plan nouveau ; huit jobs population, zéro job paper, zéro réveil et zéro état d'acquisition. Les sept contrats legacy restent `structured_request_required`, sans interprétation implicite ni dépense pour les reformuler.
+
+Retour arrière service : retirer seulement `--needs-policy /home/Untergame/tamtam_again/config/research-need-collection-policy.json`, puis daemon-reload ; sauvegarde `/tmp/tamtam-again-population.before-research-needs.service`. Conserver tables, essais, preuves et curseurs scoped. Les curseurs ordinaires et les réserves pilotes sont inchangés par cette extension. R4 reste partiel : besoins legacy à structurer sous autorisation de recherche, sources/proofs supplémentaires non prises en charge et parcours enrichi paper à vérifier. Ne pas confondre capacités synthétiques et observations prospectives réelles.

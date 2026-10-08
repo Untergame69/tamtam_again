@@ -6,6 +6,6 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=/home/Untergame/tamtam_again
 Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
-ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/population-tick.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --policy /home/Untergame/tamtam_again/config/population-policy.json
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/population-tick.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --policy /home/Untergame/tamtam_again/config/population-policy.json --needs-policy /home/Untergame/tamtam_again/config/research-need-collection-policy.json
 TimeoutStartSec=600
 NoNewPrivileges=true

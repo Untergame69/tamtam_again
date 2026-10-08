@@ -120,6 +120,14 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
         packet['memory_selection']={'eligible_exported_items':eligible,'included_items':len(memory),
             'method':'whole authorized items in chronological order within remaining packet budget',
             'new_memory_alone_does_not_reopen_unchanged_population_input':True}
+    from .research_need_collection import export_wakes
+    wakes=export_wakes(store,network,address,as_of_ms=as_of_ms)
+    if wakes:
+        packet['observations']['completed_observation_requests']=wakes
+        packet['available_ms']=max(packet['available_ms'],max(w['available_ms'] for w in wakes))
+        packet['research_input_fingerprint']=fingerprint({'scope':packet['research_input_fingerprint'],'observation_wakes':[w['evidence_fingerprint'] for w in wakes]})
+        packet['evidence_refs'].extend('research_observation_wakes:'+w['request_id'] for w in wakes)
+        packet['evidence_refs'].extend(p['evidence_ref'] for w in wakes for p in w['pages'])
     packet['fingerprint']=fingerprint(packet)
     if len(canonical(packet))>max_chars:
         return {'status':'needs_data','reason':'complete descriptive report exceeds packet budget',

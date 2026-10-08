@@ -1,0 +1,8 @@
+{
+  "version": "research-need-collection-v1",
+  "policy_id": "history-needs-pilot-v1",
+  "justification": "At most one scoped history need inside an existing population lease and shared REST quota. Chosen acquisition resources, no statistical validation threshold or additional AI tranche.",
+  "max_needs_per_job": 1,
+  "max_pages_per_need": 1,
+  "max_attempts_per_need": 6
+}

@@ -13,7 +13,8 @@ SCHEMA = '''CREATE TABLE IF NOT EXISTS population_history_cursors (
  PRIMARY KEY(network,address,endpoint));'''
 
 def collect_history(store: Store, client: Any, job: dict[str, Any], endpoint: str,
-                    end_ms: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+                    end_ms: int, *, cursor_scope: str | None = None,
+                    requested_start_ms: int | None = None, as_of_ms: int | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Keep boundary timestamps inclusive; never skip a saturated timestamp.
 
     Each endpoint retains its own backlog target. A new endpoint starts with
@@ -25,14 +26,22 @@ def collect_history(store: Store, client: Any, job: dict[str, Any], endpoint: st
     address = job['address'].lower()
     if address in protected_addresses(store):
         raise ValueError('Reserved pilot account excluded from history research')
+    if cursor_scope is not None:
+        if not isinstance(cursor_scope,str) or len(cursor_scope)!=64 or any(c not in '0123456789abcdef' for c in cursor_scope):raise ValueError('Immutable scoped history identity required')
+        if type(requested_start_ms) is not int or not 0<=requested_start_ms<end_ms:raise ValueError('Explicit scoped history interval required')
+        from .research_memory import authorized_period
+        period={'network':job['network'],'address':address,'market':'*','start_ms':requested_start_ms,'end_ms':end_ms}
+        if type(as_of_ms) is not int or not authorized_period(store,period,as_of_ms,end_inclusive=True):raise ValueError('Authorized available scoped history period required')
+    elif requested_start_ms is not None:raise ValueError('History start requires scoped cursor')
+    cursor_key=endpoint if cursor_scope is None else 'need:'+cursor_scope+':'+endpoint
     max_pages = job['policy'].get('history_max_pages_per_endpoint', 3)
     if type(max_pages) is not int or not 1 <= max_pages <= 6:
         raise ValueError('History page budget must be between one and six')
     store.connection.executescript(SCHEMA)
     row = store.connection.execute(
         'select * from population_history_cursors where network=? and address=? and endpoint=?',
-        (job['network'], address, endpoint)).fetchone()
-    cursor = row['cursor_ms'] if row else max(0, end_ms-job['policy']['initial_lookback_seconds']*1000)
+        (job['network'], address, cursor_key)).fetchone()
+    cursor = row['cursor_ms'] if row else requested_start_ms if cursor_scope is not None else max(0, end_ms-job['policy']['initial_lookback_seconds']*1000)
     target = row['target_end_ms'] if row and row['target_end_ms'] is not None else end_ms
     if not 0 <= cursor <= target <= end_ms:
         raise ValueError('History window must end no later than current request time')
@@ -77,6 +86,7 @@ def collect_history(store: Store, client: Any, job: dict[str, Any], endpoint: st
                         'coverage_status': 'pagination_only_retention_unknown',
                         'pagination_status': status,
                         'covered_until_ms': next_cursor if status in ('pagination_exhausted', 'page_budget_exhausted') else None}
+        if cursor_scope is not None:request_meta['research_need_id']=cursor_scope
         store.save_observation(network=job['network'], source='hyperliquid-population-rest-v1',
             entity_type='account', entity_id=address, endpoint=endpoint, payload=rows,
             request_payload=request_meta, requested_at=requested, window_start_ms=cursor,
@@ -95,7 +105,7 @@ def collect_history(store: Store, client: Any, job: dict[str, Any], endpoint: st
                 'on conflict(network,address,endpoint) do update set cursor_ms=excluded.cursor_ms,'
                 'target_end_ms=excluded.target_end_ms,status=excluded.status,'
                 'updated_at=excluded.updated_at,evidence_json=excluded.evidence_json',
-                (job['network'], address, endpoint, next_cursor,
+                (job['network'], address, cursor_key, next_cursor,
                  None if status == 'pagination_exhausted' else target,
                  status, utc_now(), json.dumps(evidence, sort_keys=True)))
             store.connection.commit()

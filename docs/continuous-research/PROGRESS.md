@@ -747,3 +747,13 @@ Pas de différence CPU entre invocations ni unknown transformé en zéro. Servic
 oneshot courts et runtime IA externe peuvent manquer ; pas capacité complète.
 Unités systemd vérifiées, exécution success/0 et timer actif. Preuves first et
 activation datées ; suivi prolongé à analyser après accumulation.
+
+### Dossier de revue indépendant — étape 15
+
+REVIEW-REPORT-20261008.md rassemble état initial/courant, quinze exigences avec
+écarts, commits/fichiers/migrations/services, preuves capacity/accounting,
+critères choisis, tests/recettes, coûts inconnus, rollback et commandes readonly.
+Contrôle metadata frais : 3294 candidats, 69 inventaires, 32 slots/37 retirés,
+8 plans/3 variantes inchangés, zéro paper, sept needs_data et une suspension IA.
+Deux recettes temporaires réexécutées, aucun fournisseur/modèle réel ni DB originale.
+Ce dossier est partiel et ne marque pas les travaux restant comme terminés.

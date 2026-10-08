@@ -6,4 +6,5 @@ class RecipeTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as tmp:
    r=run_recipe(Path(tmp));self.assertTrue(r['synthetic'])
    self.assertFalse(r['real_strategy_validated']);self.assertTrue(r['restart_reproducible'])
+   self.assertTrue(r['replacement_capital_preserved']);self.assertTrue(r['old_version_preserved'])
    self.assertTrue(r['missing_cost_propagated']);self.assertEqual(r['real_provider_calls'],0)

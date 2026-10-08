@@ -641,3 +641,12 @@ après reconnect exact et coût absent propagé. La meilleure référence script
 ne remplace pas le choix initial après coup. Pas de provider/IA/archive réel.
 Recette exécutée et preuve procedure-comparative-recipe-20261008.json ; limites
 remplacement actif/cohorte qualifiée/automatisation live restent explicites.
+
+### Recette remplacement dans le bilan comparatif — étape 12
+
+Troisième période sur fixture : deuxième variante/plan explicitement prévus,
+N1 synthétique, choix avant borne, suspension scriptée et handover à cash continu.
+Liaison adaptive nouvelle session à borne exacte autorisée, après borne refusée.
+Ancien state inchangé, référence continue, coût changement distinct, rapport
+reproductible et unknown sur coût absent. Preuve nouvelle conservée séparément
+de la recette précédente ; aucune politique adaptative réelle qualifiée.

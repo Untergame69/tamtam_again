@@ -101,3 +101,19 @@ class RegistryTests(unittest.TestCase):
   self.contract['references'].append({'name':'control','kind':'selection_control','variant_id':'v',
    'available_ms':0,'evidence_ref':'fixture','scope':{'network':'synthetic','address':'control'}})
   with self.assertRaisesRegex(ValueError,'matching'):self.register()
+
+ def test_adaptive_boundary_binding_requires_new_session(self):
+  from tamtam_again.procedure_registry import bind_session
+  self.contract.update(network='synthetic',address='account')
+  i=self.register()
+  with patch('tamtam_again.procedure_registry.now_ms',return_value=2):
+   record_choice(self.s,i,0,{**self.choice,'selected_variant_id':'v','considered_variant_ids':['v']})
+  self.s.connection.execute('create table paper_sessions(session_id text,variant_id text,network text,address text,started_ms integer,status text)')
+  self.s.connection.execute("insert into paper_sessions values('old','v','synthetic','account',9,'active')")
+  self.s.connection.execute("insert into paper_sessions values('new','v','synthetic','account',10,'active')")
+  with patch('tamtam_again.procedure_registry.now_ms',return_value=10):
+   with self.assertRaisesRegex(ValueError,'newly initialized'):bind_session(self.s,i,0,'adaptive','old')
+   bind_session(self.s,i,0,'adaptive','new')
+  self.s.connection.execute('delete from procedure_session_bindings')
+  with patch('tamtam_again.procedure_registry.now_ms',return_value=11):
+   with self.assertRaises(ValueError):bind_session(self.s,i,0,'adaptive','new')

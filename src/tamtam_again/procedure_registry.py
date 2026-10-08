@@ -93,7 +93,9 @@ def bind_session(store,procedure_id,period_index,role,session_id):
     if not row or not choice:raise ValueError('Registered procedure and choice required')
     contract=json.loads(row['contract_json']);stamp=now_ms()
     if type(period_index) is not int or not 0<=period_index<len(contract['periods']):raise ValueError('Invalid period index')
-    if not choice['available_ms']<=stamp<contract['periods'][period_index]['start_ms']:
+    boundary=contract['periods'][period_index]['start_ms']
+    at_boundary=role=='adaptive' and stamp==boundary
+    if not choice['available_ms']<=stamp<boundary and not at_boundary:
         raise ValueError('Session binding must precede the period')
     scope=contract
     if role=='adaptive':expected=json.loads(choice['choice_json'])['selected_variant_id']
@@ -105,6 +107,8 @@ def bind_session(store,procedure_id,period_index,role,session_id):
     session=store.connection.execute('select variant_id,network,address,started_ms,status from paper_sessions where session_id=?',(session_id,)).fetchone()
     if not session or session['variant_id']!=expected or not row['registered_ms']<=session['started_ms']<=stamp or session['status']!='active':
         raise ValueError('Matching active prospective paper session required')
+    if at_boundary and session['started_ms']!=boundary:
+        raise ValueError('Boundary handover requires a newly initialized session')
     if session['network']!=scope.get('network') or session['address']!=scope.get('address'):
         raise ValueError('Explicit procedure network/account scope mismatch')
     store.connection.execute('insert into procedure_session_bindings values(?,?,?,?,?)',(procedure_id,period_index,role,session_id,stamp))

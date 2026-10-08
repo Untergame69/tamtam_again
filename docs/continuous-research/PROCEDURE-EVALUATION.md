@@ -278,3 +278,28 @@ rentabilité ni une adaptation autonome en direct ne sont établies. La recette
 n'exerce pas encore le remplacement d'une règle active ni une cohorte témoin
 qualifiée ; leurs tests ciblés ne remplacent pas une recette complète de politique.
 Preuve JSON procedure-comparative-recipe-20261008.json, entièrement synthétique.
+
+## Recette comparative avec remplacement à la borne
+
+La recette comparative exerce maintenant une troisième période : une seconde
+variante et son plan de remplacement sont créés explicitement dans la fixture,
+comparaison/finale synthétiques appliquées, puis choix inscrit avant période.
+Après clôture plate de l'ancienne session à la borne, suspension scriptée,
+remplacement carry_flat_cash, nouvelle session et lien à la période suivante.
+La référence fixe conserve sa session ; l'ancienne version garde son état et
+ses résultats. Un coût de changement 1 est distinct du coût de recherche 2.
+
+bind_session autorise la nouvelle session adaptive exactement à start_ms,
+uniquement si started_ms égale cette borne et choix déjà inscrit. Les autres
+rôles restent strictement avant période ; aucune nouvelle liaison après start_ms.
+Cela permet une transition entre périodes contiguës sans avancer artificiellement
+la date d'un cash de clôture. Une ancienne session ne peut être nouvellement liée
+à cette borne. Relecture d'un lien déjà fixé reste idempotente.
+
+Preuve additionnelle procedure-replacement-recipe-20261008.json ; l'ancienne
+preuve à deux périodes reste conservée. Reconnect/replay, coût manquant, version
+ancienne inchangée, capital transmis et moindre résultat adaptatif vs référence
+vérifiés. Horloges/événements/décisions/suspension scriptés, aucun provider ou
+archive réel. La recette ne démontre ni détection autonome de dégradation ni
+matching d'une cohorte témoin réelle. Retour arrière : conserver les liens et
+states carry_flat_cash, ne jamais réinitialiser leur base de capital.

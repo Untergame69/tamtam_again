@@ -1,0 +1,428 @@
+{
+  "as_of_ms": 1791448108573,
+  "selection": "five latest inventoried nonprotected accounts; no economic selection",
+  "accounts": [
+    {
+      "address": "0xea4fc1ae43d644b35e6874c32c49516ccb21df32",
+      "mode": "unifiedAccount",
+      "components": {
+        "version": "whole-address-observed-components-v1",
+        "address": "0xea4fc1ae43d644b35e6874c32c49516ccb21df32",
+        "period": {
+          "start_ms": 1791361708573,
+          "end_ms": 1791448108573,
+          "as_of_ms": 1791448108573
+        },
+        "currency_reports": [
+          {
+            "schema_version": 1,
+            "scope": {
+              "id": "hypercore:0xea4fc1ae43d644b35e6874c32c49516ccb21df32:currency:USDC",
+              "currency": "USDC",
+              "account_mode": "unifiedAccount",
+              "shared_collateral_model_verified": false
+            },
+            "period": {
+              "start_ms": 1791361708573,
+              "end_ms": 1791448108573,
+              "as_of_ms": 1791448108573,
+              "membership": "(start,end] for events; exact valuations at both bounds"
+            },
+            "status": "unknown",
+            "observed": {
+              "fees_by_currency": {
+                "USDC": "298.101886"
+              },
+              "realized_pnl": "-175.978470",
+              "fees_converted_observed": "298.101886",
+              "funding": "-381.659031",
+              "external_flows": "0",
+              "other_income": "0",
+              "events": 5733,
+              "fill_events": 3288,
+              "builder_fee_policy": "fee already includes builderFee; no second charge"
+            },
+            "unknown_reasons": [
+              "exact boundary valuations/positions absent",
+              "fills coverage not proven",
+              "flows coverage not proven",
+              "funding coverage not proven",
+              "other_income coverage not proven",
+              "shared collateral valuation model not verified",
+              "valuation_scope coverage not proven"
+            ],
+            "conflicting_duplicates": [],
+            "metrics": {
+              "economic_pnl": null,
+              "component_pnl": null,
+              "reconciliation_residual": null,
+              "modified_dietz_estimate": null,
+              "time_weighted_return": null,
+              "sampled_flow_adjusted_drawdown": null
+            },
+            "metric_requirements": {
+              "economic_pnl": "complete evidenced scope, exact boundary valuations and classified external flows",
+              "time_weighted_return": "positive capital and valuation at every external-flow timestamp",
+              "sampled_flow_adjusted_drawdown": "same TWR requirements; only observed checkpoints",
+              "modified_dietz_estimate": "positive weighted-capital denominator; explicitly approximate"
+            },
+            "limits": [
+              "reconciled_inputs does not mean residual is acceptable or performance is good",
+              "Modified Dietz is an approximation; sampled drawdown omits intra-snapshot extremes",
+              "valuation-scope completeness is adapter evidence, not assumed from endpoint availability",
+              "external hedges and off-platform accounts remain unknown"
+            ],
+            "input_fingerprint": "ea0209fc6073cf3e65721fd7610f2e5695298ff2bb0da54e0a42ff091f7393ed",
+            "origin_scope_ids": [
+              "perp:"
+            ],
+            "observed_not_complete": true
+          }
+        ],
+        "unassigned_events": [],
+        "capital": null,
+        "economic_pnl": null,
+        "economic_qualification": false,
+        "limits": [
+          "single address boundary; related subaccounts and vaults not merged",
+          "ledger flows counted once at address boundary, never once per DEX",
+          "currencies remain separate; no nominal stablecoin parity or invented FX",
+          "realized components omit missing events, spot cost basis, debt interest and latent change",
+          "zero observed sums are not zero true costs or zero economic PnL"
+        ]
+      }
+    },
+    {
+      "address": "0xf02d16a272a842f8bac1d9a9e773aba1933454c6",
+      "mode": "portfolioMargin",
+      "components": {
+        "version": "whole-address-observed-components-v1",
+        "address": "0xf02d16a272a842f8bac1d9a9e773aba1933454c6",
+        "period": {
+          "start_ms": 1791361708573,
+          "end_ms": 1791448108573,
+          "as_of_ms": 1791448108573
+        },
+        "currency_reports": [
+          {
+            "schema_version": 1,
+            "scope": {
+              "id": "hypercore:0xf02d16a272a842f8bac1d9a9e773aba1933454c6:currency:USDC",
+              "currency": "USDC",
+              "account_mode": "portfolioMargin",
+              "shared_collateral_model_verified": false
+            },
+            "period": {
+              "start_ms": 1791361708573,
+              "end_ms": 1791448108573,
+              "as_of_ms": 1791448108573,
+              "membership": "(start,end] for events; exact valuations at both bounds"
+            },
+            "status": "unknown",
+            "observed": {
+              "fees_by_currency": {},
+              "realized_pnl": "0",
+              "fees_converted_observed": "0",
+              "funding": "3211.448984",
+              "external_flows": "0",
+              "other_income": "0",
+              "events": 24,
+              "fill_events": 0,
+              "builder_fee_policy": "fee already includes builderFee; no second charge"
+            },
+            "unknown_reasons": [
+              "exact boundary valuations/positions absent",
+              "fills coverage not proven",
+              "flows coverage not proven",
+              "funding coverage not proven",
+              "other_income coverage not proven",
+              "shared collateral valuation model not verified",
+              "valuation_scope coverage not proven"
+            ],
+            "conflicting_duplicates": [],
+            "metrics": {
+              "economic_pnl": null,
+              "component_pnl": null,
+              "reconciliation_residual": null,
+              "modified_dietz_estimate": null,
+              "time_weighted_return": null,
+              "sampled_flow_adjusted_drawdown": null
+            },
+            "metric_requirements": {
+              "economic_pnl": "complete evidenced scope, exact boundary valuations and classified external flows",
+              "time_weighted_return": "positive capital and valuation at every external-flow timestamp",
+              "sampled_flow_adjusted_drawdown": "same TWR requirements; only observed checkpoints",
+              "modified_dietz_estimate": "positive weighted-capital denominator; explicitly approximate"
+            },
+            "limits": [
+              "reconciled_inputs does not mean residual is acceptable or performance is good",
+              "Modified Dietz is an approximation; sampled drawdown omits intra-snapshot extremes",
+              "valuation-scope completeness is adapter evidence, not assumed from endpoint availability",
+              "external hedges and off-platform accounts remain unknown"
+            ],
+            "input_fingerprint": "0e29b02386b040517892ad9e985875d32219cc9b77f449536ba06a44beae16ea",
+            "origin_scope_ids": [
+              "perp:"
+            ],
+            "observed_not_complete": true
+          }
+        ],
+        "unassigned_events": [],
+        "capital": null,
+        "economic_pnl": null,
+        "economic_qualification": false,
+        "limits": [
+          "single address boundary; related subaccounts and vaults not merged",
+          "ledger flows counted once at address boundary, never once per DEX",
+          "currencies remain separate; no nominal stablecoin parity or invented FX",
+          "realized components omit missing events, spot cost basis, debt interest and latent change",
+          "zero observed sums are not zero true costs or zero economic PnL"
+        ]
+      }
+    },
+    {
+      "address": "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+      "mode": "disabled",
+      "components": {
+        "version": "whole-address-observed-components-v1",
+        "address": "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+        "period": {
+          "start_ms": 1791361708573,
+          "end_ms": 1791448108573,
+          "as_of_ms": 1791448108573
+        },
+        "currency_reports": [
+          {
+            "schema_version": 1,
+            "scope": {
+              "id": "hypercore:0xb695651daa495f59dd2725c6fe98322d8b51a92d:currency:USDC",
+              "currency": "USDC",
+              "account_mode": "disabled",
+              "shared_collateral_model_verified": false
+            },
+            "period": {
+              "start_ms": 1791361708573,
+              "end_ms": 1791448108573,
+              "as_of_ms": 1791448108573,
+              "membership": "(start,end] for events; exact valuations at both bounds"
+            },
+            "status": "unknown",
+            "observed": {
+              "fees_by_currency": {
+                "USDC": "110.563981"
+              },
+              "realized_pnl": "-60729.310534",
+              "fees_converted_observed": "110.563981",
+              "funding": "39012.004742",
+              "external_flows": "0",
+              "other_income": "0",
+              "events": 2043,
+              "fill_events": 1650,
+              "builder_fee_policy": "fee already includes builderFee; no second charge"
+            },
+            "unknown_reasons": [
+              "exact boundary valuations/positions absent",
+              "fills coverage not proven",
+              "flows coverage not proven",
+              "funding coverage not proven",
+              "other_income coverage not proven",
+              "valuation_scope coverage not proven"
+            ],
+            "conflicting_duplicates": [],
+            "metrics": {
+              "economic_pnl": null,
+              "component_pnl": null,
+              "reconciliation_residual": null,
+              "modified_dietz_estimate": null,
+              "time_weighted_return": null,
+              "sampled_flow_adjusted_drawdown": null
+            },
+            "metric_requirements": {
+              "economic_pnl": "complete evidenced scope, exact boundary valuations and classified external flows",
+              "time_weighted_return": "positive capital and valuation at every external-flow timestamp",
+              "sampled_flow_adjusted_drawdown": "same TWR requirements; only observed checkpoints",
+              "modified_dietz_estimate": "positive weighted-capital denominator; explicitly approximate"
+            },
+            "limits": [
+              "reconciled_inputs does not mean residual is acceptable or performance is good",
+              "Modified Dietz is an approximation; sampled drawdown omits intra-snapshot extremes",
+              "valuation-scope completeness is adapter evidence, not assumed from endpoint availability",
+              "external hedges and off-platform accounts remain unknown"
+            ],
+            "input_fingerprint": "eb931c8c4343565810cc106649c622bb00557102cf2cf3ed316f750e43ecff6e",
+            "origin_scope_ids": [
+              "perp:",
+              "perp:xyz"
+            ],
+            "observed_not_complete": true
+          }
+        ],
+        "unassigned_events": [
+          {
+            "event_id": "26859f67ea7b308a0bc7ad46296ce93ec909c5634acc4eb83d436669b5896614",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          },
+          {
+            "event_id": "11955a0e59c0d7a564d7b1e51a9dac89b0772879a5bd700a8d1e2b7b441d4c29",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          },
+          {
+            "event_id": "0ee3eb3a24b60bc36a47086d227403e0ed9324c6c4333a6543f6b4e5aeb35d38",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          },
+          {
+            "event_id": "46d7427d506243e0e704dcd7873acf2cfe1cc24a4e769e74a033ffd0f45aff1a",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          },
+          {
+            "event_id": "2a53da867b0c766970a8b9b7479c3ce54474860e31cc18a3f1d10d6b69073bdc",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          },
+          {
+            "event_id": "181de36faabce2bcb40482440c1966cade2f2445f014599c41fbe7641f43463e",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          },
+          {
+            "event_id": "09cb971212c136359d7aeb6392f72ac0b700ce64694cc9277ad0f276b50de0fb",
+            "evidence_ref": "raw_observations:7409356",
+            "reason": "event denomination unavailable"
+          }
+        ],
+        "capital": null,
+        "economic_pnl": null,
+        "economic_qualification": false,
+        "limits": [
+          "single address boundary; related subaccounts and vaults not merged",
+          "ledger flows counted once at address boundary, never once per DEX",
+          "currencies remain separate; no nominal stablecoin parity or invented FX",
+          "realized components omit missing events, spot cost basis, debt interest and latent change",
+          "zero observed sums are not zero true costs or zero economic PnL"
+        ]
+      }
+    },
+    {
+      "address": "0xa9573153547af5ac1520bd8f43132043ea8a9683",
+      "mode": "unifiedAccount",
+      "components": {
+        "version": "whole-address-observed-components-v1",
+        "address": "0xa9573153547af5ac1520bd8f43132043ea8a9683",
+        "period": {
+          "start_ms": 1791361708573,
+          "end_ms": 1791448108573,
+          "as_of_ms": 1791448108573
+        },
+        "currency_reports": [
+          {
+            "schema_version": 1,
+            "scope": {
+              "id": "hypercore:0xa9573153547af5ac1520bd8f43132043ea8a9683:currency:USDC",
+              "currency": "USDC",
+              "account_mode": "unifiedAccount",
+              "shared_collateral_model_verified": false
+            },
+            "period": {
+              "start_ms": 1791361708573,
+              "end_ms": 1791448108573,
+              "as_of_ms": 1791448108573,
+              "membership": "(start,end] for events; exact valuations at both bounds"
+            },
+            "status": "unknown",
+            "observed": {
+              "fees_by_currency": {
+                "USDC": "44.398877"
+              },
+              "realized_pnl": "-111.839543",
+              "fees_converted_observed": "44.398877",
+              "funding": "0",
+              "external_flows": "0",
+              "other_income": "0",
+              "events": 188,
+              "fill_events": 188,
+              "builder_fee_policy": "fee already includes builderFee; no second charge"
+            },
+            "unknown_reasons": [
+              "exact boundary valuations/positions absent",
+              "fills coverage not proven",
+              "flows coverage not proven",
+              "funding coverage not proven",
+              "other_income coverage not proven",
+              "shared collateral valuation model not verified",
+              "valuation_scope coverage not proven"
+            ],
+            "conflicting_duplicates": [],
+            "metrics": {
+              "economic_pnl": null,
+              "component_pnl": null,
+              "reconciliation_residual": null,
+              "modified_dietz_estimate": null,
+              "time_weighted_return": null,
+              "sampled_flow_adjusted_drawdown": null
+            },
+            "metric_requirements": {
+              "economic_pnl": "complete evidenced scope, exact boundary valuations and classified external flows",
+              "time_weighted_return": "positive capital and valuation at every external-flow timestamp",
+              "sampled_flow_adjusted_drawdown": "same TWR requirements; only observed checkpoints",
+              "modified_dietz_estimate": "positive weighted-capital denominator; explicitly approximate"
+            },
+            "limits": [
+              "reconciled_inputs does not mean residual is acceptable or performance is good",
+              "Modified Dietz is an approximation; sampled drawdown omits intra-snapshot extremes",
+              "valuation-scope completeness is adapter evidence, not assumed from endpoint availability",
+              "external hedges and off-platform accounts remain unknown"
+            ],
+            "input_fingerprint": "7994e1b78694a2622bed3fdb612aaae29bed475a0278b2fc371b101174019c60",
+            "origin_scope_ids": [
+              "perp:"
+            ],
+            "observed_not_complete": true
+          }
+        ],
+        "unassigned_events": [],
+        "capital": null,
+        "economic_pnl": null,
+        "economic_qualification": false,
+        "limits": [
+          "single address boundary; related subaccounts and vaults not merged",
+          "ledger flows counted once at address boundary, never once per DEX",
+          "currencies remain separate; no nominal stablecoin parity or invented FX",
+          "realized components omit missing events, spot cost basis, debt interest and latent change",
+          "zero observed sums are not zero true costs or zero economic PnL"
+        ]
+      }
+    },
+    {
+      "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "mode": "default",
+      "components": {
+        "version": "whole-address-observed-components-v1",
+        "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+        "period": {
+          "start_ms": 1791361708573,
+          "end_ms": 1791448108573,
+          "as_of_ms": 1791448108573
+        },
+        "currency_reports": [],
+        "unassigned_events": [],
+        "capital": null,
+        "economic_pnl": null,
+        "economic_qualification": false,
+        "limits": [
+          "single address boundary; related subaccounts and vaults not merged",
+          "ledger flows counted once at address boundary, never once per DEX",
+          "currencies remain separate; no nominal stablecoin parity or invented FX",
+          "realized components omit missing events, spot cost basis, debt interest and latent change",
+          "zero observed sums are not zero true costs or zero economic PnL"
+        ]
+      }
+    }
+  ],
+  "provider_calls": 0,
+  "economic_qualifications": 0,
+  "original_database_modified": false
+}

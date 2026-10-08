@@ -265,3 +265,33 @@ réponses déjà collectées ajoutent un contrôle exploitable, mais ne comblent
 le défaut d'horodatage économique spot, ni les lacunes de couverture des flux.
 Retour arrière : retirer module et champ rapport ; aucune migration ou service
 à rétablir, observations originales conservées.
+
+## Composants comptables à la frontière de l'adresse
+
+`whole_account_observed_components` est calculé automatiquement par report_account
+sur la même période que les rapports perp. Il rassemble fills/funding et flux
+normalisés de l'adresse, en conservant leurs scopes d'origine et leurs devises.
+Le ledger n'est pas affecté à chaque DEX : un dépôt de 100 observé une fois reste
+100 à la frontière du compte, même si plusieurs DEX partagent son collatéral.
+Les doublons identiques sont dédupliqués ; divergences financières restent unknown.
+
+Chaque devise garde un rapport distinct. Pas de somme USDH+USDC ni parité
+supposée pour les frais. Événement non dénommé conservé unassigned, disponibilité
+au cutoff et appartenance (start,end] requises. Les composants réalisés/frais/
+funding/flux sont des sommes **observées**, avec la couverture unknown du reducer.
+Zéro observé n'est jamais absence de coûts/principal véritable. Ni solde spot ni
+capitaux par DEX ne sont additionnés pour fabriquer une equity ; capital,
+PnL économique, rendement et drawdown restent inconnus en l'absence de
+valorisation complète et réconciliation. Spot cost basis, dette/intérêts, autres
+revenus et couvertures extérieures restent des lacunes explicites.
+
+account-cashflows-control-20261008.json : contrôle readonly de cinq derniers
+comptes inventoriés hors pilotes, quatre rapports de devise sur période explicite,
+zéro appel fournisseur et zéro qualification. Ce contrôle applique l'adaptateur
+réel, sans fixture financière, mais ne transforme pas composants incomplets en
+performance qualifiée. Tests : dépôt unique malgré plusieurs DEX, pages répétées,
+conflits, devises distinctes, frais étrangers non convertis et événements futurs.
+
+Retour arrière : retirer le module et le champ supplémentaire de report_account.
+Aucune migration/service/cadence, observations et anciens rapports préservés.
+Le modèle de valorisation account-wide et preuves de couverture restent à fournir.

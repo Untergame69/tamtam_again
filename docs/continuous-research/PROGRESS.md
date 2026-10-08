@@ -775,3 +775,13 @@ Tests comparent l'ancienne fonction exactement (temps égaux/gaps/disponibilité
 fenêtres/mixed events). Benchmark fixture 8000 quotes : 2,387→0,00597 s, sortie
 identique ; pas mesure production. Archive/replay séparés restent à contrôler.
 Aucun événement/payload/résultat réservé lu ni paramètre de pilote modifié.
+
+### Composants comptables account-wide — étape 6
+
+Adapter produit automatiquement sommes observées à frontière unique adresse,
+par devise : réalisé/frais/funding/flux, scopes d'origine conservés. Dépôt non
+répliqué par DEX partagé, événements dédupliqués/conflicts explicites, devises
+non fusionnées et FX absent pas supposé. Aucun capital/performance économique
+inféré de ces composants. Contrôle réel cinq comptes hors pilotes/quatre devises
+reportées, zéro qualification/API. 344 tests OK/30,601 s. Preuve account-cashflows-
+control, contrat/rollback ACCOUNTING-CONTRACT.md ; valorisation reste ouverte.

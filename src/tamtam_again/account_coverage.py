@@ -5,7 +5,7 @@ from __future__ import annotations
 def pagination_coverage(pages, *, start_ms, end_ms, as_of_ms):
     if not 0<=start_ms<end_ms<=as_of_ms:
         raise ValueError('Explicit available coverage interval required')
-    intervals=[];refs=[];incomplete=[]
+    intervals=[];refs=[];incomplete=[];end_proven=False
     for page in pages:
         if page['available_ms']>as_of_ms:continue
         left,right=page.get('start_ms'),page.get('end_ms')
@@ -21,11 +21,13 @@ def pagination_coverage(pages, *, start_ms, end_ms, as_of_ms):
             # timestamp. A succeeding page must cover that boundary.
             if type(prefix) is int and left<prefix<=right and prefix>start_ms:
                 intervals.append((max(start_ms,left),min(end_ms,prefix)))
+                end_proven=end_proven or left<=end_ms<prefix
         if status!='pagination_exhausted':
             incomplete.append({'evidence_ref':page['evidence_ref'],
                                'reason':page.get('pagination_status','unknown')})
             continue
         intervals.append((max(start_ms,left),min(end_ms,right)))
+        end_proven=end_proven or left<=end_ms<=right
     merged=[]
     for left,right in sorted(intervals):
         if merged and left<=merged[-1][1]:
@@ -36,10 +38,7 @@ def pagination_coverage(pages, *, start_ms, end_ms, as_of_ms):
         if left>cursor:gaps.append([cursor,left])
         cursor=max(cursor,right)
     if cursor<end_ms:gaps.append([cursor,end_ms])
-    elif not any(p.get('pagination_status')=='pagination_exhausted'
-                 and p.get('available_ms',as_of_ms+1)<=as_of_ms
-                 and type(p.get('start_ms')) is int and type(p.get('end_ms')) is int
-                 and p['start_ms']<=end_ms<=p['end_ms'] for p in pages):
+    elif not end_proven:
         gaps.append([end_ms,end_ms])
     return {'status':'unknown','pagination_status':'covered' if not gaps else 'gaps',
             'pagination_intervals_ms':merged,'pagination_gaps_ms':gaps,

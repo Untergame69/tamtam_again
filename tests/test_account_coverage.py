@@ -22,6 +22,12 @@ class CoverageTests(unittest.TestCase):
         result=self.report([page(0,500),page(400,1000,'page_budget_exhausted')])
         self.assertEqual(result['pagination_gaps_ms'],[[500,900]])
 
+    def test_full_page_prefix_beyond_requested_end_covers_its_boundary(self):
+        full={**page(0,1000,'page_budget_exhausted'),'covered_until_ms':950}
+        self.assertEqual(self.report([full])['pagination_status'],'covered')
+        full['covered_until_ms']=900
+        self.assertEqual(self.report([full])['pagination_gaps_ms'],[[900,900]])
+
     def test_unavailable_page_cannot_close_gap(self):
         result=self.report([page(0,500),page(500,1000,available=1001)])
         self.assertEqual(result['pagination_gaps_ms'],[[500,900]])

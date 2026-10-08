@@ -46,8 +46,59 @@ def observed_periods(store, network, address, *, as_of_ms, scope_id='perp:'):
               'coverage_status':'unknown'} for left,right in zip(usable,usable[1:])]
     return {'version':'adjacent-observed-valuations-v1','address':address,
             'scope_id':scope_id,'as_of_ms':as_of_ms,'periods':periods,
+            'valuation_boundaries':[{'event_ms':t,'evidence_ref':points[t]['evidence_ref'],
+                'available_ms':points[t]['available_ms']} for t in usable],
             'rejected_observations':rejected,
             'conflicting_timestamps':[t for t,v in points.items() if v['conflict']],
             'status':'periods_available' if periods else 'awaiting_two_timestamped_valuations',
             'limits':['periods differ across accounts; do not rank unaligned returns',
                       'observed boundaries do not prove event coverage or consolidated capital']}
+
+
+def validate_period_policy(policy):
+    fields={'version','policy_id','justification','target_duration_ms',
+            'start_tolerance_ms','max_end_age_ms'}
+    if (not isinstance(policy,dict) or set(policy)!=fields
+            or policy['version']!='observed-period-policy-v1'
+            or any(not isinstance(policy[k],str) or not policy[k].strip()
+                   for k in ('policy_id','justification'))):
+        raise ValueError('Explicit justified observed-period policy required')
+    for key in ('target_duration_ms','start_tolerance_ms','max_end_age_ms'):
+        if type(policy[key]) is not int or policy[key]<0:
+            raise ValueError('Explicit nonnegative period parameter required: '+key)
+    if policy['target_duration_ms']<1 or policy['start_tolerance_ms']>=policy['target_duration_ms']:
+        raise ValueError('Positive target duration and smaller boundary tolerance required')
+
+
+def select_observed_period(observed,policy):
+    """Choose exact observed boundaries by time only, before any PnL calculation."""
+    from .engine import fingerprint
+    validate_period_policy(policy)
+    points={p['event_ms']:p for p in observed['valuation_boundaries']}
+    result={'rule':'nearest-observed-duration-v1','policy':policy,
+        'policy_fingerprint':fingerprint(policy),'as_of_ms':observed['as_of_ms'],
+        'chosen_period':None,'interpolation_applied':False,
+        'conflicting_timestamps':observed['conflicting_timestamps'],
+        'limits':['time-only selection; no PnL or coverage-based fallback',
+                  'exact observed boundaries; individual event periods remain different',
+                  'duration similarity does not make returns comparable or prove completeness']}
+    if len(points)<2:
+        return {**result,'status':'awaiting_two_timestamped_valuations',
+            'next_action':'collect two coherent timestamped valuations; do not use receipt times as valuations'}
+    end=max(points)
+    if observed['as_of_ms']-end>policy['max_end_age_ms']:
+        return {**result,'status':'awaiting_recent_valuation','latest_event_ms':end,
+            'next_action':'collect a timestamped valuation within the policy end-age budget'}
+    target=end-policy['target_duration_ms']
+    candidates=[stamp for stamp in points if stamp<end and abs(stamp-target)<=policy['start_tolerance_ms']]
+    if not candidates:
+        return {**result,'status':'awaiting_duration_boundary','target_start_ms':target,
+            'latest_event_ms':end,'next_action':'accumulate timestamped valuations spanning the declared duration; do not substitute a shorter profitable interval'}
+    # Ties choose the earlier bound; never examine financial results.
+    start=min(candidates,key=lambda stamp:(abs(stamp-target),stamp))
+    chosen={'start_ms':start,'end_ms':end,'duration_ms':end-start,
+        'target_start_ms':target,'start_distance_ms':abs(start-target),
+        'boundary_evidence_refs':[points[start]['evidence_ref'],points[end]['evidence_ref']],
+        'available_ms':max(points[start]['available_ms'],points[end]['available_ms']),
+        'coverage_status':'unknown'}
+    return {**result,'status':'period_selected','chosen_period':chosen,'next_action':'reconcile the selected period without changing its boundaries after inspecting results'}

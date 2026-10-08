@@ -1,0 +1,8 @@
+{
+  "version": "observed-period-policy-v1",
+  "policy_id": "public-scope-six-hour-pilot-v1",
+  "justification": "Pilot descriptive six-hour scope reconciliation instead of the last polling interval; no profitability threshold or universal horizon. Fifteen-minute boundary tolerance accommodates REST cadence, and one-hour end age prevents presenting old observations as current. Exact event times remain explicit; no cross-account ranking.",
+  "target_duration_ms": 21600000,
+  "start_tolerance_ms": 900000,
+  "max_end_age_ms": 3600000
+}

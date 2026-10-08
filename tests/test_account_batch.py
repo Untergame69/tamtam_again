@@ -54,3 +54,25 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(adapter.call_count,2)
         self.assertEqual(result['public_scopes_measured'],2)
         self.assertEqual(result['economically_validated'],0)
+
+    def test_duration_wait_does_not_call_adapter_or_fallback_to_short_period(self):
+        from tamtam_again.account_batch import qualify_observed_population
+        import json
+        self.connection.row_factory=sqlite3.Row
+        self.connection.execute('alter table account_scope_reports add column payload_json text')
+        self.connection.execute('update account_scope_reports set payload_json=?',(json.dumps({'mode':'disabled'}),))
+        policy={'version':'observed-period-policy-v1','policy_id':'fixture','justification':'fixture only',
+            'target_duration_ms':600,'start_tolerance_ms':50,'max_end_age_ms':100}
+        observed={'periods':[{'start_ms':900,'end_ms':1000}],'as_of_ms':1000,
+            'conflicting_timestamps':[],'valuation_boundaries':[
+                {'event_ms':900,'available_ms':900,'evidence_ref':'r1'},
+                {'event_ms':1000,'available_ms':1000,'evidence_ref':'r2'}]}
+        with patch('tamtam_again.account_batch.protected_addresses',return_value=set()),patch(
+                'tamtam_again.account_periods.observed_periods',return_value=observed),patch(
+                'tamtam_again.account_batch.report_account') as adapter:
+            result=qualify_observed_population(self.store,'n',as_of_ms=1000,period_policy=policy)
+        adapter.assert_not_called()
+        self.assertEqual(result['accounts_considered'],3)
+        self.assertTrue(all(r['status']=='awaiting_duration_boundary' for r in result['accounts']))
+        self.assertEqual(result['public_scopes_measured'],0)
+        self.assertEqual(result['period_policy'],policy)

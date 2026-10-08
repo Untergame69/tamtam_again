@@ -31,14 +31,15 @@ def report_population(store, network, start_ms, end_ms, *, as_of_ms):
             'scope': 'population REST evidence; common period and cutoff; incomplete coverage remains unknown'}
 
 
-def qualify_observed_population(store,network,*,as_of_ms):
+def qualify_observed_population(store,network,*,as_of_ms,period_policy=None):
     """Apply the same latest-adjacent-period rule to every inventoried candidate.
 
     Selection is by availability and mode, never by measured PnL. Per-account
     periods are announced explicitly and must not be ranked as aligned returns.
     """
     import json
-    from .account_periods import observed_periods
+    from .account_periods import observed_periods,select_observed_period,validate_period_policy
+    if period_policy is not None:validate_period_policy(period_policy)
     if type(as_of_ms) is not int or as_of_ms<0:raise ValueError('Explicit decision cutoff required')
     blocked=protected_addresses(store);latest={}
     for r in store.connection.execute('select address,available_ms,payload_json from account_scope_reports '
@@ -54,9 +55,14 @@ def qualify_observed_population(store,network,*,as_of_ms):
                 reports.append({'address':address,'account_mode':mode,'status':periods['status'],
                     'period_selection':periods,'economic_validation':False})
                 continue
-            chosen=periods['periods'][-1]
+            selection=select_observed_period(periods,period_policy) if period_policy is not None else None
+            if selection is not None and selection['status']!='period_selected':
+                reports.append({'address':address,'account_mode':mode,'status':selection['status'],
+                    'period_selection':selection,'economic_validation':False})
+                continue
+            chosen=selection['chosen_period'] if selection is not None else periods['periods'][-1]
             report=report_account(store,network,address,chosen['start_ms'],chosen['end_ms'],as_of_ms=as_of_ms)
-            report['period_selection']={'rule':'latest-adjacent-observed-valuations-v1',**chosen}
+            report['period_selection']=selection if selection is not None else {'rule':'latest-adjacent-observed-valuations-v1',**chosen}
             reports.append(report)
             # Contrast cases remain sample descriptors, never a population cap.
             previous=representatives.get(mode)
@@ -65,7 +71,8 @@ def qualify_observed_population(store,network,*,as_of_ms):
         except (ValueError,TypeError,KeyError):
             failures.append({'address':address,'status':'evidence_error','next_action':'correct unsupported or malformed evidence; do not qualify'})
     return {'version':'observed-population-qualification-v1','network':network,'as_of_ms':as_of_ms,
-        'period_rule':'latest adjacent timestamped validator-perp valuations available at cutoff',
+        'period_rule':'latest adjacent timestamped validator-perp valuations available at cutoff' if period_policy is None else 'latest usable end and start closest to the declared target duration, using exact observed boundaries',
+        **({'period_policy':period_policy} if period_policy is not None else {}),
         'accounts':reports,'failed_accounts':failures,'contrast_cases':representatives,
         'accounts_considered':len(latest),
         'public_scopes_measured':sum(r.get('status')=='public_scope_measured' for r in reports),

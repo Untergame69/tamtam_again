@@ -473,3 +473,14 @@ Revue : comparer manifests/results SQLite, test_stale_collector_schema.py,
 rapport de durée r3-six-hour-public-scope-20261008.json et matrice
 SEVEN-HYPOTHESES-TRIAGE-20261008.md. Sources temporaires des deux mesures
 hachées dans les preuves ; données réservées non nécessaires à cette revue.
+
+
+### Complément de revue : détail des69 comptes au cutoff initial
+
+R3-SIX-HOUR-ALL-ACCOUNTS-20261008.json conserve les69 lignes du rapport
+original haché : bornes/durée ou absence, statut, périmètres, métriques/résidus
+connus ou null, couverture et motifs d’inconnu. Projection documentaire sans
+nouveau cutoff, calcul, collecte ou lecture de réserve. Les résultats restent
+14périodes sélectionnées et0périmètre mesuré. Ce détail rend les attentes de
+chaque compte consultables dans Git ; le rapport temporaire complet reste
+la source hachée, sans recopier les réponses brutes.

@@ -36,3 +36,46 @@ Le dépôt officiel recommande pour un non-validator 16 vCPU, 128 Go RAM et 500 
 6. Recherche/validation : paquets causaux autorisés depuis l'archive centrale ; mêmes moteurs et versions ; export temporel protégé.
 
 L'ingestion distribuée n'est pas encore implémentée. Avant dépense : mesurer au moins des cycles complets de rattrapage/incrémental, coûts de jobs par périmètre, rétention à l'activité réelle, croissance/pics et backlog ; comparer une charge identique chez un fournisseur avec budget explicite. Aucun achat, compte fournisseur, VPS ou port réseau créé pendant ce travail. Coût engagé : 0 nouvel abonnement.
+
+## Contrôle prolongé du 8 octobre
+
+`capacity-sustained-20261008.json` remplace les seules fenêtres de démarrage
+comme preuve de charge REST observée : 23,002 heures disponibles, 22 buckets
+horaires complets, 850,57 poids réservés/min en moyenne, p95 empirique 858,05,
+maximum 858,65. Les 22 buckets dépassent 720/min, budget opérationnel choisi
+avec réserve de reprise de 20 % sur le plafond local 900. Aucune extrapolation
+à un nombre soutenable de comptes ni intervalle de confiance indépendant.
+Les bords partiels sont exclus ; les heures inactives resteraient incluses.
+
+689 essais population inscrits : 688 terminés, un running à l'instant du
+contrôle ; maximum terminé 130,249 s. 32 slots actifs, intervalles courants
+3600 s, un slot non running dû depuis 0,357 s. Ce dernier état est ponctuel,
+pas un SLA historique. La fenêtre couvre plusieurs passages horaires mais
+pas encore une époque entière de rotation UTC ni une reprise après incident.
+Les phases backfill/incrémental/inventaire sont ventilées par heure. Les deux
+appels ciblés non classifiés restent visibles au lieu d'être ignorés.
+
+2739 mesures WS couvrent 82737 s ; pic de file 2595 messages, retard maximal
+flush 12,392 s. Ces maxima nécessitent un diagnostic de contexte avant toute
+promesse de latence. Les seuls deux samples ressources existants sont espacés
+de 59,342 s : ils ne mesurent **pas** les 23 heures ni les enfants IA. La
+capacité CPU/stockage soutenable reste à instrumenter sur cycles complets.
+
+Décision actuelle : maintenir le nombre de slots ; aucune augmentation de
+cadence/adresses n'est justifiée avec la marge de reprise retenue. Un autre
+budget de reprise doit être une décision explicite, pas un moyen de déclarer
+une capacité supérieure. Priorité : mesurer les besoins réels par endpoint et
+réduire les appels redondants sans altérer les périodes pilotes avant de payer
+une capacité externe. Ce contrôle n'engage aucune dépense ni modification de
+service et ne prouve aucune couverture comptable complète.
+
+Reproduire en lecture seule (aucune création/migration de base) :
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/sustained-capacity.py \
+  --telemetry data/tamtam.telemetry.sqlite3 --db data/tamtam.sqlite3 \
+  --hours 24 --output /tmp/capacity-sustained.json
+```
+
+Retour arrière : retirer le script et le reducer ; aucune table, configuration,
+ordonnanceur ou abonnement n'a été modifié. Conserver le contrôle daté.

@@ -1,0 +1,469 @@
+{
+  "version": "sustained-capacity-control-v1",
+  "since": 1791362974.4267864,
+  "until": 1791445780.398044,
+  "observed_hours": 23.001658682690728,
+  "requested_hours": 24,
+  "rest_windows": {
+    "complete_buckets": [
+      {
+        "start": 1791363600,
+        "end": 1791367200,
+        "attempts": 2371,
+        "reserved_weight": 51058,
+        "rate_limits": 0,
+        "wait_seconds": 5285.58161784726,
+        "response_bytes": 20360168,
+        "phases": {
+          "market_collection": 30650,
+          "account_inventory": 6688,
+          "legacy_account_collection_mixed": 9280,
+          "history_backfill": 4295,
+          "shared_metadata": 80,
+          "incremental_history": 65
+        },
+        "reserved_weight_per_minute": 850.9666666666667,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791367200,
+        "end": 1791370800,
+        "attempts": 2330,
+        "reserved_weight": 51030,
+        "rate_limits": 0,
+        "wait_seconds": 5484.775364758127,
+        "response_bytes": 21403833,
+        "phases": {
+          "market_collection": 30419,
+          "account_inventory": 4756,
+          "history_backfill": 6305,
+          "incremental_history": 230,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 850.5,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791370800,
+        "end": 1791374400,
+        "attempts": 2314,
+        "reserved_weight": 51055,
+        "rate_limits": 0,
+        "wait_seconds": 5531.983158732561,
+        "response_bytes": 22367536,
+        "phases": {
+          "market_collection": 30558,
+          "incremental_history": 4555,
+          "account_inventory": 4592,
+          "history_backfill": 2010,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40,
+          "unclassified": 140
+        },
+        "reserved_weight_per_minute": 850.9166666666666,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791374400,
+        "end": 1791378000,
+        "attempts": 2377,
+        "reserved_weight": 51052,
+        "rate_limits": 0,
+        "wait_seconds": 5228.111811358947,
+        "response_bytes": 14714125,
+        "phases": {
+          "market_collection": 31112,
+          "account_inventory": 5070,
+          "incremental_history": 5430,
+          "history_backfill": 120,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 850.8666666666667,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791378000,
+        "end": 1791381600,
+        "attempts": 2341,
+        "reserved_weight": 50911,
+        "rate_limits": 0,
+        "wait_seconds": 5452.439302613115,
+        "response_bytes": 17763938,
+        "phases": {
+          "account_inventory": 4770,
+          "incremental_history": 5910,
+          "market_collection": 30671,
+          "legacy_account_collection_mixed": 9520,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 848.5166666666667,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791381600,
+        "end": 1791385200,
+        "attempts": 2344,
+        "reserved_weight": 51122,
+        "rate_limits": 0,
+        "wait_seconds": 5447.2919760113,
+        "response_bytes": 15495435,
+        "phases": {
+          "market_collection": 30881,
+          "account_inventory": 4836,
+          "incremental_history": 5725,
+          "legacy_account_collection_mixed": 9640,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 852.0333333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791385200,
+        "end": 1791388800,
+        "attempts": 2349,
+        "reserved_weight": 50981,
+        "rate_limits": 0,
+        "wait_seconds": 5449.895005097496,
+        "response_bytes": 15280137,
+        "phases": {
+          "market_collection": 30671,
+          "account_inventory": 4840,
+          "incremental_history": 5910,
+          "legacy_account_collection_mixed": 9520,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 849.6833333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791388800,
+        "end": 1791392400,
+        "attempts": 2325,
+        "reserved_weight": 50385,
+        "rate_limits": 0,
+        "wait_seconds": 5387.148135441123,
+        "response_bytes": 14724072,
+        "phases": {
+          "market_collection": 30440,
+          "account_inventory": 4900,
+          "incremental_history": 5725,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 839.75,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791392400,
+        "end": 1791396000,
+        "attempts": 2347,
+        "reserved_weight": 50881,
+        "rate_limits": 0,
+        "wait_seconds": 5353.865432825463,
+        "response_bytes": 16501021,
+        "phases": {
+          "market_collection": 30755,
+          "account_inventory": 4776,
+          "incremental_history": 6150,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 848.0166666666667,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791396000,
+        "end": 1791399600,
+        "attempts": 2327,
+        "reserved_weight": 50359,
+        "rate_limits": 0,
+        "wait_seconds": 5370.511814366211,
+        "response_bytes": 14882355,
+        "phases": {
+          "market_collection": 30209,
+          "account_inventory": 4920,
+          "incremental_history": 5790,
+          "history_backfill": 120,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 839.3166666666667,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791399600,
+        "end": 1791403200,
+        "attempts": 2362,
+        "reserved_weight": 51008,
+        "rate_limits": 0,
+        "wait_seconds": 5363.280565993366,
+        "response_bytes": 15291107,
+        "phases": {
+          "market_collection": 30978,
+          "account_inventory": 4920,
+          "incremental_history": 5790,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40,
+          "history_backfill": 120
+        },
+        "reserved_weight_per_minute": 850.1333333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791403200,
+        "end": 1791406800,
+        "attempts": 2345,
+        "reserved_weight": 50531,
+        "rate_limits": 0,
+        "wait_seconds": 5375.488406843127,
+        "response_bytes": 14313636,
+        "phases": {
+          "market_collection": 30818,
+          "account_inventory": 4908,
+          "incremental_history": 5485,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 842.1833333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791406800,
+        "end": 1791410400,
+        "attempts": 2366,
+        "reserved_weight": 51087,
+        "rate_limits": 0,
+        "wait_seconds": 5431.555925367284,
+        "response_bytes": 14230043,
+        "phases": {
+          "market_collection": 30860,
+          "account_inventory": 4932,
+          "incremental_history": 5855,
+          "legacy_account_collection_mixed": 9400,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 851.45,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791410400,
+        "end": 1791414000,
+        "attempts": 2391,
+        "reserved_weight": 51236,
+        "rate_limits": 0,
+        "wait_seconds": 5416.757916478469,
+        "response_bytes": 12442728,
+        "phases": {
+          "market_collection": 31217,
+          "account_inventory": 5084,
+          "incremental_history": 5735,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 853.9333333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791414000,
+        "end": 1791417600,
+        "attempts": 2395,
+        "reserved_weight": 51519,
+        "rate_limits": 0,
+        "wait_seconds": 5371.590024958481,
+        "response_bytes": 12967149,
+        "phases": {
+          "market_collection": 31280,
+          "account_inventory": 5084,
+          "incremental_history": 5955,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 858.65,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791417600,
+        "end": 1791421200,
+        "attempts": 2311,
+        "reserved_weight": 51053,
+        "rate_limits": 0,
+        "wait_seconds": 5515.977406036574,
+        "response_bytes": 23024914,
+        "phases": {
+          "market_collection": 29957,
+          "incremental_history": 1760,
+          "account_inventory": 4756,
+          "history_backfill": 5380,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 850.8833333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791421200,
+        "end": 1791424800,
+        "attempts": 2350,
+        "reserved_weight": 51089,
+        "rate_limits": 0,
+        "wait_seconds": 5459.810553180985,
+        "response_bytes": 17891483,
+        "phases": {
+          "market_collection": 30125,
+          "account_inventory": 5084,
+          "incremental_history": 5360,
+          "history_backfill": 1320,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 851.4833333333333,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791424800,
+        "end": 1791428400,
+        "attempts": 2378,
+        "reserved_weight": 51170,
+        "rate_limits": 0,
+        "wait_seconds": 5404.418014320487,
+        "response_bytes": 12464326,
+        "phases": {
+          "market_collection": 30978,
+          "account_inventory": 5082,
+          "incremental_history": 5910,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 852.8333333333334,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791428400,
+        "end": 1791432000,
+        "attempts": 2375,
+        "reserved_weight": 51470,
+        "rate_limits": 0,
+        "wait_seconds": 5441.464847063995,
+        "response_bytes": 14485240,
+        "phases": {
+          "account_inventory": 4922,
+          "incremental_history": 6095,
+          "market_collection": 31133,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 857.8333333333334,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791432000,
+        "end": 1791435600,
+        "attempts": 2365,
+        "reserved_weight": 51483,
+        "rate_limits": 0,
+        "wait_seconds": 5511.57067774891,
+        "response_bytes": 18800028,
+        "phases": {
+          "market_collection": 30524,
+          "account_inventory": 5084,
+          "incremental_history": 6195,
+          "legacy_account_collection_mixed": 9640,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 858.05,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791435600,
+        "end": 1791439200,
+        "attempts": 2362,
+        "reserved_weight": 51094,
+        "rate_limits": 0,
+        "wait_seconds": 5506.162640303635,
+        "response_bytes": 15484918,
+        "phases": {
+          "incremental_history": 5910,
+          "market_collection": 30944,
+          "account_inventory": 4920,
+          "legacy_account_collection_mixed": 9280,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 851.5666666666667,
+        "exceeds_operational_budget": true
+      },
+      {
+        "start": 1791439200,
+        "end": 1791442800,
+        "attempts": 2374,
+        "reserved_weight": 51175,
+        "rate_limits": 0,
+        "wait_seconds": 5378.067695275036,
+        "response_bytes": 14440398,
+        "phases": {
+          "incremental_history": 6115,
+          "market_collection": 30776,
+          "account_inventory": 5084,
+          "legacy_account_collection_mixed": 9160,
+          "shared_metadata": 40
+        },
+        "reserved_weight_per_minute": 852.9166666666666,
+        "exceeds_operational_budget": true
+      }
+    ],
+    "complete_bucket_count": 22,
+    "excluded_partial_seconds": 3605.971257686615,
+    "mean_reserved_weight_per_minute": 850.5674242424243,
+    "p95_reserved_weight_per_minute": 858.05,
+    "maximum_reserved_weight_per_minute": 858.65,
+    "operational_budget_per_minute": 720.0,
+    "buckets_above_operational_budget": 22,
+    "limits": [
+      "idle complete buckets are included; missing instrumentation may resemble idle time",
+      "empirical quantiles, not confidence intervals or independent samples",
+      "request start assigns weight to a bucket; quota waiting can cross boundaries",
+      "weight reserved locally, not server billing; no extrapolated account capacity"
+    ]
+  },
+  "population_jobs": {
+    "attempts": 689,
+    "statuses": {
+      "complete": 688,
+      "running": 1
+    },
+    "maximum_completed_job_seconds": 130.249,
+    "active_slots": 32,
+    "running_slots": 1,
+    "overdue_nonrunning_slots": 1,
+    "maximum_nonrunning_due_lateness_seconds": 0.357044189453125,
+    "poll_intervals_seconds": [
+      3600
+    ]
+  },
+  "websocket": {
+    "measurement_windows": 2739,
+    "observed_seconds": 82737.36993619884,
+    "max_flush_lag_seconds": 12.39167833328247,
+    "queue_peak_messages": 2595
+  },
+  "resource_measurements": 2,
+  "resource_change": {
+    "elapsed_seconds": 59.34179067611694,
+    "same_database": true,
+    "logical_live_growth_bytes_per_second": 54873.97604451728,
+    "process_cpu_cores_used": 0.07246158147584637,
+    "same_process": true,
+    "extrapolation_status": "window_only_not_capacity_forecast"
+  },
+  "provider_calls": 0,
+  "archive_payloads_read": false,
+  "services_changed": false,
+  "limits": [
+    "job duration includes queue waits and processing; not isolated CPU cost",
+    "scheduler lateness is a current snapshot, not historical SLA",
+    "resource samples may omit child processes; no IA CPU allocation inferred",
+    "window may not cover a full allocation epoch or incident recovery",
+    "no claim that unknown history coverage or economic qualification became valid"
+  ]
+}

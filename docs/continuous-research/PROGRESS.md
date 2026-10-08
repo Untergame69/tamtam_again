@@ -682,3 +682,15 @@ sans inférer d'instant économique. Reducer de span distingue chevauchement loc
 et cohérence économique non prouvée. Contrôle réel metadata-only cinq comptes
 hors pilotes ; preuve acquisition-window-control-20261008.json. Pas de nouveau
 call/provider/collecte. Regroupement d'acquisition et valorisation restent à faire.
+
+### Capacité prolongée réelle — étapes 2/14
+
+Nouveau contrôle read-only REST/WS/metadata ordonnanceur : 23,002 h, 22 heures
+complètes, 688 essais population terminés/1 running, 32 slots. Moyenne REST
+850,57/min, p95 empirique 858,05, toutes les heures dépassent le budget 720/min
+avec reprise 20 %. Aucune expansion justifiée. Buckets inactifs inclus, bords
+partiels exclus, phases inconnues conservées ; pas de capacité déduite du quota.
+CPU reste mesuré seulement sur 59 s, pas sur la fenêtre entière ; pas de SLA ni
+preuve de reprise. Commande, limites et rollback CAPACITY-DECISION.md. Collecteur
+systemd contrôlé active/running ; oneshots inactive hors tick ne signifie pas
+arrêt des timers. Aucun changement service, budget ou données réservées.

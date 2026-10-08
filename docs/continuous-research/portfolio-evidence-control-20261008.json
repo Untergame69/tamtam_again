@@ -1,0 +1,1253 @@
+{
+  "as_of_ms": 1791446938059,
+  "requested_period": {
+    "start_ms": 1791360538059,
+    "end_ms": 1791443338059
+  },
+  "accounts": [
+    {
+      "address": "0xb83de012dba672c76a7dbbbf3e459cb59d7d6e36",
+      "evidence_ref": "raw_observations:11682364",
+      "available_ms": 1791446882164,
+      "windows": [
+        {
+          "window": "day",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791354000027,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791354000027,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "week",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 63,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790826000076,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 63,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790826000076,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "month",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 44,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788820800050,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 44,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788820800050,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "allTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 88,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1740610200204,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 88,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1740610200204,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpDay",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791354000027,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791354000027,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpWeek",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 63,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790826000076,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 63,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790826000076,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpMonth",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 44,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788820800050,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 44,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788820800050,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpAllTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 91,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1740610200204,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 91,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1740610200204,
+              "last_sample_ms": 1791446881775,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        }
+      ],
+      "economic_qualification": false,
+      "limits": [
+        "provider samples are not reconstructed accounting",
+        "no interpolation at requested boundaries",
+        "window names do not establish spot/HIP-3/debt/vault completeness for every account mode",
+        "reported PnL sign convention and net-flow semantics not independently reconciled",
+        "sampled curve cannot prove intraperiod drawdown or flow-adjusted return"
+      ],
+      "status": "reported_samples_only"
+    },
+    {
+      "address": "0xfa65f9270c06c4509e19cb67c868f0a5826f7770",
+      "evidence_ref": "raw_observations:11676835",
+      "available_ms": 1791446777428,
+      "windows": [
+        {
+          "window": "day",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791357840041,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791357840041,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "week",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 62,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831040045,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 62,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831040045,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "month",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 49,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788824640049,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 49,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788824640049,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "allTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 46,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1783545840055,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 46,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1783545840055,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpDay",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791357840041,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791357840041,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpWeek",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 65,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831040045,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 65,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831040045,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpMonth",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 65,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788824640049,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 65,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788824640049,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpAllTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 73,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1783545840055,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 73,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1783545840055,
+              "last_sample_ms": 1791446776893,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        }
+      ],
+      "economic_qualification": false,
+      "limits": [
+        "provider samples are not reconstructed accounting",
+        "no interpolation at requested boundaries",
+        "window names do not establish spot/HIP-3/debt/vault completeness for every account mode",
+        "reported PnL sign convention and net-flow semantics not independently reconciled",
+        "sampled curve cannot prove intraperiod drawdown or flow-adjusted return"
+      ],
+      "status": "reported_samples_only"
+    },
+    {
+      "address": "0xe3814a14b83c128b53da5e8b6101a2b43c494373",
+      "evidence_ref": "raw_observations:11671236",
+      "available_ms": 1791446684147,
+      "windows": [
+        {
+          "window": "day",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352920068,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352920068,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "week",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 64,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790827320039,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 64,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790827320039,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "month",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 46,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788823320063,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 46,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788823320063,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "allTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 108,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1735167120578,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 108,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1735167120578,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpDay",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352920068,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352920068,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpWeek",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 64,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790827320039,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 64,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790827320039,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpMonth",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 47,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788823320063,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 47,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788823320063,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpAllTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 114,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1735167120578,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 114,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1735167120578,
+              "last_sample_ms": 1791446683570,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        }
+      ],
+      "economic_qualification": false,
+      "limits": [
+        "provider samples are not reconstructed accounting",
+        "no interpolation at requested boundaries",
+        "window names do not establish spot/HIP-3/debt/vault completeness for every account mode",
+        "reported PnL sign convention and net-flow semantics not independently reconciled",
+        "sampled curve cannot prove intraperiod drawdown or flow-adjusted return"
+      ],
+      "status": "reported_samples_only"
+    },
+    {
+      "address": "0xcf16183d5c4b4aefc9f0a4cf1ebbc2c310c99fd2",
+      "evidence_ref": "raw_observations:11665203",
+      "available_ms": 1791446577008,
+      "windows": [
+        {
+          "window": "day",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 24,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791353760043,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 24,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791353760043,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "week",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 62,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831760035,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 62,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831760035,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "month",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 50,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788822960084,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 50,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788822960084,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "allTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 52,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1784150160041,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 52,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1784150160041,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpDay",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 24,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791353760043,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 24,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791353760043,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpWeek",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 63,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831760035,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 63,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790831760035,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpMonth",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 57,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788822960084,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 57,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788822960084,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpAllTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 59,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1784150160041,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 59,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1784150160041,
+              "last_sample_ms": 1791446576668,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        }
+      ],
+      "economic_qualification": false,
+      "limits": [
+        "provider samples are not reconstructed accounting",
+        "no interpolation at requested boundaries",
+        "window names do not establish spot/HIP-3/debt/vault completeness for every account mode",
+        "reported PnL sign convention and net-flow semantics not independently reconciled",
+        "sampled curve cannot prove intraperiod drawdown or flow-adjusted return"
+      ],
+      "status": "reported_samples_only"
+    },
+    {
+      "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+      "evidence_ref": "raw_observations:11658862",
+      "available_ms": 1791446471061,
+      "windows": [
+        {
+          "window": "day",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352320032,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352320032,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "week",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 59,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790841120036,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 59,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790841120036,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "month",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 45,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788825120076,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 45,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788825120076,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "allTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 44,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1770845520061,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 44,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1770845520061,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpDay",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352320032,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 14,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1791352320032,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpWeek",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 58,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790841120036,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 58,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1790841120036,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpMonth",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 46,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788825120076,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 46,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1788825120076,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        },
+        {
+          "window": "perpAllTime",
+          "status": "reported_samples",
+          "series": {
+            "accountValueHistory": {
+              "sample_count": 47,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1770845520061,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            },
+            "pnlHistory": {
+              "sample_count": 47,
+              "rejected_samples": 0,
+              "conflicting_times": [],
+              "first_sample_ms": 1770845520061,
+              "last_sample_ms": 1791446470465,
+              "requested_start_value": null,
+              "requested_end_value": null,
+              "reported_change": null,
+              "status": "requested_boundaries_unproven"
+            }
+          },
+          "quality_diagnostics": []
+        }
+      ],
+      "economic_qualification": false,
+      "limits": [
+        "provider samples are not reconstructed accounting",
+        "no interpolation at requested boundaries",
+        "window names do not establish spot/HIP-3/debt/vault completeness for every account mode",
+        "reported PnL sign convention and net-flow semantics not independently reconciled",
+        "sampled curve cannot prove intraperiod drawdown or flow-adjusted return"
+      ],
+      "status": "reported_samples_only"
+    }
+  ],
+  "selection": "five latest inventoried nonprotected accounts, tie by address; no performance selection",
+  "provider_calls": 0,
+  "economic_qualifications": 0,
+  "reserved_accounts_excluded_before_payload_read": true
+}

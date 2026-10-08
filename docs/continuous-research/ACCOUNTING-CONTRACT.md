@@ -232,3 +232,36 @@ supplémentaires request_json restent compatibles avec l'ancien code. Aucune tab
 ni migration destructive, aucun recalcul d'ancienne expérience ni restauration
 complète de base requis. Les workers oneshot suivants chargent le nouveau code ;
 aucun redémarrage du collecteur pilote nécessaire.
+
+## Courbes portfolio : contrôle distinct
+
+Vérification officielle du 8 octobre :
+[Portfolio graphs](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/portfolio-graphs)
+indique des valeurs échantillonnées aux dépôts/retraits et toutes les quinze
+minutes, déconseillées pour une comptabilité précise. Account value comprend
+notamment latent cross/isolated et vault balances. Le document ne certifie pas
+explicitement chaque périmètre spot/HIP-3/emprunt sous tous les modes. La formule
+textuelle de PnL/flux n'est pas traitée comme une réconciliation indépendante.
+[Modes](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes)
+confirme le caractère non significatif des capitaux par DEX en mode partagé.
+[Portfolio margin](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/portfolio-margin)
+décrit également emprunts/intérêts et sous-comptes séparés ; sommer les seules
+positions ou balances ne prouve pas une equity consolidée complète.
+
+L'adaptateur exporte désormais reported_portfolio_observations à part des
+valorisations reconstruites. Les fenêtres day/week/month/allTime et perp*
+ne sont jamais additionnées, fusionnées ou substituées à un capital prouvé.
+Le reducer valide timestamps économiques <= réception <= cutoff, montants finis,
+doublons conflictuels et champs attendus. Un changement de valeur rapportée
+n'est calculé qu'aux deux bornes exactes présentes, sans interpolation, et
+n'est jamais présenté comme un rendement corrigé des flux. Changement de PnL
+rapporté reste une mesure fournisseur dont la convention n'est pas réconciliée.
+Aucun drawdown continu ou qualification économique n'est inféré.
+
+Preuve portfolio-evidence-control-20261008.json : cinq derniers comptes inventoriés
+hors pilotes, sélection sur metadata uniquement puis dernière réponse portfolio
+population ; période explicite et diagnostics. Zéro appel fournisseur. Les
+réponses déjà collectées ajoutent un contrôle exploitable, mais ne comblent pas
+le défaut d'horodatage économique spot, ni les lacunes de couverture des flux.
+Retour arrière : retirer module et champ rapport ; aucune migration ou service
+à rétablir, observations originales conservées.

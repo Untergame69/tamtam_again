@@ -728,3 +728,12 @@ Pas de regroupement heuristique ni capital inféré de la réception. Timestamps
 Précondition de valorisation réelle livrée ; cette valorisation reste à implémenter.
 Pas d'endpoint/cadence/service/budget/schema modifié. Contrat et rollback dans
 ACCOUNTING-CONTRACT.md ; contrôle metadata-only account-acquisition-control.
+
+### Contrôle portfolio distinct — étape 6
+
+Sources officielles portfolio/modes/portfolio margin revérifiées Oct8. Courbes
+échantillonnées déconseillées pour comptabilité précise ; pas de substitut à
+valorisation complète. Adapter exporte séparément contrôles de séries, bornes
+exactes, conflits/points futurs, jamais rendement ou PnL reconstruit. Contrôle
+réel cinq derniers comptes hors pilotes, zéro API/qualification ; preuve
+portfolio-evidence-control-20261008.json. Valorisation consolidée reste ouverte.

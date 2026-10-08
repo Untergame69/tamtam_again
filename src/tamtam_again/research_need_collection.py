@@ -109,13 +109,15 @@ def tick_for_job(store,client,job,policy,*,clock_ms=None):
     return {'processed':processed,'wakes':wakes,'model_calls':0,'waiting':waiting}
 
 
-def export_wakes(store,network,address,*,as_of_ms):
+def export_wakes(store,network,address,*,as_of_ms,request_ids=None,research_origin=None):
     """Recheck authority and provenance before exporting the promised raw pages."""
     if not store.connection.execute("select 1 from sqlite_master where name='research_observation_wakes'").fetchone():return []
     from .storage import decode_observation_payload
     output=[]
     for row in store.connection.execute('select w.*,p.plan_id,p.plan_json from research_observation_wakes w join research_observation_plans p using(request_id) where w.available_ms<=? order by w.available_ms,w.request_id',(as_of_ms,)).fetchall():
+        if request_ids is not None and row['request_id'] not in request_ids:continue
         plan=json.loads(row['plan_json'])
+        if research_origin is not None and plan.get('research_origin')!=research_origin:continue
         if plan['network']!=network or plan['address'].lower()!=address.lower():continue
         evidence=json.loads(row['evidence_json'])
         if fingerprint(evidence)!=row['evidence_fingerprint']:raise ValueError('Wake evidence identity changed')

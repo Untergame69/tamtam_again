@@ -47,3 +47,28 @@ class PaperResearchTests(unittest.TestCase):
   d=json.loads(self.c.execute('select diagnostic_json from paper_adaptation_requests').fetchone()[0]);d.update(request_id='b',created_ms=201)
   self.c.execute('insert into paper_adaptation_requests values(?,?,?,?)',('b','s',201,json.dumps(d)));self.c.commit()
   self.assertEqual(seal(self.s,'b',self.policy,clock_ms=201)['status'],'budget_exhausted')
+
+ def test_legacy_migration_preserves_rows_indexes_and_initial_uniqueness(self):
+  from tamtam_again.paper_research import initialize
+  self.c.execute('create table paper_research_jobs(request_id text primary key,adaptation_request_id text not null unique,session_id text not null,created_ms integer not null,packet_json text not null,policy_json text not null,status text not null)')
+  old=('legacy','a','s',150,'{"original":true}','{}','interrupted')
+  self.c.execute('insert into paper_research_jobs values(?,?,?,?,?,?,?)',old)
+  self.c.execute('create index legacy_paper_status on paper_research_jobs(status)');self.c.commit()
+  initialize(self.s);self.c.commit();initialize(self.s);self.c.commit()
+  self.assertEqual(tuple(self.c.execute('select request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status from paper_research_jobs').fetchone()),old)
+  self.assertTrue(self.c.execute("select 1 from sqlite_master where name='legacy_paper_status'").fetchone())
+  with self.assertRaises(sqlite3.IntegrityError):
+   self.c.execute('insert into paper_research_jobs(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status) values(?,?,?,?,?,?,?)',('duplicate',*old[1:]))
+  self.c.rollback()
+  self.assertEqual(seal(self.s,'a',self.policy,clock_ms=200)['status'],'unchanged_no_inference')
+
+ def test_migration_refuses_unknown_foreign_key_without_deleting_legacy_rows(self):
+  from tamtam_again.paper_research import initialize
+  self.c.execute('create table paper_research_jobs(request_id text primary key,adaptation_request_id text not null unique,session_id text not null,created_ms integer not null,packet_json text not null,policy_json text not null,status text not null)')
+  old=('legacy','a','s',150,'{}','{}','interrupted')
+  self.c.execute('insert into paper_research_jobs values(?,?,?,?,?,?,?)',old)
+  self.c.execute('create table unknown_child(parent_id text references paper_research_jobs(request_id) on delete cascade)')
+  self.c.execute('insert into unknown_child values(?)',('legacy',));self.c.commit()
+  with self.assertRaisesRegex(ValueError,'foreign keys'):initialize(self.s)
+  self.assertEqual(self.c.execute('select count(*) from paper_research_jobs').fetchone()[0],1)
+  self.assertEqual(self.c.execute('select parent_id from unknown_child').fetchone()[0],'legacy')

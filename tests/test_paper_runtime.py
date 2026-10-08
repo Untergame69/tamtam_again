@@ -107,3 +107,90 @@ class PaperRuntimeTests(unittest.TestCase):
    again=tick(self.s,{**self.policy,'max_diagnoses_per_tick':2},experiment_policy=self.allocation,dispatch=False)
    self.assertEqual(again['sealed'][0]['status'],'sealed')
   self.assertEqual(self.s.connection.execute('select count(*) from paper_research_jobs').fetchone()[0],1)
+
+ def prepare_observation_wake(self):
+  from tamtam_again.population import enroll,claim
+  from tamtam_again.research_need_collection import tick_for_job
+  address='0x'+'2'*40
+  self.s.connection.execute('update validation_plans set address=?',(address,))
+  self.s.connection.execute('update paper_sessions set address=?',(address,));self.s.connection.commit()
+  parent=seal(self.s,'fixture-diagnostic',self.policy,clock_ms=40000)['request_id']
+  responses=self.responses(parent)
+  proposal=json.loads(responses[0][0]);h=proposal['hypothesis']
+  h['required_data']=['funding archive for the declared interval']
+  h['observation_requests']=[{'required_data_index':0,'source':'public_rest_history',
+   'endpoint':'userFunding','start_ms':1000,'end_ms':2000,'proof':'pagination_coverage',
+   'decision_use':'inspect whether archived funding can explain the diagnosis'}]
+  responses[0]=(json.dumps(proposal),responses[0][1])
+  with patch('tamtam_again.research_needs.now_ms',return_value=40001),patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',side_effect=responses):
+   initial=tick(self.s,self.policy,experiment_policy=self.allocation)
+  self.assertEqual(initial['routes'][0]['state'],'needs_data')
+  self.assertEqual(initial['plans'],[])
+  self.s.add_candidate('synthetic',address,'fixture')
+  policy=json.loads((Path(__file__).resolve().parents[1]/'config/population-policy.json').read_text());policy.pop('allocation')
+  enroll(self.s,'synthetic',policy,now_ms=40002);job=claim(self.s,'synthetic',now_ms=40002)
+  class Client:
+   def post_info(this,query):return []
+  needs={'version':'research-need-collection-v1','policy_id':'paper-fixture','justification':'fixture only',
+   'max_needs_per_job':1,'max_pages_per_need':1,'max_attempts_per_need':2}
+  with patch('tamtam_again.research_need_collection.now_ms',return_value=50000),patch('tamtam_again.storage.utc_now',return_value='1970-01-01T00:00:45.000+00:00'),patch('tamtam_again.population_history.utc_now',return_value='1970-01-01T00:00:44.000+00:00'):
+   collected=tick_for_job(self.s,Client(),job,needs,clock_ms=50000)
+  self.assertEqual(collected['wakes'],[parent])
+  return parent
+
+ def test_observation_wake_reanalyzes_paper_and_prepares_future_plan_once(self):
+  parent=self.prepare_observation_wake()
+  before=self.s.connection.execute('select packet_json,result_json from paper_research_jobs where request_id=?',(parent,)).fetchone()[:]
+  session=self.s.connection.execute('select state_json,status from paper_sessions').fetchone()[:]
+  with patch('tamtam_again.paper_scheduler.now_ms',return_value=60000),patch('tamtam_again.paper_research.now_ms',return_value=60000):
+   staged=tick(self.s,self.policy,experiment_policy=self.allocation,dispatch=False)
+  child=next(r['request_id'] for r in staged['sealed'] if r['status']=='sealed')
+  child_packet=json.loads(self.s.connection.execute('select packet_json from paper_research_jobs where request_id=?',(child,)).fetchone()[0])
+  self.assertEqual(child_packet['parent_research']['request_id'],parent)
+  self.assertEqual(child_packet['available_ms'],50000)
+  self.assertEqual(len(child_packet['source_periods']),2)
+  self.assertIn('completed_observation_requests',child_packet['observations'])
+  with patch('tamtam_again.population_runtime.now_ms',return_value=60001),patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',side_effect=self.responses(child)) as caller:
+   result=tick(self.s,self.policy,experiment_policy=self.allocation)
+  self.assertEqual(caller.call_count,2)
+  self.assertEqual(result['plans'][0]['status'],'registered')
+  self.assertEqual(self.s.connection.execute('select packet_json,result_json from paper_research_jobs where request_id=?',(parent,)).fetchone()[:],before)
+  self.assertEqual(self.s.connection.execute('select state_json,status from paper_sessions').fetchone()[:],session)
+  self.assertEqual(self.s.connection.execute('select count(*) from paper_research_jobs').fetchone()[0],2)
+  memory=json.loads(self.s.connection.execute('select item_json from research_knowledge where knowledge_id=(select knowledge_id from paper_research_memory where request_id=?)',(child,)).fetchone()[0])
+  self.assertEqual(memory['periods'],child_packet['source_periods'])
+  with patch('tamtam_again.population_runtime.call') as caller:
+   again=tick(self.s,self.policy,experiment_policy=self.allocation)
+  caller.assert_not_called();self.assertEqual(again['plans'],[])
+
+ def test_paper_wake_does_not_rearm_shared_budget(self):
+  parent=self.prepare_observation_wake()
+  result=seal(self.s,'fixture-diagnostic',{**self.policy,'max_requests':1},clock_ms=60000,parent_request_id=parent)
+  self.assertEqual(result['status'],'budget_exhausted')
+  self.assertEqual(self.s.connection.execute('select count(*) from paper_research_jobs').fetchone()[0],1)
+
+ def test_new_reserve_blocks_followup_before_archived_pages_or_parent_result(self):
+  parent=self.prepare_observation_wake()
+  plan=json.loads(self.s.connection.execute('select plan_json from validation_plans').fetchone()[0])
+  plan['comparison']={'start_ms':1500,'end_ms':3000}
+  self.s.connection.execute('update validation_plans set plan_json=?',(json.dumps(plan),));self.s.connection.commit()
+  queries=[];self.s.connection.set_trace_callback(queries.append)
+  with self.assertRaisesRegex(ValueError,'unavailable'):
+   seal(self.s,'fixture-diagnostic',self.policy,clock_ms=60000,parent_request_id=parent)
+  self.assertFalse(any('select response_json' in q or 'select packet_json,result_json' in q for q in queries))
+
+ def test_followup_waits_before_wake_availability_and_rejects_changed_parent(self):
+  parent=self.prepare_observation_wake()
+  waiting=seal(self.s,'fixture-diagnostic',self.policy,clock_ms=49999,parent_request_id=parent)
+  self.assertEqual(waiting['status'],'waiting')
+  self.s.connection.execute('update paper_research_jobs set packet_json=? where request_id=?',(json.dumps({'tampered':True}),parent));self.s.connection.commit()
+  with self.assertRaisesRegex(ValueError,'provenance'):
+   seal(self.s,'fixture-diagnostic',self.policy,clock_ms=60000,parent_request_id=parent)
+  self.assertEqual(self.s.connection.execute('select count(*) from paper_research_jobs').fetchone()[0],1)
+
+ def test_followup_rejects_population_wake_for_paper_parent(self):
+  parent=self.prepare_observation_wake()
+  row=self.s.connection.execute('select plan_id,plan_json from research_observation_plans where request_id=?',(parent,)).fetchone()
+  plan=json.loads(row['plan_json']);plan['research_origin']='population'
+  self.s.connection.execute('update research_observation_plans set plan_json=? where plan_id=?',(json.dumps(plan),row['plan_id']));self.s.connection.commit()
+  self.assertEqual(seal(self.s,'fixture-diagnostic',self.policy,clock_ms=60000,parent_request_id=parent)['status'],'waiting')

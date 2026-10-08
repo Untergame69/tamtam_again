@@ -121,7 +121,7 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
             'method':'whole authorized items in chronological order within remaining packet budget',
             'new_memory_alone_does_not_reopen_unchanged_population_input':True}
     from .research_need_collection import export_wakes
-    wakes=export_wakes(store,network,address,as_of_ms=as_of_ms)
+    wakes=export_wakes(store,network,address,as_of_ms=as_of_ms,research_origin='population')
     if wakes:
         packet['observations']['completed_observation_requests']=wakes
         packet['available_ms']=max(packet['available_ms'],max(w['available_ms'] for w in wakes))

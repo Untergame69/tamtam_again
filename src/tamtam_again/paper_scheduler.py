@@ -43,6 +43,21 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
             except ValueError as exc:result={'status':'blocked','adaptation_request_id':row[0],'error_type':type(exc).__name__}
             sealed.append(result)
             if result['status']=='budget_exhausted' or sum(r['status']=='sealed' for r in sealed)>=max_jobs:break
+    # Only a proven wake for a reviewed paper parent admits a new, separately
+    # counted job. The old diagnostic, result and route remain immutable.
+    if store.connection.execute("select 1 from sqlite_master where name='research_observation_wakes'").fetchone():
+        clock=now_ms()
+        pending=store.connection.execute('select j.request_id,j.adaptation_request_id from paper_research_jobs j '
+            'join research_observation_wakes w on w.request_id=j.request_id '
+            'left join paper_research_jobs child on child.parent_request_id=j.request_id '
+            "where j.status='hypothesis_recorded' and j.updated_ms<=? and w.available_ms<=? and child.request_id is null "
+            'order by w.available_ms,j.request_id limit ?',(clock,clock,inspected)).fetchall()
+        for parent in pending:
+            if sum(r['status']=='sealed' for r in sealed)>=max_jobs:break
+            try:result=seal(store,parent['adaptation_request_id'],policy,parent_request_id=parent['request_id'])
+            except ValueError as exc:result={'status':'blocked','parent_request_id':parent['request_id'],'error_type':type(exc).__name__}
+            sealed.append(result)
+            if result['status']=='budget_exhausted':break
     if dispatch:
         for row in store.connection.execute("select request_id from paper_research_jobs where status='sealed' order by created_ms,request_id").fetchall():
             try:processed.append(_run(store,row[0]))

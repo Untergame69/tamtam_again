@@ -22,7 +22,7 @@ def remember(store,request_id):
         'execution_limits':[h['execution_constraints'],h['risk'],
             'paper diagnosis describes our simulated executions, not leader profitability'],
         'open_questions':questions if isinstance(questions,list) else [questions],
-        'related_hypotheses':[packet['variant_id']],'status':'hypothesis'}
+        'related_hypotheses':[packet['variant_id'],*([packet['parent_research']['request_id']] if 'parent_research' in packet else [])],'status':'hypothesis'}
     saved=save_knowledge(store,item)
     store.connection.execute('insert or ignore into paper_research_memory values(?,?,?)',(request_id,saved['knowledge_id'],now_ms()))
     store.connection.commit();return {'status':'recorded',**saved}

@@ -72,6 +72,8 @@ def _prepare_plan(store,request_id,policy,profile,*,kind='population'):
                 'justification':policy['justification'],'created_ms':now}}
         if kind=='paper':
             plan['population_origin'].update(research_origin='paper',parent_session_id=packet['session_id'],parent_variant_id=packet['variant_id'])
+            if packet.get('parent_research'):
+                plan['population_origin']['parent_research_request_id']=packet['parent_research']['request_id']
         # Save the anchor before downstream commits. Recovery reuses it,
         # never silently moves an exposed or missed final into the future.
         store.connection.execute('insert into population_plan_drafts values(?,?,?,?)',

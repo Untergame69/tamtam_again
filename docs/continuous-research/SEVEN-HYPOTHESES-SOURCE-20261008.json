@@ -1,0 +1,312 @@
+{
+  "purpose": "Provenance for documentary triage; recorded claims are not independently verified observations",
+  "source": "population_research_jobs.result_json, terminal hypothesis_recorded only; no packet or reserved raw observations read",
+  "jobs": [
+    {
+      "request_id": "2291b04acf439159418ed17728f06666dc60e51bced96db75ef89a778de2b807",
+      "address": "0x50c5132bbbe67357b74e115f9374d8a683439547",
+      "status": "hypothesis_recorded",
+      "result_sha256": "12612eaa8443a1c1834b59ffeda5b37f570df07ebc2dde2601a2dc5045313738",
+      "markets": [
+        "HYPE",
+        "xyz:SP500"
+      ],
+      "mechanism_as_recorded": "Within each market, a controller chooses a signed inventory target for a directional episode, submits one or a few orders toward that target, and subsequently resets the target to zero. Multiple partial fills of those orders account for execution bursts. This is an independent-per-market working explanation, not a claim about the account's actual algorithm or market-selection signal.",
+      "evidence_refs": [
+        "account_scope_reports:3a879558e1f54d919224e7916cd12253",
+        "population_attempts:0d2abb2ca214480ca0b996ab0b4c1b75",
+        "raw_observations:7202604",
+        "raw_observations:7433050"
+      ],
+      "required_data_as_recorded": [
+        "Complete paginated fill history with verified coverage and continuity.",
+        "Order identities, original quantities, submission times, amendments, cancellations, remaining quantities, order types, and reduce-only flags.",
+        "Continuous inventory snapshots reconciled against executions, transfers, and liquidation events.",
+        "Received-time BBO and depth surrounding order submissions and fills, plus collection and transport timestamps.",
+        "Market-specific fees, funding observations, contract specifications, and reconciled collateral and margin state.",
+        "Additional complete episodes and non-episode periods to test target stability and competing explanations.",
+        "External hedge observations if a portfolio-level mechanism is to be assessed."
+      ],
+      "proposal_diagnostic": {
+        "finding": "A testable explanation is episodic directional inventory targeting implemented through a small number of parent orders, with partial fills producing many execution records.",
+        "limits": [
+          "These observations do not identify the trigger for a target change or establish that the account uses an autonomous algorithm.",
+          "Incomplete history and missing order lifecycles prevent confirmation of parent-order execution and inventory continuity.",
+          "Maker participation alone does not establish passive inventory management; both markets have predominantly taker fills.",
+          "No cross-market coordination, hedge relationship, arbitrage, profitability, or follower availability is established."
+        ],
+        "support": [
+          "HYPE has 89 observed fills across 8 observed orders; 6 orders have multiple fills. One candidate excursion contains 52 fills but only 3 orders.",
+          "xyz:SP500 has 10 observed fills across 3 observed orders; 2 orders have multiple fills.",
+          "The reported candidate flat-to-flat paths include both long and short HYPE excursions and a long xyz:SP500 excursion."
+        ]
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    },
+    {
+      "request_id": "cdef25f13f1757102b07ee7c44dabf4d68d59e515abc8c28ffd872eeaf95408e",
+      "address": "0x570eb8d438bd209b0deeee3d2e0a8559f5d57fb7",
+      "status": "hypothesis_recorded",
+      "result_sha256": "218c146e50e2bd9fb29d9ab795962ae1248bc49b94679690c4a7f7407c94cf35",
+      "markets": [
+        "ETH",
+        "HYPE",
+        "NEAR"
+      ],
+      "mechanism_as_recorded": "Inventory-sensitive passive execution around persistent, market-specific target positions. Conditional on market conditions, inventory above its target causes sell quotes to become more competitive or larger and buy quotes less competitive or smaller; inventory below target causes the opposite. This feedback can produce repeated small maker fills and multi-hour returns to nonzero baselines. The target positions and feedback rule are proposed latent variables, not supplied observations.",
+      "evidence_refs": [
+        "account_scope_reports:8782a4adbf624f2585ba48eb27280923",
+        "population_attempts:40033e9961eb4a81bacabba2264114ae",
+        "raw_observations:7202604",
+        "raw_observations:7433050"
+      ],
+      "required_data_as_recorded": [
+        "Complete, deduplicated fills with signed side, size, price, order identity, event timestamp, and collection timestamp; pagination and retention continuity checks",
+        "Timestamped submissions, amendments, cancellations, rejections, resting prices and sizes, including orders that never fill",
+        "Synchronized received bid/ask, depth, trades, and market-reference observations around order decisions",
+        "Continuous signed inventory reconciled to starting positions, fills, transfers, and account events",
+        "Target-position configuration if disclosed; otherwise a constrained, training-only target model",
+        "Reconciled cross-margin collateral, spot balances, cashflows, and any observable external hedge positions",
+        "Fees, rebates, funding payments, and independently observed later testing windows",
+        "Latency and queue observations sufficient to validate any subsequent passive execution model"
+      ],
+      "proposal_diagnostic": {
+        "availability": "The packet is available at 1791370703363 ms. Earlier REST event timestamps do not establish when a follower could have observed individual fills.",
+        "identification_limits": [
+          "Maker executions alone cannot distinguish inventory-sensitive quoting from directional limit-order scaling.",
+          "Excursions returning to a baseline do not establish that the baseline was an intended target.",
+          "History coverage, unfilled orders, cancellations, continuous inventory, and external hedges are unknown.",
+          "One-second multi-market groupings establish neither coordination nor arbitrage.",
+          "Performance is not evaluated, and the position snapshot is not a portfolio return series."
+        ],
+        "observed_basis": [
+          "The packet reports 539 fills across 14 markets, predominantly maker executions.",
+          "ETH has 48 maker fills out of 48; HYPE has 78 out of 80; NEAR has 65 out of 71.",
+          "Reported baseline-return excursions last 2,468,432 and 75,216,180 ms in ETH, 15,236,618 ms in HYPE, and 20,716,481 ms in NEAR."
+        ],
+        "status": "Testable behavioral explanation, not an identified strategy or executable recommendation."
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    },
+    {
+      "request_id": "eb8acf3b14a03ef185ecfb9dee93f840a74af01b92047d9cd8d384a0594620f7",
+      "address": "0x662823f3280bb67da4eec0c4195709caacf20215",
+      "status": "hypothesis_recorded",
+      "result_sha256": "c0a23f330d9f4cd0d581f5da98227ae3b02da18e6b4e064f3d951457b6180b37",
+      "markets": [
+        "ICP",
+        "TRUMP",
+        "POL"
+      ],
+      "mechanism_as_recorded": "Inventory-dependent passive order placement: deviations from a persistent per-market inventory target influence which side is quoted and how much is offered. Passive executions change inventory, after which orders are reduced, cancelled or shifted toward restoring the target. Test this explanation principally in ICP and TRUMP, with POL providing a partial-fill lifecycle case. Targets and their stability are hypotheses to estimate on separate calibration observations, not facts supplied by the packet.",
+      "evidence_refs": [
+        "population_attempts:6ffc8ee232c04d33817a645539bc3b3b",
+        "account_scope_reports:ac19ff4645ef48f99de3a99f001a9e19",
+        "raw_observations:7202604",
+        "raw_observations:7433050"
+      ],
+      "required_data_as_recorded": [
+        "Chronological signed fills with order identifiers, event times and actual collection availability times, plus pagination and retention continuity checks.",
+        "Order submissions, acknowledgements, amendments, cancellations, remaining quantities and unfilled orders.",
+        "Continuous pre-order and post-fill inventory, including starting positions and position-changing events.",
+        "Time-aligned received bid/ask, depth and trade flow for each tested market.",
+        "A queue-aware execution model or observed executions sufficient to test passive order behavior without fabricating queue position.",
+        "Reconciled collateral, account mode, spot exposure and any observable external hedges.",
+        "Fees and funding observations for accounting, without treating accounting as profitability proof.",
+        "Independent calibration and held-out observations, with frozen target estimation, controls and statistical rejection thresholds."
+      ],
+      "proposal_diagnostic": {
+        "limitations": [
+          "Order submissions, cancellations, unfilled quotes and continuous inventory are absent.",
+          "Inventory management, directional scaling and target rebalancing remain competing explanations.",
+          "No coordination, arbitrage, profitability or live follower availability is established."
+        ],
+        "observations": [
+          "The packet reports 19 fills across nine markets with unknown history completeness.",
+          "ICP and TRUMP each have two maker fills on two distinct orders, separated by approximately 62 and 56 minutes respectively.",
+          "POL has four maker fills attributed to one order over 2611 milliseconds; these are not four independent trading decisions.",
+          "Several other markets have similar-sized repeated fills separated by approximately 40–56 minutes, but the aggregate summaries do not establish chronological trade direction."
+        ],
+        "status": "Testable behavioral explanation, not an identified strategy or executable recommendation."
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    },
+    {
+      "request_id": "980d0533c53008c3d57b363b4fb8e2c592e0aae0accaeb5518044ee8a84d7340",
+      "address": "0x6cf4ddb4a311f0f6bbd2e9395bcd8c8b1511eb3d",
+      "status": "hypothesis_recorded",
+      "result_sha256": "a79bc776a5c9b9c2448bf1988ff0fb853bb24eaf15dac2b673421807facf1e9b",
+      "markets": [
+        "ETH",
+        "NEAR",
+        "ZEC"
+      ],
+      "mechanism_as_recorded": "Inventory-band rebalancing of a short basket: the account maintains independently specified negative exposure targets for ETH, NEAR and ZEC, uses aggressive orders when price-driven exposure drift crosses an outer tolerance band, and stops adjusting once exposure returns inside an inner band. This is a proposed explanation of persistent shorts and sparse taker adjustments, not a claim that the observed account uses it.",
+      "evidence_refs": [
+        "account_scope_reports:3615ca7bac9d4fdaa1efd6b9e83129d2",
+        "population_attempts:f65477a5d61f41c2ae17598ba270cd98",
+        "raw_observations:7202604",
+        "raw_observations:7433050"
+      ],
+      "required_data_as_recorded": [
+        "Coverage-verified chronological fills with side, size, execution price, fee, order identity and collection availability time.",
+        "Pre-fill and post-fill inventories, plus position snapshots during intervals without fills.",
+        "Received price and executable order-book observations before each candidate adjustment, with event and receipt timestamps.",
+        "Order submissions, cancellations and rejected or unfilled orders to separate decision rules from fill selection.",
+        "A calibration segment and untouched evaluation segment; fixed targets and bands or an independently observable target-update rule.",
+        "Reconciled account equity, collateral sharing, spot exposure, other perp exposures, external hedges and applicable liquidation rules.",
+        "Funding cash flows and complete position openings and closures."
+      ],
+      "proposal_diagnostic": {
+        "limitations": [
+          "Fill sides and ordered pre-fill inventories are not supplied, so additions versus reductions cannot be established from the summaries.",
+          "History coverage, external hedges and consolidated collateral remain unknown.",
+          "Simultaneous short positions do not establish coordination, arbitrage or a common signal.",
+          "Snapshot unrealized PnL is not evidence of strategy profitability."
+        ],
+        "observed_basis": [
+          "The snapshot reports short positions in ETH, NEAR and ZEC.",
+          "The observed history contains two ETH taker fills and one NEAR taker fill; no ZEC fill is supplied.",
+          "The ETH fills are separated by 712181 ms. No complete position episode or continuous exposure trajectory is supplied."
+        ],
+        "status": "Testable candidate, not an identified strategy or executable recommendation."
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    },
+    {
+      "request_id": "369de9ec64e32525795254c63f6848286f16c2bae07c6344311048a6c10e7bfc",
+      "address": "0x7bfee91193d9df2ac0bfe90191d40f23c773c060",
+      "status": "hypothesis_recorded",
+      "result_sha256": "0c75204f8184ebff828edefa43398e007097ad344e487e57c61b8cf8a8209bff",
+      "markets": [
+        "io:OAI"
+      ],
+      "mechanism_as_recorded": "Inventory-responsive passive quoting is a candidate explanation for io:OAI's repeated maker executions and alternating inventory excursions. Conditional on contemporaneous market conditions and a separately observable inventory target, increased inventory above target should cause subsequent order placement or amendment to favor selling over buying; inventory below target should cause the opposite response. This predicts order behavior, not merely eventual returns to flat. The target and response function are unknown and must not be inferred as zero solely from flat-to-flat episodes.",
+      "evidence_refs": [
+        "population_attempts:f98e984343084d229789a0f48d37a165",
+        "account_scope_reports:e781417a13d14cc4a5a0f6c281f2f685",
+        "raw_observations:7202604",
+        "raw_observations:7433050"
+      ],
+      "required_data_as_recorded": [
+        "Complete, identity-reconciled io:OAI fills with side, price, size, order ID, and event sequence",
+        "Order submissions, amendments, cancellations, acknowledgments, rejections, and unfilled orders",
+        "Continuous inventory reconciled to an initial position, including non-trade adjustments",
+        "Timestamped received bid/ask, depth, and relevant market-reference updates surrounding each order decision",
+        "An independently observable inventory target or sufficient separate calibration observations to estimate and freeze a target model before testing",
+        "Receipt timestamps and measured submission-to-acknowledgment and cancellation delays, distinct from REST response timing",
+        "Queue observations or a separately validated conservative passive-fill model",
+        "Account collateral, margin changes, funding, fees, and external hedge observations"
+      ],
+      "proposal_diagnostic": {
+        "compiler_status": "Neither supported signal family expresses inventory-responsive passive quoting. Do not substitute momentum, leader_delta, or fixed_pair_reference. No executable_spec or experiment_profile is supplied.",
+        "limitations": [
+          "Maker executions alone cannot distinguish inventory-responsive quoting from static resting orders, directional limit execution, or externally driven repricing.",
+          "History coverage, unfilled orders, cancellations, queue priority, and continuous inventory are missing.",
+          "One-second multi-market grouping does not establish coordination, hedging, or arbitrage.",
+          "REST event times are not follower availability times; the packet explicitly supplies no live follower signal.",
+          "Performance is not evaluated, and no profitability or promotion conclusion follows."
+        ],
+        "observed_basis": [
+          "io:OAI has 250 observed fills, all maker, across 139 observed orders; 36 orders have multiple fills.",
+          "io:OAI's sampled post-fill inventory spans -2.095 to 0.986 units, with three candidate flat-to-flat episodes alternating long, short, and long.",
+          "io:EWY and io:NBIS also have exclusively maker fills in the observed sample, but their baseline excursions do not establish whole-position holding periods."
+        ],
+        "status": "Descriptive, falsifiable mechanism; not identified or executable from this packet."
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    },
+    {
+      "request_id": "61393b387a1b9160aaed618c82a9b70ae4968931ef33b190eb00095afcc4b86b",
+      "address": "0x878079c5f38051884f1b1d8fc2a61f328a6dae82",
+      "status": "hypothesis_recorded",
+      "result_sha256": "a2ae311690940e69a722c53f1cb20a838e9d10e67bf534d858e1e8c4600346b5",
+      "markets": [
+        "CAKE"
+      ],
+      "mechanism_as_recorded": "Candidate explanation: CAKE passive order placement, amendments or cancellations depend on existing inventory relative to an account inventory objective. If this mechanism operates repeatedly, order-side exposure and quote changes should respond systematically to inventory deviations after controlling for contemporaneous market conditions. The inventory objective and response function are unknown; the single observed maker fill does not establish either.",
+      "evidence_refs": [
+        "population_attempts:f1e0d70f394b4e539ed02098398c6af6",
+        "account_scope_reports:d22193f887ca40878abac94b39eed335",
+        "raw_observations:7202604",
+        "raw_observations:7433050"
+      ],
+      "required_data_as_recorded": [
+        "Coverage-verified CAKE execution history with side, position effect and reconciled pre/post-fill inventory",
+        "Timestamped submissions, acknowledgments, amendments, cancellations and unfilled orders",
+        "Synchronized executable bid/ask and depth observations around order decisions",
+        "Inventory objectives or independent observations sufficient to distinguish inventory response from changing directional targets",
+        "Repeated observations across different inventory states and comparable market conditions",
+        "Receipt timestamps for each public observation, separate from exchange event times",
+        "Measured order and cancellation delays; an execution_delay_reference in sealed system_measurements if measured_reference latency is used",
+        "Explicit execution, sizing, cost and risk parameters before any executable specification"
+      ],
+      "proposal_diagnostic": {
+        "compiler_status": "The candidate is not momentum, leader_delta or fixed_pair_reference. It must remain descriptive rather than being rewritten to fit an engine.",
+        "finding": "Inventory-dependent passive order management in CAKE is a falsifiable candidate, not an identified mechanism. The packet contains one CAKE maker fill of 113.4 units and a post-fill position of -100.9 units, but no order lifecycle or continuous inventory history.",
+        "identification_limits": [
+          "A maker fill alone cannot distinguish inventory management from execution of a discretionary directional trade.",
+          "The WLFI taker fill and broad long/short inventory snapshot do not establish a hedge relationship, coordination or arbitrage.",
+          "There are no observed completed episodes from which to infer exits or holding horizons.",
+          "REST event timestamps are not follower signal availability, and live_follower_signal is false.",
+          "No profitability or reproducibility conclusion is supported."
+        ],
+        "status": "descriptive_only"
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    },
+    {
+      "request_id": "85dac04caa5251051ecabd4dc242e7def2f1480e49db927a36078b42483654f2",
+      "address": "0xfc27136e42af1732ddc9ce2605ea9bff1b959d9d",
+      "status": "hypothesis_recorded",
+      "result_sha256": "0fb485b36538b4d3a0239be84516ed6ae0255900b02df44b0b7d883518fbbe62",
+      "markets": [
+        "xyz:BRENTOIL",
+        "xyz:CL"
+      ],
+      "mechanism_as_recorded": "Candidate: the account adjusts opposing xyz:BRENTOIL and xyz:CL exposures partly in response to differences in expected funding cash flows, rather than holding both legs solely for independent directional reasons. The falsifiable prediction is that changes in relative signed exposure respond systematically to funding incentives known before those changes, after accounting for price moves and existing inventory. The snapshot motivates this question but does not demonstrate the response.",
+      "evidence_refs": [
+        "account_scope_reports:712549bb54674653a409163db2952b46",
+        "raw_observations:7202604",
+        "raw_observations:7633747"
+      ],
+      "required_data_as_recorded": [
+        "Continuity-checked fills and orders, including cancellations, identities, event times and collection availability times",
+        "Repeated reconciled inventory snapshots spanning openings, adjustments and closures",
+        "Timestamped realized and prospective funding rates, funding settlements, sign conventions and deployer-specific parameters for both instruments",
+        "Market-specific oracle and contract-reference documentation; ticker names alone do not establish comparability",
+        "Received bid/ask and depth histories, alongside mark and oracle histories",
+        "Actual fees and execution outcomes, with separately measured execution delays",
+        "A preregistered response model, controls, sample requirements and statistical rejection threshold"
+      ],
+      "proposal_diagnostic": {
+        "basis": [
+          "The inventory snapshot reports a long xyz:BRENTOIL position and a short xyz:CL position, with different reported position values.",
+          "Both instrument descriptions report hourly funding referenced to oracle-price notional, but deployer-specific funding parameters are not supplied.",
+          "Opposing inventory permits a funding-sensitive relative-exposure hypothesis, but does not establish a paired trade, coordination, arbitrage or a common valuation reference."
+        ],
+        "evidence_refs": [
+          "account_scope_reports:712549bb54674653a409163db2952b46",
+          "raw_observations:7202604",
+          "raw_observations:7633747"
+        ],
+        "limitations": [
+          "The activity summary reports one unique fill, while the current-pass behavior profile contains zero accepted fills and one rejected row. No usable execution sequence is exported.",
+          "Cumulative funding fields are historical accounting observations, not contemporaneous funding rates or expected carry.",
+          "Inventory simultaneity does not establish simultaneous entry, deliberate hedging or a stable hedge ratio.",
+          "Performance, reproducibility, external hedges and consolidated collateral are unresolved."
+        ],
+        "request_id": "85dac04caa5251051ecabd4dc242e7def2f1480e49db927a36078b42483654f2",
+        "status": "Descriptive mechanism candidate; neither identified account behavior nor executable specification."
+      },
+      "profitability_proven": false,
+      "promotion_authorized": false
+    }
+  ]
+}

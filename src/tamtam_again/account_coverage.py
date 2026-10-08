@@ -14,7 +14,14 @@ def pagination_coverage(pages, *, start_ms, end_ms, as_of_ms):
             continue
         if right<start_ms or left>end_ms:continue
         refs.append(page['evidence_ref'])
-        if page.get('pagination_status')!='pagination_exhausted':
+        status=page.get('pagination_status')
+        if status=='page_budget_exhausted':
+            prefix=page.get('covered_until_ms')
+            # A full page proves only the prefix before its inclusive last
+            # timestamp. A succeeding page must cover that boundary.
+            if type(prefix) is int and left<prefix<=right and prefix>start_ms:
+                intervals.append((max(start_ms,left),min(end_ms,prefix)))
+        if status!='pagination_exhausted':
             incomplete.append({'evidence_ref':page['evidence_ref'],
                                'reason':page.get('pagination_status','unknown')})
             continue
@@ -29,6 +36,11 @@ def pagination_coverage(pages, *, start_ms, end_ms, as_of_ms):
         if left>cursor:gaps.append([cursor,left])
         cursor=max(cursor,right)
     if cursor<end_ms:gaps.append([cursor,end_ms])
+    elif not any(p.get('pagination_status')=='pagination_exhausted'
+                 and p.get('available_ms',as_of_ms+1)<=as_of_ms
+                 and type(p.get('start_ms')) is int and type(p.get('end_ms')) is int
+                 and p['start_ms']<=end_ms<=p['end_ms'] for p in pages):
+        gaps.append([end_ms,end_ms])
     return {'status':'unknown','pagination_status':'covered' if not gaps else 'gaps',
             'pagination_intervals_ms':merged,'pagination_gaps_ms':gaps,
             'evidence_refs':sorted(set(refs)),'incomplete_pages':incomplete,

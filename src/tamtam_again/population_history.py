@@ -73,9 +73,10 @@ def collect_history(store: Store, client: Any, job: dict[str, Any], endpoint: st
         else:
             status = 'page_budget_exhausted'
         request_meta = {**query, 'transport': 'rest', 'phase': phase,
-                        'history_version': 2, 'page_number': page_number,
+                        'history_version': 3, 'page_number': page_number,
                         'coverage_status': 'pagination_only_retention_unknown',
-                        'pagination_status': status}
+                        'pagination_status': status,
+                        'covered_until_ms': next_cursor if status in ('pagination_exhausted', 'page_budget_exhausted') else None}
         store.save_observation(network=job['network'], source='hyperliquid-population-rest-v1',
             entity_type='account', entity_id=address, endpoint=endpoint, payload=rows,
             request_payload=request_meta, requested_at=requested, window_start_ms=cursor,

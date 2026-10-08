@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from tamtam_again.storage import Store
+from tamtam_again.account_coverage import pagination_coverage
+from tamtam_again.account_adapter import millis
 from tamtam_again.population import enroll, claim
 from tamtam_again.population_history import collect_history
 
@@ -83,3 +85,34 @@ class PopulationHistoryTests(unittest.TestCase):
   client=MeasuredClient()
   with self.assertRaises(RuntimeError):collect_history(self.s,client,self.job,'userFunding',2000)
   self.assertEqual(client.task,'population-rest-overview')
+
+ def coverage(self):
+  pages=[]
+  for r in self.s.connection.execute('select * from raw_observations'):
+   q=json.loads(r['request_json'])
+   pages.append({'start_ms':r['window_start_ms'],'end_ms':r['window_end_ms'],
+    'available_ms':millis(r['observed_at']),'pagination_status':q['pagination_status'],
+    'covered_until_ms':q.get('covered_until_ms'),'evidence_ref':str(r['observation_id'])})
+  return pagination_coverage(pages,start_ms=1000,end_ms=2000,as_of_ms=9999999999999)
+ def test_multi_page_coverage_and_missing_prefix(self):
+  first=[{'time':1200+i,'tid':i} for i in range(500)]
+  collect_history(self.s,Client([first,[first[-1],{'time':1900}]]),self.job,'userFunding',2000)
+  self.assertEqual(self.coverage()['pagination_status'],'covered')
+  self.assertFalse(self.coverage()['retention_proven'])
+  self.s.connection.execute('delete from raw_observations where observation_id=1')
+  self.assertEqual(self.coverage()['pagination_gaps_ms'],[[1000,1699]])
+ def test_recovery_after_interruption_closes_prefix(self):
+  first=[{'time':1200+i,'tid':i} for i in range(500)]
+  with self.assertRaises(RuntimeError):
+   collect_history(self.s,Client([first,RuntimeError('crash')]),self.job,'userFunding',2000)
+  self.assertEqual(self.coverage()['pagination_gaps_ms'],[[1699,2000]])
+  collect_history(self.s,Client([[first[-1]]]),self.job,'userFunding',2000)
+  self.assertEqual(self.coverage()['pagination_status'],'covered')
+ def test_split_jobs_and_saturated_endpoint_boundary(self):
+  self.job['policy']={**POLICY,'history_max_pages_per_endpoint':1}
+  collect_history(self.s,Client([[{'time':2000,'tid':i} for i in range(500)]]),self.job,'userFunding',2000)
+  self.assertEqual(self.coverage()['pagination_gaps_ms'],[[2000,2000]])
+  collect_history(self.s,Client([[{'time':2000,'tid':i} for i in range(500)]]),self.job,'userFunding',2000)
+  self.assertEqual(self.coverage()['pagination_gaps_ms'],[[2000,2000]])
+  collect_history(self.s,Client([[]]),self.job,'userFunding',2000)
+  self.assertEqual(self.coverage()['pagination_status'],'covered')

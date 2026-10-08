@@ -106,6 +106,11 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         pages=[{'start_ms':r['window_start_ms'],'end_ms':r['window_end_ms'],
                 'available_ms':millis(r['observed_at']),
                 'pagination_status':q.get('pagination_status','unknown'),
+                'covered_until_ms':q.get('covered_until_ms',
+                    max((x['time'] for x in p),default=None)
+                    if isinstance(p,list) and p and all(isinstance(x,dict) and type(x.get('time')) is int
+                        and r['window_start_ms'] is not None and r['window_end_ms'] is not None
+                        and r['window_start_ms']<=x['time']<=r['window_end_ms'] for x in p) else None),
                 'evidence_ref':'raw_observations:'+str(r['observation_id'])}
                for r,p,q in records if r['endpoint']==endpoint]
         history_coverage[endpoint]=pagination_coverage(pages,start_ms=start_ms,

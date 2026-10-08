@@ -1,0 +1,709 @@
+{
+  "schema_version": 1,
+  "network": "hyperliquid-mainnet",
+  "as_of_ms": 1791448476514,
+  "period": {
+    "start_ms": 1791362076514,
+    "end_ms": 1791448476514
+  },
+  "accounts_inventoried": 69,
+  "accounts_reported": 69,
+  "excluded_accounts": [],
+  "failed_accounts": [],
+  "economically_validated": 0,
+  "synthetic": false,
+  "scope": "population REST evidence; common period and cutoff; incomplete coverage remains unknown",
+  "account_statuses": [
+    {
+      "address": "0x012ed994df76022637f79ff9e209d7d44a4d1c8e",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x0675bfaf9faffe3343c08402200d7c75d0fd79e1",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x1bd2d89e4b9a2d373e89d74c8cc02d1562fa9626",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x1cb0057083ffd5339222002d46ec78cac1a3aef8",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x21e1a010405fefb61d62e4141d9c3b2e916d35af",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x2607a3909cee65aa8205ca26f7db2d9244389577",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x2618f54fee88adf9bf840a1bb722be286fbd0f15",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x26486d7f6591003f4b7712cca97e333df4715b81",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x28585d97f7d77b7a269c9513a98ca316421d8749",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x31bf570216cf65ae2ea612361f7f5d4072d42d97",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x330f0bdeae3514c11fb2e1b6d18ab7939f04a8fb",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x40aa93c0f6073a9210cf294dc3e3814a7abced07",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x47537fa2f845603bac02cb03c719bdc8c7eeb224",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x4a20b9496610941053858bd0b7e92493f44c3c26",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x4ad5ffac22c04a18ab3d8658682f71ab71d89a1c",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x4d20a11dcb667b338936c3e84d74ae3bcf284504",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x50c5132bbbe67357b74e115f9374d8a683439547",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x570eb8d438bd209b0deeee3d2e0a8559f5d57fb7",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x58c09b7c574f1b1459968818477074dc1810eb90",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x5b4de68d586678c9ddb21d7a655fbf61957cbba2",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x617e4a9e3da6d7669e8451a27009e618215c39d0",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x61ceef212ff4a86933c69fb6aca2fe35d8f2a62b",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x662823f3280bb67da4eec0c4195709caacf20215",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x6adbdaae3f9fa8761b83aef4aeb0bf1352a451be",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x6cf4ddb4a311f0f6bbd2e9395bcd8c8b1511eb3d",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x764d42da0d23457bc6da50fb8ab1aebc3e635000",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x7bfee91193d9df2ac0bfe90191d40f23c773c060",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x7eac6c34afc4f218729c5a714134e11280cc1abf",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x7fb0ef87b69de2b7d05282e427a1188fa55293eb",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x878079c5f38051884f1b1d8fc2a61f328a6dae82",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x88560b720239179d7f3f9e49ca934a4861593d7f",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x8ba36dc70901abd54c0b375bd3f73dd1e1109dcf",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x8cbed8837fb511a89373dbde2373c773722ceea7",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x8cdcb10fd5dda93f5110c4e5acaa09858892bd13",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x8fec806c9e94ff7ab2af3d7e4875c2381413f98e",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0x99be668b46cba8798cff97e2013c30ba74ae9cad",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xa32f7b6a9e4afe01a6fd2a08894e3aa9a4622102",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xa9573153547af5ac1520bd8f43132043ea8a9683",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xb637b71f66ad0cc79d35f80c3a0377e4957098fe",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xb83de012dba672c76a7dbbbf3e459cb59d7d6e36",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xba535b96d0cf05ca6e609ce704a192739019bc61",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xba5d9cc840745aeeeeedac5712e32f13ab8ea352",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xbfc79c444c41a74516bf31237ebf586a231480b4",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xcf16183d5c4b4aefc9f0a4cf1ebbc2c310c99fd2",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xd80da302010a415586d92532a00a9544cfde70be",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xdcd49713b5aa0752b603086df1ad27bc9da5f8d9",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xdf954bbe619273a56e0cfa90dad8382195dc7d72",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xe3814a14b83c128b53da5e8b6101a2b43c494373",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xe38461ceb8ebd1013eb954c6bb5b73c34eda8a32",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xe7d96b5fdab3dcb6ab5cb8b14b291e03a8ac496b",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xe867fbdad3291530e41530301ecb77693850c78e",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xea4fc1ae43d644b35e6874c32c49516ccb21df32",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xed33c96ae3b0b06382e3fd3354fc9e40e7a9e56c",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xf02d16a272a842f8bac1d9a9e773aba1933454c6",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xf288825240c8b3a614c26f0f98fd1eeefbec6ca0",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xf662cba3a7b1146f0d995fecc9db88c0eda9fdae",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xfa65f9270c06c4509e19cb67c868f0a5826f7770",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xfc27136e42af1732ddc9ce2605ea9bff1b959d9d",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    },
+    {
+      "address": "0xfdfe0924c6f065a8efcfc769b2a318882a2670df",
+      "status": "unknown",
+      "economic_validation": false,
+      "next_actions": [
+        "establish full period funding/ledger coverage and unsupported mechanism semantics",
+        "verify account-mode collateral valuation and dex currencies",
+        "establish comparable boundary valuations and priced spot balances"
+      ]
+    }
+  ],
+  "control": "real read-only population batch; no provider calls; no reserved payload access"
+}

@@ -785,3 +785,13 @@ non fusionnées et FX absent pas supposé. Aucun capital/performance économique
 inféré de ces composants. Contrôle réel cinq comptes hors pilotes/quatre devises
 reportées, zéro qualification/API. 344 tests OK/30,601 s. Preuve account-cashflows-
 control, contrat/rollback ACCOUNTING-CONTRACT.md ; valorisation reste ouverte.
+
+### Rapport comptable population à cutoff commun — 8 octobre
+
+Parcours batch corrigé : SQLite read-only, réseau/cutoff sur les inventaires,
+déduplication des adresses, exclusion des pilotes avant l'adaptateur et échecs
+individuels explicites. Comptage des verdicts réels au lieu d'un zéro codé en dur.
+Cela applique le diagnostic à toute la population inventoriée disponible ;
+valorisation consolidée, couverture et adaptation IA restent des écarts ouverts.
+Contrôle réel daté : account-batch-control-20261008.json. Les composants observés
+par devise livrés dans 1b4ee65 ne constituent toujours pas un rendement complet.

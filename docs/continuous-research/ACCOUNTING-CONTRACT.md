@@ -295,3 +295,23 @@ conflits, devises distinctes, frais étrangers non convertis et événements fut
 Retour arrière : retirer le module et le champ supplémentaire de report_account.
 Aucune migration/service/cadence, observations et anciens rapports préservés.
 Le modèle de valorisation account-wide et preuves de couverture restent à fournir.
+
+## Rapport population sur une période commune
+
+`PYTHONPATH=src .venv/bin/python scripts/population-accounting-report.py --db data/tamtam.sqlite3 --start-ms START --end-ms END --as-of-ms CUTOFF --output /tmp/population-accounting.json`
+
+La commande ouvre SQLite en lecture seule, sans migration Store. Le registre est
+filtré par réseau et disponibilité au cutoff ; les adresses sont dédupliquées.
+Les comptes réservés sont exclus avant l'appel à l'adaptateur et restent visibles
+comme exclusions. Une erreur de forme d'une preuve produit un échec explicite par
+compte, sans interrompre les autres ni devenir une qualification. Les erreurs SQL
+restent fatales. Le compteur de validations suit les verdicts booléens de
+l'adaptateur ; il ne remplace aucun critère comptable. Une période commune ne
+prouve pas que chaque compte possède ses bornes ou une couverture complète.
+
+Le champ `whole_account_observed_components` regroupe les événements observés
+par adresse et devise, conservant leurs scopes d'origine. Un dépôt n'est pas
+répliqué par DEX ; aucune conversion implicite ni equity consolidée n'est déduite.
+
+Retour arrière : restaurer uniquement le script précédent et retirer
+`account_batch.py`. Aucun schéma, service ou historique n'est modifié.

@@ -1,0 +1,174 @@
+{
+  "synthetic": true,
+  "real_strategy_validated": false,
+  "real_model_calls": 0,
+  "real_provider_calls": 0,
+  "original_database_touched": false,
+  "report": {
+    "version": "registered-procedure-report-v1",
+    "procedure_id": "ace5e91facc4b74ed02e5833a9e54fba4afb76266b9394f24c62c28c4ceda7ef",
+    "as_of_ms": 50000,
+    "status": "registered_model_inputs_evaluated",
+    "comparisons": {
+      "fixed": {
+        "version": "recorded-procedure-replay-v1",
+        "status": "evaluated_inputs",
+        "adaptive_net_after_research_and_change_costs": "5.357480152",
+        "fixed_net": "14.714960304",
+        "cash_net": "0",
+        "observed_research_cost": "2",
+        "observed_change_cost": "0",
+        "capital_continuity_status": "verified_supplied_boundaries",
+        "trading_capital": {
+          "adaptive": "10007.357480152",
+          "fixed": "10014.714960304"
+        },
+        "procedure_wealth_after_external_research_and_change_costs": "10005.357480152",
+        "wait_periods": 1,
+        "research_attempts": 1,
+        "ledger": [
+          {
+            "start_ms": 30000,
+            "end_ms": 40000,
+            "decision_ms": 28000,
+            "selected_variant_id": null,
+            "considered_variant_ids": [
+              "adaptive:967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8"
+            ],
+            "changed": false,
+            "net_pnl_observed": "0",
+            "evidence_refs": [
+              "synthetic:wait-decision",
+              "procedure_choices:ace5e91facc4b74ed02e5833a9e54fba4afb76266b9394f24c62c28c4ceda7ef:0"
+            ]
+          },
+          {
+            "start_ms": 40000,
+            "end_ms": 50000,
+            "decision_ms": 39000,
+            "selected_variant_id": "adaptive:967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8",
+            "considered_variant_ids": [
+              "adaptive:967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8"
+            ],
+            "changed": true,
+            "net_pnl_observed": "7.357480152",
+            "evidence_refs": [
+              "synthetic:new-observation",
+              "procedure_choices:ace5e91facc4b74ed02e5833a9e54fba4afb76266b9394f24c62c28c4ceda7ef:1"
+            ]
+          }
+        ],
+        "unknown_reasons": [],
+        "input_fingerprint": "fbf952977a6464f1aa055dc473a534d0b145492dc273be9a37795b9f47cdbd77",
+        "limits": [
+          "flat positions required at period boundaries; open-position switching unsupported",
+          "input evidence must be independently verified by archive adapter",
+          "evaluation of supplied choices, no proof of statistical advantage"
+        ],
+        "input_trace_fingerprint": "fbf952977a6464f1aa055dc473a534d0b145492dc273be9a37795b9f47cdbd77"
+      },
+      "cash": {
+        "version": "recorded-procedure-replay-v1",
+        "status": "evaluated_inputs",
+        "adaptive_net_after_research_and_change_costs": "5.357480152",
+        "fixed_net": "0",
+        "cash_net": "0",
+        "observed_research_cost": "2",
+        "observed_change_cost": "0",
+        "capital_continuity_status": "verified_supplied_boundaries",
+        "trading_capital": {
+          "adaptive": "10007.357480152",
+          "fixed": "10000"
+        },
+        "procedure_wealth_after_external_research_and_change_costs": "10005.357480152",
+        "wait_periods": 1,
+        "research_attempts": 1,
+        "ledger": [
+          {
+            "start_ms": 30000,
+            "end_ms": 40000,
+            "decision_ms": 28000,
+            "selected_variant_id": null,
+            "considered_variant_ids": [
+              "adaptive:967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8"
+            ],
+            "changed": false,
+            "net_pnl_observed": "0",
+            "evidence_refs": [
+              "synthetic:wait-decision",
+              "procedure_choices:ace5e91facc4b74ed02e5833a9e54fba4afb76266b9394f24c62c28c4ceda7ef:0"
+            ]
+          },
+          {
+            "start_ms": 40000,
+            "end_ms": 50000,
+            "decision_ms": 39000,
+            "selected_variant_id": "adaptive:967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8",
+            "considered_variant_ids": [
+              "adaptive:967c6f7da6d5972b9d525656c3467efd5d0a0090351a60807c717680a45bede8"
+            ],
+            "changed": true,
+            "net_pnl_observed": "7.357480152",
+            "evidence_refs": [
+              "synthetic:new-observation",
+              "procedure_choices:ace5e91facc4b74ed02e5833a9e54fba4afb76266b9394f24c62c28c4ceda7ef:1"
+            ]
+          }
+        ],
+        "unknown_reasons": [],
+        "input_fingerprint": "cc95a1054efeeba627cba355981803271607d84693046d5ef26518149a523d56",
+        "limits": [
+          "flat positions required at period boundaries; open-position switching unsupported",
+          "input evidence must be independently verified by archive adapter",
+          "evaluation of supplied choices, no proof of statistical advantage"
+        ],
+        "input_trace_fingerprint": "cc95a1054efeeba627cba355981803271607d84693046d5ef26518149a523d56"
+      }
+    },
+    "costs": {
+      "version": "registered-provider-costs-v1",
+      "network": "synthetic",
+      "address": "fixture-only",
+      "start_ms": 27000,
+      "end_ms": 50000,
+      "as_of_ms": 50000,
+      "attribution": "all research registered in this half-open period, regardless of outcome",
+      "attempts": [
+        {
+          "id": "population_research:failed-fixture",
+          "available_ms": 35000,
+          "cost_available_ms": 36000,
+          "cost": "2",
+          "reserved_cost_usd": "4",
+          "status": "reject",
+          "evidence_ref": "population_research:failed-fixture"
+        }
+      ],
+      "known_provider_cost_usd": "2",
+      "total_provider_cost_usd": "2",
+      "observed_reservations_usd": "4",
+      "unknown_cost_attempts": [],
+      "status": "registry_provider_costs_observed",
+      "limits": [
+        "reservations are not provider invoices and are never substituted for missing costs",
+        "provider included=0 does not mean no tokens, compute or subscription usage",
+        "scope covers these two registries, not external calls, hosting or total infrastructure expense",
+        "latest mutable cost state cannot reconstruct intermediate historical settlement events"
+      ],
+      "fingerprint": "c206ad771b862bd512f3a509a92eb9e4cabfea5248dcf5d0b63976d9304f5ceb"
+    },
+    "synthetic_observations": true,
+    "limits": [
+      "registry provider expenses attributed by account and registration window, not total infrastructure expense",
+      "reference costs not included; separately researched controls require their own procedure report",
+      "nominal USD/USDC convention, no executed currency conversion",
+      "declared knowledge/cohort proofs require independent review; no statistical advantage established"
+    ]
+  },
+  "restart_reproducible": true,
+  "missing_cost_propagated": true,
+  "limits": [
+    "scripted events and decisions, not economic evidence",
+    "no live scheduler or matching-cohort qualification demonstrated by this recipe"
+  ]
+}

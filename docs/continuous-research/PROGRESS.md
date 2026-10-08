@@ -632,3 +632,12 @@ non activées par le scheduler réel. Test coexistence ordinary/reference, rejeu
 avant début et refus après début. Contrôle réel Oct8 : collectors actif,
 8 plans/3 variantes/0 paper, 8 requêtes IA (7 hypothèses/1 suspendue), tranche
 non augmentée. Aucun contrat/session réelle créé ; état metadata-only archivé.
+
+### Recette comparative de procédure — étape 12
+
+Base temporaire dédiée, N1 synthétique ordinaire, contrat prospectif, attente
+puis règle, référence fixe à capital continu/cash, coût d'essai rejeté, replay
+après reconnect exact et coût absent propagé. La meilleure référence scriptée
+ne remplace pas le choix initial après coup. Pas de provider/IA/archive réel.
+Recette exécutée et preuve procedure-comparative-recipe-20261008.json ; limites
+remplacement actif/cohorte qualifiée/automatisation live restent explicites.

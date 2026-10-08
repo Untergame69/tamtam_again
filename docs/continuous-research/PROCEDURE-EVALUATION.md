@@ -260,3 +260,21 @@ conserver cash, positions et historique. Une référence suspendue ou un lien
 précédent manquant refuse le passage : aucun redémarrage avec capital initial
 ne remplace une période échouée. Le lien de la période suivante reste inscrit
 avant cette période. Les tests couvrent cette continuation sans nouvelle session.
+
+## Recette comparative de deux périodes
+
+`PYTHONPATH=src .venv/bin/python scripts/procedure-comparative-recipe.py --output
+/tmp/procedure-recipe` crée toujours une base temporaire neuve ; aucune option db.
+N1 synthétique avec gates ordinaires, contrat prospectif, attente en première
+période puis règle figée, référence fixe continue et cash. Sessions distinctes,
+bornes exactes plates et frais du moteur ; un essai rejeté coûte 2 nominalement
+à la procédure. La règle fixe gagne davantage sur les événements scriptés :
+la recette conserve le choix enregistré au lieu d'adopter ce gagnant après coup.
+
+Reconnecter SQLite reproduit exactement le rapport ; supprimer le coût connu
+sur la fixture rend le net inconnu. Aucun modèle/fournisseur réel, archive réelle,
+cohorte réelle ou ordre réel. Les horloges sont simulées explicitement ; ni la
+rentabilité ni une adaptation autonome en direct ne sont établies. La recette
+n'exerce pas encore le remplacement d'une règle active ni une cohorte témoin
+qualifiée ; leurs tests ciblés ne remplacent pas une recette complète de politique.
+Preuve JSON procedure-comparative-recipe-20261008.json, entièrement synthétique.

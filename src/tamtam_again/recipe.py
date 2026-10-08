@@ -56,7 +56,9 @@ def run_recipe(output: Path) -> dict[str,Any]:
             plan = create_plan(store,synthetic_plan())
             variant = register_variant(store,plan["plan_id"],synthetic_spec())
             stages = [evaluate(store,variant["variant_id"],stage,synthetic_events(synthetic_plan()[stage]["start_ms"]),provenance="synthetic") for stage in ("exploration","comparison","final")]
-            session = start_paper(store,variant["variant_id"],synthetic_recipe=True)
+            from unittest.mock import patch
+            with patch('tamtam_again.paper.now_ms',return_value=30000):
+                session = start_paper(store,variant["variant_id"],synthetic_recipe=True)
             events = synthetic_events(30000)
             half = len(events)//2
             synthetic_recipe_tick(store,session["session_id"],events[:half])

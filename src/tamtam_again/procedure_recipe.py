@@ -47,8 +47,10 @@ def run_recipe(output):
                 reference=start_reference(store,identity,0,'fixed',synthetic_recipe=True)['session_id']
             def timer(t):return {'id':'timer:'+str(t),'kind':'timer','received_ms':t,'event_ms':t}
             def feed(session,stamp,events):
-                with patch('tamtam_again.paper.now_ms',return_value=stamp):return synthetic_recipe_tick(store,session,events)
-            feed(reference,30000,[timer(30000)])
+                events=events+[{'id':'heartbeat:'+str(stamp),'kind':'heartbeat','session':'fixture-session','received_ms':stamp,'event_ms':stamp}]
+                events=sorted(events,key=lambda e:e['received_ms'])
+                with patch('tamtam_again.paper.now_ms',return_value=stamp):return synthetic_recipe_tick(store,session,events,clock_ms=stamp)
+            feed(reference,30000,synthetic_events(29900)[:2]+[timer(30000)])
             store.connection.execute('create table population_research_jobs(request_id text,network text,address text,created_ms integer,updated_ms integer,status text,actual_cost_usd text,reserved_cost_usd text)')
             store.connection.execute("insert into population_research_jobs values('failed-fixture','synthetic','fixture-only',35000,36000,'reject','2','4')");store.connection.commit()
             with patch('tamtam_again.procedure_registry.now_ms',return_value=39000),patch('tamtam_again.procedure_references.now_ms',return_value=39000),patch('tamtam_again.paper.now_ms',return_value=39000):
@@ -59,7 +61,7 @@ def run_recipe(output):
                 continued=start_reference(store,identity,1,'fixed',synthetic_recipe=True)['session_id']
                 if continued!=reference:raise ValueError('Fixed reference capital reset')
             feed(reference,40000,synthetic_events(31000)+[timer(40000)])
-            feed(adaptive,40000,[timer(40000)])
+            feed(adaptive,40000,synthetic_events(39900)[:2]+[timer(40000)])
             for stage in ('comparison','final'):
                 r=evaluate(store,replacement_variant,stage,synthetic_events(replacement_plan[stage]['start_ms']),provenance='synthetic')
                 if r['status']!='passed' or r['promotable']:raise ValueError('Replacement synthetic N1 gates failed')

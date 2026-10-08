@@ -243,6 +243,32 @@ def retire_paper(store: Store, session_id: str, *, reason: str) -> dict[str,Any]
     return {'session_id':session_id,'status':'retired','ledger_preserved':True}
 
 
+def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms):
+    """Caller owns transaction; identical safety decisions for live and fixture feeds."""
+    healthy=state['healthy_at_ms']
+    if clock_ms-session['started_ms']>plan['budget']['max_duration_ms']:
+        state['diagnostics'].append('paper_duration_budget_exhausted')
+    if healthy is None or clock_ms-healthy>spec['execution']['heartbeat_timeout_ms']:
+        state['diagnostics'].append('missing_live_heartbeat')
+    observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+    if 'paper_monitoring' in plan:
+        from .paper_monitor import diagnose
+        state['diagnostics'].extend(diagnose(plan['paper_monitoring'],observed_metrics))
+        observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+    status='suspended' if state['diagnostics'] else 'active'
+    if status=='suspended':
+        store.connection.execute('insert into paper_suspensions values(?,?,?)',
+            (session['session_id'],clock_ms,canonical(state['diagnostics'])))
+    store.connection.execute('UPDATE paper_sessions SET state_json=?,status=?,last_observation_id=?,updated_at=? WHERE session_id=?',
+        (canonical(state),status,cursor,utc_now(),session['session_id']))
+    snapshot_ms=max(clock_ms,state['last_ms'])
+    paper_evidence.record(store,session['session_id'],snapshot_ms,cursor,state,observed_metrics)
+    if status=='suspended':
+        from .paper_adaptation import record
+        record(store,session['session_id'],clock_ms=snapshot_ms)
+    return status,observed_metrics
+
+
 def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
     session = store.connection.execute("SELECT * FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
     if not session or session["status"] != "active":
@@ -267,26 +293,7 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
             reduce_event(state,spec,event)
         clock_ms = now_ms()
         reduce_event(state,spec,{"id":f"n2-timer:{clock_ms}","kind":"timer","received_ms":clock_ms,"event_ms":clock_ms})
-        healthy = state["healthy_at_ms"]
-        if now_ms() - session["started_ms"] > plan["budget"]["max_duration_ms"]:
-            state["diagnostics"].append("paper_duration_budget_exhausted")
-        if healthy is None or now_ms()-healthy > spec["execution"]["heartbeat_timeout_ms"]:
-            state["diagnostics"].append("missing_live_heartbeat")
-        if 'paper_monitoring' in plan:
-            from .paper_monitor import diagnose
-            state['diagnostics'].extend(diagnose(plan['paper_monitoring'],
-                metrics(state,spec,plan['criteria']['block_ms'])))
-        status = "suspended" if state["diagnostics"] else "active"
-        if status == "suspended":
-            store.connection.execute('insert into paper_suspensions values(?,?,?)',
-                (session_id,now_ms(),canonical(state['diagnostics'])))
-        store.connection.execute("UPDATE paper_sessions SET state_json=?,status=?,last_observation_id=?,updated_at=? WHERE session_id=?",(canonical(state),status,cursor,utc_now(),session_id))
-        observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
-        snapshot_ms=max(now_ms(),state['last_ms'])
-        paper_evidence.record(store,session_id,snapshot_ms,cursor,state,observed_metrics)
-        if status == 'suspended':
-            from .paper_adaptation import record as record_adaptation
-            record_adaptation(store,session_id,clock_ms=max(now_ms(),snapshot_ms))
+        status,observed_metrics = _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms)
         store.connection.commit()
     except Exception:
         store.connection.rollback()
@@ -296,7 +303,7 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
     return {"session_id":session_id,"status":status,"processed_events":len(events),"metrics":observed_metrics}
 
 
-def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,Any]]) -> dict[str,Any]:
+def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,Any]], *, clock_ms: int | None = None) -> dict[str,Any]:
     """Exercise persistent N2 state with fixture events in a synthetic session.
 
     Not exposed as a real feed: this function explicitly rejects real variants.
@@ -308,6 +315,8 @@ def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,A
     if not row["synthetic"]:
         raise ValueError("Fixture feed forbidden for real variants")
     paper_evidence.initialize(store)
+    store.connection.execute('create table if not exists paper_suspensions '
+        '(session_id text primary key,suspended_ms integer not null,diagnostics_json text not null)')
     store.connection.commit()
     store.connection.execute("BEGIN IMMEDIATE")
     try:
@@ -317,11 +326,13 @@ def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,A
         state = json.loads(session["state_json"])
         for event in events:
             reduce_event(state,spec,event)
-        store.connection.execute("UPDATE paper_sessions SET state_json=?,updated_at=? WHERE session_id=?",(canonical(state),utc_now(),session_id))
-        observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
-        paper_evidence.record(store,session_id,max(now_ms(),state['last_ms']),session['last_observation_id'],state,observed_metrics)
+        tick_ms=state['last_ms'] if clock_ms is None else clock_ms
+        if type(tick_ms) is not int or tick_ms<state['last_ms']:
+            raise ValueError('Fixture clock must follow all available events')
+        reduce_event(state,spec,{'id':f'n2-timer:{tick_ms}','kind':'timer','received_ms':tick_ms,'event_ms':tick_ms})
+        status,observed_metrics=_persist_monitored_tick(store,session,state,spec,plan,session['last_observation_id'],tick_ms)
         store.connection.commit()
     except Exception:
         store.connection.rollback()
         raise
-    return {"synthetic":True,"session_id":session_id,"metrics":observed_metrics}
+    return {"synthetic":True,"session_id":session_id,"status":status,"metrics":observed_metrics}

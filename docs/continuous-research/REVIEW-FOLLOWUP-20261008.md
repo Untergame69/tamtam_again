@@ -125,3 +125,13 @@ R1/R2 corrigés avec tests de non-régression. R3 fournit des mesures économiqu
 Retour arrière : retirer `--paper-policy config/paper-research-policy.json` du service puis `systemctl --user daemon-reload` ; copie préalable `/tmp/tamtam-again-population-research.before-paper-worker.service`. Conserver les tables additives, essais, coûts, preuves, fenêtres et mémoires ; ne jamais restaurer un budget en supprimant les jobs.
 
 Le second lancement du service recherche a réussi : `Result=success`, `ExecMainStatus=0`. Le collecteur demeure actif. Cette reprise réussie ne résout pas la cause des conflits SQLite ni les échecs du job de découverte.
+
+## R4 — suppression du contournement de surveillance dans les fixtures
+
+Le tick réel et le tick synthétique utilisent maintenant la même fonction transactionnelle de surveillance, suspension, snapshot et diagnostic. La recette peut produire une demande après perte ou interruption à partir des seuls événements ; elle n'a plus besoin d'insérer cette décision. L'horloge synthétique est explicite et ne peut précéder les événements disponibles. La recette élémentaire démarre désormais sa session à son horloge simulée, sans snapshot rétrospectif.
+
+Quatre tests ciblés vérifient : interruption produisant le diagnostic, événements de perte produisant une demande de recherche, rollback atomique sur incident pendant le diagnostic puis reprise, refus d'une horloge précédant les événements. La fixture comparative existante a été corrigée pour fournir connexion, quote et heartbeats pendant les périodes d'attente : elle était auparavant tolérée sans surveillance. Ses décisions restent scriptées et ne prouvent pas le parcours autonome intégral.
+
+Aucun service, budget ni donnée de production modifié dans ce lot. Le collecteur principal reste actif. Retour arrière : revenir au commit précédent pour ces fonctions et fixtures ; conserver tous les diagnostics et snapshots déjà produits. R4 reste partiel jusqu'à la recette complète et au réveil des besoins exécutables.
+
+Vérification fraîche : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q` : **407 tests OK en 36,633 s**. Aucune stratégie réelle qualifiée par ces fixtures.

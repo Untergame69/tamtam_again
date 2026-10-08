@@ -1,0 +1,46 @@
+{
+  "as_of_ms": 1791445359274,
+  "economic_timestamps_inferred": false,
+  "scope": "same five nonprotected accounts as prior risk control; timestamp columns only, no payloads",
+  "provider_calls": 0,
+  "accounts": [
+    {
+      "address": "0x28585d97f7d77b7a269c9513a98ca316421d8749",
+      "snapshots": 1,
+      "ordered_local_windows": 1,
+      "min_local_duration_ms": 2760,
+      "max_local_duration_ms": 2760
+    },
+    {
+      "address": "0x26486d7f6591003f4b7712cca97e333df4715b81",
+      "snapshots": 1,
+      "ordered_local_windows": 1,
+      "min_local_duration_ms": 2733,
+      "max_local_duration_ms": 2733
+    },
+    {
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "snapshots": 1,
+      "ordered_local_windows": 1,
+      "min_local_duration_ms": 2760,
+      "max_local_duration_ms": 2760
+    },
+    {
+      "address": "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "snapshots": 9,
+      "ordered_local_windows": 9,
+      "min_local_duration_ms": 1315,
+      "max_local_duration_ms": 2858
+    },
+    {
+      "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+      "snapshots": 8,
+      "ordered_local_windows": 8,
+      "min_local_duration_ms": 1314,
+      "max_local_duration_ms": 5728
+    }
+  ],
+  "limits": [
+    "transport/archive latency does not certify server freshness or coherent equity"
+  ]
+}

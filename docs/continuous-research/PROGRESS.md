@@ -674,3 +674,11 @@ Modes contrastés (unified/portfolio/default/disabled), aucun ratio ponctuel
 certifié et zéro qualification. Preuve unified-risk-real-control-20261008.json,
 read-only sans API. Diagnostic/action distingués par mode/changement/horodatage/
 périmètre ; demander plus de fills ne résout pas l'absence de timestamp spot.
+
+### Fenêtres locales d'acquisition — étape 6
+
+Spot et composantes de marge exportent temps request/archive, durée et statut
+sans inférer d'instant économique. Reducer de span distingue chevauchement local
+et cohérence économique non prouvée. Contrôle réel metadata-only cinq comptes
+hors pilotes ; preuve acquisition-window-control-20261008.json. Pas de nouveau
+call/provider/collecte. Regroupement d'acquisition et valorisation restent à faire.

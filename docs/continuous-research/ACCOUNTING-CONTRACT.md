@@ -169,3 +169,28 @@ il faut une source de valorisation cohérente horodatée ou un modèle explicite
 fondé sur des intervalles d'observation. Receipt_time n'est pas une equity à un
 instant économique prouvé. Cette lacune structurelle est distincte d'une panne
 de collecte ou d'un échantillon de trades trop court.
+
+## Fenêtres locales d'acquisition
+
+Les snapshots spot et composantes de marge exposent maintenant acquisition_window
+(requested_ms, available_ms, duration_ms). observation_windows vérifie présence,
+timezone et ordre des horloges. Il expose aussi acquisition_span pour examiner
+une collection de fenêtres, avec requests_overlap sans prétendre une simultanéité
+économique. L'adaptateur conserve les composantes de marge même quand le capital
+per-DEX est interdit dans un mode partagé.
+
+Ces temps mesurent la requête locale et l'insertion de réponse dans l'archive.
+Cache/retard du serveur peuvent placer l'état économique hors de cette fenêtre :
+aucun timestamp économique n'est déduit, aucun holdout ni historique réécrit.
+Les métriques comptables exactes restent inconnues sans preuves supplémentaires.
+Contrôle réel acquisition-window-control-20261008.json, cinq mêmes comptes hors
+pilotes et colonnes temporelles uniquement. Pas de nouvel appel API ni collecte.
+
+Prochaine intégration : regrouper explicitement les observations par acquisition
+de compte et valoriser spot/dettes/pools avec incertitude temporelle documentée.
+Ne pas traiter la proximité des requêtes comme la preuve d'un snapshot atomique.
+Rollback code seulement, aucun changement de schema/raw historique.
+
+Au relevé, les 20 fenêtres sont ordonnées, durées de 1314 à 5728 ms. Le début
+est enregistré avant post_info : attente du quota et archivage peuvent être
+inclus, donc ce n'est pas une mesure de latence réseau ou d'exécution.

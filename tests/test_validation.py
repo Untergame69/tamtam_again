@@ -184,6 +184,33 @@ class RegistryTests(unittest.TestCase):
         carried=json.loads(self.store.connection.execute('select state_json from paper_sessions where session_id=?',(new['session_id'],)).fetchone()[0])
         self.assertEqual(carried['cash'],json.loads(before)['cash'])
 
+    def test_reference_runs_separately_from_ordinary_paper(self):
+        from tamtam_again.procedure_registry import register,record_choice
+        from tamtam_again.procedure_references import start_reference
+        self.evaluate('comparison');self.evaluate('final')
+        contract={'version':'prospective-procedure-v1','policy_version':'fixture','justification':'synthetic comparison',
+            'network':'synthetic','address':'fixture-only','initial_capital_usdc':'100','risk_budget_id':'fixture',
+            'periods':[{'start_ms':2000,'end_ms':3000},{'start_ms':3000,'end_ms':4000}],
+            'references':[{'name':'fixed','kind':'fixed_rule','variant_id':self.variant,'available_ms':0,'evidence_ref':'fixture'}]}
+        with patch('tamtam_again.procedure_registry.now_ms',return_value=500):
+            identity=register(self.store,contract)['procedure_id']
+            record_choice(self.store,identity,0,{'selected_variant_id':self.variant,'considered_variant_ids':[self.variant],
+                'knowledge_available_ms':[0],'evidence_refs':['fixture'],'diagnostic':'synthetic comparison'})
+        with patch('tamtam_again.paper.now_ms',return_value=1000),patch('tamtam_again.procedure_registry.now_ms',return_value=1000):
+            with self.assertRaises(ValueError):start_reference(self.store,identity,0,'fixed')
+            ref=start_reference(self.store,identity,0,'fixed',synthetic_recipe=True)
+            normal=start_paper(self.store,self.variant,synthetic_recipe=True)
+            self.assertNotEqual(ref['session_id'],normal['session_id'])
+            self.assertEqual(start_reference(self.store,identity,0,'fixed',synthetic_recipe=True)['session_id'],ref['session_id'])
+        with patch('tamtam_again.procedure_registry.now_ms',return_value=1100),patch('tamtam_again.procedure_references.now_ms',return_value=1100):
+            record_choice(self.store,identity,1,{'selected_variant_id':self.variant,'considered_variant_ids':[self.variant],
+                'knowledge_available_ms':[0],'evidence_refs':['fixture'],'diagnostic':'continued comparison'})
+            continued=start_reference(self.store,identity,1,'fixed',synthetic_recipe=True)
+            self.assertEqual(continued['session_id'],ref['session_id'])
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_sessions').fetchone()[0],2)
+        with patch('tamtam_again.paper.now_ms',return_value=2500):
+            with self.assertRaises(ValueError):start_reference(self.store,identity,0,'fixed',synthetic_recipe=True)
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.directory.name)/"test.sqlite3")

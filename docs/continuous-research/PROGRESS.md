@@ -622,3 +622,13 @@ unknown sur coût manquant/changement non chiffré/choix absent, waiting avant f
 CLI lecture seule. Attribution réseau/compte et fenêtre, coût de référence séparé,
 preuves de matching et coûts de changement à revoir indépendamment. Aucun rapport
 réel ni exécution automatique de référence ajouté.
+
+### Sessions de comparaison distinctes — étape 12
+
+Références N2 séparées par contrat/période/rôle, même gate N1 que les sessions
+ordinaires, attribution indépendante et exclusion des conflits de remplacement.
+Tick pipeline borne à une tentative, contrats/choix futurs seulement, fixtures
+non activées par le scheduler réel. Test coexistence ordinary/reference, rejeu
+avant début et refus après début. Contrôle réel Oct8 : collectors actif,
+8 plans/3 variantes/0 paper, 8 requêtes IA (7 hypothèses/1 suspendue), tranche
+non augmentée. Aucun contrat/session réelle créé ; état metadata-only archivé.

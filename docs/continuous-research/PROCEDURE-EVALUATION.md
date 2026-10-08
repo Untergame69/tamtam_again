@@ -232,3 +232,31 @@ Coûts/choix/cohortes fournis restent sujets à revue indépendante ; aucune pre
 de performance statistique. Exécution automatique des références et observation
 réelle prospective toujours nécessaires. Aucun rapport réel de rentabilité créé.
 Rollback code uniquement, conserver contrats/choix/liens/instantanés.
+
+## Sessions paper séparées pour les références exécutables
+
+`procedure_references.start_reference` ouvre une session modèle distincte par
+contrat/période/rôle exécutable. Variante et scope prédeclared vérifiés, choix
+présent et début futur exigés. Gates N1 identiques à start_paper : aucune promotion
+sur le seul contrat de procédure. Sessions référencées dans paper_reference_sessions,
+exclues des conflits de remplacement ordinaires ; leur capital et ledger sont
+indépendants, aucun capital partagé avec la procédure adaptative. Elles sont
+traitées par le tick paper habituel et peuvent être suspendues pour les mêmes
+raisons. Une référence suspendue n'est pas remplacée/réinitialisée silencieusement.
+
+pipeline.tick tente au plus une ouverture/liaison de référence par passage,
+uniquement contrats futurs avec choix et variantes réelles. Pas de contrat réel
+créé ici, ni réarmement des budgets IA ou promotion des pilotes. Reprise avant
+période réutilise la session déjà enregistrée si l'incident est survenu entre
+création et liaison. Après début, aucune nouvelle liaison rétrospective ; preuve
+manquante reste inconnue. Le replay manuel après début est refusé ; le scheduler
+ignore ces fenêtres. Cette première exécution de référence reste limitée aux
+sessions plates aux bornes pour l'évaluation. Rollback : conserver la distinction
+paper_reference_sessions pour ne pas mélanger les sessions aux remplacements
+ordinaires ; retirer uniquement l'appel de scheduler avant retraite des références.
+
+Après la première période, une référence réutilise la même session active pour
+conserver cash, positions et historique. Une référence suspendue ou un lien
+précédent manquant refuse le passage : aucun redémarrage avec capital initial
+ne remplace une période échouée. Le lien de la période suivante reste inscrit
+avant cette période. Les tests couvrent cette continuation sans nouvelle session.

@@ -130,7 +130,7 @@ def classify_regimes(events: list[dict[str,Any]], criteria: dict[str,Any]) -> li
 
 
 def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False,
-                restart_reason: str | None = None) -> dict[str,Any]:
+                restart_reason: str | None = None, reference_binding: dict | None = None) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
     passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
     if not passed or (row["synthetic"] and not synthetic_recipe):
@@ -140,7 +140,13 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     session_id = uuid4().hex
     started = now_ms()
     state = initial_state(spec)
+    if reference_binding is not None:
+        from .procedure_references import validate_reference_start
+        validate_reference_start(store,variant_id,reference_binding,started)
     paper_evidence.initialize(store)
+    store.connection.execute('create table if not exists paper_reference_sessions '
+        '(session_id text primary key,procedure_id text not null,period_index integer not null,role text not null,'
+        'unique(procedure_id,period_index,role))')
     store.connection.execute('create table if not exists paper_session_policy '
         '(session_id text primary key,capital_policy text not null,restart_reason text)')
     store.connection.execute('create table if not exists paper_retirements '
@@ -151,14 +157,19 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     store.connection.commit()
     store.connection.execute('BEGIN IMMEDIATE')
     try:
-        existing = store.connection.execute("SELECT session_id FROM paper_sessions WHERE variant_id=? AND status='active'",(variant_id,)).fetchone()
+        if reference_binding is None:
+            existing = store.connection.execute("SELECT session_id FROM paper_sessions WHERE variant_id=? AND status='active' and session_id not in (select session_id from paper_reference_sessions)",(variant_id,)).fetchone()
+        else:
+            existing=store.connection.execute('select r.session_id from paper_reference_sessions r join paper_sessions s using(session_id) where procedure_id=? and period_index=? and role=?',
+                (reference_binding['procedure_id'],reference_binding['period_index'],reference_binding['role'])).fetchone()
         if existing:
             store.connection.commit()
             return {"session_id":existing[0],"synthetic":bool(row["synthetic"])}
         priors=store.connection.execute(
-            'select session_id,variant_id,status,state_json,started_ms from paper_sessions where network=? and address=? and coin=?',
+            'select session_id,variant_id,status,state_json,started_ms from paper_sessions where network=? and address=? and coin=? and session_id not in (select session_id from paper_reference_sessions)',
             (row['network'],row['address'],row['coin'])).fetchall()
-        replacement=plan.get('paper_replacement')
+        if reference_binding is not None:priors=[]
+        replacement=plan.get('paper_replacement') if reference_binding is None else None
         transferred=None
         capital_policy='independent_paper_session'
         capital_evidence=None
@@ -192,6 +203,9 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
                                  (session_id,capital_policy,restart_reason))
         paper_evidence.record(store,session_id,started,0,state,
             metrics(state,spec,plan['criteria']['block_ms']))
+        if reference_binding is not None:
+            store.connection.execute('insert into paper_reference_sessions values(?,?,?,?)',
+                (session_id,reference_binding['procedure_id'],reference_binding['period_index'],reference_binding['role']))
         if transferred:
             store.connection.execute('insert into paper_handovers values(?,?,?,?)',
                 (session_id,transferred,started,canonical({**replacement,'capital_snapshot_id':capital_evidence,'opening_capital_usdc':state['cash']})))
@@ -199,7 +213,7 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     except BaseException:
         store.connection.rollback()
         raise
-    if not row["synthetic"]:
+    if not row["synthetic"] and reference_binding is None:
         decision(store,row["network"],row["address"],row["coin"],"paper_active","N1 final passed by deterministic engine",{"interruptions":"suspend"},"paper_tick",{"session_id":session_id})
     return {"session_id":session_id,"synthetic":bool(row["synthetic"]),"started_ms":started,
             "capital_policy":capital_policy,"restart_reason":restart_reason}

@@ -71,6 +71,9 @@ def _tick(store: Store, *, fixtures=None) -> dict[str,Any]:
                          {"archive_or_plan_correction_required":True},"inspect_validation_evidence",{"variant_id":variant[0],"stage":stage})
                 reports.append({"variant_id":variant[0],"stage":stage,"status":"waiting","reason":str(exc)})
                 break
+    if fixtures is None:
+        from .procedure_references import tick_references
+        reports.extend(tick_references(store,max_starts=1))
     for session in store.connection.execute("SELECT session_id,variant_id FROM paper_sessions WHERE status='active'").fetchall():
         try:
             if fixtures is None:

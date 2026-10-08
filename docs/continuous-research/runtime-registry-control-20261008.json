@@ -1,0 +1,37 @@
+{
+  "as_of_ms": 1791444081227,
+  "git_head": "99b00d3",
+  "control": "registry metadata only; no evaluation results or raw data",
+  "validation_plans": [
+    [
+      "hyperliquid-mainnet",
+      0,
+      8
+    ]
+  ],
+  "strategy_variants": [
+    [
+      "13f82cb9e1d5b64ba8f6e50f2f33c540cb4a849ad1d908e56d68c3678c1e6f36",
+      1
+    ],
+    [
+      "be5ba08cd705d6814049483b0924318c7b7c8dfd3ec50902402fa74ceac438fa",
+      1
+    ],
+    [
+      "ec9651d9e61b459d71ce382e00a5294d840ac063f0d2631bcb030a77529cc31c",
+      1
+    ]
+  ],
+  "paper_sessions": [],
+  "population_research_jobs": [
+    [
+      "hypothesis_recorded",
+      7
+    ],
+    [
+      "suspended",
+      1
+    ]
+  ]
+}

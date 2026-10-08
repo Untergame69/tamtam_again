@@ -149,6 +149,12 @@ class RuntimeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'inherited periods'):save_knowledge(self.s,item)
 
     def test_scheduler_compiled_hypothesis_prepares_plan_only_with_external_policy(self):
+        self.compiled_plan_scenario(automatic=False)
+
+    def test_scheduler_allocates_every_eligible_hypothesis_without_request_mapping(self):
+        self.compiled_plan_scenario(automatic=True)
+
+    def compiled_plan_scenario(self,automatic):
         from tamtam_again.recipe import synthetic_spec,synthetic_plan
         from tamtam_again.population_scheduler import tick
         packet=json.loads(self.s.connection.execute('select packet_json from population_research_jobs').fetchone()[0])
@@ -169,10 +175,13 @@ class RuntimeTests(unittest.TestCase):
         policy={'version':'population-plan-v1','justification':'fixture only','max_plans':1,'comparison_delay_ms':100,
             'comparison_duration_ms':6000,'selection_gap_ms':2000,'final_duration_ms':6000,
             'criteria':synthetic_plan()['criteria'],'budget':synthetic_plan()['budget'],'isolation':'unavailable'}
+        allocation={'version':'experiment-allocation-v1','policy_id':'fixture-v1',
+            'justification':'fixture external allocation','max_profile_variants':1,'plan_template':policy}
+        kwargs={'experiment_policy':allocation} if automatic else {'plan_policies':{self.request:policy}}
         with patch('tamtam_again.population_runtime.call') as call:
-            result=tick(self.s,'synthetic',self.policy,dispatch=False,plan_policies={self.request:policy})
+            result=tick(self.s,'synthetic',self.policy,dispatch=False,**kwargs)
             self.assertEqual(result['plans'][0]['status'],'registered');call.assert_not_called()
-            again=tick(self.s,'synthetic',self.policy,dispatch=False,plan_policies={self.request:policy})
+            again=tick(self.s,'synthetic',self.policy,dispatch=False,**kwargs)
             self.assertEqual(again['plans'],[])
         self.assertEqual(self.s.connection.execute('select count(*) from strategy_variants').fetchone()[0],1)
         self.assertEqual(self.s.connection.execute('select count(*) from paper_sessions').fetchone()[0],0)

@@ -1,0 +1,38 @@
+{
+  "version": "experiment-allocation-v1",
+  "policy_id": "public-population-prospective-20261008-v1",
+  "justification": "External pilot allocation for the existing bounded research tranche. Ordered by hypothesis availability, without PnL selection. No model may change criteria, plan count or cost caps. These chosen parameters are not universal evidence thresholds.",
+  "max_profile_variants": 4,
+  "plan_template": {
+    "version": "population-plan-v1",
+    "justification": "Preregister comparison and a single final after review. Minimum three-day comparison and seven-day final are pilot allocations, extended deterministically to cover declared blocks; future data and passage gates remain necessary.",
+    "max_plans": 8,
+    "comparison_delay_ms": 3600000,
+    "comparison_duration_ms": 259200000,
+    "selection_gap_ms": 3600000,
+    "final_duration_ms": 604800000,
+    "isolation": "unavailable",
+    "criteria": {
+      "block_ms": 3600000,
+      "min_blocks": 24,
+      "min_regimes": 2,
+      "max_positive_block_share": "0.5",
+      "min_net_pnl": "0",
+      "max_drawdown_usdc": "100",
+      "min_block_lower_bound": "0",
+      "stress_multiplier": "2",
+      "min_stress_net_pnl": "0",
+      "require_funding": true,
+      "dependence_justification": "Chosen pilot hour blocks, extended to causal footprint; descriptive block uncertainty does not prove independence or exhaust regime diversity. Freeze before prospective observations; never lower these gates after seeing results.",
+      "regime_threshold_bps": "10",
+      "regime_window_ms": 3600000,
+      "confidence_alpha": "0.05"
+    },
+    "budget": {
+      "max_runs": 16,
+      "max_same_input_corrections": 2,
+      "max_duration_ms": 2592000000,
+      "max_cost_usd": "1"
+    }
+  }
+}

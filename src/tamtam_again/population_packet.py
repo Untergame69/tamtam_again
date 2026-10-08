@@ -25,7 +25,7 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
         period=behavior['period']
         if not 0<=period['start_ms']<period['end_ms']<=period['as_of_ms']<=row['available_ms']:
             raise ValueError('Population behavior evidence crosses availability boundary')
-    fields=('mode','role','subaccounts','perp_dexes_observed','spot_observed','markets',
+    fields=('mode','role','subaccounts','perp_dexes_observed','spot_observed','spot_inventory','markets',
             'simultaneous_position_snapshot','activity','current_pass_behavior_profile',
             'market_mechanisms','fill_coverage','capital_aggregation','external_hedges')
     observations={k:report[k] for k in fields if k in report}

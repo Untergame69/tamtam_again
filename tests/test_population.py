@@ -40,10 +40,12 @@ class PopulationTests(unittest.TestCase):
     if kind=='userRole':return {'role':'user'}
     if kind=='perpDexs':return [None,{'name':'xyz'}]
     if kind=='clearinghouseState':return {'marginSummary':{'accountValue':'100'},'assetPositions':[{'position':{'coin':'xyz:GOLD' if q.get('dex') else 'BTC','szi':'1'}}]}
-    if kind=='spotClearinghouseState':return {'balances':[]}
+    if kind=='spotClearinghouseState':return {'balances':[{'token':0,'coin':'USDC','total':'100','hold':'5','borrowed':'10'}]}
     return []
   report=collect_overview(self.s,Client(),job,now_ms=2000)
   self.assertEqual(set(report['markets']),{'BTC','xyz:GOLD'})
+  self.assertEqual(report['spot_inventory']['balances'][0]['borrowed'],'10')
+  self.assertIsNone(report['spot_inventory']['equity'])
   self.assertEqual(report['mode'],'unifiedAccount');self.assertTrue(report['capital_aggregation'].startswith('unknown'))
   self.assertEqual(self.s.connection.execute('select count(*) from account_scope_reports').fetchone()[0],1)
   raw=self.s.connection.execute("select complete,request_json from raw_observations where endpoint='userFillsByTime'").fetchone()

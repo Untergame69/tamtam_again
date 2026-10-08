@@ -95,3 +95,11 @@ class PacketTests(unittest.TestCase):
         result=packet_for_account(self.s,'test','account',as_of_ms=26,max_chars=1000)
         self.assertEqual(result['status'],'needs_data')
         self.assertIn('budget',result['reason'])
+
+    def test_spot_inventory_from_scope_report_is_preserved_in_packet(self):
+        from tamtam_again.spot_inventory import inventory
+        report={**self.report,'spot_inventory':inventory({'balances':[{'token':0,'coin':'USDC','total':'-100','borrowed':'570'}]})}
+        self.s.connection.execute('update account_scope_reports set payload_json=? where report_id=?',(json.dumps(report),'one'))
+        r=packet_for_account(self.s,'test','account',as_of_ms=20,max_chars=20000)['packet']
+        self.assertEqual(r['observations']['spot_inventory']['balances'][0]['borrowed'],'570')
+        self.assertIsNone(r['observations']['spot_inventory']['equity'])

@@ -831,3 +831,12 @@ population et son empreinte d'entrée. Réception identique/formats décimaux é
 ne changent pas l'entrée. Contrôle réel readonly paquet prêt avec deux tokens,
 aucun job/model/provider ni réarmement. Tests causalité/source/contenu/budget.
 Limites comptables et statut hypothèse conservés. Changement postérieur au CR.
+
+### Inventaire spot conservé dans rapports et paquets — 8 octobre
+
+Snapshots existants contiennent borrowed/supplied/ratio portfolio margin mais
+la fiche les omettait. Nouveaux passages conservent spot_inventory ; descripteur
+et paquet raccordés, variation de contenu pertinente pour recherche, formats
+identiques non relance. Preuve réelle : neuf balances dont total/hold négatifs,
+composantes borrow/supply disponibles sans aucun appel supplémentaire. Pas
+d'equity calculée, relation avec dette non inférée. Anciennes fiches inchangées.

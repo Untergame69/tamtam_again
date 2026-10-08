@@ -341,3 +341,23 @@ Contrôle réel readonly : lending-packet-control-20261008.json, deux tokens
 inclus, zéro modèle/fournisseur/job. Ce raccordement ne signifie pas que le
 runtime a déjà analysé ces nouvelles observations. Rollback : retirer la section
 public_lending de l'export, conserver archives/essais et budgets.
+
+### Inventaire spot réellement transmis
+
+Les nouveaux scope reports conservent `spot_inventory`, au lieu de limiter le
+spot à une présence booléenne : token/coin, total/hold/entryNtl et, si présents,
+borrowed/supplied/LTV, activation et ratio portfolio margin rapportés. Les tokens
+sont ordonnés, les montants normalisés sans arrondi ; une variation de montant
+modifie le descripteur d'entrée, une variation de format/ordre seule ne le fait
+pas. Les anciens rapports ne sont pas réécrits ; ils restent sans ce champ.
+
+Les totaux/holds négatifs observés en portfolio margin sont conservés. Hold n'est
+pas ajouté au total ; borrowed/supplied ne sont pas interprétés comme composants
+indépendants à additionner. Ratio rapporté ne signifie pas rendement ou risque
+reconstruit. NaN, montants nonfinis et token dupliqué donnent un diagnostic.
+Source : spotClearinghouseState déjà interrogé, donc aucun endpoint/cadence ajouté.
+Le paquet hérite de la disponibilité du scope report, sans timestamp économique
+inventé. Test collecte→rapport→paquet ; preuve réelle readonly neuf balances dans
+spot-inventory-control-20261008.json. Le prochain scope report contient le champ ;
+aucun runtime/budget n'est réarmé. Rollback conserve anciens JSON et retire le
+champ/descripteur ; les pilotes et archives restent intacts.

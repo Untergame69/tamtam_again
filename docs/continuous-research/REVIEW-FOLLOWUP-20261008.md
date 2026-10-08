@@ -25,3 +25,36 @@ Qualification sur cas réels contrastés puis application automatique aux cas ad
 ## R4 — à terminer
 
 Allocation d'expérience par le service, réveil des besoins, worker après diagnostic et nouvelle décision prospective, cycle temporel des réserves. Budget réel épuisé conservé ; démonstration isolée autorisée avec marchés et réponses IA simulés.
+
+## Jalon R3 — parcours public exploitable livré, qualification globale partielle
+
+`population-qualification.py` applique automatiquement la même règle à tous les comptes inventoriés admissibles : dernière paire adjacente de valorisations disponibles. Les périodes sont explicites et ne sont pas alignées pour un classement comparatif. Les exemples contrastés sont choisis sur mode et disponibilité, jamais sur leur PnL.
+
+Le nouveau `public_scope_assessment` mesure le périmètre indépendant du DEX perp validator USDC pour les modes standard (`disabled`, `default`). Il expose capital, flux attribuables, variation nette, rendement Modified Dietz approximatif, composantes observées et résidu. Les transferts `send` à frais explicitement nuls utilisent adresse et DEX source/destination ; un mouvement spot→perp de la même adresse est externe au périmètre perp, interne à l'adresse. Les dépôts/retraits sans attribution de DEX, frais de transfert non nuls et mécanismes inconnus bloquent la mesure corrigée des flux. Les frais déjà inclus dans les fills ne sont pas chargés deux fois.
+
+La réconciliation conditionnelle raccorde les preuves de pagination funding/ledger, leur classement, les bornes de capital et le témoin de rétention des fills. Son périmètre est le contrat public de l'API : aucune garantie indépendante sur une omission fournisseur, aucune consolidation extérieure. Une pagination seule ne valide toujours pas la rétention des fills. Les composantes incomplètes peuvent être comparées au capital mesuré, mais leur résidu reste un diagnostic, jamais un revenu inventé. Les réceptions répétées des mêmes valorisations ne sont plus des conflits financiers ; une valeur différente au même timestamp le reste. Des positions mal formées ne deviennent pas un inventaire vide.
+
+### Contrôle réel
+
+Preuve : `r3-public-scope-control-20261008.json`, cutoff `1791460625900`.
+
+- 69 comptes admissibles examinés, 10 périmètres publics mesurés, zéro portefeuille entier économiquement qualifié, zéro stratégie validée.
+- Compte standard `0x87f9…e2cf` : capital +832 647,0000000001 USDC, transferts nets +832 647 USDC, variation corrigée ≈0. Ce résultat ne devient plus une performance positive apparente. Attribution des fills encore incomplète faute de témoin atteignant le début de sa période.
+- Compte standard `0xa880…24ee`, intervalle de 425 936 ms : capital net +145,504772 USDC ; composantes +145,561325 ; résidu −0,056553. Rendement de période ≈0,064094 %, uniquement sur ce périmètre. Réconciliation des entrées sous contrat public disponible après un appel `userFills` supplémentaire (2 000 fills, quota partagé). Le résidu n'est ni effacé ni automatiquement accepté. Aucun verdict sur la rentabilité future.
+- Cas unified et portfolioMargin : pas d'equity fabriquée depuis les états par DEX. L'état spot archivé ne porte pas de timestamp économique ; l'inventaire séquentiel ne fournit pas de valorisation atomique avec les dérivés et dettes. Obtenir uniquement davantage de fills ne résout pas cette absence. Pour une mesure exacte consolidée, il faut une source de valorisation cohérente et horodatée, ou un modèle explicite d'intervalles/prix et de chevauchement spot/dette. Ces capacités ne sont pas revendiquées livrées.
+
+Les rapports stricts historiques restent disponibles ; le nouveau calcul conditionnel est explicitement distinct. Ni `economic_validation` global ni validation de stratégie ne sont promus. La qualification globale multi-modes reste partielle, avec limites démontrées sur ces sources et modèle d'acquisition annoncé.
+
+Commande réelle reproductible :
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/population-qualification.py --db data/tamtam.sqlite3 --as-of-ms 1791460625900 --output /tmp/r3-qualification.json
+```
+
+Retour arrière : retirer le nouveau chemin de rapport et la commande ; conserver les observations nouvelles. Aucun schéma, service, budget ou pilote n'a été modifié par R3. Conserver la migration R1 lors de tout retour de code.
+
+### Complément R2 issu du contrôle réel
+
+`9c7a57e` corrige une sous-fenêtre dont la borne finale est strictement à l'intérieur d'un préfixe parcouru : elle est couverte même sans page terminale à cette borne. Une borne égale au timestamp saturé demeure un trou ponctuel. Test ciblé ajouté ; aucune réception historique changée.
+
+Vérification R3 : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q` : **384 tests OK en 31,158 s**. Tests supplémentaires : flux send inter-adresses/inter-DEX, frais non nuls, mode partagé, valeur manquante, paquet source→adapter→réconciliation, disponibilité au cutoff, application à tous les candidats et réceptions répétées de valorisation. Les fixtures n'ont qualifié aucun compte réel.

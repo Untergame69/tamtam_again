@@ -88,7 +88,7 @@ def reconcile_period(data:dict[str,Any])->dict[str,Any]:
     by_time={}
     for v in valuations:
         key=int(v['event_ms'])
-        if key in by_time and by_time[key]!=v:missing.append('conflicting valuation snapshots')
+        if key in by_time and {k:x for k,x in by_time[key].items() if k not in ('available_ms','evidence_ref')}!={k:x for k,x in v.items() if k not in ('available_ms','evidence_ref')}:missing.append('conflicting valuation snapshots')
         by_time.setdefault(key,v)
     first,last=by_time.get(start),by_time.get(end)
     if not first or not last:missing.append('exact boundary valuations/positions absent')

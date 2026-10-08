@@ -47,7 +47,23 @@ def normalize_event(endpoint: str, row: Any, *, address: str,
             return {**result,'reason':'unsupported accounting endpoint'}
         event={**base,'kind':'flow','scope_id':'hypercore:'+address.lower(),
                'currency':'USDC','boundary_evidence_ref':evidence_ref}
-        if kind=='deposit':
+        if kind=='send':
+            amount=number('amount');source=str(delta.get('user','')).lower()
+            destination=str(delta.get('destination','')).lower();account=address.lower()
+            if (amount<0 or account not in (source,destination)
+                or not source or not destination or not isinstance(delta.get('token'),str)
+                or not delta['token'] or not isinstance(delta.get('sourceDex'),str)
+                or not isinstance(delta.get('destinationDex'),str)):
+                return {**result,'reason':'send identity, asset or scope absent'}
+            # Gross/net fee semantics are unnecessary only for explicitly zero fees.
+            if number('fee')!=0 or number('nativeTokenFee')!=0:
+                return {**result,'reason':'nonzero send fee accounting not established'}
+            event.update(currency=delta['token'],
+                amount=str(Decimal(0) if source==destination else amount if destination==account else -amount),
+                boundary_classification='internal' if source==destination else 'external',
+                transfer_principal=str(amount),source_account=source,destination_account=destination,
+                source_dex=delta['sourceDex'],destination_dex=delta['destinationDex'])
+        elif kind=='deposit':
             amount=number('usdc')
             if amount<0:raise ValueError('Negative deposit')
             event.update(amount=str(amount),boundary_classification='external')

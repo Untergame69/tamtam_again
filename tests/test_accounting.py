@@ -42,3 +42,10 @@ class AccountingTests(unittest.TestCase):
     f=fixture();f['events'][0]['fee_currency']='HYPE'
     f['events'][0]['fee_conversion']={'currency':'USDC','rate':'1','quote_ms':400,'available_ms':600,'evidence_ref':'fixture:fx',**updates}
     self.assertIsNone(reconcile_period(f)['metrics']['economic_pnl'])
+
+ def test_same_boundary_reception_does_not_change_financial_value(self):
+  f=fixture();v=copy.deepcopy(f['valuations'][0]);v['available_ms']=1500;v['evidence_ref']='fixture:later'
+  f['valuations'].append(v)
+  self.assertEqual(reconcile_period(f)['status'],'reconciled_inputs')
+  v['equity']='101'
+  self.assertIn('conflicting valuation snapshots',reconcile_period(f)['unknown_reasons'])

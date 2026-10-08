@@ -88,3 +88,36 @@ class AdapterTests(unittest.TestCase):
   self.assertEqual(r['history_coverage']['userFillsByTime']['status'],'complete')
   self.assertEqual(r['history_coverage']['userFunding']['status'],'unknown')
   self.assertFalse(r['economic_validation'])
+
+ def test_public_scope_reconciliation_through_archived_sources(self):
+  from datetime import datetime,timezone
+  def stamp(t):return datetime.fromtimestamp(t/1000,timezone.utc).isoformat()
+  def save(endpoint,payload,request=None,left=None,right=None,requested=900):
+   self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',
+    entity_type='account',entity_id=self.addr,endpoint=endpoint,payload=payload,
+    request_payload=request or {},window_start_ms=left,window_end_ms=right,
+    requested_at=stamp(requested),complete=False)
+   self.s.connection.execute('update raw_observations set observed_at=? where observation_id=(select max(observation_id) from raw_observations)',(stamp(950),));self.s.connection.commit()
+  save('userAbstraction','disabled')
+  save('clearinghouseState',{'time':100,'marginSummary':{'accountValue':'100'},'assetPositions':[]})
+  save('clearinghouseState',{'time':900,'marginSummary':{'accountValue':'120'},'assetPositions':[{'position':{'coin':'BTC','szi':'1','unrealizedPnl':'1'}}]})
+  fill={'time':400,'coin':'BTC','tid':1,'closedPnl':'8','fee':'1','feeToken':'USDC'}
+  histories={
+   'userFillsByTime':[fill],
+   'userFunding':[{'time':600,'hash':'f','delta':{'type':'funding','coin':'BTC','usdc':'2'}}],
+   'userNonFundingLedgerUpdates':[{'time':500,'hash':'s','delta':{'type':'send','user':'0x'+'2'*40,
+    'destination':self.addr,'sourceDex':'','destinationDex':'','token':'USDC',
+    'amount':'10','fee':'0','nativeTokenFee':'0'}}]}
+  for endpoint,rows in histories.items():
+   save(endpoint,rows,{'type':endpoint,'user':self.addr,'startTime':100,'endTime':900,
+    'pagination_status':'pagination_exhausted'},100,900)
+  save('userFills',[{'time':50,'coin':'BTC','tid':0},fill],{'type':'userFills','user':self.addr,'aggregateByTime':False})
+  r=report_account(self.s,'test',self.addr,100,900,as_of_ms=1000)
+  a=r['perp_scope_reports'][0]['public_scope_assessment'];c=a['contract_reconciliation']
+  self.assertEqual(a['metrics']['external_flows'],'10')
+  self.assertEqual(c['status'],'reconciled_inputs')
+  self.assertEqual(c['metrics']['economic_pnl'],'10')
+  self.assertEqual(c['metrics']['reconciliation_residual'],'0')
+  self.assertFalse(r['economic_validation']);self.assertFalse(a['strategy_validation'])
+  early=report_account(self.s,'test',self.addr,100,900,as_of_ms=949)
+  self.assertEqual(early['evidence_refs'],[])

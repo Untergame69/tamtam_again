@@ -1,0 +1,2440 @@
+{
+  "version": "r3-real-public-scope-control-v1",
+  "as_of_ms": 1791460625900,
+  "synthetic": false,
+  "accounts_considered": 69,
+  "public_scopes_measured": 10,
+  "economically_validated": 0,
+  "selection": "all inventoried nonreserved accounts; latest adjacent observed boundary pair; contrast cases latest inventory per mode, never PnL",
+  "provider_calls": 1,
+  "model_calls": 0,
+  "targeted_acquisition": "one latest unaggregated fill retention witness for disabled-mode contrast case through shared quota",
+  "production_writes": "one newly received public observation; no strategy, budget or session change",
+  "cases": [
+    {
+      "mode": "unifiedAccount",
+      "address": "0x4ad5ffac22c04a18ab3d8658682f71ab71d89a1c",
+      "period": {
+        "start_ms": 1791456742164,
+        "end_ms": 1791460578937,
+        "as_of_ms": 1791460625900
+      },
+      "status": "unknown",
+      "validator_scope_assessment": {
+        "version": "public-validator-perp-capital-v1",
+        "scope_id": "perp:",
+        "currency": "USDC",
+        "status": "insufficient_scope_evidence",
+        "metrics": {
+          "capital_change": null,
+          "net_capital_change": null,
+          "external_flows": null,
+          "modified_dietz_estimate": null,
+          "observed_component_pnl": null,
+          "observed_attribution_residual": null
+        },
+        "unknown_reasons": [
+          "exact initial and final valuations required",
+          "independent DEX capital model unavailable for shared, unknown or changing mode"
+        ],
+        "classified_flows": [],
+        "coverage": {
+          "userFillsByTime": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791456742164,
+                1791460578937
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12214457",
+              "raw_observations:12389436"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "period pagination or latest-fill retention witness missing",
+            "next_action": "collect a latest unaggregated fill witness and close period pagination gaps",
+            "retention_witnesses": [],
+            "rejected_retention_witnesses": [],
+            "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+            "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+          },
+          "userFunding": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791456742164,
+                1791460578937
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12214973",
+              "raw_observations:12389437"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          },
+          "userNonFundingLedgerUpdates": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791456742164,
+                1791460578937
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12215195",
+              "raw_observations:12389438"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          }
+        },
+        "evidence_refs": [
+          "raw_observations:12215195",
+          "raw_observations:12389438"
+        ],
+        "account_economic_qualification": false,
+        "strategy_validation": false,
+        "attribution_complete": false,
+        "contract_reconciliation": null,
+        "next_actions": [
+          "exact initial and final valuations required",
+          "independent DEX capital model unavailable for shared, unknown or changing mode"
+        ],
+        "assumptions": [
+          "reported independent DEX accountValue represents this public USDC perp scope",
+          "covered ledger pages enumerate the requested public interval under the documented API contract",
+          "no claim of independently audited provider completeness or continuous account-mode observation"
+        ],
+        "limits": [
+          "scope excludes spot, other DEXs, vaults, loans and related accounts",
+          "net capital change includes all income sources in scope; observed components may omit events",
+          "attribution residual is diagnostic, never booked as trading profit or other income",
+          "Modified Dietz is approximate; no unsampled drawdown or profitable-account verdict"
+        ],
+        "official_references": [
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#send-asset"
+        ]
+      },
+      "boundary_diagnostic_statuses": [
+        "missing_exact_observation",
+        "per_dex_capital_not_usable"
+      ],
+      "unsupported_event_count": 0,
+      "account_economic_qualification": false
+    },
+    {
+      "mode": "portfolioMargin",
+      "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+      "period": {
+        "start_ms": 1791455788055,
+        "end_ms": 1791459506531,
+        "as_of_ms": 1791460625900
+      },
+      "status": "unknown",
+      "validator_scope_assessment": {
+        "version": "public-validator-perp-capital-v1",
+        "scope_id": "perp:",
+        "currency": "USDC",
+        "status": "insufficient_scope_evidence",
+        "metrics": {
+          "capital_change": null,
+          "net_capital_change": null,
+          "external_flows": null,
+          "modified_dietz_estimate": null,
+          "observed_component_pnl": null,
+          "observed_attribution_residual": null
+        },
+        "unknown_reasons": [
+          "exact initial and final valuations required",
+          "independent DEX capital model unavailable for shared, unknown or changing mode"
+        ],
+        "classified_flows": [],
+        "coverage": {
+          "userFillsByTime": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791455788055,
+                1791459506531
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12158962",
+              "raw_observations:12370420"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "period pagination or latest-fill retention witness missing",
+            "next_action": "collect a latest unaggregated fill witness and close period pagination gaps",
+            "retention_witnesses": [],
+            "rejected_retention_witnesses": [],
+            "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+            "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+          },
+          "userFunding": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791455788055,
+                1791459506531
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12159366",
+              "raw_observations:12370836"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          },
+          "userNonFundingLedgerUpdates": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791455788055,
+                1791459506531
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12159657",
+              "raw_observations:12371540"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          }
+        },
+        "evidence_refs": [
+          "raw_observations:12159657",
+          "raw_observations:12371540"
+        ],
+        "account_economic_qualification": false,
+        "strategy_validation": false,
+        "attribution_complete": false,
+        "contract_reconciliation": null,
+        "next_actions": [
+          "exact initial and final valuations required",
+          "independent DEX capital model unavailable for shared, unknown or changing mode"
+        ],
+        "assumptions": [
+          "reported independent DEX accountValue represents this public USDC perp scope",
+          "covered ledger pages enumerate the requested public interval under the documented API contract",
+          "no claim of independently audited provider completeness or continuous account-mode observation"
+        ],
+        "limits": [
+          "scope excludes spot, other DEXs, vaults, loans and related accounts",
+          "net capital change includes all income sources in scope; observed components may omit events",
+          "attribution residual is diagnostic, never booked as trading profit or other income",
+          "Modified Dietz is approximate; no unsampled drawdown or profitable-account verdict"
+        ],
+        "official_references": [
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#send-asset"
+        ]
+      },
+      "boundary_diagnostic_statuses": [
+        "missing_exact_observation",
+        "per_dex_capital_not_usable"
+      ],
+      "unsupported_event_count": 0,
+      "account_economic_qualification": false
+    },
+    {
+      "mode": "default",
+      "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "period": {
+        "start_ms": 1791454974353,
+        "end_ms": 1791458734427,
+        "as_of_ms": 1791460625900
+      },
+      "status": "public_scope_measured",
+      "validator_scope_assessment": {
+        "version": "public-validator-perp-capital-v1",
+        "scope_id": "perp:",
+        "currency": "USDC",
+        "status": "measured_public_scope",
+        "metrics": {
+          "capital_change": "832647.0000000001",
+          "net_capital_change": "1E-10",
+          "external_flows": "832647.0",
+          "modified_dietz_estimate": "1.090304808745787402809186436E-16",
+          "observed_component_pnl": "0",
+          "observed_attribution_residual": "1E-10"
+        },
+        "unknown_reasons": [],
+        "classified_flows": [
+          {
+            "event_ms": 1791454983754,
+            "amount": "-15002.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "7fc849980c6a720f58fa4f803cc3a6ce09147d68fb49f87c2b4dc8dc2ebc0735",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455045986,
+            "amount": "1068.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f0bc1f9e9c1f7172a5097b2a10aba9ce2650c29df1429a039f0398e694d83ce7",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455070650,
+            "amount": "15008.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a1b1a139ef7aa627854ed12f3b6e6ecfcefa1cb89374d185e7e25e07c57a52d2",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455086433,
+            "amount": "5652.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "b08f73eba1be41caa0abbe1aac1abbc118ae0f1962acaac26b1e3677994016c5",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455121160,
+            "amount": "16498.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f99c1e0f99e0bfa243207d8fa38d15e79dd50582c015270b20b9e5f468503768",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455166827,
+            "amount": "13973.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "3d3577b97f467ccbb191d21d103f85a4b0e05d135f82bf07dd70bbabcca7947a",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455191364,
+            "amount": "91388.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "fda37692ba8f230e17521c3b23a09776e8851ec6a032971f0382c95920e9ef1f",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455207302,
+            "amount": "34950.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "6d90a5f91b263182d42da1a7b2d0eb0aef19af14dfe9291db7ddedf8e86ff341",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455287575,
+            "amount": "1496.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "fde1bfdf92cfc5d0299ff4d318d0b2c151d94e3c7d5dd1b1fce0a44073730653",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455302497,
+            "amount": "76451.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e0e3bfc2216c789264f4691f6771c828c6c1de1d39d9dc8932e0dcfc40329329",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455334456,
+            "amount": "5162.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "c7e2e2980c5a55da1e0438312ded8a9f2143d7941469c3f9429336ff6548be4f",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455393293,
+            "amount": "-1247.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a253265f3328ae086b84e8d3991ace0622555db3c018b0f9c2dee9f6009dea9c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455407164,
+            "amount": "-5001.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "6bc53879d5dddbdefbb9da04fedd52a4bf710d2868d7b419071322a806c743f6",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455449429,
+            "amount": "19328.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "7ca8e01cff96d7ea65aba28352595553ccc0e9a54d3f337bd7b0d9de372fe571",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455486716,
+            "amount": "30806.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a47953e755a89ffdb0e16d125ad9b5b66e6057d2c743989b7d2e2633d3c2b8a2",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455513259,
+            "amount": "5475.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "8ab3d7079290de2ae904399cb5d035d4c47bde40a6a89e892414f2158d801c9d",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455526288,
+            "amount": "-16390.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "c83c339e0c51e7c2a989af5800064778fdee504053beb6a45562c2d48039d8b6",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455587008,
+            "amount": "33066.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "0db8d304079d84433940e00c564e994d3827cd35e752a0497770dfca9b02cd85",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455600975,
+            "amount": "1047.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f80618d9ed978c659b047f95259782d236d137cbc700b1d3bb93d57c777284c4",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455634150,
+            "amount": "28847.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e23be5e48b3ab3b5221b3ac3be62c14646402afa44fccaa26a0b8dd2a64c2e35",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455696146,
+            "amount": "-6037.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "8b67bd6270d4837e5f1f293a263a5a4a8552858b5ca2b69ef9fa9699b0b1d40c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455707763,
+            "amount": "36210.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "2f386861981eff040a847ef575cdc9a8c2f44e83567fbdf01fa8a3706d29116c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455721799,
+            "amount": "6991.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "1de5f94b01d3d5580213d645a1be819a6f5d8da020409ad5e17fc6014181d5d6",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455769629,
+            "amount": "-21257.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "c5eaff4297233747c616862fca38ca315881c8541c0da0af81f3a2b2ea18388d",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455788130,
+            "amount": "34601.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "faa3be635e6a012c5b5537b234d23cb854acb62d6849545c25bbde7d2e043069",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455834208,
+            "amount": "5547.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "bf139b25056d5007f5c2f8862351586e328a6bd3aee0ff97a4c1e98907e87a90",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455955031,
+            "amount": "10303.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "d3dbc831ddbd1b284ec11e114a71418c52be8bb4ded54ee9c0a461f4e8e1c5ae",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791455968955,
+            "amount": "66634.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "00070585288904462a6e9cdfd1b6234ea5475c4a771588fcbeb1b50a81a2b837",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456018031,
+            "amount": "-23924.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "39e635b198042a09ab8917614674741f3e84a9918950edca466bf2337e766e29",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456060792,
+            "amount": "-29823.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "52b47f9c1c77b3444f0f9c7970cb80e42a12281f0eaf2be01812988104aeebc0",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456082945,
+            "amount": "36623.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "195a7ed332b52eb584e638407530cce3f1e6510daa32bba8d1e04172e102323e",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456133538,
+            "amount": "15088.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "815d0e34b43f4efd51de313bf2388a3aa3010d5957f0121286a54d7218d30f8c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456151512,
+            "amount": "84589.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "8ba79796f3955b0e6096510b577cd1f46e6f050e141a646e812013477c5f6d9b",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456204218,
+            "amount": "6407.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f650c7cf4c5f7c7b4c92be29418f748604933de1364c8b7e00865bc5b6e32d6d",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456243269,
+            "amount": "-49153.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "372e9801c8e763a35e5078a83fbd7d50bac9357f8293b17ad0f5c82ba452d917",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456255374,
+            "amount": "-6128.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "db44401772eef04105b78ceaadbd2567a72531479f3df4d7980e6f71e1800b2a",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456266261,
+            "amount": "-1994.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "11f7e9f7933d22cc55eccb76b793d93cdf011c0c0e8732b98b8ade4441151dd2",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456327130,
+            "amount": "4523.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "7cdd9945f9abe3bffe473aab552a814169e86f254fac0c6e46cf0a8a932090f9",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456351316,
+            "amount": "5438.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "be7eeda3c3be9ccc50cf7a74aae7e4e6726fe2e11ee4aa7cf5c4fc0c295874c9",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456377644,
+            "amount": "-26277.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "44bbb44f18a8fb296cfd23b767ea7a205a30f9397146a81a258b7df92af34bd4",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456425496,
+            "amount": "-16161.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "547a23c03b2f136977c848cb2ad349525acc496399e43f9955841dff9edbaa39",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456439024,
+            "amount": "33762.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "9015b1ca8b952c545f943925836e001588fabd91b7be0d0ac73ee458915c298f",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456472166,
+            "amount": "79477.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "7fbdeefb78ec0774fae43edd785f9cd4d6d1da15997ab057e433c5087bf8f47b",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456517144,
+            "amount": "87723.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "293fdc95352457810e324550d2c6d33257722cae2299d28b4749ccade01425e2",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456559972,
+            "amount": "17297.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a671d704f30040fe8396e891d1e0941a95e6fe9f64643cdbacdcf7534b8492d6",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456593054,
+            "amount": "27529.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "5bb9a3dd82b915d986573be00dc34490f988532346680c30108f267d70933733",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456609076,
+            "amount": "-48210.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "867fd64a30818fdbfb0f32c89f200a2bcc4ccef1a7ffc7550635c5b6beb18d7e",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456621826,
+            "amount": "-26125.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "4e6ce5bec0edec2c27b05ec3af539b44a955cc8b6cafce57170d37d39256fec1",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456688186,
+            "amount": "45235.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "8bf73201af371ce5aab1bd32666550480e3772ded06d808f64ecf8326c2ab0fa",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456699834,
+            "amount": "15591.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "845953376ba6809dca55fc6609d1ffdf9bd45f8e285ddd9c1bebdf34a96218d6",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456713876,
+            "amount": "10808.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e0cbfa4bcdd690b9c64c875b3ba913415310be9287a4a2e8faa3683a99febbeb",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456744124,
+            "amount": "-21425.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "2ce576e6c068c19a996e29b5f5092afe92dace480545622b0bdbc2dc405595a0",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456758417,
+            "amount": "-1486.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "ab10e66bd6155ad70ae2a1931486d7fb19c1fd360a2c33ebc19cea2e5030311c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456775803,
+            "amount": "-11262.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "262585346d5104add3f9902130eb42450a57e47c7900d8cd755ba5cf3b2b0e3f",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456792633,
+            "amount": "-17465.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "95351dcaeb0dee9cf68f233a6d4c6ce09b87bd6703d4afee2f71e4c108e47b6e",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456839286,
+            "amount": "3234.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "57822994334abf03a9209afa4df0546f842cc5f6004eb42b939407bc4a6e5e01",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456862329,
+            "amount": "5391.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "32f2f206cb2d1df788719e093ad1e2db52097ada4e65e6143dcdf50d81046d26",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456884661,
+            "amount": "57735.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a8ae3e584f7d9ec99ef30115df791fb591d80617b92023d58b5eb1d33c2439f6",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456960063,
+            "amount": "12520.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "c60e6f915d24042d30b9123af1404aae2c4af8e1038023a7074467e879613119",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791456983179,
+            "amount": "43369.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "275cbea5cea184fae69db2c4be5f643d2304ad9ba9d01ae76ba463e105c23969",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457022166,
+            "amount": "-7148.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "0745147c7464b596025aab541be923ec62da0b5af7df90077bb22d11d8c060f4",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457077069,
+            "amount": "-5155.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "b4e04db399673f988ffbca571b41d11fbda9ef70f790d1a27cb176dc57643d57",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457108459,
+            "amount": "-500000.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "2aa225db7e33b0108bdc0ba2b9edc7f350c5dba90f42cec0494e194599b12739",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457144075,
+            "amount": "-7673.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "9070988171fff9145e660b8fceda3478a1e171876887a03fd3d35de88aff85ba",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457204855,
+            "amount": "2472.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e7f406fc22f9cb5716b777d497d586f674a010cac5ecff41cc9a3d95e4aafc53",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457232100,
+            "amount": "5708.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "0f937577e4b001d64303879f364a9b893e4cd575473cac38d7055fb725cc6ae9",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457256040,
+            "amount": "15841.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a8939b7fdb443b1b89574e47c85c9ce72f7437760d53647085692aaa97770f93",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457325790,
+            "amount": "7813.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "32585d6f7a4f4837e518b5d419a11ec5f9aab701cd27e38ddd5b3f3c11487a67",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457353106,
+            "amount": "29268.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "149df62379621380f44ce2cdd4ff3e64facd51a4999847ae4cdc22f5868e8c5a",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457376847,
+            "amount": "36377.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "b43c370095a81351457e4de7f88ddedf205dae55b78780f06941521644abe540",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457387887,
+            "amount": "-1226.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "35788f91649d26065ec4ea71132b95666b8fe4be3cc212d1ddecdf6f6c5b3e04",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457416444,
+            "amount": "-7177.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "132e211de8424c09192713d79c622981b5a27fbd88b8c272a7639226da892306",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457437625,
+            "amount": "39700.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "680b3e074b6c0412fd05fa2016843284c6bd11c3671f1029b3dfc8955fcf3820",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457448895,
+            "amount": "1332.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "1654ad20b231c646e82d6599fc588bf2f4b1bcd3553284f5e3a679cdef22358a",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457473327,
+            "amount": "20043.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "24019ae2ceb341483a04b1518416c505ebfcdf0a57e21acf83313b1fc23f7fbd",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457502005,
+            "amount": "-15148.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "5902582b9260d8a78e496ce31f8152fc1c86168ea65002e05bfd2ae4465f48b0",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457570749,
+            "amount": "19884.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "b6d3548f839ac76c561344b61427e763e2e0f98ac6d8a146503196b5356023cf",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457597423,
+            "amount": "35150.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "9535ad8310a7f851166b1242b5ae741ce12cc3510724d62cf9c569d39b04e860",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457618482,
+            "amount": "141279.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "7a873a32610243e0bdfd508e147fb177a89b92c3cd02d219b932268d8a4bbfd8",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457654222,
+            "amount": "32061.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "b38b2d9bb2274a90f0385bf51edb9d3fc7902229236a9834e2cf20e129dbc2c5",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457691688,
+            "amount": "46678.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e213cabb0fbe053b53c7d42a059a092db482e1f2285190d7993380332f6045b1",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457765100,
+            "amount": "-5241.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "41e4ff1d7ca8b42771bec472e4b440d051cd6943d87fb2c86ecd7cad7b4ed71c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457799314,
+            "amount": "64943.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "d5165243a6031c21e5c722d5f759a8ff4a1f9e926e2128713d5342c1a6e8a50f",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457818599,
+            "amount": "7303.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "867d6aad81560cfa2db375421fffe864de92a6dd8d8f0c6b45593b91925b5d3f",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457834964,
+            "amount": "40485.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "b75629ff496bf8354cbba69464e5f0eace569f6927ca940201e05c63b6227bd1",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457878579,
+            "amount": "5589.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f636948643284f6bcb4d8da1ebfeb11083fe4a06ce491e831783890ac1bfacc5",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457913052,
+            "amount": "-1455.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e64f14829981c0cb52722aaf69ca21367c1e55c10ab653eee6069650bce10ca9",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457940614,
+            "amount": "-8573.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "582e7c273ddedaa59ce47920eea62593e28d75d490c8d0d1b443264f2789170c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457958092,
+            "amount": "160394.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "bca2926758a49cf1f78004d4bf2821f712f20fed158213b8162d0d17b14b4a36",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791457980058,
+            "amount": "24506.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "eed71a75a542d7843f2698f155ba862e91add369b6d51b18c07fbfdbe82cfc01",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458015738,
+            "amount": "51978.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "1c6e4a043b69199265754d20a13d7800b5e0553948067ae9b88af58f96b3c78c",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458035408,
+            "amount": "-8552.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f33386eb7d3f7dc586101a35665ae9a6c66a59816a6fb07b77d6e26be066e359",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458062547,
+            "amount": "-34047.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "57e70e933db1cfe4237e1d20ff6ecc08a101e8a4e89b06121d1c9c7759d01c40",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458123732,
+            "amount": "23874.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a4dd8435542b90d519cbec04861e5be27f39a66b8af1dbdf312fbb09a1ac4ec5",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458141404,
+            "amount": "-80255.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "eed5ccb0365e1b0fe4e009eaea0dbbd54c26cbedf575cac8a3f9b3520b586529",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458154885,
+            "amount": "2252.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "23d17e04de6975723745820d6e3263676b63a195b37093edb000b1fd4f695f40",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458202191,
+            "amount": "32837.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "5290174a0b417c338f86cbabebd363a2a5f0fb29912671ef39f5eae220523b9d",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458216962,
+            "amount": "-1042.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "82727905d63cbf75df07f9d508f98fc3867f0650cff8acc8a142bbfb068d0eeb",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458244588,
+            "amount": "21181.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f838933e3094297c2c69d44bf02e9d0206eedbeb48e12870fbc1425e4b8d67e1",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458277837,
+            "amount": "4656.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "6ae401f37993d323185ed12679b575fa2046e11f25b6ac0e457c0ac5d5e6f232",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458290961,
+            "amount": "-20855.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "0d676584d7f14c88373dcef706927af9495f23e7ce3bc07f0414e9367137a555",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458306568,
+            "amount": "-9334.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "a1e50d7634337fe1ae7fea1b05a7fb3acca9a772b8a363ec6d48ae3e63f98c8a",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458342093,
+            "amount": "104168.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "504da1232d1f81818b2f76d9594498ed6561af43f37ee2b1eff6eea78c6b3357",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458364735,
+            "amount": "-1483.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "1dd1e86a56cbc449324e47b0209c83bb0f9bfd848cb2eedd45d56075e73ba0ee",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458412879,
+            "amount": "-23424.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "f92ca6ba6f0246ed8d277ad350be03e5219c8073b112047d118c51c59b30d8c0",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458428740,
+            "amount": "-13190.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "c7db18c789972f5be17310b666082aed4dc8d245a35c0f52254113178d46e5f4",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458486724,
+            "amount": "-3692.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "661dc822418db78c35149b20bb55bf6a434a56839fd4a599735ac4e46c179c59",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458535047,
+            "amount": "-59380.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "0467a1630e9a58b25e9dee0c343b422becc3112a19e8e00dc4daa99dd3368131",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458550657,
+            "amount": "-14263.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "e1173b2e96495903182ee9dd9b964bd6afc920db3e05cfe4ebd6ee20c561d372",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458608775,
+            "amount": "-3218.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "94837afb8325aa105036f8457d2a26d832b24204e38f1bdc4a5c2d5fd9e82267",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458657108,
+            "amount": "-106854.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "075e276e5d49cd882484420e66674b2142e753d7f3ff5b5cb94a8072447b15b3",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458673087,
+            "amount": "-39404.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "77265be98adac90283adf98605ec19a48b4eb9c530fe78f01f01f22c9b5f1cc1",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458703165,
+            "amount": "1468.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "74e7459f0a72c8ec071d191eef01ac36f8adc6aeaf9e76cf894fb876f28e67e7",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458718794,
+            "amount": "27733.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "229adcc212795b58a897123b72b086a566ec354ca36d0b38666903c3805973ee",
+            "available_ms": 1791458786291
+          },
+          {
+            "event_ms": 1791458734022,
+            "amount": "14990.0",
+            "evidence_ref": "raw_observations:12329687",
+            "id": "09d4217cb21311f65bbea49e4e6c18ac3b4e370d58b36ccb08671b785c1d6fb3",
+            "available_ms": 1791458786291
+          }
+        ],
+        "coverage": {
+          "userFillsByTime": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791454974353,
+                1791458734427
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12112147",
+              "raw_observations:12328779"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "period pagination or latest-fill retention witness missing",
+            "next_action": "collect a latest unaggregated fill witness and close period pagination gaps",
+            "retention_witnesses": [],
+            "rejected_retention_witnesses": [],
+            "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+            "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+          },
+          "userFunding": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791454974353,
+                1791458734427
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12112638",
+              "raw_observations:12329355"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          },
+          "userNonFundingLedgerUpdates": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791454974353,
+                1791458734427
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12112853",
+              "raw_observations:12329687"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          }
+        },
+        "evidence_refs": [
+          "raw_observations:12111927",
+          "raw_observations:12112853",
+          "raw_observations:12327003",
+          "raw_observations:12329687"
+        ],
+        "account_economic_qualification": false,
+        "strategy_validation": false,
+        "attribution_complete": false,
+        "contract_reconciliation": {
+          "schema_version": 1,
+          "scope": {
+            "id": "perp:",
+            "currency": "USDC",
+            "account_mode": "default"
+          },
+          "period": {
+            "start_ms": 1791454974353,
+            "end_ms": 1791458734427,
+            "as_of_ms": 1791460625900,
+            "membership": "(start,end] for events; exact valuations at both bounds"
+          },
+          "status": "unknown",
+          "observed": {
+            "fees_by_currency": {},
+            "realized_pnl": "0",
+            "fees_converted_observed": "0",
+            "funding": "0",
+            "external_flows": "832647.0",
+            "other_income": "0",
+            "events": 115,
+            "fill_events": 0,
+            "builder_fee_policy": "fee already includes builderFee; no second charge",
+            "initial_equity": "360742.352937",
+            "final_equity": "1193389.3529370001",
+            "equity_change": "832647.0000000001",
+            "unrealized_change": "0",
+            "initial_positions": [],
+            "final_positions": []
+          },
+          "unknown_reasons": [
+            "fills coverage not proven"
+          ],
+          "conflicting_duplicates": [],
+          "metrics": {
+            "economic_pnl": null,
+            "component_pnl": null,
+            "reconciliation_residual": null,
+            "modified_dietz_estimate": null,
+            "time_weighted_return": null,
+            "sampled_flow_adjusted_drawdown": null
+          },
+          "metric_requirements": {
+            "economic_pnl": "complete evidenced scope, exact boundary valuations and classified external flows",
+            "time_weighted_return": "positive capital and valuation at every external-flow timestamp",
+            "sampled_flow_adjusted_drawdown": "same TWR requirements; only observed checkpoints",
+            "modified_dietz_estimate": "positive weighted-capital denominator; explicitly approximate"
+          },
+          "limits": [
+            "reconciled_inputs does not mean residual is acceptable or performance is good",
+            "Modified Dietz is an approximation; sampled drawdown omits intra-snapshot extremes",
+            "valuation-scope completeness is adapter evidence, not assumed from endpoint availability",
+            "external hedges and off-platform accounts remain unknown"
+          ],
+          "input_fingerprint": "775b67733e37633e02472b3a738ad0b8f45c86c021e7a01eea053ff7a1b648a4",
+          "coverage": {
+            "fills": {
+              "status": "unknown",
+              "pagination_status": "covered",
+              "pagination_intervals_ms": [
+                [
+                  1791454974353,
+                  1791458734427
+                ]
+              ],
+              "pagination_gaps_ms": [],
+              "evidence_refs": [
+                "raw_observations:12112147",
+                "raw_observations:12328779"
+              ],
+              "incomplete_pages": [],
+              "retention_proven": false,
+              "reason": "period pagination or latest-fill retention witness missing",
+              "next_action": "collect a latest unaggregated fill witness and close period pagination gaps",
+              "retention_witnesses": [],
+              "rejected_retention_witnesses": [],
+              "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+              "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+            },
+            "funding": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12112638",
+                "raw_observations:12329355"
+              ],
+              "basis": "public interval endpoint contract"
+            },
+            "flows": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12112853",
+                "raw_observations:12329687"
+              ],
+              "basis": "covered and classified public ledger"
+            },
+            "other_income": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12112853",
+                "raw_observations:12329687"
+              ],
+              "basis": "no unclassified non-funding ledger event in this public scope; omissions remain provider uncertainty"
+            },
+            "valuation_scope": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12111927",
+                "raw_observations:12327003",
+                "raw_observations:12112853",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687",
+                "raw_observations:12329687"
+              ],
+              "basis": "explicit independent validator-perp accountValue boundaries"
+            }
+          },
+          "basis": "conditional public API contract; no account-wide or strategy qualification"
+        },
+        "next_actions": [
+          "establish fill retention and supported income semantics before declaring complete attribution",
+          "evaluate reconciliation residual under a separately versioned materiality policy"
+        ],
+        "assumptions": [
+          "reported independent DEX accountValue represents this public USDC perp scope",
+          "covered ledger pages enumerate the requested public interval under the documented API contract",
+          "no claim of independently audited provider completeness or continuous account-mode observation"
+        ],
+        "limits": [
+          "scope excludes spot, other DEXs, vaults, loans and related accounts",
+          "net capital change includes all income sources in scope; observed components may omit events",
+          "attribution residual is diagnostic, never booked as trading profit or other income",
+          "Modified Dietz is approximate; no unsampled drawdown or profitable-account verdict"
+        ],
+        "official_references": [
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#send-asset"
+        ]
+      },
+      "boundary_diagnostic_statuses": [
+        "exact_observation",
+        "missing_exact_observation"
+      ],
+      "unsupported_event_count": 0,
+      "account_economic_qualification": false
+    },
+    {
+      "mode": "disabled",
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "period": {
+        "start_ms": 1791459793452,
+        "end_ms": 1791460219388,
+        "as_of_ms": 1791460625900
+      },
+      "status": "public_scope_measured",
+      "validator_scope_assessment": {
+        "version": "public-validator-perp-capital-v1",
+        "scope_id": "perp:",
+        "currency": "USDC",
+        "status": "measured_public_scope",
+        "metrics": {
+          "capital_change": "145.504772",
+          "net_capital_change": "145.504772",
+          "external_flows": "0",
+          "modified_dietz_estimate": "0.0006409414846729613799673284553",
+          "observed_component_pnl": "145.561325",
+          "observed_attribution_residual": "-0.056553"
+        },
+        "unknown_reasons": [],
+        "classified_flows": [],
+        "coverage": {
+          "userFillsByTime": {
+            "status": "complete",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791459793452,
+                1791460219388
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12388558",
+              "raw_observations:12389139",
+              "raw_observations:12389302",
+              "raw_observations:12389398",
+              "raw_observations:12389413"
+            ],
+            "incomplete_pages": [
+              {
+                "evidence_ref": "raw_observations:12388558",
+                "reason": "page_budget_exhausted"
+              },
+              {
+                "evidence_ref": "raw_observations:12389139",
+                "reason": "page_budget_exhausted"
+              },
+              {
+                "evidence_ref": "raw_observations:12389398",
+                "reason": "page_budget_exhausted"
+              }
+            ],
+            "retention_proven": true,
+            "reason": "period pagination covered and latest-fill window reaches its start",
+            "next_action": "no additional fill-history collection required for this period",
+            "retention_witnesses": [
+              {
+                "evidence_ref": "raw_observations:12389413",
+                "oldest_fill_ms": 1791458444062,
+                "requested_ms": 1791460474075,
+                "available_ms": 1791460474875
+              }
+            ],
+            "rejected_retention_witnesses": [],
+            "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+            "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+          },
+          "userFunding": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791459793452,
+                1791460219388
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12389400"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          },
+          "userNonFundingLedgerUpdates": {
+            "status": "unknown",
+            "pagination_status": "covered",
+            "pagination_intervals_ms": [
+              [
+                1791459793452,
+                1791460219388
+              ]
+            ],
+            "pagination_gaps_ms": [],
+            "evidence_refs": [
+              "raw_observations:12389401"
+            ],
+            "incomplete_pages": [],
+            "retention_proven": false,
+            "reason": "exhausted API pages do not establish retention or economic scope completeness",
+            "next_action": "establish retained-history coverage and accounting scope independently"
+          }
+        },
+        "evidence_refs": [
+          "raw_observations:12387093",
+          "raw_observations:12389387",
+          "raw_observations:12389401"
+        ],
+        "account_economic_qualification": false,
+        "strategy_validation": false,
+        "attribution_complete": false,
+        "contract_reconciliation": {
+          "schema_version": 1,
+          "scope": {
+            "id": "perp:",
+            "currency": "USDC",
+            "account_mode": "disabled"
+          },
+          "period": {
+            "start_ms": 1791459793452,
+            "end_ms": 1791460219388,
+            "as_of_ms": 1791460625900,
+            "membership": "(start,end] for events; exact valuations at both bounds"
+          },
+          "status": "reconciled_inputs",
+          "observed": {
+            "fees_by_currency": {
+              "USDC": "-16.081183"
+            },
+            "realized_pnl": "-23.009636",
+            "fees_converted_observed": "-16.081183",
+            "funding": "0",
+            "external_flows": "0",
+            "other_income": "0",
+            "events": 571,
+            "fill_events": 571,
+            "builder_fee_policy": "fee already includes builderFee; no second charge",
+            "initial_equity": "227017.248032",
+            "final_equity": "227162.752804",
+            "equity_change": "145.504772",
+            "unrealized_change": "152.489778",
+            "initial_positions": [
+              {
+                "coin": "APT",
+                "cumFunding": {
+                  "allTime": "-20.949643",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.7829",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "195.060937",
+                "maxLeverage": 10,
+                "positionValue": "975.304686",
+                "returnOnEquity": "0.0206237151",
+                "szi": "1240.53",
+                "unrealizedPnl": "4.006356"
+              },
+              {
+                "coin": "TRX",
+                "cumFunding": {
+                  "allTime": "-1.592922",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.335405",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "130.65444",
+                "maxLeverage": 10,
+                "positionValue": "653.2722",
+                "returnOnEquity": "0.0043960277",
+                "szi": "1946.0",
+                "unrealizedPnl": "0.573856"
+              },
+              {
+                "coin": "SEI",
+                "cumFunding": {
+                  "allTime": "-4.105606",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.069595",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "49.038902",
+                "maxLeverage": 5,
+                "positionValue": "245.194514",
+                "returnOnEquity": "-0.0040232775",
+                "szi": "3526.0",
+                "unrealizedPnl": "-0.197456"
+              },
+              {
+                "coin": "DOT",
+                "cumFunding": {
+                  "allTime": "0.851555",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.013593"
+                },
+                "entryPx": "1.11313",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "51.973284",
+                "maxLeverage": 10,
+                "positionValue": "259.86642",
+                "returnOnEquity": "-0.0244257973",
+                "szi": "234.6",
+                "unrealizedPnl": "-1.275721"
+              },
+              {
+                "coin": "ADA",
+                "cumFunding": {
+                  "allTime": "-18.892885",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "-0.21456"
+                },
+                "entryPx": "0.250475",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "151.194296",
+                "maxLeverage": 10,
+                "positionValue": "755.97148",
+                "returnOnEquity": "0.0068769931",
+                "szi": "3014.0",
+                "unrealizedPnl": "1.038334"
+              },
+              {
+                "coin": "NEAR",
+                "cumFunding": {
+                  "allTime": "-23.635353",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "5.10274",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "779.5088871259",
+                "marginUsed": "280.9158",
+                "maxLeverage": 10,
+                "positionValue": "1404.579",
+                "returnOnEquity": "-0.012005238",
+                "szi": "-274.6",
+                "unrealizedPnl": "-3.364383"
+              },
+              {
+                "coin": "AR",
+                "cumFunding": {
+                  "allTime": "0.842975",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "4.1812",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "136.84832",
+                "maxLeverage": 5,
+                "positionValue": "684.241602",
+                "returnOnEquity": "0.02937882",
+                "szi": "162.69",
+                "unrealizedPnl": "3.996957"
+              },
+              {
+                "coin": "POL",
+                "cumFunding": {
+                  "allTime": "-0.324877",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "-0.00366"
+                },
+                "entryPx": "0.100695",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "72.0296438854",
+                "marginUsed": "56.987468",
+                "maxLeverage": 5,
+                "positionValue": "284.93734",
+                "returnOnEquity": "-0.013618522",
+                "szi": "-2822.0",
+                "unrealizedPnl": "-0.773977"
+              },
+              {
+                "coin": "ALGO",
+                "cumFunding": {
+                  "allTime": "-2.947656",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.133254",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "111.493466",
+                "maxLeverage": 5,
+                "positionValue": "557.46733",
+                "returnOnEquity": "0.0245919745",
+                "szi": "4163.0",
+                "unrealizedPnl": "2.728425"
+              },
+              {
+                "coin": "HYPE",
+                "cumFunding": {
+                  "allTime": "8.803788",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "85.9509",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "1414.6853579597",
+                "marginUsed": "2748.707286",
+                "maxLeverage": 10,
+                "positionValue": "13743.53643",
+                "returnOnEquity": "0.0040700903",
+                "szi": "-160.03",
+                "unrealizedPnl": "11.196601"
+              },
+              {
+                "coin": "SPX",
+                "cumFunding": {
+                  "allTime": "-0.371938",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.37786",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "716.3669822383",
+                "marginUsed": "21.464352",
+                "maxLeverage": 5,
+                "positionValue": "107.32176",
+                "returnOnEquity": "-0.0092626899",
+                "szi": "-283.5",
+                "unrealizedPnl": "-0.19845"
+              },
+              {
+                "coin": "MORPHO",
+                "cumFunding": {
+                  "allTime": "0.765208",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "2.51734",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "47.803028",
+                "maxLeverage": 5,
+                "positionValue": "239.01514",
+                "returnOnEquity": "0.0024839841",
+                "szi": "94.9",
+                "unrealizedPnl": "0.118683"
+              },
+              {
+                "coin": "TRUMP",
+                "cumFunding": {
+                  "allTime": "4.65251",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "1.8501",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "28.94112",
+                "maxLeverage": 10,
+                "positionValue": "144.7056",
+                "returnOnEquity": "0.0137830388",
+                "szi": "78.0",
+                "unrealizedPnl": "0.3978"
+              },
+              {
+                "coin": "SOPH",
+                "cumFunding": {
+                  "allTime": "119.56846",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.003707",
+                "leverage": {
+                  "type": "cross",
+                  "value": 3
+                },
+                "liquidationPx": "1.8155975821",
+                "marginUsed": "130.201649",
+                "maxLeverage": 3,
+                "positionValue": "390.604948",
+                "returnOnEquity": "0.0073843121",
+                "szi": "-105626.0",
+                "unrealizedPnl": "0.963822"
+              },
+              {
+                "coin": "PUMP",
+                "cumFunding": {
+                  "allTime": "6.069876",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.005851",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "0.097250613",
+                "marginUsed": "2723.059662",
+                "maxLeverage": 10,
+                "positionValue": "13615.298312",
+                "returnOnEquity": "-0.0004336601",
+                "szi": "-2326606.0",
+                "unrealizedPnl": "-1.18078"
+              },
+              {
+                "coin": "0G",
+                "cumFunding": {
+                  "allTime": "0.061079",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.306242",
+                "leverage": {
+                  "type": "cross",
+                  "value": 3
+                },
+                "liquidationPx": null,
+                "marginUsed": "231.6952",
+                "maxLeverage": 3,
+                "positionValue": "695.0856",
+                "returnOnEquity": "0.0129076444",
+                "szi": "2260.0",
+                "unrealizedPnl": "2.977827"
+              },
+              {
+                "coin": "ZEC",
+                "cumFunding": {
+                  "allTime": "6.029544",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "1204.6385",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "9135.375676659",
+                "marginUsed": "6490.7136",
+                "maxLeverage": 10,
+                "positionValue": "32453.568",
+                "returnOnEquity": "-0.0205930847",
+                "szi": "-26.83",
+                "unrealizedPnl": "-133.115563"
+              },
+              {
+                "coin": "MET",
+                "cumFunding": {
+                  "allTime": "0.324582",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.472797",
+                "leverage": {
+                  "type": "cross",
+                  "value": 3
+                },
+                "liquidationPx": null,
+                "marginUsed": "286.37452",
+                "maxLeverage": 3,
+                "positionValue": "859.12356",
+                "returnOnEquity": "0.0084561423",
+                "szi": "1812.0",
+                "unrealizedPnl": "2.414817"
+              }
+            ],
+            "final_positions": [
+              {
+                "coin": "APT",
+                "cumFunding": {
+                  "allTime": "-20.949643",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.7842",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "160.3769662359",
+                "marginUsed": "209.807197",
+                "maxLeverage": 10,
+                "positionValue": "1049.035985",
+                "returnOnEquity": "0.0049267018",
+                "szi": "-1338.91",
+                "unrealizedPnl": "1.034677"
+              },
+              {
+                "coin": "TRX",
+                "cumFunding": {
+                  "allTime": "-1.592922",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.335405",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "130.553248",
+                "maxLeverage": 10,
+                "positionValue": "652.76624",
+                "returnOnEquity": "0.0005201178",
+                "szi": "1946.0",
+                "unrealizedPnl": "0.067896"
+              },
+              {
+                "coin": "SEI",
+                "cumFunding": {
+                  "allTime": "-4.105606",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.069569",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "19.871476",
+                "maxLeverage": 5,
+                "positionValue": "99.357384",
+                "returnOnEquity": "0.0006468398",
+                "szi": "1428.0",
+                "unrealizedPnl": "0.012852"
+              },
+              {
+                "coin": "DOT",
+                "cumFunding": {
+                  "allTime": "0.851555",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.013593"
+                },
+                "entryPx": "1.11313",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "51.827832",
+                "maxLeverage": 10,
+                "positionValue": "259.13916",
+                "returnOnEquity": "-0.0383503978",
+                "szi": "234.6",
+                "unrealizedPnl": "-2.002981"
+              },
+              {
+                "coin": "ADA",
+                "cumFunding": {
+                  "allTime": "-18.892885",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "-0.21456"
+                },
+                "entryPx": "0.250131",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "319.940712",
+                "maxLeverage": 10,
+                "positionValue": "1599.70356",
+                "returnOnEquity": "-0.0004288521",
+                "szi": "6396.0",
+                "unrealizedPnl": "-0.137219"
+              },
+              {
+                "coin": "NEAR",
+                "cumFunding": {
+                  "allTime": "-23.635353",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "5.0995",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "81.816832",
+                "maxLeverage": 10,
+                "positionValue": "409.08416",
+                "returnOnEquity": "0.0012746348",
+                "szi": "80.2",
+                "unrealizedPnl": "0.10426"
+              },
+              {
+                "coin": "AR",
+                "cumFunding": {
+                  "allTime": "0.842975",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "4.1812",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "14.353569",
+                "maxLeverage": 5,
+                "positionValue": "71.767848",
+                "returnOnEquity": "0.0100066313",
+                "szi": "17.13",
+                "unrealizedPnl": "0.143344"
+              },
+              {
+                "coin": "POL",
+                "cumFunding": {
+                  "allTime": "-0.324877",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "-0.00366"
+                },
+                "entryPx": "0.100699",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "96.8598714542",
+                "marginUsed": "42.421392",
+                "maxLeverage": 5,
+                "positionValue": "212.10696",
+                "returnOnEquity": "0.0039420689",
+                "szi": "-2108.0",
+                "unrealizedPnl": "0.16736"
+              },
+              {
+                "coin": "ALGO",
+                "cumFunding": {
+                  "allTime": "-2.947656",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.133255",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "101.767584",
+                "maxLeverage": 5,
+                "positionValue": "508.83792",
+                "returnOnEquity": "-0.0111026852",
+                "szi": "3827.0",
+                "unrealizedPnl": "-1.132408"
+              },
+              {
+                "coin": "HYPE",
+                "cumFunding": {
+                  "allTime": "8.803788",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "85.4867",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "8183.114478",
+                "maxLeverage": 10,
+                "positionValue": "40915.57239",
+                "returnOnEquity": "0.0046955812",
+                "szi": "478.17",
+                "unrealizedPnl": "38.388427"
+              },
+              {
+                "coin": "SPX",
+                "cumFunding": {
+                  "allTime": "-0.371938",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.37786",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "1426.7303112969",
+                "marginUsed": "10.78649",
+                "maxLeverage": 5,
+                "positionValue": "53.93245",
+                "returnOnEquity": "0.009395014",
+                "szi": "-143.0",
+                "unrealizedPnl": "0.10153"
+              },
+              {
+                "coin": "MORPHO",
+                "cumFunding": {
+                  "allTime": "0.765208",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "2.50851",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "1065.3957365579",
+                "marginUsed": "96.187956",
+                "maxLeverage": 5,
+                "positionValue": "480.93978",
+                "returnOnEquity": "0.0046230161",
+                "szi": "-191.9",
+                "unrealizedPnl": "0.44509"
+              },
+              {
+                "coin": "TRUMP",
+                "cumFunding": {
+                  "allTime": "4.65251",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "1.8501",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": null,
+                "marginUsed": "23.902",
+                "maxLeverage": 10,
+                "positionValue": "119.51",
+                "returnOnEquity": "-0.0002702557",
+                "szi": "64.6",
+                "unrealizedPnl": "-0.00646"
+              },
+              {
+                "coin": "SOPH",
+                "cumFunding": {
+                  "allTime": "119.56846",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.003707",
+                "leverage": {
+                  "type": "cross",
+                  "value": 3
+                },
+                "liquidationPx": "1.8235011671",
+                "marginUsed": "130.265748",
+                "maxLeverage": 3,
+                "positionValue": "390.797244",
+                "returnOnEquity": "0.0073810847",
+                "szi": "-105678.0",
+                "unrealizedPnl": "0.963874"
+              },
+              {
+                "coin": "PUMP",
+                "cumFunding": {
+                  "allTime": "6.069876",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.005817",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "51.2237671146",
+                "marginUsed": "4.853704",
+                "maxLeverage": 10,
+                "positionValue": "24.268524",
+                "returnOnEquity": "0.0002851268",
+                "szi": "-4172.0",
+                "unrealizedPnl": "0.001384"
+              },
+              {
+                "coin": "0G",
+                "cumFunding": {
+                  "allTime": "0.061079",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.306282",
+                "leverage": {
+                  "type": "cross",
+                  "value": 3
+                },
+                "liquidationPx": "2747.6373841469",
+                "marginUsed": "7.1526",
+                "maxLeverage": 3,
+                "positionValue": "21.4578",
+                "returnOnEquity": "-0.002524282",
+                "szi": "-70.0",
+                "unrealizedPnl": "-0.01804"
+              },
+              {
+                "coin": "ZEC",
+                "cumFunding": {
+                  "allTime": "6.029544",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "1208.823",
+                "leverage": {
+                  "type": "cross",
+                  "value": 5
+                },
+                "liquidationPx": "42539.0034580455",
+                "marginUsed": "1249.072",
+                "maxLeverage": 10,
+                "positionValue": "6245.36",
+                "returnOnEquity": "0.0034045047",
+                "szi": "-5.17",
+                "unrealizedPnl": "4.255369"
+              },
+              {
+                "coin": "MET",
+                "cumFunding": {
+                  "allTime": "0.324582",
+                  "sinceChange": "0.0",
+                  "sinceOpen": "0.0"
+                },
+                "entryPx": "0.470381",
+                "leverage": {
+                  "type": "cross",
+                  "value": 3
+                },
+                "liquidationPx": "675.2519643519",
+                "marginUsed": "44.55025",
+                "maxLeverage": 3,
+                "positionValue": "133.65075",
+                "returnOnEquity": "0.0091296783",
+                "szi": "-285.0",
+                "unrealizedPnl": "0.407971"
+              }
+            ]
+          },
+          "unknown_reasons": [],
+          "conflicting_duplicates": [],
+          "metrics": {
+            "economic_pnl": "145.504772",
+            "component_pnl": "145.561325",
+            "reconciliation_residual": "-0.056553",
+            "modified_dietz_estimate": "0.0006409414846729613799673284553",
+            "time_weighted_return": "0.000640941484672961379967328",
+            "sampled_flow_adjusted_drawdown": "0"
+          },
+          "metric_requirements": {
+            "economic_pnl": "complete evidenced scope, exact boundary valuations and classified external flows",
+            "time_weighted_return": "positive capital and valuation at every external-flow timestamp",
+            "sampled_flow_adjusted_drawdown": "same TWR requirements; only observed checkpoints",
+            "modified_dietz_estimate": "positive weighted-capital denominator; explicitly approximate"
+          },
+          "limits": [
+            "reconciled_inputs does not mean residual is acceptable or performance is good",
+            "Modified Dietz is an approximation; sampled drawdown omits intra-snapshot extremes",
+            "valuation-scope completeness is adapter evidence, not assumed from endpoint availability",
+            "external hedges and off-platform accounts remain unknown"
+          ],
+          "input_fingerprint": "87844d9530f5a4e3360f505c896108927b90153479ff4334d4759113611be1bb",
+          "coverage": {
+            "fills": {
+              "status": "complete",
+              "pagination_status": "covered",
+              "pagination_intervals_ms": [
+                [
+                  1791459793452,
+                  1791460219388
+                ]
+              ],
+              "pagination_gaps_ms": [],
+              "evidence_refs": [
+                "raw_observations:12388558",
+                "raw_observations:12389139",
+                "raw_observations:12389302",
+                "raw_observations:12389398",
+                "raw_observations:12389413"
+              ],
+              "incomplete_pages": [
+                {
+                  "evidence_ref": "raw_observations:12388558",
+                  "reason": "page_budget_exhausted"
+                },
+                {
+                  "evidence_ref": "raw_observations:12389139",
+                  "reason": "page_budget_exhausted"
+                },
+                {
+                  "evidence_ref": "raw_observations:12389398",
+                  "reason": "page_budget_exhausted"
+                }
+              ],
+              "retention_proven": true,
+              "reason": "period pagination covered and latest-fill window reaches its start",
+              "next_action": "no additional fill-history collection required for this period",
+              "retention_witnesses": [
+                {
+                  "evidence_ref": "raw_observations:12389413",
+                  "oldest_fill_ms": 1791458444062,
+                  "requested_ms": 1791460474075,
+                  "available_ms": 1791460474875
+                }
+              ],
+              "rejected_retention_witnesses": [],
+              "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+              "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+            },
+            "funding": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12389400"
+              ],
+              "basis": "public interval endpoint contract"
+            },
+            "flows": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12389401"
+              ],
+              "basis": "covered and classified public ledger"
+            },
+            "other_income": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12389401"
+              ],
+              "basis": "no unclassified non-funding ledger event in this public scope; omissions remain provider uncertainty"
+            },
+            "valuation_scope": {
+              "status": "complete",
+              "evidence_refs": [
+                "raw_observations:12387093",
+                "raw_observations:12389387",
+                "raw_observations:12389401"
+              ],
+              "basis": "explicit independent validator-perp accountValue boundaries"
+            }
+          },
+          "basis": "conditional public API contract; no account-wide or strategy qualification"
+        },
+        "next_actions": [
+          "establish fill retention and supported income semantics before declaring complete attribution",
+          "evaluate reconciliation residual under a separately versioned materiality policy"
+        ],
+        "assumptions": [
+          "reported independent DEX accountValue represents this public USDC perp scope",
+          "covered ledger pages enumerate the requested public interval under the documented API contract",
+          "no claim of independently audited provider completeness or continuous account-mode observation"
+        ],
+        "limits": [
+          "scope excludes spot, other DEXs, vaults, loans and related accounts",
+          "net capital change includes all income sources in scope; observed components may omit events",
+          "attribution residual is diagnostic, never booked as trading profit or other income",
+          "Modified Dietz is approximate; no unsampled drawdown or profitable-account verdict"
+        ],
+        "official_references": [
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#send-asset"
+        ]
+      },
+      "boundary_diagnostic_statuses": [
+        "exact_observation",
+        "missing_exact_observation"
+      ],
+      "unsupported_event_count": 0,
+      "account_economic_qualification": false
+    }
+  ],
+  "report_sha256": "cfe0ea3fc8e03b8f304d43b8ef4fd8f1627691e2e06eb1431cdd8aecf564cddb",
+  "reproduce": [
+    "PYTHONPATH=src .venv/bin/python scripts/population-qualification.py --db data/tamtam.sqlite3 --as-of-ms 1791460625900 --output /tmp/r3-qualification.json"
+  ],
+  "limits": [
+    "subsequent corrected or newly stored evidence may change readonly reproduction; availability cutoff remains enforced",
+    "public endpoint-contract accounting; provider omissions not independently audited",
+    "one observed return does not establish profitable account, replicability or strategy validation"
+  ]
+}

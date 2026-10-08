@@ -37,3 +37,20 @@ class BatchTests(unittest.TestCase):
     def test_invalid_period_rejected_before_database_query(self):
         with self.assertRaises(ValueError):
             report_population(None,'n',0,1001,as_of_ms=1000)
+
+    def test_observed_qualification_applies_to_all_accounts_without_financial_selection(self):
+        from tamtam_again.account_batch import qualify_observed_population
+        from unittest.mock import patch
+        import json
+        self.connection.row_factory=sqlite3.Row
+        self.connection.execute('alter table account_scope_reports add column payload_json text')
+        self.connection.execute("update account_scope_reports set payload_json=?",(json.dumps({'mode':'disabled'}),))
+        p={'periods':[{'start_ms':100,'end_ms':500}]}
+        with patch('tamtam_again.account_batch.protected_addresses',return_value={'b'}), patch(
+            'tamtam_again.account_periods.observed_periods',return_value=p), patch(
+            'tamtam_again.account_batch.report_account',return_value={'status':'public_scope_measured','economic_validation':False}) as adapter:
+            result=qualify_observed_population(self.store,'n',as_of_ms=1000)
+        self.assertEqual(result['accounts_considered'],2)
+        self.assertEqual(adapter.call_count,2)
+        self.assertEqual(result['public_scopes_measured'],2)
+        self.assertEqual(result['economically_validated'],0)

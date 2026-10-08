@@ -70,14 +70,21 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
                     'available_ms':available,'status':'valuation_event_time_unknown',
                     'reason':'receipt time cannot substitute for valuation event time'})
                 continue
-            positions=[p['position'] for p in payload.get('assetPositions',[]) if isinstance(p,dict) and isinstance(p.get('position'),dict)]
+            raw_positions=payload.get('assetPositions')
+            if not isinstance(raw_positions,list) or any(not isinstance(p,dict) or not isinstance(p.get('position'),dict) for p in raw_positions):
+                boundary_diagnostics.append({'scope_id':scope,'evidence_ref':ref,'status':'malformed_positions','reason':'do not replace malformed positions with empty inventory'})
+                continue
+            positions=[p['position'] for p in raw_positions]
             equity=payload.get('marginSummary',{}).get('accountValue')
             if equity is None or any('unrealizedPnl' not in p for p in positions):continue
             # Equity is API-reported, not a consolidated cross-dex capital claim.
             boundaries.setdefault(scope,[]).append({'event_ms':stamp,'available_ms':available,'scope_id':scope,'currency':currency_for(stamp,dex=dex),'equity':str(equity),'unrealized_pnl':str(sum((decimal(p['unrealizedPnl']) for p in positions),decimal(0))),'positions':positions,'evidence_ref':ref})
         if endpoint=='userFillsByTime' and isinstance(payload,list):
             for fill in payload:
-                if not isinstance(fill,dict) or not fill.get('coin'):continue
+                if (not isinstance(fill,dict) or not fill.get('coin') or type(fill.get('time')) is not int
+                    or (fill.get('tid') is None and not fill.get('hash'))):
+                    unsupported.append({'kind':'malformed_fill','endpoint':'userFillsByTime','evidence_ref':ref,'reason':'fill timestamp, instrument or identity absent'})
+                    continue
                 coin=str(fill['coin'])
                 if coin.startswith('@') or '/' in coin:unsupported.append({'kind':'spot_fill','evidence_ref':ref});continue
                 dex=coin.split(':',1)[0] if ':' in coin else '';currency=currency_for(int(fill['time']),coin=coin)
@@ -154,6 +161,13 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             unsupported.append({'kind':'conflicting_ledger_duplicate','evidence_refs':[old['evidence_ref'],event['evidence_ref']],'event_id':event['id'],'reason':'same identity with different financial fields'})
         ledger_by_id.setdefault(event['id'],event)
     ledger_events=list(ledger_by_id.values())
+    from .public_scope_accounting import assess as assess_public_scope
+    for report in reports:
+        scope=report['scope']['id']
+        report['public_scope_assessment']=assess_public_scope(address=address,scope=scope,mode=mode,
+            mode_changed=mode_changed,start_ms=start_ms,end_ms=end_ms,valuations=boundaries.get(scope,[]),
+            component_report=report,ledger_events=ledger_events,unsupported=unsupported,
+            history_coverage=history_coverage,events=events,as_of_ms=as_of_ms)
     from .account_cashflows import summarize as summarize_cashflows
     whole_account_components=summarize_cashflows(events,ledger_events,address=address,
         start_ms=start_ms,end_ms=end_ms,as_of_ms=as_of_ms,account_mode=mode)
@@ -183,4 +197,4 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         risk.append(unified_ratio(mode=mode,spot=spot,catalog=catalog,
             dex_states=[x for x in margin_snapshots if x['event_ms']==stamp],
             expected_dexes=list(catalog['dexes']),event_ms=stamp,as_of_ms=as_of_ms))
-    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'whole_account_observed_components':whole_account_components,'reported_portfolio_observations':portfolio_observations,'account_acquisitions':acquisitions,'spot_balance_snapshots':spot_snapshots,'lending_observations':lending_observations,'margin_component_snapshots':margin_snapshots,'unified_maintenance_ratio_observations':risk,'capital_model':{'mode':mode,'status':'unverified','balance_source':'spotClearinghouseState' if mode in ('unifiedAccount','portfolioMargin') else 'mode-specific inventory','reference':'https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}
+    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'whole_account_observed_components':whole_account_components,'reported_portfolio_observations':portfolio_observations,'account_acquisitions':acquisitions,'spot_balance_snapshots':spot_snapshots,'lending_observations':lending_observations,'margin_component_snapshots':margin_snapshots,'unified_maintenance_ratio_observations':risk,'capital_model':{'mode':mode,'status':'unverified','balance_source':'spotClearinghouseState' if mode in ('unifiedAccount','portfolioMargin') else 'mode-specific inventory','reference':'https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'public_scope_measured' if any(r['public_scope_assessment']['status']=='measured_public_scope' for r in reports) else 'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}

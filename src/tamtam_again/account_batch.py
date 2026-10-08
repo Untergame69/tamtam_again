@@ -29,3 +29,48 @@ def report_population(store, network, start_ms, end_ms, *, as_of_ms):
             'economically_validated': sum(r.get('economic_validation') is True for r in reports),
             'synthetic': False,
             'scope': 'population REST evidence; common period and cutoff; incomplete coverage remains unknown'}
+
+
+def qualify_observed_population(store,network,*,as_of_ms):
+    """Apply the same latest-adjacent-period rule to every inventoried candidate.
+
+    Selection is by availability and mode, never by measured PnL. Per-account
+    periods are announced explicitly and must not be ranked as aligned returns.
+    """
+    import json
+    from .account_periods import observed_periods
+    if type(as_of_ms) is not int or as_of_ms<0:raise ValueError('Explicit decision cutoff required')
+    blocked=protected_addresses(store);latest={}
+    for r in store.connection.execute('select address,available_ms,payload_json from account_scope_reports '
+            'where network=? and available_ms<=? order by available_ms,address',(network,as_of_ms)):
+        if r['address'] in blocked:continue
+        latest[r['address']]=r
+    reports=[];failures=[];representatives={}
+    for address,row in sorted(latest.items()):
+        mode=json.loads(row['payload_json']).get('mode','unknown')
+        try:
+            periods=observed_periods(store,network,address,as_of_ms=as_of_ms)
+            if not periods['periods']:
+                reports.append({'address':address,'account_mode':mode,'status':periods['status'],
+                    'period_selection':periods,'economic_validation':False})
+                continue
+            chosen=periods['periods'][-1]
+            report=report_account(store,network,address,chosen['start_ms'],chosen['end_ms'],as_of_ms=as_of_ms)
+            report['period_selection']={'rule':'latest-adjacent-observed-valuations-v1',**chosen}
+            reports.append(report)
+            # Contrast cases remain sample descriptors, never a population cap.
+            previous=representatives.get(mode)
+            if previous is None or (row['available_ms'],address)>(previous['inventory_available_ms'],previous['address']):
+                representatives[mode]={'address':address,'inventory_available_ms':row['available_ms']}
+        except (ValueError,TypeError,KeyError):
+            failures.append({'address':address,'status':'evidence_error','next_action':'correct unsupported or malformed evidence; do not qualify'})
+    return {'version':'observed-population-qualification-v1','network':network,'as_of_ms':as_of_ms,
+        'period_rule':'latest adjacent timestamped validator-perp valuations available at cutoff',
+        'accounts':reports,'failed_accounts':failures,'contrast_cases':representatives,
+        'accounts_considered':len(latest),
+        'public_scopes_measured':sum(r.get('status')=='public_scope_measured' for r in reports),
+        'economically_validated':sum(r.get('economic_validation') is True for r in reports),
+        'limits':['individual periods differ; no cross-account return ranking',
+            'contrast cases selected by mode and inventory availability, never financial result',
+            'public scope measurements do not qualify whole accounts or validate strategies'],
+        'synthetic':False}

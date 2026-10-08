@@ -229,3 +229,66 @@ lecture de payload. Les huit tests ciblés et la suite complète (424 tests, 43,
 réanalyse paper enrichie reste à réaliser ; aucun budget IA réel n’est réarmé.
 Retour arrière : revert du commit de ce contrôle, sans migration ni modification
 de service. La collecte demeure active.
+
+
+## Réanalyse paper sur observations acquises
+
+Le scheduler paper consomme un wake de sa propre origine pour créer un job enfant
+immuable. Il conserve le diagnostic, le paquet, le résultat, la route, les
+positions et les performances précédentes. Une seule reprise est admise par
+parent ; chaque enfant compte dans le même plafond global population + paper.
+Une chaîne demande des observations nouvelles, avec filiation acyclique,
+intervalle minimal existant et limite technique de 64 ancêtres ; ce plafond
+technique ne constitue pas une allocation IA. Le pilote réel reste à 8 essais,
+déjà consommés.
+
+Le paquet enfant reconstitue et vérifie chaque paquet parent à son heure de
+scellement, réautorise les périodes avant lecture, puis reçoit les pages
+archivées prouvant exactement ses contrats. La mémoire conserve l’union des
+périodes et les plans futurs conservent les parents recherche/session/version.
+Les wakes paper ne rouvrent pas les paquets population. Une réserve nouvelle,
+un parent modifié, une preuve d’une autre origine ou un budget épuisé bloquent
+la reprise. La preuve de pagination ne certifie toujours pas la rentabilité ni
+la complétude économique.
+
+Migration : ajout nullable parent_request_id ; remplacement transactionnel de
+l’unicité globale du diagnostic par deux index partiels (un initial/diagnostic,
+un enfant/parent). Toutes les colonnes, lignes, index explicites et triggers
+existants sont conservés. Une référence FK inconnue bloque la migration avant
+suppression de table. Tests legacy : conservation des valeurs, idempotence,
+unicité initiale et refus d’une FK avec conservation des lignes.
+
+Recette reproductible supplémentaire :
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/adaptation-recipe.py \
+  --output /tmp/tamtam-paper-observation-followup --observation-followup
+```
+
+Base temporaire uniquement : comparaison → finale → paper → limite de risque →
+diagnostic → demande de funding historique → acquisition via bail population →
+nouvelle connexion → réanalyse → nouveau plan prospectif. Six rôles simulés,
+un job population, deux jobs paper, deux plans, une session paper préservée.
+Zéro appel fournisseur ou modèle réel. Un second tick ne recrée pas le plan.
+Les choix économiques des modèles et marchés sont des fixtures ; ceci prouve
+le raccordement logiciel, pas un avantage réel ou le remplacement évalué de la
+stratégie.
+
+Contrôle réel prepare-only : migration appliquée, 8 jobs population conservés,
+0 job paper, 0 session paper, 0 wake, 0 acquisition structurée et aucun nouvel
+appel IA. Collecteur principal actif. Aucun service ni critère pilote modifié.
+Les sept demandes legacy restent structured_request_required ; les limitations
+des autres sources/preuves et de la qualification économique globale restent
+ouvertes. R4 n’est pas déclaré entièrement terminé sur cette recette.
+
+Retour arrière : suspendre uniquement le timer de recherche du projet pendant
+le revert ; laisser les collecteurs actifs. Conserver la colonne, les index et
+les jobs enfants, ne pas rétablir l’ancienne unicité du diagnostic. Si des
+enfants sealed existent, conserver leur paquet et suspendre leur exécution
+avec diagnostic avant de revenir à un runtime qui ne sait pas les vérifier.
+Le contrôle réel présent n’en contient aucun. Ne pas restaurer une ancienne
+base au détriment des données de collecte récentes.
+
+Vérification finale de ce lot : suite complète **432 tests OK en 42,988 s** ;
+recette CLI avec --observation-followup réussie, artefact local
+/tmp/tamtam-paper-observation-followup/adaptation-recipe-result.json.

@@ -70,4 +70,6 @@ class AdapterTests(unittest.TestCase):
   self.assertEqual(r['spot_balance_snapshots'][0]['balances'][0]['total'],'200')
   self.assertIsNone(r['unified_maintenance_ratio_observations'][0]['ratio'])
   self.assertEqual(r['unified_maintenance_ratio_observations'][0]['status'],'unknown')
+  self.assertIn('spot response lacks an economic timestamp',r['unified_maintenance_ratio_observations'][0]['unknown_reasons'])
+  self.assertTrue(r['unified_maintenance_ratio_observations'][0]['next_actions'])
   self.assertFalse(r['economic_validation'])

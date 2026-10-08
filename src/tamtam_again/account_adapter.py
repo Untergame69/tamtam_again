@@ -133,8 +133,21 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         stamp=spot['event_ms']
         eligible=[c for c in catalogs if type(stamp) is int and c['available_ms']<=stamp]
         if mode!='unifiedAccount' or mode_changed or type(stamp) is not int or not eligible or not eligible[-1].get('dexes'):
+            reasons=[];actions=[]
+            if mode!='unifiedAccount':
+                reasons.append('maintenance formula not applicable to observed mode: '+str(mode))
+                actions.append('use the mode-specific collateral and risk model; do not relabel the mode')
+            if mode_changed:
+                reasons.append('account mode changed within observed history')
+                actions.append('establish mode at each valuation boundary before comparing risk')
+            if type(stamp) is not int:
+                reasons.append('spot response lacks an economic timestamp')
+                actions.append('establish a timestamped coherent valuation source or explicitly model observation intervals; additional fills do not supply this timestamp')
+            elif not eligible or not eligible[-1].get('dexes'):
+                reasons.append('collateral perimeter not evidenced before economic timestamp')
+                actions.append('obtain historical DEX/collateral mapping available at the valuation timestamp')
             risk.append({'status':'unknown','ratio':None,'evidence_refs':[spot['evidence_ref']],
-                'unknown_reasons':['unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required']})
+                'unknown_reasons':reasons,'next_actions':actions})
             continue
         catalog=eligible[-1]
         risk.append(unified_ratio(mode=mode,spot=spot,catalog=catalog,

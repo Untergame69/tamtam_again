@@ -666,3 +666,11 @@ Solde spot partagé unique par token, marge isolée soustraite, hold non ajouté
 collatéral insuffisant non assimilé à zéro risque. Mode/timestamps/périmètre/
 mapping/availability manquants inconnus. Formule officielle vérifiée Oct8.
 Consolidation equity/flux réelle toujours partielle ; aucun compte qualifié.
+
+### Contrôle réel et diagnostics du ratio — étape 6
+
+5 comptes non protégés, 20 snapshots spot, aucun timestamp économique présent.
+Modes contrastés (unified/portfolio/default/disabled), aucun ratio ponctuel
+certifié et zéro qualification. Preuve unified-risk-real-control-20261008.json,
+read-only sans API. Diagnostic/action distingués par mode/changement/horodatage/
+périmètre ; demander plus de fills ne résout pas l'absence de timestamp spot.

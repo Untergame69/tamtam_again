@@ -1,0 +1,74 @@
+{
+  "as_of_ms": 1791445133942,
+  "selection": "latest observed accounts, deterministic address tiebreak; first five nonprotected, not economic selection",
+  "reserved_accounts_excluded_before_raw_read": true,
+  "provider_calls": 0,
+  "accounts": [
+    {
+      "address": "0x28585d97f7d77b7a269c9513a98ca316421d8749",
+      "mode": "unifiedAccount",
+      "spot_snapshots": 1,
+      "spot_economic_timestamp_known": 0,
+      "risk_statuses": {
+        "unknown": 1
+      },
+      "risk_unknown_reasons": {
+        "unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required": 1
+      },
+      "economic_validation": false
+    },
+    {
+      "address": "0x26486d7f6591003f4b7712cca97e333df4715b81",
+      "mode": "default",
+      "spot_snapshots": 1,
+      "spot_economic_timestamp_known": 0,
+      "risk_statuses": {
+        "unknown": 1
+      },
+      "risk_unknown_reasons": {
+        "unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required": 1
+      },
+      "economic_validation": false
+    },
+    {
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "mode": "disabled",
+      "spot_snapshots": 1,
+      "spot_economic_timestamp_known": 0,
+      "risk_statuses": {
+        "unknown": 1
+      },
+      "risk_unknown_reasons": {
+        "unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required": 1
+      },
+      "economic_validation": false
+    },
+    {
+      "address": "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "mode": "unifiedAccount",
+      "spot_snapshots": 9,
+      "spot_economic_timestamp_known": 0,
+      "risk_statuses": {
+        "unknown": 9
+      },
+      "risk_unknown_reasons": {
+        "unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required": 9
+      },
+      "economic_validation": false
+    },
+    {
+      "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+      "mode": "portfolioMargin",
+      "spot_snapshots": 8,
+      "spot_economic_timestamp_known": 0,
+      "risk_statuses": {
+        "unknown": 8
+      },
+      "risk_unknown_reasons": {
+        "unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required": 8
+      },
+      "economic_validation": false
+    }
+  ],
+  "economic_validations": 0
+}

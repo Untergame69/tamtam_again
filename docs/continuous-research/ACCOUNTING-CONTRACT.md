@@ -152,3 +152,20 @@ incorrect, DEX absent, catalogue futur et timestamps désalignés. Cela complèt
 la lecture du risque ; consolidation equity/spot/dettes/FX et complétude des
 flux restent à implémenter/vérifier. Pas de qualification économique réelle.
 Rollback code seulement ; rapports anciens conservés, aucun changement de collecte.
+
+### Contrôle réel des entrées du ratio — 8 octobre
+
+unified-risk-real-control-20261008.json : cinq derniers comptes inventoriés
+non protégés, choix daté et déterministe hors performance. Modes observés :
+2 unifiedAccount, 1 portfolioMargin, 1 default, 1 disabled. Vingt snapshots spot
+sur leurs historiques, zéro timestamp économique présent. Tous les ratios
+ponctuels restent inconnus. Contrôle lecture seule, pas de fournisseur appelé,
+pilotes exclus avant requête brute et aucune qualification économique.
+
+Le diagnostic distingue maintenant mode non applicable, mode changeant,
+timestamp spot absent et catalogue/périmètre antérieur absent. Chaque blocage
+porte son action. Accumuler des fills ne donne pas le timestamp spot manquant ;
+il faut une source de valorisation cohérente horodatée ou un modèle explicitement
+fondé sur des intervalles d'observation. Receipt_time n'est pas une equity à un
+instant économique prouvé. Cette lacune structurelle est distincte d'une panne
+de collecte ou d'un échantillon de trades trop court.

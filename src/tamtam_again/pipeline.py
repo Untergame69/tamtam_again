@@ -11,16 +11,16 @@ def tick(store: Store) -> dict[str,Any]:
     return _tick(store)
 
 
-def synthetic_tick(store: Store, fixtures: dict[str,dict[str,list]]) -> dict[str,Any]:
+def synthetic_tick(store: Store, fixtures: dict[str,dict[str,list]], *, chronological: bool = False) -> dict[str,Any]:
     """Exercise the same scheduler in an exclusively synthetic recipe database."""
     initialize(store)
     if not isinstance(fixtures,dict) or not fixtures:raise ValueError('Explicit synthetic fixture mapping required')
     if store.connection.execute('select 1 from validation_plans where synthetic=0').fetchone():
         raise ValueError('Synthetic scheduler forbidden in any database containing real plans')
-    return _tick(store,fixtures=fixtures)
+    return _tick(store,fixtures=fixtures,chronological=chronological)
 
 
-def _tick(store: Store, *, fixtures=None) -> dict[str,Any]:
+def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
     initialize(store)
     reports = []
     if store.connection.execute("select 1 from sqlite_master where name='experiment_families'").fetchone():
@@ -41,7 +41,7 @@ def _tick(store: Store, *, fixtures=None) -> dict[str,Any]:
         if row["synthetic"] and fixtures is None:
             continue
         for stage in ("comparison","final"):
-            if fixtures is None and now_ms() < plan[stage]["end_ms"]:
+            if (fixtures is None or chronological) and now_ms() < plan[stage]["end_ms"]:
                 decision(store,row["network"],row["address"],row["coin"],"needs_data",f"{stage} window not complete",
                          {"received_until_ms":plan[stage]["end_ms"]},"evaluate_unchanged_variant",{"variant_id":variant[0]})
                 break

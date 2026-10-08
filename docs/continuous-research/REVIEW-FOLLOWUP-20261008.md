@@ -135,3 +135,23 @@ Quatre tests ciblés vérifient : interruption produisant le diagnostic, événe
 Aucun service, budget ni donnée de production modifié dans ce lot. Le collecteur principal reste actif. Retour arrière : revenir au commit précédent pour ces fonctions et fixtures ; conserver tous les diagnostics et snapshots déjà produits. R4 reste partiel jusqu'à la recette complète et au réveil des besoins exécutables.
 
 Vérification fraîche : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q` : **407 tests OK en 36,633 s**. Aucune stratégie réelle qualifiée par ces fixtures.
+
+## R4 — recette chronologique de reprise jusqu'à une nouvelle décision
+
+Commande reproductible sans DB de production :
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/adaptation-recipe.py --output /tmp/tamtam-adaptation-recipe
+```
+
+La recette utilise le `population_scheduler.tick` réellement appelé par le service, sa politique externe d'allocation, et le pipeline partagé avec un mode synthétique chronologique respectant les échéances N1. Aucun mapping de politique par request_id, statut de promotion, sélection finale, suspension ou diagnostic n'est injecté en SQL. Les seules entrées simulées sont un rapport de périmètre initial, les événements de marché et les réponses proposition/revue. L'isolation du fournisseur est mockée ; ses vérifications réelles restent séparées.
+
+Parcours vérifié : rapport disponible → proposition/revue → plan alloué → comparaison → sélection déterministe → finale → paper → événements causant le risque → suspension/diagnostic atomiques → fermeture/réouverture de base → proposition/revue paper → nouvelle expérience à fenêtres futures. Quatre appels de rôle simulés, un job population, un job paper, deux plans, une session et un diagnostic. La finale n'est pas évaluée avant sa fin ; la session parente et ses positions sont conservées ; le retry ne crée aucun plan ni appel.
+
+Ce parcours a révélé une tentative de paquet d'historique protégé avant dispatch paper : le scheduler vérifie désormais l'autorisation d'historique avant ce scellement et poursuit les autres transitions autorisées. Le contrôle du paquet demeure également présent.
+
+Limites : qualification économique initiale fournie en fixture, pas démontrée par cette recette ; profitabilité scriptée pour N1 ; pas de remplacement effectif par la nouvelle version ni évaluation de ses fenêtres futures. Les tests d'interruption du worker et d'épuisement du budget restent des tests complémentaires. Aucun modèle/fournisseur réel, aucune donnée de production ou service modifié par la recette. Collecte conservée.
+
+R4 reste partiel pour les besoins de collecte/réveil exécutables et l'incident SQLite. Ce jalon prouve une nouvelle décision prospective après diagnostic, sans prouver la valeur économique de l'adaptation entière. Retour arrière : retirer la recette et revenir aux fonctions scheduler/pipeline du précédent commit ; conserver les registres, essais et fenêtres de production.
+
+Suite complète fraîche : **408 tests OK en 38,324 s**, commande habituelle `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q`. Recette CLI exécutée séparément avec succès.

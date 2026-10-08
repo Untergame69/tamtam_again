@@ -45,8 +45,10 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         elif store.connection.execute("select 1 from sqlite_master where name='account_scope_reports'").fetchone():
             addresses=[r[0] for r in store.connection.execute('select distinct address from account_scope_reports where network=? order by address',(network,))]
         else:addresses=[]
+        from .research_memory import authorized_account_history
         for address in addresses:
             if address in blocked:continue
+            if not authorized_account_history(store,network,address,now_ms()):continue
             result=seal(store,network,address,policy)
             if result['status']=='sealed':sealed.append(result)
             if result['status']=='budget_exhausted' or len(sealed)>=max_jobs:break

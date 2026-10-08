@@ -68,4 +68,6 @@ class AdapterTests(unittest.TestCase):
   self.assertEqual(r['boundary_diagnostics'][0]['status'],'per_dex_capital_not_usable')
   self.assertEqual(r['capital_model']['balance_source'],'spotClearinghouseState')
   self.assertEqual(r['spot_balance_snapshots'][0]['balances'][0]['total'],'200')
+  self.assertIsNone(r['unified_maintenance_ratio_observations'][0]['ratio'])
+  self.assertEqual(r['unified_maintenance_ratio_observations'][0]['status'],'unknown')
   self.assertFalse(r['economic_validation'])

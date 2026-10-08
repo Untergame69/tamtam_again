@@ -658,3 +658,11 @@ comptabilité/capacité/cohortes/autonomie/multi-instruments/CR. Pas de conclusi
 complète depuis les seules recettes. Contrôle read-only des 8 plans/3 variantes
 contre baseline : 11 empreintes inchangées, aucune observation/résultat réservé
 lu ; preuve pilot-preservation-audit-20261008.json. Goal reste actif.
+
+### Risque collatéral unifié — étape 6
+
+Reducer unified maintenance ratio et raccordement observations account_adapter.
+Solde spot partagé unique par token, marge isolée soustraite, hold non ajouté,
+collatéral insuffisant non assimilé à zéro risque. Mode/timestamps/périmètre/
+mapping/availability manquants inconnus. Formule officielle vérifiée Oct8.
+Consolidation equity/flux réelle toujours partielle ; aucun compte qualifié.

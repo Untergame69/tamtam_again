@@ -32,7 +32,7 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
         if millis(r['observed_at'])<=as_of_ms:records.append((r,decode_observation_payload(r),json.loads(r['request_json'])))
     modes=[(millis(r['observed_at']),p,r['observation_id']) for r,p,q in records if r['endpoint']=='userAbstraction']
     mode=modes[-1][1] if modes else 'unknown';mode_changed=len({str(p) for _,p,_ in modes})>1
-    boundaries={};events=[];unsupported=[];refs=[];ledger_events=[];boundary_diagnostics=[];spot_snapshots=[]
+    boundaries={};events=[];unsupported=[];refs=[];ledger_events=[];boundary_diagnostics=[];spot_snapshots=[];margin_snapshots=[]
     for row,payload,query in records:
         available=millis(row['observed_at']);ref='raw_observations:'+str(row['observation_id']);refs.append(ref)
         endpoint=row['endpoint']
@@ -42,6 +42,9 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
                 'status':'observed_balances_not_priced_equity'})
         if endpoint=='clearinghouseState' and isinstance(payload,dict):
             dex=query.get('dex','');scope='perp:'+dex
+            margin_snapshots.append({'dex':dex,'event_ms':payload.get('time'),'available_ms':available,'evidence_ref':ref,
+                'crossMaintenanceMarginUsed':payload.get('crossMaintenanceMarginUsed'),
+                'positions':[p.get('position',{}) for p in payload.get('assetPositions',[]) if isinstance(p,dict)]})
             if mode in ('unifiedAccount','portfolioMargin','dexAbstraction') or mode_changed:
                 boundary_diagnostics.append({'scope_id':scope,'evidence_ref':ref,
                     'available_ms':available,'status':'per_dex_capital_not_usable',
@@ -124,4 +127,17 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
             unsupported.append({'kind':'conflicting_ledger_duplicate','evidence_refs':[old['evidence_ref'],event['evidence_ref']],'event_id':event['id'],'reason':'same identity with different financial fields'})
         ledger_by_id.setdefault(event['id'],event)
     ledger_events=list(ledger_by_id.values())
-    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_balance_snapshots':spot_snapshots,'capital_model':{'mode':mode,'status':'unverified','balance_source':'spotClearinghouseState' if mode in ('unifiedAccount','portfolioMargin') else 'mode-specific inventory','reference':'https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}
+    from .unified_risk import unified_ratio
+    risk=[]
+    for spot in spot_snapshots:
+        stamp=spot['event_ms']
+        eligible=[c for c in catalogs if type(stamp) is int and c['available_ms']<=stamp]
+        if mode!='unifiedAccount' or mode_changed or type(stamp) is not int or not eligible or not eligible[-1].get('dexes'):
+            risk.append({'status':'unknown','ratio':None,'evidence_refs':[spot['evidence_ref']],
+                'unknown_reasons':['unified mode, stable mode history, economic spot timestamp and prior collateral perimeter required']})
+            continue
+        catalog=eligible[-1]
+        risk.append(unified_ratio(mode=mode,spot=spot,catalog=catalog,
+            dex_states=[x for x in margin_snapshots if x['event_ms']==stamp],
+            expected_dexes=list(catalog['dexes']),event_ms=stamp,as_of_ms=as_of_ms))
+    return {'schema_version':2,'network':network,'address':address,'period':{'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms},'account_mode':mode,'mode_changed_in_observed_history':mode_changed,'perp_scope_reports':reports,'boundary_diagnostics':boundary_diagnostics,'history_coverage':history_coverage,'collateral_catalog_evidence':[{'available_ms':c['available_ms'],'evidence_refs':c.get('evidence_refs',[])} for c in catalogs],'ledger_scope':{'id':'hypercore:'+address,'boundary':'single address across spot and perp; no related-account or vault consolidation','normalized_events':ledger_events,'coverage_status':'unknown','assignment_to_perp_dex':'not inferred'},'spot_balance_snapshots':spot_snapshots,'unified_maintenance_ratio_observations':risk,'capital_model':{'mode':mode,'status':'unverified','balance_source':'spotClearinghouseState' if mode in ('unifiedAccount','portfolioMargin') else 'mode-specific inventory','reference':'https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes'},'spot_status':'inventory collected; priced balances and trading-cost basis not reconciled','unsupported_events':unsupported,'evidence_refs':refs,'status':'unknown','next_actions':['establish full period funding/ledger coverage and unsupported mechanism semantics','verify account-mode collateral valuation and dex currencies','establish comparable boundary valuations and priced spot balances'],'economic_validation':False,'limits':['no summed cross-dex equity','only population REST source; no reserved pilot observations read']}

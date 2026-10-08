@@ -130,3 +130,25 @@ Ce reducer est actuellement vérifié sur fixtures. Il ne produit pas encore une
 ## Source de capital selon le mode — vérifié le 7 octobre 2026
 
 Référence officielle : https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes . En unifiedAccount et portfolioMargin, les balances et holds sont exposés par spotClearinghouseState ; les états utilisateur perp par DEX ne donnent pas un capital utilisable. L’adaptateur conserve désormais les balances spot brutes avec preuve/disponibilité et bloque les bornes de capital perp pour ces modes, dexAbstraction et les historiques dont le mode change. Les balances ne sont pas encore une equity valorisée : cotations, dettes, positions et alignement temporel restent à établir. Aucune somme des états perp ou des stablecoins à parité implicite.
+
+## Ratio de maintenance unifiedAccount
+
+unified_risk.unified_ratio reprend la structure de la formule officielle vérifiée
+le 8 octobre : exigences cross agrégées par token de collatéral, solde spot total
+unique, allocations isolées soustraites avant division. hold n'est pas ajouté au
+total. Portfolio margin et les modes historiques ne sont pas traités comme unified.
+Un collatéral disponible non positif avec besoin de maintenance est un diagnostic,
+jamais un zéro de risque. Résultat dimensionnel en collatéral natif, pas equity/PnL.
+
+account_adapter conserve maintenant les composantes de marge de tous les états
+perp et produit unified_maintenance_ratio_observations. Timestamp économique spot,
+états DEX alignés, catalogue antérieur et périmètre entier exigés. Une réception
+locale ne remplace pas le timestamp économique absent. Périmètre, token, montant,
+mode, timestamp ou disponibilité manquants rendent le ratio inconnu.
+
+Source : https://hyperliquid.gitbook.io/hyperliquid-docs/trading/account-abstraction-modes
+Tests de collatéral partagé/hold, allocations isolées, solde insuffisant, mode
+incorrect, DEX absent, catalogue futur et timestamps désalignés. Cela complète
+la lecture du risque ; consolidation equity/spot/dettes/FX et complétude des
+flux restent à implémenter/vérifier. Pas de qualification économique réelle.
+Rollback code seulement ; rapports anciens conservés, aucun changement de collecte.

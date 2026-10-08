@@ -84,6 +84,8 @@ def _tick(store: Store, *, fixtures=None) -> dict[str,Any]:
                 if events:reports.append(synthetic_recipe_tick(store,session[0],events))
         except ValueError as exc:
             reports.append({"session_id":session[0],"status":"waiting","reason":str(exc)})
+    from .paper_adaptation import recover as recover_adaptation
+    reports.extend(recover_adaptation(store,clock_ms=now_ms(),max_requests=8))
     result={"processed":reports,"live_orders_enabled":False}
     if fixtures is not None:result.update(synthetic_recipe=True,real_strategy_validated=False)
     return result

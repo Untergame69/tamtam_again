@@ -308,6 +308,15 @@ class RegistryTests(unittest.TestCase):
         with patch('tamtam_again.paper.get_variant',return_value=(row,spec,plan)), \
              patch('tamtam_again.paper.archive_events',return_value=([],0)), \
              patch('tamtam_again.paper.metrics',return_value={'net_pnl':'-5'}), \
+             patch('tamtam_again.paper.now_ms',return_value=1000), \
+             patch('tamtam_again.paper_adaptation.record',side_effect=ValueError('fixture persistence failure')):
+            with self.assertRaises(ValueError):paper_tick(self.store,session['session_id'])
+        self.assertEqual(self.store.connection.execute('select status from paper_sessions where session_id=?',(session['session_id'],)).fetchone()[0],'active')
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_suspensions').fetchone()[0],0)
+        self.assertEqual(self.store.connection.execute('select count(*) from paper_snapshots').fetchone()[0],1)
+        with patch('tamtam_again.paper.get_variant',return_value=(row,spec,plan)), \
+             patch('tamtam_again.paper.archive_events',return_value=([],0)), \
+             patch('tamtam_again.paper.metrics',return_value={'net_pnl':'-5'}), \
              patch('tamtam_again.paper.now_ms',return_value=1000):
             result=paper_tick(self.store,session['session_id'])
         self.assertEqual(result['status'],'suspended')
@@ -315,6 +324,11 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(journal['suspended_ms'],1000)
         self.assertIn('missing_live_heartbeat',journal['diagnostics_json'])
         self.assertIn('paper_net_loss_budget_exhausted',journal['diagnostics_json'])
+        adaptation=json.loads(self.store.connection.execute('select diagnostic_json from paper_adaptation_requests where session_id=?',(session['session_id'],)).fetchone()[0])
+        self.assertEqual(adaptation['state'],'collection_correction_required')
+        self.assertEqual(adaptation['observed_paper_metrics']['net_pnl'],'-5')
+        self.assertEqual(adaptation['model_calls_authorized'],0)
+
         snapshots=self.store.connection.execute('select available_ms,metrics_json from paper_snapshots order by available_ms').fetchall()
         self.assertEqual([r['available_ms'] for r in snapshots],[900,1000])
         self.assertEqual(json.loads(snapshots[-1]['metrics_json'])['net_pnl'],'-5')

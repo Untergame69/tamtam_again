@@ -280,7 +280,11 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
                 (session_id,now_ms(),canonical(state['diagnostics'])))
         store.connection.execute("UPDATE paper_sessions SET state_json=?,status=?,last_observation_id=?,updated_at=? WHERE session_id=?",(canonical(state),status,cursor,utc_now(),session_id))
         observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
-        paper_evidence.record(store,session_id,max(now_ms(),state['last_ms']),cursor,state,observed_metrics)
+        snapshot_ms=max(now_ms(),state['last_ms'])
+        paper_evidence.record(store,session_id,snapshot_ms,cursor,state,observed_metrics)
+        if status == 'suspended':
+            from .paper_adaptation import record as record_adaptation
+            record_adaptation(store,session_id,clock_ms=max(now_ms(),snapshot_ms))
         store.connection.commit()
     except Exception:
         store.connection.rollback()

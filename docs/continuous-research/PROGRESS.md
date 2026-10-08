@@ -706,3 +706,14 @@ Contrôle réel : deux paires exploration/uniforme ZEC et NEAR, six exclus,
 Preuve cohort-matching-control-20261008.json et nouvelle table additive.
 Ce contrôle ne prouve ni équivalence du risque complet ni performance ;
 comparaison économique dépend toujours de la qualification comptable.
+
+### Diagnostic de suspension et reprise — étape 11
+
+Tick paper réel inscrit demande/état/suspension/snapshot atomiquement ; pipeline
+récupère jusqu'à huit suspensions sans diagnostic avec preuve de state cohérente.
+Un seul diagnostic immuable par session. Collection défaillante prioritaire sur
+attribution de perte ; signal retardé, performance, fin de budget et inconnu
+routés explicitement. Aucun appel IA/reprise/promotion autorisé par cette demande.
+Budget population non réarmé. Tests contrôlent disponibilité/mismatch/replay et
+rollback injecté lors du tick ; aucune position/version ancienne modifiée.
+La phase nouvelle proposition IA bornée et détection statistique restent à finir.

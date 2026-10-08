@@ -41,7 +41,7 @@ READ_ONLY_INFO_TYPES = {
     "userFills", "userFillsByTime", "userFunding",
     "userNonFundingLedgerUpdates", "clearinghouseState",
     "spotClearinghouseState", "openOrders", "frontendOpenOrders", "historicalOrders", "portfolio",
-    "l2Book", "candleSnapshot", "userRole", "userAbstraction", "subAccounts",
+    "l2Book", "candleSnapshot", "userRole", "userAbstraction", "subAccounts", "borrowLendUserState",
 }
 
 

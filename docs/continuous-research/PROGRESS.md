@@ -814,3 +814,12 @@ fills uniquement, funding/ledger/capital toujours indépendants. Tests de contra
 causalité, trous, doublons, vide et intégration archive→adaptateur. Le CR externe
 8f543c1 décrit le code arrêté à 87f184f ; ce changement est postérieur et doit
 être examiné séparément lors de la revue.
+
+### Source publique borrow/supply ajoutée — 8 octobre
+
+Documentation info officielle fournit borrowLendUserState ; collecte ciblée
+protégée et composantes token natives exportées dans rapport comptable. Une
+requête20 poids, aucune nouvelle cadence. Dette/supply désormais observables,
+sans addition au spot/equity ni qualification. Contrôle réel même compte choisi
+avant sur inventaire, sans sélection de performance ; lending-control daté.
+Changement postérieur au CR externe arrêté à 87f184f, à examiner séparément.

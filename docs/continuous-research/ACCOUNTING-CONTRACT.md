@@ -344,3 +344,23 @@ l'endpoint ; elle ne constitue pas une certification indépendante du fournisseu
 Rollback : restaurer le calcul de couverture et retirer le script ciblé ; garder
 les observations déjà archivées. Aucun effacement/migration requise. Les
 valorisations restent soumises à leurs preuves ; ce témoin ne les remplace pas.
+
+## Dette et supply publiquement observables
+
+`PYTHONPATH=src .venv/bin/python scripts/population-lending-snapshot.py --db data/tamtam.sqlite3 --telemetry-db data/tamtam.telemetry.sqlite3 --address ADDRESS`
+
+La requête ciblée borrowLendUserState utilise le quota partagé (20 poids), refuse
+les pilotes avant appel et archive la réponse population sans preuve de
+complétude. Aucun ajout de cadence automatique. Le rapport exporte
+lending_observations : principal et valeur rapportés borrow/supply par token,
+différence value−basis, disponibilité, référence et anomalies. Pas de somme
+entre tokens, ni ajout au spot, ni interprétation de cette différence comme
+revenu de période. Les valeurs futures/nonfinies/négatives et tokens dupliqués
+sont refusés ou diagnostiqués. La réception n'est pas un timestamp économique.
+
+Source officielle info-endpoint, section borrowLendUserState, vérifiée le
+8 octobre 2026. Cette source permet d'observer une dette au lieu de supposer son
+absence ; relation avec spot, intérêts aux bornes, périmètre et prix restent à
+vérifier avant consolidation. Empty n'est pas absence de dette universelle.
+Rollback : retirer commande/reducer/champ exporté, garder les observations.
+Aucune migration/service/pilote modifié. Preuve réelle lending-control-20261008.json.

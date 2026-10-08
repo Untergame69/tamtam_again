@@ -1,0 +1,93 @@
+{
+  "as_of_ms": 1791449364095,
+  "synthetic": false,
+  "selection": "same previously selected nonreserved latest-inventoried account, no performance selection",
+  "provider_queries": 2,
+  "collection": {
+    "address": "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+    "observation_inserted": true,
+    "economic_qualification": false
+  },
+  "lending_observations": [
+    {
+      "version": "reported-lending-components-v1",
+      "available_ms": 1791449363853,
+      "event_ms": null,
+      "evidence_ref": "raw_observations:11815057",
+      "status": "observed_components",
+      "tokens": [],
+      "unknown_reasons": [],
+      "reported_health": "healthy",
+      "equity": null,
+      "economic_qualification": false,
+      "limits": [
+        "amounts are token-native, never summed across tokens",
+        "value minus basis is an observed snapshot component, not period interest income",
+        "relation to spot balances and possible overlap requires verified accounting conventions",
+        "an empty response does not prove absence of debt outside this endpoint or address",
+        "local availability is not an economic timestamp"
+      ],
+      "source_contract": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+    }
+  ],
+  "economic_validation": false,
+  "portfolio_margin_control": {
+    "as_of_ms": 1791449401346,
+    "selection": "latest inventoried portfolioMargin account, reserved excluded before inventory decode; no PnL selection",
+    "collection": {
+      "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+      "observation_inserted": true,
+      "economic_qualification": false
+    },
+    "lending_observations": [
+      {
+        "version": "reported-lending-components-v1",
+        "available_ms": 1791449401337,
+        "event_ms": null,
+        "evidence_ref": "raw_observations:11816823",
+        "status": "observed_components",
+        "tokens": [
+          {
+            "token": 0,
+            "borrow": {
+              "reported_basis": "576266.12942574",
+              "reported_value": "576354.41416424",
+              "value_minus_basis": "88.28473850"
+            },
+            "supply": {
+              "reported_basis": "0.0",
+              "reported_value": "0.0",
+              "value_minus_basis": "0.0"
+            }
+          },
+          {
+            "token": 150,
+            "borrow": {
+              "reported_basis": "0.0",
+              "reported_value": "0.0",
+              "value_minus_basis": "0.0"
+            },
+            "supply": {
+              "reported_basis": "10000.48448627",
+              "reported_value": "10000.48448627",
+              "value_minus_basis": "0E-8"
+            }
+          }
+        ],
+        "unknown_reasons": [],
+        "reported_health": "atRisk",
+        "equity": null,
+        "economic_qualification": false,
+        "limits": [
+          "amounts are token-native, never summed across tokens",
+          "value minus basis is an observed snapshot component, not period interest income",
+          "relation to spot balances and possible overlap requires verified accounting conventions",
+          "an empty response does not prove absence of debt outside this endpoint or address",
+          "local availability is not an economic timestamp"
+        ],
+        "source_contract": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+      }
+    ],
+    "economic_validation": false
+  }
+}

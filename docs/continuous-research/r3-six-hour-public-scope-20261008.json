@@ -1,0 +1,365 @@
+{
+  "as_of_ms": 1791480414394,
+  "period_policy": {
+    "version": "observed-period-policy-v1",
+    "policy_id": "public-scope-six-hour-pilot-v1",
+    "justification": "Pilot descriptive six-hour scope reconciliation instead of the last polling interval; no profitability threshold or universal horizon. Fifteen-minute boundary tolerance accommodates REST cadence, and one-hour end age prevents presenting old observations as current. Exact event times remain explicit; no cross-account ranking.",
+    "target_duration_ms": 21600000,
+    "start_tolerance_ms": 900000,
+    "max_end_age_ms": 3600000
+  },
+  "accounts_considered": 69,
+  "public_scopes_measured": 0,
+  "economically_validated": 0,
+  "failed_accounts": [],
+  "limits": [
+    "individual periods differ; no cross-account return ranking",
+    "contrast cases selected by mode and inventory availability, never financial result",
+    "public scope measurements do not qualify whole accounts or validate strategies"
+  ],
+  "version": "six-hour-public-scope-control-v1",
+  "status_counts": {
+    "awaiting_recent_valuation": 31,
+    "unknown": 14,
+    "awaiting_duration_boundary": 12,
+    "awaiting_two_timestamped_valuations": 12
+  },
+  "real_provider_calls": 0,
+  "real_model_calls": 0,
+  "full_report_path": "/tmp/tamtam-six-hour-qualification.json",
+  "full_report_sha256": "a8f4c5ea82d07a33534debac4943197e4e180402d82a434a098987a09c688128",
+  "contrast_cases": [
+    {
+      "account_mode": "portfolioMargin",
+      "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+      "period": {
+        "start_ms": 1791457679795,
+        "end_ms": 1791479600185,
+        "as_of_ms": 1791480414394
+      },
+      "period_selection": {
+        "rule": "nearest-observed-duration-v1",
+        "policy": {
+          "version": "observed-period-policy-v1",
+          "policy_id": "public-scope-six-hour-pilot-v1",
+          "justification": "Pilot descriptive six-hour scope reconciliation instead of the last polling interval; no profitability threshold or universal horizon. Fifteen-minute boundary tolerance accommodates REST cadence, and one-hour end age prevents presenting old observations as current. Exact event times remain explicit; no cross-account ranking.",
+          "target_duration_ms": 21600000,
+          "start_tolerance_ms": 900000,
+          "max_end_age_ms": 3600000
+        },
+        "policy_fingerprint": "1337d08480f629993d0a9e3bdadc625972fda51e451d986fb8d7157c7e2a459c",
+        "as_of_ms": 1791480414394,
+        "chosen_period": {
+          "start_ms": 1791457679795,
+          "end_ms": 1791479600185,
+          "duration_ms": 21920390,
+          "target_start_ms": 1791458000185,
+          "start_distance_ms": 320390,
+          "boundary_evidence_refs": [
+            "raw_observations:12266529",
+            "raw_observations:12392979"
+          ],
+          "available_ms": 1791479600629,
+          "coverage_status": "unknown"
+        },
+        "interpolation_applied": false,
+        "conflicting_timestamps": [],
+        "limits": [
+          "time-only selection; no PnL or coverage-based fallback",
+          "exact observed boundaries; individual event periods remain different",
+          "duration similarity does not make returns comparable or prove completeness"
+        ],
+        "status": "period_selected",
+        "next_action": "reconcile the selected period without changing its boundaries after inspecting results"
+      },
+      "validator_perp_assessment": [],
+      "history_coverage": {
+        "userFillsByTime": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "period pagination or latest-fill retention witness missing",
+          "next_action": "collect a latest unaggregated fill witness and close period pagination gaps"
+        },
+        "userFunding": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "establish retained-history coverage and accounting scope independently"
+        },
+        "userNonFundingLedgerUpdates": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "establish retained-history coverage and accounting scope independently"
+        }
+      }
+    },
+    {
+      "account_mode": "unifiedAccount",
+      "address": "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "period": {
+        "start_ms": 1791459295036,
+        "end_ms": 1791480139445,
+        "as_of_ms": 1791480414394
+      },
+      "period_selection": {
+        "rule": "nearest-observed-duration-v1",
+        "policy": {
+          "version": "observed-period-policy-v1",
+          "policy_id": "public-scope-six-hour-pilot-v1",
+          "justification": "Pilot descriptive six-hour scope reconciliation instead of the last polling interval; no profitability threshold or universal horizon. Fifteen-minute boundary tolerance accommodates REST cadence, and one-hour end age prevents presenting old observations as current. Exact event times remain explicit; no cross-account ranking.",
+          "target_duration_ms": 21600000,
+          "start_tolerance_ms": 900000,
+          "max_end_age_ms": 3600000
+        },
+        "policy_fingerprint": "1337d08480f629993d0a9e3bdadc625972fda51e451d986fb8d7157c7e2a459c",
+        "as_of_ms": 1791480414394,
+        "chosen_period": {
+          "start_ms": 1791459295036,
+          "end_ms": 1791480139445,
+          "duration_ms": 20844409,
+          "target_start_ms": 1791458539445,
+          "start_distance_ms": 755591,
+          "boundary_evidence_refs": [
+            "raw_observations:12357760",
+            "raw_observations:12393098"
+          ],
+          "available_ms": 1791480140115,
+          "coverage_status": "unknown"
+        },
+        "interpolation_applied": false,
+        "conflicting_timestamps": [],
+        "limits": [
+          "time-only selection; no PnL or coverage-based fallback",
+          "exact observed boundaries; individual event periods remain different",
+          "duration similarity does not make returns comparable or prove completeness"
+        ],
+        "status": "period_selected",
+        "next_action": "reconcile the selected period without changing its boundaries after inspecting results"
+      },
+      "validator_perp_assessment": [
+        {
+          "scope_id": "perp:",
+          "status": "insufficient_scope_evidence",
+          "metrics": {
+            "capital_change": null,
+            "net_capital_change": null,
+            "external_flows": null,
+            "modified_dietz_estimate": null,
+            "observed_component_pnl": null,
+            "observed_attribution_residual": null
+          },
+          "unknown_reasons": [
+            "exact initial and final valuations required",
+            "independent DEX capital model unavailable for shared, unknown or changing mode",
+            "unclassified ledger events may change this scope capital"
+          ]
+        }
+      ],
+      "history_coverage": {
+        "userFillsByTime": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "period pagination or latest-fill retention witness missing",
+          "next_action": "collect a latest unaggregated fill witness and close period pagination gaps"
+        },
+        "userFunding": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "establish retained-history coverage and accounting scope independently"
+        },
+        "userNonFundingLedgerUpdates": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "establish retained-history coverage and accounting scope independently"
+        }
+      }
+    },
+    {
+      "account_mode": "default",
+      "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "period": {
+        "start_ms": 1791458734427,
+        "end_ms": 1791479504849,
+        "as_of_ms": 1791480414394
+      },
+      "period_selection": {
+        "rule": "nearest-observed-duration-v1",
+        "policy": {
+          "version": "observed-period-policy-v1",
+          "policy_id": "public-scope-six-hour-pilot-v1",
+          "justification": "Pilot descriptive six-hour scope reconciliation instead of the last polling interval; no profitability threshold or universal horizon. Fifteen-minute boundary tolerance accommodates REST cadence, and one-hour end age prevents presenting old observations as current. Exact event times remain explicit; no cross-account ranking.",
+          "target_duration_ms": 21600000,
+          "start_tolerance_ms": 900000,
+          "max_end_age_ms": 3600000
+        },
+        "policy_fingerprint": "1337d08480f629993d0a9e3bdadc625972fda51e451d986fb8d7157c7e2a459c",
+        "as_of_ms": 1791480414394,
+        "chosen_period": {
+          "start_ms": 1791458734427,
+          "end_ms": 1791479504849,
+          "duration_ms": 20770422,
+          "target_start_ms": 1791457904849,
+          "start_distance_ms": 829578,
+          "boundary_evidence_refs": [
+            "raw_observations:12327003",
+            "raw_observations:12392961"
+          ],
+          "available_ms": 1791479505267,
+          "coverage_status": "unknown"
+        },
+        "interpolation_applied": false,
+        "conflicting_timestamps": [],
+        "limits": [
+          "time-only selection; no PnL or coverage-based fallback",
+          "exact observed boundaries; individual event periods remain different",
+          "duration similarity does not make returns comparable or prove completeness"
+        ],
+        "status": "period_selected",
+        "next_action": "reconcile the selected period without changing its boundaries after inspecting results"
+      },
+      "validator_perp_assessment": [
+        {
+          "scope_id": "perp:",
+          "status": "insufficient_scope_evidence",
+          "metrics": {
+            "capital_change": "4447749.9999999998",
+            "net_capital_change": null,
+            "external_flows": null,
+            "modified_dietz_estimate": null,
+            "observed_component_pnl": null,
+            "observed_attribution_residual": null
+          },
+          "unknown_reasons": [
+            "ledger pagination gap"
+          ]
+        }
+      ],
+      "history_coverage": {
+        "userFillsByTime": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "period pagination or latest-fill retention witness missing",
+          "next_action": "collect a latest unaggregated fill witness and close period pagination gaps"
+        },
+        "userFunding": {
+          "status": "unknown",
+          "pagination_status": "gaps",
+          "pagination_gaps_ms": [
+            [
+              1791474623434,
+              1791479504849
+            ]
+          ],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "finish missing pagination windows"
+        },
+        "userNonFundingLedgerUpdates": {
+          "status": "unknown",
+          "pagination_status": "gaps",
+          "pagination_gaps_ms": [
+            [
+              1791474623434,
+              1791479504849
+            ]
+          ],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "finish missing pagination windows"
+        }
+      }
+    },
+    {
+      "account_mode": "disabled",
+      "address": "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+      "period": {
+        "start_ms": 1791458998323,
+        "end_ms": 1791479780164,
+        "as_of_ms": 1791480414394
+      },
+      "period_selection": {
+        "rule": "nearest-observed-duration-v1",
+        "policy": {
+          "version": "observed-period-policy-v1",
+          "policy_id": "public-scope-six-hour-pilot-v1",
+          "justification": "Pilot descriptive six-hour scope reconciliation instead of the last polling interval; no profitability threshold or universal horizon. Fifteen-minute boundary tolerance accommodates REST cadence, and one-hour end age prevents presenting old observations as current. Exact event times remain explicit; no cross-account ranking.",
+          "target_duration_ms": 21600000,
+          "start_tolerance_ms": 900000,
+          "max_end_age_ms": 3600000
+        },
+        "policy_fingerprint": "1337d08480f629993d0a9e3bdadc625972fda51e451d986fb8d7157c7e2a459c",
+        "as_of_ms": 1791480414394,
+        "chosen_period": {
+          "start_ms": 1791458998323,
+          "end_ms": 1791479780164,
+          "duration_ms": 20781841,
+          "target_start_ms": 1791458180164,
+          "start_distance_ms": 818159,
+          "boundary_evidence_refs": [
+            "raw_observations:12341034",
+            "raw_observations:12393017"
+          ],
+          "available_ms": 1791479780574,
+          "coverage_status": "unknown"
+        },
+        "interpolation_applied": false,
+        "conflicting_timestamps": [],
+        "limits": [
+          "time-only selection; no PnL or coverage-based fallback",
+          "exact observed boundaries; individual event periods remain different",
+          "duration similarity does not make returns comparable or prove completeness"
+        ],
+        "status": "period_selected",
+        "next_action": "reconcile the selected period without changing its boundaries after inspecting results"
+      },
+      "validator_perp_assessment": [
+        {
+          "scope_id": "perp:",
+          "status": "insufficient_scope_evidence",
+          "metrics": {
+            "capital_change": "2064852.0979270041",
+            "net_capital_change": null,
+            "external_flows": null,
+            "modified_dietz_estimate": null,
+            "observed_component_pnl": null,
+            "observed_attribution_residual": null
+          },
+          "unknown_reasons": [
+            "unclassified ledger events may change this scope capital"
+          ]
+        }
+      ],
+      "history_coverage": {
+        "userFillsByTime": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "period pagination or latest-fill retention witness missing",
+          "next_action": "collect a latest unaggregated fill witness and close period pagination gaps"
+        },
+        "userFunding": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "establish retained-history coverage and accounting scope independently"
+        },
+        "userNonFundingLedgerUpdates": {
+          "status": "unknown",
+          "pagination_status": "covered",
+          "pagination_gaps_ms": [],
+          "reason": "exhausted API pages do not establish retention or economic scope completeness",
+          "next_action": "establish retained-history coverage and accounting scope independently"
+        }
+      }
+    }
+  ]
+}

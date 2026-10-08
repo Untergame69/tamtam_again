@@ -292,3 +292,45 @@ base au détriment des données de collecte récentes.
 Vérification finale de ce lot : suite complète **432 tests OK en 42,988 s** ;
 recette CLI avec --observation-followup réussie, artefact local
 /tmp/tamtam-paper-observation-followup/adaptation-recipe-result.json.
+
+
+## Qualification sur une durée choisie avant résultat
+
+population-qualification.py accepte --period-policy. Le sélecteur prend la
+dernière valorisation exploitable, puis la borne exacte la plus proche du
+début cible ; égalité → borne ancienne. Il ne regarde ni PnL ni complétude pour
+déplacer la période. Conflits et observations futures sont exclus ; réception
+et temps économique restent séparés. Aucune interpolation. Disponibilité réelle
+des bornes conservée. Absence de borne ou fin trop ancienne → attente, sans
+retour au dernier poll. Le mode adjacent précédent reste disponible sans policy.
+
+Politique descriptive pilote : six heures, tolérance initiale quinze minutes,
+âge maximal final une heure. La durée dépasse le dernier poll et les tolérances
+accommodent la cadence REST. Paramètres justifiés et hachés ; aucun seuil de
+maturité universel, aucune preuve statistique, aucun classement inter-comptes.
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/population-qualification.py \
+  --db data/tamtam.sqlite3 --as-of-ms 1791480414394 \
+  --period-policy config/account-qualification-period-policy.json \
+  --output /tmp/tamtam-six-hour-qualification.json
+```
+
+Contrôle réel readonly : 69 comptes, 14 périodes sélectionnées, 31 fins trop
+anciennes, 12 débuts absents, 12 sans deux valorisations. Zéro périmètre mesuré
+sur cette durée ; aucun appel API/IA. Cas default : variation brute
++4447749,9999999998 USDC, net inconnu (trou de pagination ledger). Cas disabled :
+variation brute +2064852,0979270041 USDC, net inconnu (ledger non classifié).
+Ces variations de capital ne sont pas des gains. Unified/PM restent limités
+par leur collatéral partagé. Aucun meilleur intervalle n’a été substitué.
+
+Preuve r3-six-hour-public-scope-20261008.json : cutoff, politique, bornes,
+diagnostics et SHA256 du rapport détaillé local. Les incertitudes sur la durée
+longue empêchent d’extrapoler les mesures R3 de courts intervalles.
+
+Vérification : **437 tests OK, 43,887 s**. Tests ciblés : égalité de distance,
+absence de fallback, fraîcheur finale, paramètres invalides, conflits, cutoff,
+disponibilité réelle et aucune comptabilité lancée sans la durée requise.
+Retour arrière par revert ; aucune migration ou modification de service,
+cohorte, cadence ou critère pilote. Collecteur principal vérifié actif.
+Qualification globale et lacunes ledger restent ouvertes.

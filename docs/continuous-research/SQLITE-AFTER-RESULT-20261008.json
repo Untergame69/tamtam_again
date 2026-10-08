@@ -1,0 +1,235 @@
+{
+  "window": {
+    "version": "sqlite-contention-window-v1",
+    "start_ms": 1791482735143,
+    "end_ms": 1791484535143,
+    "duration_seconds": 1800,
+    "sample_seconds": 1,
+    "purpose": "after replacing the pre-R1 collector process; same cadence and quotas",
+    "database": "/home/Untergame/tamtam_again/data/tamtam.sqlite3",
+    "units": [
+      "tamtam-again-discovery.service",
+      "tamtam-again-population.service",
+      "tamtam-again-population-research.service"
+    ],
+    "result_read_before_end": false
+  },
+  "samples": 1800,
+  "max_sample_gap_ms": 1001,
+  "pending_start": 0,
+  "pending_end": 0,
+  "pending_peak": 0,
+  "wal_start_bytes": 8712341552,
+  "wal_end_bytes": 8712341552,
+  "collector_pid": 920368,
+  "collector_write_lock_samples": 181,
+  "collector_longest_write_lock_sample_run": 2,
+  "counts": {
+    "('tamtam-again-population.service', 'complete')": 13
+  },
+  "samples_sha256": "73bb930c0d0caa4f0c73a06d7c08dbe585f546754a48b1143bf783fe90ba4c3f",
+  "sqlite_storage_errors": [],
+  "unit_events": [
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791482771802.854
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791482875631.482
+    },
+    {
+      "unit": "tamtam-again-discovery.service",
+      "event": "starting",
+      "at_ms": 1791482890801.975
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791482935806.967
+    },
+    {
+      "unit": "tamtam-again-discovery.service",
+      "event": "finished",
+      "at_ms": 1791482936166.991
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483047368.893
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483107798.931
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483237347.464
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483297549.005
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483347231.232
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483407553.879
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483458748.829
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483518802.868
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483564894.802
+    },
+    {
+      "unit": "tamtam-again-population-research.service",
+      "event": "starting",
+      "at_ms": 1791483622298.845
+    },
+    {
+      "unit": "tamtam-again-population-research.service",
+      "event": "finished",
+      "at_ms": 1791483622359.36
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483625054.875
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483759349.241
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483819794.973
+    },
+    {
+      "unit": "tamtam-again-discovery.service",
+      "event": "starting",
+      "at_ms": 1791483836297.853
+    },
+    {
+      "unit": "tamtam-again-discovery.service",
+      "event": "finished",
+      "at_ms": 1791483881676.243
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791483914881.86
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791483975299.0
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791484053942.242
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791484114051.889
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791484169420.733
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791484229799.874
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791484275755.703
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791484335794.992
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791484386853.486
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "starting",
+      "at_ms": 1791484447056.992
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "event": "finished",
+      "at_ms": 1791484489114.707
+    },
+    {
+      "unit": "tamtam-again-population-research.service",
+      "event": "starting",
+      "at_ms": 1791484522555.876
+    },
+    {
+      "unit": "tamtam-again-population-research.service",
+      "event": "finished",
+      "at_ms": 1791484522614.383
+    }
+  ],
+  "completed_invocation_duration_ms": {
+    "tamtam-again-population.service": [
+      103828.6279296875,
+      111561.92602539062,
+      129548.533203125,
+      49682.22705078125,
+      51194.9501953125,
+      46091.93408203125,
+      134294.36596679688,
+      95086.88720703125,
+      78643.24194335938,
+      55368.843994140625,
+      45955.828857421875,
+      51058.494140625,
+      42057.715087890625
+    ],
+    "tamtam-again-discovery.service": [
+      45365.015869140625,
+      45378.389892578125
+    ],
+    "tamtam-again-population-research.service": [
+      60.51513671875,
+      58.507080078125
+    ]
+  },
+  "limits": [
+    "30-minute observation only; no proof of indefinite stability",
+    "one-second lock samples do not measure exact transaction duration",
+    "pending stayed empty; no pending recovery occurred in this after window",
+    "research invocations perform budget-exhausted/idempotent checks, no fresh inference"
+  ]
+}

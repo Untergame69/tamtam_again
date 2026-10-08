@@ -413,3 +413,30 @@ restent à livrer ensuite. Aucun nouveau budget IA activé.
 Retour arrière : revert des tests/docs sans modification de données ; unité
 non modifiée. Ne pas restaurer l’ancien index ou le processus pré-R1 sur cette
 base. Toute reprise doit conserver la compatibilité avec les réceptions R1.
+
+
+### Résultat après correction — fenêtre préannoncée terminée
+
+Sonde session36970 terminée exit0 à l’échéance.1800 samples, gap maximal1001ms.
+Population :13 complete,0 failed observé, contre10/9 sur baseline.
+Deux invocations discovery terminées (~45,37s chacune), deux vérifications
+research terminées (~0,06s chacune, budget épuisé/idempotence, aucun nouvel IA).
+Aucune erreur database locked/SQLITE_BUSY/IntegrityError/storage_error dans les
+journaux des quatre unités sur la fenêtre exacte. Pending0 au début/fin/pic ;
+aucune reprise pending n’a donc été exercée dans cette fenêtre après.
+
+Verrou write120 du collecteur courant :181 samples, série maximale2, contre
+643 samples et série21 avant. Échantillonnage1s, pas durée de transaction exacte.
+WAL8712341552 octets aux deux bornes : taille physique seule ne mesure pas
+l’activité ni une absence d’écriture, les pages WAL peuvent être réutilisées.
+Durées population42,06–134,29s ; intervalle après fin voisin60s, les tâches
+longues décalent naturellement le prochain départ (timer after-completion).
+Discovery et population se chevauchent sur les deux cycles ; research est
+présent deux fois mais aucun triple chevauchement simultané n’est établi.
+
+Preuve : SQLITE-AFTER-RESULT-20261008.json avec horodatages des départs/fins,
+durées et hash de la source temporaire. Correction du processus ancien
+confirmée sur cette fenêtre ; stabilité durable et charge de nouvelle inférence
+non démontrées. Collecte conservée active. Aucun critère, budget ou réserve
+modifié. Prochaine action : matrice documentaire des sept hypothèses et plan
+réel proposé sans activation, puis checkpoint décisionnel de la tranche.

@@ -12,7 +12,7 @@ from .discovery import protected_addresses
 from .accounting import reconcile_period,decimal
 from .account_events import normalize_event
 from .collateral import resolve_currency
-from .account_coverage import pagination_coverage
+from .account_coverage import pagination_coverage,retained_fill_coverage
 from .observation_windows import acquisition_window
 
 SOURCE='hyperliquid-population-rest-v1'
@@ -106,11 +106,19 @@ def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, 
                for r,p,q in records if r['endpoint']==endpoint]
         history_coverage[endpoint]=pagination_coverage(pages,start_ms=start_ms,
             end_ms=end_ms,as_of_ms=as_of_ms)
+    witnesses=[{'request':q,'requested_ms':millis(r['requested_at']),
+                'available_ms':millis(r['observed_at']),'fills':p,
+                'evidence_ref':'raw_observations:'+str(r['observation_id'])}
+               for r,p,q in records if r['endpoint']=='userFills' and q.get('user','').lower()==address]
+    history_coverage['userFillsByTime']=retained_fill_coverage(
+        history_coverage['userFillsByTime'],witnesses,start_ms=start_ms,
+        end_ms=end_ms,as_of_ms=as_of_ms)
     scopes=sorted(set(boundaries)|{e['scope_id'] for e in events})
     reports=[]
     for scope in scopes:
         currency=currency_for(end_ms,dex=scope.removeprefix('perp:'))
         coverage={k:{'status':'unknown','evidence_refs':[],'reason':'presence of API responses does not establish period completeness'} for k in ('fills','funding','flows','other_income','valuation_scope')}
+        coverage['fills']=history_coverage['userFillsByTime']
         report=reconcile_period({'start_ms':start_ms,'end_ms':end_ms,'as_of_ms':as_of_ms,'scope':{'id':scope,'currency':currency,'account_mode':mode,'shared_collateral_model_verified':False},'coverage':coverage,'valuations':boundaries.get(scope,[]),'events':[e for e in events if e['scope_id']==scope]})
         reports.append(report)
         values=boundaries.get(scope,[])

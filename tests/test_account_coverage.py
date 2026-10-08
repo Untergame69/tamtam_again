@@ -29,3 +29,42 @@ class CoverageTests(unittest.TestCase):
 
     def test_internal_gap_preserved(self):
         self.assertEqual(self.report([page(100,200),page(300,900)])['pagination_gaps_ms'],[[200,300]])
+
+class RetentionTests(unittest.TestCase):
+    def witness(self,oldest=100):
+        return {'request':{'type':'userFills','aggregateByTime':False},
+                'requested_ms':900,'available_ms':950,'evidence_ref':'fixture:latest',
+                'fills':[{'coin':'BTC','time':oldest,'tid':1}]}
+
+    def run_report(self,witness,pages=None):
+        from tamtam_again.account_coverage import retained_fill_coverage
+        pagination=pagination_coverage([page(100,900)] if pages is None else pages,
+            start_ms=100,end_ms=900,as_of_ms=1000)
+        return retained_fill_coverage(pagination,[witness],start_ms=100,end_ms=900,as_of_ms=1000)
+
+    def test_witness_can_prove_recent_window_without_lifetime_claim(self):
+        r=self.run_report(self.witness())
+        self.assertEqual(r['status'],'complete');self.assertTrue(r['retention_proven'])
+        self.assertIn('fixture:latest',r['evidence_refs'])
+
+    def test_witness_does_not_close_pagination_gap(self):
+        self.assertEqual(self.run_report(self.witness(),[page(100,500)])['status'],'unknown')
+
+    def test_short_or_empty_response_alone_does_not_prove_start_retained(self):
+        w=self.witness(101)
+        self.assertFalse(self.run_report(w)['retention_proven'])
+        w['fills']=[]
+        self.assertFalse(self.run_report(w)['retention_proven'])
+
+    def test_causality_and_request_contract(self):
+        for key,value in [('requested_ms',899),('available_ms',1001)]:
+            w=self.witness();w[key]=value
+            self.assertEqual(self.run_report(w)['status'],'unknown')
+        w=self.witness();w['request']['aggregateByTime']=True
+        self.assertEqual(self.run_report(w)['status'],'unknown')
+
+    def test_duplicate_or_future_event_rejected(self):
+        w=self.witness();w['fills']*=2
+        self.assertEqual(self.run_report(w)['status'],'unknown')
+        w=self.witness();w['fills'][0]['time']=951
+        self.assertEqual(self.run_report(w)['status'],'unknown')

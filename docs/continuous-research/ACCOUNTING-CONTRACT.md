@@ -315,3 +315,32 @@ répliqué par DEX ; aucune conversion implicite ni equity consolidée n'est dé
 
 Retour arrière : restaurer uniquement le script précédent et retirer
 `account_batch.py`. Aucun schéma, service ou historique n'est modifié.
+
+## Témoin indépendant de rétention des fills
+
+`PYTHONPATH=src .venv/bin/python scripts/population-fill-retention.py --db data/tamtam.sqlite3 --telemetry-db data/tamtam.telemetry.sqlite3 --address ADDRESS`
+
+Un appel public ciblé `userFills`, non agrégé, est archivé dans la source
+population. Les pilotes sont refusés avant appel. Aucun timer/cadence ni budget
+IA n'est modifié ; réservation REST conservatrice 120 poids via quota partagé.
+L'endpoint retourne au plus les 2000 fills les plus récents. Un témoin non vide,
+sans doublon ni timestamp futur, demandé après la fin de période et disponible
+au cutoff, peut prouver que sa borne ancienne est encore accessible lorsque son
+plus vieux fill est antérieur ou égal au début de période. Une réponse courte ou
+vide seule n'est pas cette preuve. Les requêtes filtrées/agrégées sont refusées.
+
+L'adaptateur combine ce témoin avec l'union de pages de période épuisées. Il
+peut alors établir la couverture des fills publics de cette adresse. Cela ne
+prouve ni historique à vie, ni absence de défaut du fournisseur, ni funding,
+ledger, autres revenus ou equity. Les pages sans témoin gardent unknown ; un
+témoin ne ferme pas un trou de pagination. Une période récente peut donc devenir
+exploitable sans déclarer tout l'ancien historique complet.
+
+Contrat officiel : https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint
+Poids officiels : https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/rate-limits-and-user-limits
+Sources consultées le 8 octobre 2026. Garantie conditionnelle au contrat de
+l'endpoint ; elle ne constitue pas une certification indépendante du fournisseur.
+
+Rollback : restaurer le calcul de couverture et retirer le script ciblé ; garder
+les observations déjà archivées. Aucun effacement/migration requise. Les
+valorisations restent soumises à leurs preuves ; ce témoin ne les remplace pas.

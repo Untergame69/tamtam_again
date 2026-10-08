@@ -1,0 +1,124 @@
+{
+  "synthetic": false,
+  "selection": "latest inventoried nonreserved account, no performance ranking",
+  "collection": {
+    "address": "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+    "requested_at": "2026-10-08T08:45:45.792+00:00",
+    "observation_result": true,
+    "fills_returned": 2000,
+    "scope": "retention witness only; no economic qualification"
+  },
+  "as_of_ms": 1791449149057,
+  "fill_coverage": {
+    "status": "unknown",
+    "pagination_status": "gaps",
+    "pagination_intervals_ms": [
+      [
+        1791362745792,
+        1791449065923
+      ]
+    ],
+    "pagination_gaps_ms": [
+      [
+        1791449065923,
+        1791449145792
+      ]
+    ],
+    "evidence_refs": [
+      "raw_observations:10109522",
+      "raw_observations:10364334",
+      "raw_observations:10561002",
+      "raw_observations:10763211",
+      "raw_observations:10973922",
+      "raw_observations:11185632",
+      "raw_observations:11393025",
+      "raw_observations:11601010",
+      "raw_observations:11799314",
+      "raw_observations:11803523",
+      "raw_observations:7150887"
+    ],
+    "incomplete_pages": [
+      {
+        "evidence_ref": "raw_observations:7150887",
+        "reason": "unknown"
+      }
+    ],
+    "retention_proven": true,
+    "reason": "period pagination or latest-fill retention witness missing",
+    "next_action": "collect a latest unaggregated fill witness and close period pagination gaps",
+    "retention_witnesses": [
+      {
+        "evidence_ref": "raw_observations:11803523",
+        "oldest_fill_ms": 1790886432610,
+        "requested_ms": 1791449145792,
+        "available_ms": 1791449149039
+      }
+    ],
+    "rejected_retention_witnesses": [],
+    "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+    "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+  },
+  "economic_validation": false,
+  "provider_queries": 1,
+  "limits": [
+    "common trailing 24h period ends at witness request; no period chosen from its financial result",
+    "no funding/ledger/equity qualification"
+  ],
+  "period": {
+    "start_ms": 1791362745792,
+    "end_ms": 1791449145792
+  },
+  "last_collected_period_control": {
+    "selection": "last archived fill-query end preceding witness request; no economic-result selection",
+    "period": {
+      "start_ms": 1791362665923,
+      "end_ms": 1791449065923,
+      "as_of_ms": 1791449149057
+    },
+    "coverage": {
+      "status": "complete",
+      "pagination_status": "covered",
+      "pagination_intervals_ms": [
+        [
+          1791362665923,
+          1791449065923
+        ]
+      ],
+      "pagination_gaps_ms": [],
+      "evidence_refs": [
+        "raw_observations:10109522",
+        "raw_observations:10364334",
+        "raw_observations:10561002",
+        "raw_observations:10763211",
+        "raw_observations:10973922",
+        "raw_observations:11185632",
+        "raw_observations:11393025",
+        "raw_observations:11601010",
+        "raw_observations:11799314",
+        "raw_observations:11803523",
+        "raw_observations:7150887"
+      ],
+      "incomplete_pages": [
+        {
+          "evidence_ref": "raw_observations:7150887",
+          "reason": "unknown"
+        }
+      ],
+      "retention_proven": true,
+      "reason": "period pagination covered and latest-fill window reaches its start",
+      "next_action": "no additional fill-history collection required for this period",
+      "retention_witnesses": [
+        {
+          "evidence_ref": "raw_observations:11803523",
+          "oldest_fill_ms": 1790886432610,
+          "requested_ms": 1791449145792,
+          "available_ms": 1791449149039
+        }
+      ],
+      "rejected_retention_witnesses": [],
+      "scope": "public fills for this address only; no funding, ledger, equity or external hedge coverage",
+      "endpoint_contract_ref": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint"
+    },
+    "economic_validation": false
+  }
+}

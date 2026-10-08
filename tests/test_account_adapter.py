@@ -73,3 +73,18 @@ class AdapterTests(unittest.TestCase):
   self.assertIn('spot response lacks an economic timestamp',r['unified_maintenance_ratio_observations'][0]['unknown_reasons'])
   self.assertTrue(r['unified_maintenance_ratio_observations'][0]['next_actions'])
   self.assertFalse(r['economic_validation'])
+
+ def test_retention_witness_opens_fill_coverage_only(self):
+  from datetime import datetime,timezone
+  def stamp(t):return datetime.fromtimestamp(t/1000,timezone.utc).isoformat()
+  self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,
+   endpoint='userFillsByTime',payload=[],request_payload={'pagination_status':'pagination_exhausted'},
+   window_start_ms=100,window_end_ms=900,requested_at=stamp(900),complete=False)
+  self.s.save_observation(network='test',source='hyperliquid-population-rest-v1',entity_type='account',entity_id=self.addr,
+   endpoint='userFills',payload=[{'coin':'BTC','time':50,'tid':1}],
+   request_payload={'type':'userFills','user':self.addr,'aggregateByTime':False},requested_at=stamp(900),complete=False)
+  self.s.connection.execute('update raw_observations set observed_at=?',(stamp(950),));self.s.connection.commit()
+  r=report_account(self.s,'test',self.addr,100,900,as_of_ms=1000)
+  self.assertEqual(r['history_coverage']['userFillsByTime']['status'],'complete')
+  self.assertEqual(r['history_coverage']['userFunding']['status'],'unknown')
+  self.assertFalse(r['economic_validation'])

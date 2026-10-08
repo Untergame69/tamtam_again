@@ -21,6 +21,8 @@ class TelemetryTests(unittest.TestCase):
             self.assertEqual(r['groups'][0]['response_weight_bound'],21)
             self.assertTrue(r['charged_weight'].startswith('unknown'))
     def test_ledger_has_no_undocumented_item_surcharge(self):
+        self.assertEqual(_request_weight({'type':'userFills'}),120)
+        self.assertEqual(response_weight_bound({'type':'userFills'},2000),120)
         self.assertEqual(_request_weight({'type':'userNonFundingLedgerUpdates'}),20)
         self.assertEqual(response_weight_bound({'type':'userNonFundingLedgerUpdates'},500),20)
         self.assertEqual(response_weight_bound({'type':'userFillsByTime'},2000),120)

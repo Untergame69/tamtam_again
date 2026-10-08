@@ -803,3 +803,14 @@ moins tentés prioritaires et pas de nouveau retry au même cutoff. Diagnostic
 immuable inclus dans la trace chronologique metadata-only à sa création, jamais
 à la date antérieure de suspension. Deux tests de parcours ajoutés ; aucune
 promotion ou IA induite. Preuve synthétique, aucune session réelle revendiquée.
+
+### Couverture des fills avec témoin de rétention — 8 octobre
+
+Levée d'un blocage permanent du reducer : userFills récent et non filtré peut
+prouver la rétention du début de période, séparément de la pagination épuisée.
+Collecte ciblée publique, protégée contre les comptes réservés, quota partagé
+120 poids maximum réservés ; aucune cadence supplémentaire. Couverture
+fills uniquement, funding/ledger/capital toujours indépendants. Tests de contrat,
+causalité, trous, doublons, vide et intégration archive→adaptateur. Le CR externe
+8f543c1 décrit le code arrêté à 87f184f ; ce changement est postérieur et doit
+être examiné séparément lors de la revue.

@@ -359,3 +359,30 @@ Aucune stabilité revendiquée. Réveil à l’end_ms du manifest, puis contrôl
 handle vivant et analyse des samples/journaux sur exactement cette fenêtre.
 En cas de timeout d’observation, ne pas relancer la sonde avant vérification.
 La correction minimale et son observation après restent à réaliser.
+
+
+### Résultat de la baseline SQLite annoncée
+
+1800 samples, écart maximal1001ms. Population :10 complete,9 failed. Discovery
+SQLITE_BUSY enregistré. File pending maximum1. WAL8691271872→8710714152 octets.
+PID447350 tient le verrou WALwrite120 sur643 samples, séries continues jusqu’à
+21 samples espacés d’une seconde (ce n’est pas une durée exacte de transaction).
+Preuve compacte SQLITE-BASELINE-RESULT-20261008.json ; source temporaire hachée.
+
+Cause concrète identifiée : collecteur démarré avant dd05fb0 du8oct13:46CEST,
+encore chargé avec ancien SCHEMA CREATE UNIQUE INDEX uq_raw_observation.
+Les nouveaux Store suppriment cet index ; l’ancien tente de le reconstruire
+sur les réceptions distinctes autorisées par R1. Ses journaux répètent
+IntegrityError: UNIQUE constraint failed: index 'uq_raw_observation', associés
+à des erreurs de stockage/reconnexion WebSocket. Le vieux code ne disparaît
+pas quand Git change. Reproduction locale sur base temporaire : deux réceptions
+population identiques conservées, CREATE de l’ancien index échoue avec
+SQLITE_CONSTRAINT_UNIQUE ; aucune suppression de données nécessaire.
+
+Correction minimale suivante : remplacer proprement le processus collecteur
+ancien par le code courant, avec préparation de reprise et retour arrière.
+Ne pas restaurer l’index legacy : il détruirait la compatibilité R1. Pas de
+nouveau timeout/retry comme substitut. L’attribution exhaustive des autres
+échecs, reproduction concurrente et observation après restent à livrer.
+Aucun redémarrage engagé dans ce checkpoint, collecteur encore actif. La tranche
+n’est pas close et aucune stabilité n’est affirmée.

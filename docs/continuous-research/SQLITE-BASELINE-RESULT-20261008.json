@@ -1,0 +1,52 @@
+{
+  "window": {
+    "version": "sqlite-contention-window-v1",
+    "start_ms": 1791480693487,
+    "end_ms": 1791482493487,
+    "duration_seconds": 1800,
+    "sample_seconds": 1,
+    "purpose": "baseline before selecting a minimal demonstrated correction",
+    "database": "/home/Untergame/tamtam_again/data/tamtam.sqlite3",
+    "units": [
+      "tamtam-again-discovery.service",
+      "tamtam-again-population.service",
+      "tamtam-again-population-research.service"
+    ],
+    "result_read_before_end": false
+  },
+  "counts": {
+    "('tamtam-again-population.service', 'complete')": 10,
+    "('tamtam-again-population.service', 'failed')": 9
+  },
+  "sqlite_errors": [
+    {
+      "unit": "tamtam-again-discovery.service",
+      "message": "{\"discovery_storage_failure\": {\"sqlite_errorcode\": 5, \"sqlite_errorname\": \"SQLITE_BUSY\"}}",
+      "at_us": "1791481085632572"
+    },
+    {
+      "unit": "tamtam-again-discovery.service",
+      "message": "sqlite3.OperationalError: database is locked",
+      "at_us": "1791481085633040"
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "message": "sqlite3.OperationalError: database is locked",
+      "at_us": "1791481150029666"
+    },
+    {
+      "unit": "tamtam-again-population.service",
+      "message": "sqlite3.OperationalError: database is locked",
+      "at_us": "1791481150029666"
+    }
+  ],
+  "samples": 1800,
+  "max_sample_gap_ms": 1001,
+  "pending_peak": 1,
+  "wal_start_bytes": 8691271872,
+  "wal_end_bytes": 8710714152,
+  "collector_pid": 447350,
+  "collector_write_lock_samples": 643,
+  "samples_sha256": "ee9c2618c8a0609a059900c44b33fedbf55aa683a32926410f76e70a2da1c2fd",
+  "stability_proven": false
+}

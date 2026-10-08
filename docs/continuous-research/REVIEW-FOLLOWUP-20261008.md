@@ -386,3 +386,30 @@ nouveau timeout/retry comme substitut. L’attribution exhaustive des autres
 échecs, reproduction concurrente et observation après restent à livrer.
 Aucun redémarrage engagé dans ce checkpoint, collecteur encore actif. La tranche
 n’est pas close et aucune stabilité n’est affirmée.
+
+
+### Correction et observation après — checkpoint db8088c
+
+Le 8 octobre à20:05:09 CEST, remplacement gracieux SIGINT du processus ancien
+par le collecteur courant PID920368. Collecte active ; unité comparée à sa
+sauvegarde, inchangée. Cadences, quotas et pilotes conservés. La reconnexion
+reste une interruption réelle ; aucune absence de perte n’est présumée.
+
+Test concurrent tests/test_stale_collector_schema.py : l’ancien CREATE INDEX
+bloque l’écriture d’une seconde connexion (SQLITE_BUSY), puis échoue sur les
+réceptions distinctes autorisées par R1. Après abandon, l’écriture reprend ;
+le Store courant conserve les101 réceptions sans recréer l’index legacy.
+Ce test prouve le mécanisme, pas la durée réelle ni tous les échecs observés.
+Test ciblé1 OK ; **suite complète438 tests OK en48,621s**.
+
+Fenêtre après préannoncée : SQLITE-AFTER-WINDOW-20261008.json,30min à1sample/s.
+Réveil exact : **8octobre2026 à20:35:35,143 CEST**. Sonde session36970 ; source
+/tmp/tamtam-sqlite-after-20261008.jsonl. Résultats non lus avant échéance.
+À la fin : vérifier la terminaison, comparer verrous, tâches réussies/échouées,
+retards et pending sur cette fenêtre, dont les chevauchements des trois jobs.
+Stabilité non déclarée ; matrice des sept hypothèses et bilan décisionnel final
+restent à livrer ensuite. Aucun nouveau budget IA activé.
+
+Retour arrière : revert des tests/docs sans modification de données ; unité
+non modifiée. Ne pas restaurer l’ancien index ou le processus pré-R1 sur cette
+base. Toute reprise doit conserver la compatibilité avec les réceptions R1.

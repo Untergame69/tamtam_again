@@ -334,3 +334,28 @@ disponibilité réelle et aucune comptabilité lancée sans la durée requise.
 Retour arrière par revert ; aucune migration ou modification de service,
 cohorte, cadence ou critère pilote. Collecteur principal vérifié actif.
 Qualification globale et lacunes ledger restent ouvertes.
+
+
+## Cadrage de la tranche fermée après e13ac29
+
+Référence utilisateur : reviews/tamtam-b3c4412/CADRAGE-LUNA-e13ac29.md.
+Priorité à la contention SQLite avant nouvelle extension. Lot de périodes livré
+par d2b2e83/9a6a938 (437 tests, contrôle réel et attentes explicites). Matrice des
+sept hypothèses et prochain budget réel à préparer après la mesure de collecte ;
+aucune activation d’une tranche IA implicite.
+
+Fenêtre baseline déclarée avant résultat : 30 minutes, pas d’une seconde,
+manifest SQLITE-BASELINE-WINDOW-20261008.json. Sonde temporaire
+/tmp/tamtam-lock-window.py, observations /tmp/tamtam-sqlite-baseline-20261008.jsonl.
+Détenteurs des verrous du SHM, positions de verrou, wchan des threads,
+taille WAL et nombre de JSON pending. Aucun payload ni secret lu. Aucun service
+arrêté/rechargé, aucun timeout/retry ajouté. La fenêtre couvre les cadences
+15 minutes de discovery/research et 60 secondes après fin de population.
+
+Au lancement : collecteur PID447350 actif, WAL environ8,1Go, file pending vide.
+Échecs OperationalError population observés à19:18 et19:27 local ; leur étape
+exacte et la cause restent à établir. Le WAL seul n’est pas une cause démontrée.
+Aucune stabilité revendiquée. Réveil à l’end_ms du manifest, puis contrôle du
+handle vivant et analyse des samples/journaux sur exactement cette fenêtre.
+En cas de timeout d’observation, ne pas relancer la sonde avant vérification.
+La correction minimale et son observation après restent à réaliser.

@@ -757,3 +757,12 @@ Contrôle metadata frais : 3294 candidats, 69 inventaires, 32 slots/37 retirés,
 8 plans/3 variantes inchangés, zéro paper, sept needs_data et une suspension IA.
 Deux recettes temporaires réexécutées, aucun fournisseur/modèle réel ni DB originale.
 Ce dossier est partiel et ne marque pas les travaux restant comme terminés.
+
+### Rapport ressources raccordé — étapes 2/14
+
+Série service-resources-v1 maintenant exportée par sustained-capacity v2 avec
+couverture réelle, trous/restarts exclus et moyennes pondérées sur intervalles
+connus. 10 samples/~500 s, ~0,59 % fenêtre REST : pas dimensionnement prolongé.
+Collecteur ~0,13 cœur, paper ~1 cœur conditionnel sur ses intervalles connus ;
+coût paper sans session à diagnostiquer. Preuve capacity-resources-current.
+337 tests passent en 29,483 s, bounds/restarts/gaps/DB remplacée couverts.

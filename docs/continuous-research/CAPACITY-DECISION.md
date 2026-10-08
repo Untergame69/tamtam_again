@@ -115,3 +115,24 @@ systemctl --user stop tamtam-again-resources.service
 Retirer seulement les deux unités resources installées et daemon-reload pour
 annuler l'installation ; conserver les mesures. Zéro endpoint/paiement/recherche
 IA déclenché, aucune migration dans l'archive principale.
+
+## Série ressources raccordée au rapport
+
+Le contrôle sustained-capacity v2 ajoute service_resource_series, sans remplacer
+les deux anciens samples resources. Moyennes CPU pondérées seulement sur mêmes
+InvocationID et compteurs croissants ; trous >180 s (paramètre pilote explicite)
+exclus, bornes non observées non remplies. Couverture CPU par unité et couverture
+stockage divisées par la fenêtre demandée ; maxima mémoire échantillonnés, pas
+pics continus. Le rapport déclare toujours capacity_forecast=false.
+
+capacity-resources-current-20261008.json : 10 samples, ~500,5 s storage connu,
+soit ~0,59 % d'une fenêtre REST de 23,516 h. Collecteur ~0,130 cœur sur les seuls
+intervalles connus ; paper ~1,000 cœur sur ~380 s connus, ~121 s inconnus.
+Ce coût paper sans session active mérite diagnostic ; moyenne conditionnelle
+non extrapolée à toute la journée. 705 passages population complets et zéro
+slot overdue au contrôle ponctuel. Pas de capacité machine soutenable prouvée.
+
+Reproduction : commande sustained-capacity ci-dessus. Retour arrière du seul
+raccord : retirer resource_series.py et son appel dans le script ; timer et
+mesures peuvent continuer indépendamment. Aucun archive payload ou résultat
+réservé consulté pour ce contrôle.

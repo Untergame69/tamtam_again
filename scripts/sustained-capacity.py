@@ -22,6 +22,7 @@ with connect(a.telemetry) as c:
  windows=summarize_windows(rows,since=since,until=now)
  ws=[json.loads(r[0]) for r in c.execute("select metrics_json from collector_measurements where collector='websocket' and recorded_at>=? and recorded_at<?",(since,now))]
  resources=[json.loads(r[0]) for r in c.execute("select metrics_json from collector_measurements where collector='resources' and recorded_at>=? and recorded_at<? order by recorded_at",(since,now))]
+ service_samples=[json.loads(r[0]) for r in c.execute("select metrics_json from collector_measurements where collector='service-resources-v1' and recorded_at>=? and recorded_at<? order by recorded_at",(since,now))]
 with connect(a.db) as c:
  # This query reads job metadata only, including failures. No report_json/raw data.
  jobs=[dict(r) for r in c.execute('select status,started_ms,completed_ms from population_attempts where started_ms>=? and started_ms<?',(int(since*1000),int(now*1000)))]
@@ -31,7 +32,9 @@ with connect(a.db) as c:
  lateness=[max(0,(now*1000-r['next_due_ms'])/1000) for r in due if r['status']!='running']
  from tamtam_again.resources import resource_change
  resource_delta=resource_change(resources[0],resources[-1]) if len(resources)>1 else None
-out={'version':'sustained-capacity-control-v1','since':since,'until':now,
+from tamtam_again.resource_series import summarize as summarize_resources
+resource_series=summarize_resources(service_samples,since=since,until=now)
+out={'version':'sustained-capacity-control-v2','since':since,'until':now,
  'observed_hours':(now-since)/3600,'requested_hours':a.hours,'rest_windows':windows,
  'population_jobs':{'attempts':len(jobs),'statuses':statuses,
   'maximum_completed_job_seconds':max(durations) if durations else None,
@@ -43,6 +46,7 @@ out={'version':'sustained-capacity-control-v1','since':since,'until':now,
   'observed_seconds':sum(r['window_seconds'] for r in ws),
   'max_flush_lag_seconds':max((r['max_flush_lag_seconds'] for r in ws),default=None),
   'queue_peak_messages':max((r['queue_peak_messages'] for r in ws),default=None)},
+ 'service_resource_series':resource_series,
  'resource_measurements':len(resources),'resource_change':resource_delta,
  'provider_calls':0,'archive_payloads_read':False,'services_changed':False,
  'limits':['job duration includes queue waits and processing; not isolated CPU cost',

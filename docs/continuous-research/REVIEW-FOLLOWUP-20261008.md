@@ -181,3 +181,17 @@ Aucune cadence ou politique IA changée. Les besoins de collecte/réveil des hyp
 Suite finale fraîche : **413 tests OK en 40,603 s**. Le dernier essai réel a rencontré à nouveau une contention et laissé **un fichier durable en attente**, aucun temporaire ; les événements sont donc conservés pour reprise. Un nouveau lancement du même service traite exclusivement cette reprise, sans ouvrir une session supplémentaire.
 
 Preuve réelle de reprise : lancement suivant terminé `Result=success`, `ExecMainStatus=0`, rapport `recovery_only=true`, une session reprise, zéro pending. Aucun nouveau WebSocket dans ce lancement. Les événements de la session ayant échoué ont été ingérés ; collecteur principal actif. La cause générale de la contention reste ouverte, mais la conservation/reprise de ce cas est démontrée en réel.
+
+## R4 — contrat explicite des observations manquantes
+
+Une proposition peut fournir `observation_requests`, exactement une demande par indice de `required_data`, avec source, endpoint, bornes, preuve attendue et décision permise. Aucun budget ou critère de réussite accepté dans ce contrat IA. Les schedulers population/paper conservent ces demandes dans `research_observation_plans`, séparément des routes/hypothèses immuables.
+
+Capacité déclarée : historique REST public via userFillsByTime, userFunding et userNonFundingLedgerUpdates ; preuve de pagination uniquement. Une autre source ou preuve produit une incapacité d'acquisition/preuve explicite, sans rejet économique ni invention de complétude. Fenêtre future : attente de sa borne ; période réservée : refus avant lecture de payload. Ces états sont des diagnostics à la date d'enregistrement ; le futur dispatcher devra les réévaluer, pas réutiliser une ancienne autorisation.
+
+Les demandes descriptives historiques restent intactes et deviennent `structured_request_required`, pas « données satisfaites » ni « source impossible ». Préflight réel de la CLI avec politiques existantes et `--prepare-only` : **7 demandes structurées requises**, zéro scellement, modèle ou plan nouveau. Le budget réel de huit essais reste épuisé. Ce résultat montre pourquoi attendre davantage ne constitue pas à lui seul un réveil de ces sept hypothèses.
+
+Tests : contrats complets et sans doublons, refus de mapping partiel/budget IA, source/preuve non supportée, legacy conservé, fenêtre future et réserve contrôlée sans lecture raw, idempotence du registre. L'exécuteur de collecte et la vérification des conditions de réveil restent à implémenter sous politique externe : `dispatch_authorized=false` est explicite. R4 reste partiel.
+
+Migration additive : `research_observation_plans`. Aucun service ni cadence modifié, collecteur principal actif. Retour arrière : retirer ce raccordement metadata et revenir au précédent runtime/scheduler ; conserver le registre, les propositions et essais.
+
+Suite complète finale : **416 tests OK en 37,627 s**. Les fixtures de demandes ne qualifient aucune stratégie réelle.

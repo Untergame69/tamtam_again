@@ -65,6 +65,8 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             except ValueError as exc:memory.append({'request_id':request,'status':'waiting','reason':str(exc)})
         from .population_routing import route
         routes=[route(store,r[0]) for r in store.connection.execute("select request_id from population_research_jobs where network=? and status not in ('sealed','running') order by created_ms,request_id",(network,)).fetchall()]
+        from .research_needs import register as register_needs
+        observation_plans=[register_needs(store,r['request_id']) for r in routes if r['source_status']=='hypothesis_recorded' and r['state']=='needs_data']
         plans=[]
         if plan_policies or experiment_policy is not None:
             import json
@@ -95,4 +97,4 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             from .paper_scheduler import _tick as paper_tick
             paper=paper_tick(store,paper_policy,experiment_policy=experiment_policy,dispatch=dispatch and len(processed)<max_jobs,max_jobs=max_jobs)
         return {'paper_research':paper,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
-                'promotion_authorized':False}
+                'promotion_authorized':False,'observation_plans':observation_plans}

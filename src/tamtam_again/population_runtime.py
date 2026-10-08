@@ -33,6 +33,11 @@ def validate_response(response,packet,*,request_id=None):
         raise ValueError('Hypothesis evidence must refer to sealed packet')
     if any(not hypothesis[k] for k in required-{'required_data'}):
         raise ValueError('Empty testable hypothesis field')
+    if not isinstance(hypothesis['required_data'],list) or any(not isinstance(v,str) or not v.strip() for v in hypothesis['required_data']):
+        raise ValueError('Missing observations must be explicit nonempty strings')
+    if 'observation_requests' in hypothesis:
+        from .research_needs import validate_requests
+        validate_requests(hypothesis['required_data'],hypothesis['observation_requests'])
     from .population_compilation import validate_compilation
     validate_compilation(hypothesis,allowed_refs,request_id=request_id,measurements=measurements,as_of_ms=packet.get('available_ms'))
 
@@ -82,6 +87,13 @@ Return JSON with decision hypothesis|needs_data|non_identifiable|unsupported_mec
 For hypothesis include hypothesis with mechanism, type autonomous|follower, markets, signal, entry, exit,
 sizing, risk, horizon_justification, required_data, execution_constraints, rejection_criteria, evidence_refs.
 Refer only to the packet evidence. Specify missing observations rather than inventing them.
+For missing observations you may include hypothesis.observation_requests, one exact object per
+required_data index, with fields required_data_index, source, endpoint, start_ms, end_ms, proof,
+decision_use. All indices must be covered exactly once. Do not supply budgets or success criteria.
+Verified local history adapter: source public_rest_history; endpoint userFillsByTime, userFunding
+or userNonFundingLedgerUpdates; proof pagination_coverage only. It cannot certify retention,
+inventory continuity or economic completeness. Declare other sources/proofs explicitly when needed;
+the code will retain an unsupported acquisition/proof rather than guess or claim fulfillment.
 If all necessary observations and parameters are supplied, optionally include hypothesis.executable_spec
 and hypothesis.experiment_profile matching the compiler contract. Otherwise retain a descriptive hypothesis
 and explicit missing observations. Do not invent a rule or force an unknown mechanism into a supported signal.

@@ -27,7 +27,7 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
     interrupted=[r[0] for r in store.connection.execute("select request_id from paper_research_jobs where status='running'")]
     store.connection.execute("update paper_research_jobs set status='interrupted',actual_cost_usd=NULL,updated_ms=? where status='running'",(now_ms(),))
     store.connection.commit()
-    sealed=[];processed=[];plans=[];routes=[];memory=[]
+    sealed=[];processed=[];plans=[];routes=[];memory=[];observation_plans=[]
     if store.connection.execute("select 1 from sqlite_master where name='paper_adaptation_requests'").fetchone():
         clock=now_ms()
         pending=store.connection.execute('select a.request_id from paper_adaptation_requests a '
@@ -60,6 +60,9 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
             try:memory.append({'request_id':row['request_id'],**remember(store,row['request_id'])})
             except ValueError as exc:memory.append({'request_id':row['request_id'],'status':'waiting','reason':str(exc)})
         decision=route(store,row['request_id'],kind='paper');routes.append(decision)
+        if row['status']=='hypothesis_recorded' and decision['state']=='needs_data':
+            from .research_needs import register
+            observation_plans.append(register(store,row['request_id'],kind='paper'))
         if decision['state']!='prospective_plan_required' or len(plans)>=max_jobs:continue
         if store.connection.execute("select 1 from sqlite_master where name='population_experiment_links'").fetchone() and store.connection.execute('select 1 from population_experiment_links where request_id=?',(row['request_id'],)).fetchone():continue
         hypothesis=json.loads(row['result_json'])['proposal']['hypothesis'];profile=hypothesis.get('experiment_profile')
@@ -70,4 +73,4 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
             plans.append({'request_id':row['request_id'],**_prepare_plan(store,row['request_id'],allocated,profile,kind='paper')})
         except ValueError as exc:plans.append({'request_id':row['request_id'],'status':'waiting','reason':str(exc)})
     return {'sealed':sealed,'processed':processed,'plans':plans,'routes':routes,'memory':memory,
-        'interrupted_without_retry':interrupted,'promotion_authorized':False}
+        'interrupted_without_retry':interrupted,'promotion_authorized':False,'observation_plans':observation_plans}

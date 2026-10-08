@@ -1,0 +1,10 @@
+{
+  "as_of_ms": 1791446711847,
+  "explicitly_linked_account_observations": 13,
+  "source": "hyperliquid-population-rest-v1",
+  "provider_calls": 0,
+  "payloads_read": false,
+  "legacy_observations_rewritten": 0,
+  "economic_qualification": false,
+  "scope": "metadata-only rollout control, linked batches are not atomic valuations"
+}

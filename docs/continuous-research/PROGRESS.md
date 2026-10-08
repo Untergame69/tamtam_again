@@ -717,3 +717,14 @@ routés explicitement. Aucun appel IA/reprise/promotion autorisé par cette dema
 Budget population non réarmé. Tests contrôlent disponibilité/mismatch/replay et
 rollback injecté lors du tick ; aucune position/version ancienne modifiée.
 La phase nouvelle proposition IA bornée et détection statistique restent à finir.
+
+### Regroupement explicite des acquisitions — étape 6
+
+Nouveaux passages population liés par attempt_id ; états DEX portent périmètre
+attendu et référence au perpDexs du passage. Rapport comptable regroupe uniquement
+ces preuves, distingue incomplet/conflit et laisse l'historique sans lien explicite.
+Pas de regroupement heuristique ni capital inféré de la réception. Timestamps
+économiques communs distingués du span local, equity toujours inconnue.
+Précondition de valorisation réelle livrée ; cette valorisation reste à implémenter.
+Pas d'endpoint/cadence/service/budget/schema modifié. Contrat et rollback dans
+ACCOUNTING-CONTRACT.md ; contrôle metadata-only account-acquisition-control.

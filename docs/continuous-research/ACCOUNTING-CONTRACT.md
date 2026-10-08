@@ -194,3 +194,41 @@ Rollback code seulement, aucun changement de schema/raw historique.
 Au relevé, les 20 fenêtres sont ordonnées, durées de 1314 à 5728 ms. Le début
 est enregistré avant post_info : attente du quota et archivage peuvent être
 inclus, donc ce n'est pas une mesure de latence réseau ou d'exécution.
+
+## Acquisitions explicitement liées
+
+Les nouveaux passages population annotent les requêtes archivées avec
+`acquisition_id=population_attempts.attempt_id`. Les états de marge portent
+la liste attendue des DEX issue du même passage et la référence de l'observation
+perpDexs. Les requêtes réseau ne changent pas : les annotations sont locales.
+Une liste DEX malformée ou dupliquée est refusée. Le rapport de périmètre conserve
+cet identifiant et la référence ; le rapport comptable exporte account_acquisitions.
+
+Le reducer exige une observation du mode, une du spot, des états de marge uniques
+couvrant le périmètre déclaré, sa provenance et une chronologie locale lisible.
+Il distingue inventaire lié complet et inventaire lié incomplet, conserve les
+preuves non liées et ne regroupe jamais l'ancien historique par proximité de temps.
+Un rapprochement explicite d'appels n'est pas un snapshot atomique : les fenêtres
+locales ne certifient ni absence de changement de mode ni prix économiques communs.
+La présence de timestamps économiques identiques sur les composantes est déclarée
+séparément ; aucun capital ou PnL n'est calculé sur cette seule condition.
+La référence d'inventaire déclarée doit encore être vérifiée au stade de valorisation.
+
+La collecte est séquentielle et le spot sans time reste inconnu. Cette amélioration
+fournit le regroupement nécessaire au futur modèle de valorisation, pas une
+consolidation réelle terminée. Aucun endpoint supplémentaire, cadence, coût ou
+budget augmenté. L'ancien historique reste exploitable selon ses propres preuves,
+sans annotations rétrospectives. Les reprises obtiennent le nouvel attempt_id et
+ne complètent pas artificiellement une acquisition interrompue.
+
+Tests : batches distincts, état manquant/dupliqué, inventaire conflictuel, legacy
+non regroupé, simultanéité absente/future, equity toujours inconnue. Contrôle daté
+account-acquisition-control-20261008.json lit seulement les metadata de requêtes ;
+une absence de nouvelle annotation au moment du contrôle reste un rollout non
+encore démontré sur données réelles.
+
+Retour arrière : retirer annotations et reducer/appel de rapport. Les champs
+supplémentaires request_json restent compatibles avec l'ancien code. Aucune table
+ni migration destructive, aucun recalcul d'ancienne expérience ni restauration
+complète de base requis. Les workers oneshot suivants chargent le nouveau code ;
+aucun redémarrage du collecteur pilote nécessaire.

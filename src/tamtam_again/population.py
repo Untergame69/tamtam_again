@@ -101,10 +101,19 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
     queries=[{'type':'userAbstraction','user':address},{'type':'userRole','user':address},{'type':'subAccounts','user':address},{'type':'spotClearinghouseState','user':address},{'type':'portfolio','user':address},{'type':'perpDexs'}]
     for query in queries:
         receipt=utc_now();value=client.post_info(query);key=query['type'];responses[key]=value
-        store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account' if key!='perpDexs' else 'market',entity_id=address if key!='perpDexs' else 'perpetuals:all',endpoint=key,payload=value,request_payload={**query,'transport':'rest','phase':'scope_inventory'},requested_at=receipt)
+        store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account' if key!='perpDexs' else 'market',entity_id=address if key!='perpDexs' else 'perpetuals:all',endpoint=key,payload=value,request_payload={**query,'transport':'rest','phase':'scope_inventory','acquisition_id':job['attempt_id']},requested_at=receipt)
         proof.append({'endpoint':key,'request':query,'available_after_request':True})
     dexes=responses['perpDexs']
     if not isinstance(dexes,list):raise ValueError('Invalid public dex inventory')
+    inventory_request={'type':'perpDexs','transport':'rest','phase':'scope_inventory',
+                       'acquisition_id':job['attempt_id']}
+    inventory_row=store.connection.execute('select observation_id from raw_observations '
+        "where network=? and source=? and entity_type='market' and entity_id='perpetuals:all' and endpoint=? and request_json=? order by observation_id desc limit 1",
+        (network,'hyperliquid-population-rest-v1','perpDexs',json.dumps(inventory_request,ensure_ascii=False,sort_keys=True,separators=(',',':')))).fetchone()
+    inventory_ref='raw_observations:'+str(inventory_row[0]) if inventory_row else None
+    expected_dexes=[(dex.get('name') or '') if isinstance(dex,dict) else '' for dex in dexes]
+    if len(set(expected_dexes))!=len(expected_dexes):raise ValueError('Duplicate dex inventory')
+    if any(d is not None and (not isinstance(d,dict) or not isinstance(d.get('name'),str)) for d in dexes):raise ValueError('Malformed dex inventory')
     states={}
     for dex in dexes:
         name=dex.get('name') if isinstance(dex,dict) else ''
@@ -112,7 +121,7 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
         query={'type':'clearinghouseState','user':address}
         if name:query['dex']=name
         receipt=utc_now();state=client.post_info(query);states[name]=state
-        store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account',entity_id=address,endpoint='clearinghouseState',payload=state,request_payload={**query,'transport':'rest','phase':'scope_inventory'},requested_at=receipt)
+        store.save_observation(network=network,source='hyperliquid-population-rest-v1',entity_type='account',entity_id=address,endpoint='clearinghouseState',payload=state,request_payload={**query,'transport':'rest','phase':'scope_inventory','acquisition_id':job['attempt_id'],'expected_dexes':expected_dexes,'inventory_evidence_ref':inventory_ref},requested_at=receipt)
     # Inventory calls may wait behind the shared quota. Bound history after
     # their completion, so a completed page can include those valuations.
     # Using job-start time leaves a systematic unqueried tail at every pass.
@@ -142,6 +151,8 @@ def collect_overview(store: Store,client: HyperliquidInfo,job:dict[str,Any], *,n
         if catalog:mechanisms=[mechanism_profile(json.loads(catalog[0]),coin) for coin in sorted(markets)]
     report={'address':address,'mode':mode,'role':responses['userRole'],'subaccounts':responses['subAccounts'],'perp_dexes_observed':list(states),'spot_observed':isinstance(responses['spotClearinghouseState'],dict),'markets':sorted(markets),'simultaneous_position_snapshot':positions,'activity':activity,'poll_interval_seconds':interval,'fills_requested_start_ms':start,'fills_requested_end_ms':fill_history['end_ms'],'histories':histories,'current_pass_behavior_profile':behavior,'market_mechanisms':mechanisms,'fill_coverage':'unknown: bounded pagination, API retention cap, no continuity proof','capital_aggregation':'unknown: do not sum dex equities; account mode and shared collateral need reconciliation','external_hedges':'unknown','performance_status':'not_qualified','reproducibility_status':'unproven','proof_endpoints':proof,'scope':'public inventory only; REST availability is archive insertion, never a live follower signal'}
     report['allocation']=job.get('allocation')
+    report['acquisition_id']=job['attempt_id']
+    report['dex_inventory_evidence_ref']=inventory_ref
     finish(store,job,report,interval,now_ms=available)
     return report
 

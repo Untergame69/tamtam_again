@@ -49,6 +49,18 @@ class PopulationTests(unittest.TestCase):
   raw=self.s.connection.execute("select complete,request_json from raw_observations where endpoint='userFillsByTime'").fetchone()
   self.assertFalse(raw['complete']);self.assertIn('pagination_only_retention_unknown',raw['request_json'])
   self.assertEqual(set(report['histories']),{'userFillsByTime','userFunding','userNonFundingLedgerUpdates'})
+  self.assertEqual(report['acquisition_id'],job['attempt_id'])
+  self.assertTrue(report['dex_inventory_evidence_ref'].startswith('raw_observations:'))
+  from tamtam_again.account_adapter import report_account
+  import time
+  accounting=report_account(self.s,'test',job['address'],0,2000,as_of_ms=int(time.time()*1000)+1000)
+  acquisition=accounting['account_acquisitions']['groups'][0]
+  self.assertEqual(acquisition['acquisition_id'],job['attempt_id'])
+  self.assertEqual(acquisition['status'],'linked_inventory')
+  self.assertEqual(set(acquisition['expected_dexes']),{'','xyz'})
+  self.assertFalse(acquisition['economic_components_aligned'])
+  self.assertIsNone(acquisition['equity'])
+
  def test_cursor_ends_at_request_not_later_processing(self):
   enroll(self.s,'test',{**P,'max_rest_accounts':1},now_ms=1000);job=claim(self.s,'test',now_ms=1000)
   finish(self.s,job,{'fills_requested_end_ms':2000},300,now_ms=8000)

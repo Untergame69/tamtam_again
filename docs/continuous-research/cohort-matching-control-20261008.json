@@ -1,0 +1,389 @@
+{
+  "matching_id": "972b4ce1f912c8e4597aa1ed87b4503900ea303bd73c810ddad3f85e4e8792ce",
+  "cohort_id": "53944f16722529dbbf1c9172e976fa3acdb8f3cc12784ba29271b1c40f81f8cf",
+  "cutoff_ms": 1791446121459,
+  "economic_qualification": false,
+  "end_ms": 1791467721459,
+  "excluded": [
+    {
+      "address": "0x28585d97f7d77b7a269c9513a98ca316421d8749",
+      "reason": "missing comparable observation features"
+    },
+    {
+      "address": "0x47537fa2f845603bac02cb03c719bdc8c7eeb224",
+      "reason": "missing comparable observation features"
+    },
+    {
+      "address": "0x58c09b7c574f1b1459968818477074dc1810eb90",
+      "reason": "missing comparable observation features"
+    },
+    {
+      "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "reason": "missing comparable observation features"
+    },
+    {
+      "address": "0xa9573153547af5ac1520bd8f43132043ea8a9683",
+      "reason": "missing comparable observation features"
+    },
+    {
+      "address": "0xfdfe0924c6f065a8efcfc769b2a318882a2670df",
+      "reason": "missing comparable observation features"
+    }
+  ],
+  "limits": [
+    "matching uses observed activity, not true activity under incomplete retention",
+    "equal unknown coverage does not prove complete histories",
+    "market-level comparisons do not imply whole-account risk equivalence",
+    "unobserved external hedges, capital, leverage and execution advantages remain uncontrolled",
+    "not randomized account treatment or proof of a selection advantage"
+  ],
+  "network": "hyperliquid-mainnet",
+  "pairs": [
+    {
+      "comparison_market": "ZEC",
+      "control_address": "0xfa65f9270c06c4509e19cb67c868f0a5826f7770",
+      "control_features": {
+        "activity_rate_stratum": 0,
+        "activity_window_seconds": 3679.881,
+        "dexes": [
+          "",
+          "abcd",
+          "cash",
+          "flx",
+          "hyna",
+          "io",
+          "km",
+          "mkts",
+          "para",
+          "vntl",
+          "xyz"
+        ],
+        "fill_coverage": "unknown: bounded pagination, API retention cap, no continuity proof",
+        "markets": [
+          "ZEC"
+        ],
+        "mode": "unifiedAccount",
+        "poll_interval_seconds": 3600,
+        "spot_observed": true
+      },
+      "control_group": "control_uniform",
+      "evidence_refs": [
+        "account_scope_reports:2d6b973627fe49e7a801ca72fdd8e3eb",
+        "account_scope_reports:ba52313fedcf4707b5d87a0d80884e25"
+      ],
+      "knowledge_available_ms": [
+        1791443624909,
+        1791443098818
+      ],
+      "selected_address": "0x40aa93c0f6073a9210cf294dc3e3814a7abced07",
+      "selected_features": {
+        "activity_rate_stratum": 0,
+        "activity_window_seconds": 3760.385,
+        "dexes": [
+          "",
+          "abcd",
+          "cash",
+          "flx",
+          "hyna",
+          "io",
+          "km",
+          "mkts",
+          "para",
+          "vntl",
+          "xyz"
+        ],
+        "fill_coverage": "unknown: bounded pagination, API retention cap, no continuity proof",
+        "markets": [
+          "AAVE",
+          "ADA",
+          "AERO",
+          "ALGO",
+          "APEX",
+          "ARB",
+          "ASTER",
+          "ATOM",
+          "AVAX",
+          "BCH",
+          "BNB",
+          "BTC",
+          "CAKE",
+          "CASHCAT",
+          "CC",
+          "CHIP",
+          "COMP",
+          "CRV",
+          "DASH",
+          "DOGE",
+          "DOT",
+          "EIGEN",
+          "ENA",
+          "ENS",
+          "ETC",
+          "ETH",
+          "ETHFI",
+          "FIL",
+          "GALA",
+          "GRAM",
+          "GRASS",
+          "HBAR",
+          "HEMI",
+          "HYPE",
+          "ICP",
+          "INJ",
+          "JTO",
+          "JUP",
+          "KAITO",
+          "KAS",
+          "LDO",
+          "LINK",
+          "LIT",
+          "LTC",
+          "MEGA",
+          "MET",
+          "MINA",
+          "MNT",
+          "MON",
+          "MORPHO",
+          "NEAR",
+          "ONDO",
+          "OP",
+          "PAXG",
+          "PENDLE",
+          "PENGU",
+          "POL",
+          "PUMP",
+          "PURR",
+          "PYTH",
+          "RENDER",
+          "REZ",
+          "RUNE",
+          "SAGA",
+          "SEI",
+          "SKR",
+          "SKY",
+          "SOL",
+          "SOPH",
+          "SPX",
+          "STBL",
+          "STRK",
+          "STX",
+          "SUI",
+          "SYRUP",
+          "TAO",
+          "TRUMP",
+          "TRX",
+          "UNI",
+          "USELESS",
+          "VIRTUAL",
+          "VVV",
+          "WIF",
+          "WLFI",
+          "XLM",
+          "XMR",
+          "XPL",
+          "XRP",
+          "ZEC",
+          "ZEN",
+          "ZK",
+          "ZRO"
+        ],
+        "mode": "unifiedAccount",
+        "poll_interval_seconds": 3600,
+        "spot_observed": true
+      },
+      "selected_group": "explore",
+      "shared_markets": [
+        "ZEC"
+      ]
+    },
+    {
+      "comparison_market": "NEAR",
+      "control_address": "0xa32f7b6a9e4afe01a6fd2a08894e3aa9a4622102",
+      "control_features": {
+        "activity_rate_stratum": 0,
+        "activity_window_seconds": 3742.743,
+        "dexes": [
+          "",
+          "abcd",
+          "cash",
+          "flx",
+          "hyna",
+          "io",
+          "km",
+          "mkts",
+          "para",
+          "vntl",
+          "xyz"
+        ],
+        "fill_coverage": "unknown: bounded pagination, API retention cap, no continuity proof",
+        "markets": [
+          "DYDX",
+          "NEAR",
+          "PUMP",
+          "TAO",
+          "io:ANTH",
+          "io:NBIS",
+          "para:UNITREE",
+          "xyz:BRENTOIL",
+          "xyz:COPPER",
+          "xyz:NBIS",
+          "xyz:ORCL",
+          "xyz:UNITREE"
+        ],
+        "mode": "unifiedAccount",
+        "poll_interval_seconds": 3600,
+        "spot_observed": true
+      },
+      "control_group": "control_uniform",
+      "evidence_refs": [
+        "account_scope_reports:b5f320affb6e4205a35f548ced926bdb",
+        "account_scope_reports:006f1fa3c9754f8d9bd2292ca486adc0"
+      ],
+      "knowledge_available_ms": [
+        1791443009871,
+        1791442550265
+      ],
+      "selected_address": "0xe3814a14b83c128b53da5e8b6101a2b43c494373",
+      "selected_features": {
+        "activity_rate_stratum": 0,
+        "activity_window_seconds": 3691.419,
+        "dexes": [
+          "",
+          "abcd",
+          "cash",
+          "flx",
+          "hyna",
+          "io",
+          "km",
+          "mkts",
+          "para",
+          "vntl",
+          "xyz"
+        ],
+        "fill_coverage": "unknown: bounded pagination, API retention cap, no continuity proof",
+        "markets": [
+          "ASTER",
+          "BTC",
+          "GRAM",
+          "JUP",
+          "MON",
+          "NEAR",
+          "PONS",
+          "ZEC",
+          "xyz:SP500"
+        ],
+        "mode": "unifiedAccount",
+        "poll_interval_seconds": 3600,
+        "spot_observed": true
+      },
+      "selected_group": "explore",
+      "shared_markets": [
+        "NEAR"
+      ]
+    }
+  ],
+  "policy": {
+    "activity_rate_cuts": [
+      0.001,
+      0.01,
+      0.1
+    ],
+    "justification": "Pilot market-level witnesses matched on observed activity, account mode, inventoried DEX scope and collection conditions. No PnL selection or claim of whole-account economic equivalence.",
+    "max_age_ms": 7200000,
+    "max_pairs": 8,
+    "maximum_window_ratio": 2,
+    "minimum_activity_window_seconds": 300,
+    "seed": "population-witness-oct2026-v1",
+    "version": "matched-collection-v1"
+  },
+  "registered_ms": 1791446121459,
+  "start_ms": 1791449721459,
+  "unmatched_selected": [
+    {
+      "address": "0x31bf570216cf65ae2ea612361f7f5d4072d42d97",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x8fec806c9e94ff7ab2af3d7e4875c2381413f98e",
+      "compatible_controls": 1,
+      "reason": "disjoint control or pair budget exhausted"
+    },
+    {
+      "address": "0x5d2f4460ac3514ada79f5d9838916e508ab39bb7",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x764d42da0d23457bc6da50fb8ab1aebc3e635000",
+      "compatible_controls": 1,
+      "reason": "disjoint control or pair budget exhausted"
+    },
+    {
+      "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x030330e4523b730814e31c7e8f80a5e3fa847c70",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x18cc9292851cbb553b9154ad361600f126c6bcd3",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0xf02d16a272a842f8bac1d9a9e773aba1933454c6",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x470756b530bfa294b80dd4783a1fe13dcf3b3394",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x617e4a9e3da6d7669e8451a27009e618215c39d0",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x4d20a11dcb667b338936c3e84d74ae3bcf284504",
+      "compatible_controls": 2,
+      "reason": "disjoint control or pair budget exhausted"
+    },
+    {
+      "address": "0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0",
+      "compatible_controls": 1,
+      "reason": "disjoint control or pair budget exhausted"
+    },
+    {
+      "address": "0x4ad5ffac22c04a18ab3d8658682f71ab71d89a1c",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0xb637b71f66ad0cc79d35f80c3a0377e4957098fe",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0xcf16183d5c4b4aefc9f0a4cf1ebbc2c310c99fd2",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    },
+    {
+      "address": "0x4a20b9496610941053858bd0b7e92493f44c3c26",
+      "compatible_controls": 0,
+      "reason": "no compatible control"
+    }
+  ],
+  "replayed": false
+}

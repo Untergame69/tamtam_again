@@ -694,3 +694,15 @@ CPU reste mesuré seulement sur 59 s, pas sur la fenêtre entière ; pas de SLA 
 preuve de reprise. Commande, limites et rollback CAPACITY-DECISION.md. Collecteur
 systemd contrôlé active/running ; oneshots inactive hors tick ne signifie pas
 arrêt des timers. Aucun changement service, budget ou données réservées.
+
+### Témoins appariés prospectifs — étape 8
+
+Matching disponible à cutoff, modes/DEX/spot/cadence/couverture/strate d'activité
+identiques, marché commun, fenêtres de durée comparable ; paires disjointes,
+maximum par chemins augmentants, budget et paramètres explicites. Enregistrement
+immuable avant période future et replay conservé ; pilotes exclus avant payload.
+Contrôle réel : deux paires exploration/uniforme ZEC et NEAR, six exclus,
+17 sans paire ; aucun témoin classement compatible. Pas de critère relâché.
+Preuve cohort-matching-control-20261008.json et nouvelle table additive.
+Ce contrôle ne prouve ni équivalence du risque complet ni performance ;
+comparaison économique dépend toujours de la qualification comptable.

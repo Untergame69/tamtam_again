@@ -75,3 +75,61 @@ et rester dans le budget. Aucun besoin de restaurer la base entière.
 La qualification économique, les cohortes d'analyse IA et la comparaison
 prospective de la sélection restent à terminer. Cette politique livre
 l'allocation de collecte et sa traçabilité, pas une sélection de comptes rentables.
+
+## Témoins appariés prospectifs
+
+`cohort_matching.py` complète les groupes de collecte par un registre immuable
+`matched_collection_cohorts`. La commande explicite `scripts/cohort-match.py`
+exige une cohorte connue et une période future. L'horloge réelle fixe la date
+d'inscription ; un replay du même contrat retrouve le snapshot initial, y
+compris après la période, sans refaire les choix sur des résultats ultérieurs.
+Les adresses protégées sont exclues avant lecture des rapports de périmètre.
+Aucun PnL, résultat de stratégie ou archive réservée n'entre dans le matching.
+
+La politique pilote `config/cohort-matching-policy.json` exige : mode de compte,
+liste DEX inventoriée, observation spot, cadence REST, diagnostic de couverture
+et strate d'activité identiques ; au moins un marché commun ; rapport disponible
+depuis au plus 2 h ; fenêtre d'activité d'au moins 300 s ; rapport entre durées
+au plus 2. Les strates observées utilisent les coupures 0,001 / 0,01 / 0,1
+fill/s. Maximum huit paires disjointes. Ces paramètres sont des choix exploratoires
+versionnés, pas des seuils statistiques universels. Aucun assouplissement implicite
+n'intervient si les candidats ne correspondent pas.
+
+Un algorithme de chemins augmentants cherche le maximum de paires compatibles,
+puis applique le budget. Ordres et marché commun choisi sont déterministes par
+graine. Un témoin ne sert qu'une fois. Les snapshots incluent les caractéristiques,
+preuves et dates propres, exclusions et comptes non appariés. Cela permet une
+comparaison ultérieure sur le marché déclaré ; cela ne rend pas équivalents les
+capitaux, leviers, couvertures extérieures ou risques de portefeuille complet.
+Une couverture inconnue appariée à une autre couverture inconnue demeure inconnue.
+L'activité issue des pages publiques peut sous-estimer l'activité réelle.
+
+### Premier contrôle réel du 8 octobre
+
+`cohort-matching-control-20261008.json` et registre
+`972b4ce1f912c8e4597aa1ed87b4503900ea303bd73c810ddad3f85e4e8792ce` :
+2 paires exploration/témoin uniforme (ZEC, NEAR), 6 exclus, 17 sélectionnés
+sans paire. Aucun témoin classement apparié. Période future fixe
+[1791449721459, 1791467721459), soit cinq heures, début une heure après inscription.
+Cette durée sert à un premier contrôle de collecte, pas à prouver une rentabilité.
+Les changements de cohorte continuent normalement ; un retrait ou une interruption
+peut rendre cette période inexploitable. Aucun nouveau slot/cadence/appel IA,
+plan de stratégie, budget, service ou qualification économique créé.
+
+La commande enregistre uniquement des témoins ; la comparaison de performance
+nécessite encore des périodes comptables et risques comparables prouvés et/ou
+un contrat de procédure avec références exécutables. Elle ne démarre pas de paper
+et n'importe pas automatiquement ses paires dans un contrat de stratégie.
+Aucune boucle de re-matching automatique ni recherche supplémentaire activée.
+
+```sh
+PYTHONPATH=src .venv/bin/python scripts/cohort-match.py --db data/tamtam.sqlite3 \
+  --policy config/cohort-matching-policy.json --cohort-id COHORT_ID \
+  --start-ms FUTURE_START --end-ms FUTURE_END --output /tmp/cohort-match.json
+```
+
+La commande requiert une base existante (SQLite mode=rw) et n'exécute pas les
+migrations générales de Store. Migration additive : nouvelle table seulement,
+aucune modification d'ancienne cohorte/observation. Retour arrière : retirer
+la commande et le module ; conserver la table pour l'audit. Ni restauration
+complète de base ni relance de collecte nécessaire.

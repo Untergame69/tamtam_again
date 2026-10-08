@@ -1,0 +1,10 @@
+{
+  "version": "matched-collection-v1",
+  "seed": "population-witness-oct2026-v1",
+  "justification": "Pilot market-level witnesses matched on observed activity, account mode, inventoried DEX scope and collection conditions. No PnL selection or claim of whole-account economic equivalence.",
+  "max_age_ms": 7200000,
+  "minimum_activity_window_seconds": 300,
+  "maximum_window_ratio": 2,
+  "activity_rate_cuts": [0.001, 0.01, 0.1],
+  "max_pairs": 8
+}

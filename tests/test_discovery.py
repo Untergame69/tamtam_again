@@ -47,6 +47,23 @@ class DiscoveryTests(unittest.TestCase):
             accounts,markets,depth=_subscriptions(self.s,'test',30)
         self.assertEqual(markets,['RECENT'])
 
+    def test_identical_window_replays_without_write_lock_and_repairs_missing_link(self):
+        values=dict(network='test',source='ranking',market='*',start_ms=2000,end_ms=2000,
+            available_ms=2000,version='ranking-v1',coverage={'status':'snapshot_only'},evidence={addr(1):{'rank':1}})
+        first=record_window(self.s,**values)
+        with Store(self.s.path) as writer:
+            writer.connection.execute('begin immediate')
+            self.s.connection.execute('pragma busy_timeout=1')
+            replay=record_window(self.s,**values)
+            self.assertEqual(replay['window_id'],first['window_id'])
+            self.assertEqual(replay['new_candidates'],0)
+            writer.connection.rollback()
+        self.s.connection.execute('delete from discovery_provenance where window_id=?',(first['window_id'],))
+        self.s.connection.commit()
+        repaired=record_window(self.s,**values)
+        self.assertEqual(repaired['window_id'],first['window_id'])
+        self.assertEqual(self.s.connection.execute('select count(*) from discovery_provenance').fetchone()[0],1)
+
 class LeaderboardProvenanceTests(unittest.TestCase):
     def test_rankings_preserved_without_financial_metrics(self):
         from tamtam_again.discovery import leaderboard_provenance

@@ -54,6 +54,14 @@ def record_window(store: Store, *, network: str,source: str,market: str,
     migrate(store)
     payload={'network':network,'source':source,'market':market,'start_ms':start_ms,'end_ms':end_ms,'available_ms':available_ms,'version':version,'coverage':coverage,'evidence':evidence}
     identity=fingerprint(payload);stamp=utc_now()
+    for address in evidence:validate_address(address)
+    # An identical ranking/window already has immutable provenance. Avoid a
+    # needless write lock on each tick, but repair incomplete provenance rows.
+    existing=store.connection.execute('select selected_addresses from discovery_windows where window_id=?',(identity,)).fetchone()
+    if existing and existing[0]==len(evidence):
+        linked={r[0] for r in store.connection.execute('select address from discovery_provenance where window_id=?',(identity,))}
+        if linked=={a.lower() for a in evidence}:
+            return {'window_id':identity,'selected':len(evidence),'new_candidates':0,'coverage':coverage}
     store.connection.execute('insert or ignore into discovery_windows values (?,?,?,?,?,?,?,?,?,?)',(identity,network,source,market,start_ms,end_ms,available_ms,version,json.dumps(coverage,sort_keys=True),len(evidence)))
     new=0
     for address,proof in evidence.items():

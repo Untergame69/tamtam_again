@@ -3,6 +3,8 @@
 import argparse
 import json
 import time
+import sqlite3
+import sys
 from pathlib import Path
 from tamtam_again.storage import Store
 from tamtam_again.discovery_rotation import select_markets
@@ -15,36 +17,43 @@ p.add_argument('--seconds', type=int, default=45)
 p.add_argument('--output', type=Path, required=True)
 a = p.parse_args()
 network = 'hyperliquid-mainnet'
-with Store(a.db) as store:
-    ranking = store.connection.execute(
-        'select snapshot_id, observed_at from whale_rankings where network=? '
-        'order by observed_at desc limit 1', (network,)).fetchone()
-    if ranking:
-        rows = [dict(r) for r in store.connection.execute(
-            'select address,window,metric,rank from whale_rankings where snapshot_id=?',
-            (ranking['snapshot_id'],))]
-        leaderboard_provenance(store, network, ranking['snapshot_id'],
-                               ranking['observed_at'], rows,
-                               max((r['rank'] for r in rows), default=0))
-    row = store.connection.execute(
-        'select payload_json from collateral_catalogs where network=? '
-        'and available_ms<=? order by available_ms desc limit 1',
-        (network, int(time.time()*1000))).fetchone()
-    if row is None:
-        raise SystemExit('Awaiting collected public catalog; no extra REST calls')
-    protected = {r[0] for r in store.connection.execute(
-        'select distinct coin from validation_plans where synthetic=0')}
-    selection = select_markets(json.loads(row[0]), now_ms=int(time.time()*1000),
-                               protected=protected)
-    if not selection['markets']:
-        raise SystemExit('No eligible discovery markets')
-    report = collect_session(store, network, selection['markets'], seconds=a.seconds)
-    report['selection'] = selection
-    store.connection.execute('create table if not exists discovery_sessions '
-        '(session_id text primary key, available_ms integer not null, report_json text not null)')
-    store.connection.execute('insert into discovery_sessions values(?,?,?)',
-        (report['session'], int(time.time()*1000), json.dumps(report, sort_keys=True)))
-    store.connection.commit()
+try:
+    with Store(a.db) as store:
+        ranking = store.connection.execute(
+            'select snapshot_id, observed_at from whale_rankings where network=? '
+            'order by observed_at desc limit 1', (network,)).fetchone()
+        if ranking:
+            rows = [dict(r) for r in store.connection.execute(
+                'select address,window,metric,rank from whale_rankings where snapshot_id=?',
+                (ranking['snapshot_id'],))]
+            leaderboard_provenance(store, network, ranking['snapshot_id'],
+                                   ranking['observed_at'], rows,
+                                   max((r['rank'] for r in rows), default=0))
+        row = store.connection.execute(
+            'select payload_json from collateral_catalogs where network=? '
+            'and available_ms<=? order by available_ms desc limit 1',
+            (network, int(time.time()*1000))).fetchone()
+        if row is None:
+            raise SystemExit('Awaiting collected public catalog; no extra REST calls')
+        protected = {r[0] for r in store.connection.execute(
+            'select distinct coin from validation_plans where synthetic=0')}
+        selection = select_markets(json.loads(row[0]), now_ms=int(time.time()*1000),
+                                   protected=protected)
+        if not selection['markets']:
+            raise SystemExit('No eligible discovery markets')
+        report = collect_session(store, network, selection['markets'], seconds=a.seconds)
+        report['selection'] = selection
+        store.connection.execute('create table if not exists discovery_sessions '
+            '(session_id text primary key, available_ms integer not null, report_json text not null)')
+        store.connection.execute('insert into discovery_sessions values(?,?,?)',
+            (report['session'], int(time.time()*1000), json.dumps(report, sort_keys=True)))
+        store.connection.commit()
+except sqlite3.Error as exc:
+    # Stable engine code only; never SQL parameters, payloads or transport text.
+    print(json.dumps({'discovery_storage_failure': {
+        'sqlite_errorcode':getattr(exc,'sqlite_errorcode',None),
+        'sqlite_errorname':getattr(exc,'sqlite_errorname',None)}}),file=sys.stderr)
+    raise
 a.output.parent.mkdir(parents=True, exist_ok=True)
 temporary = a.output.with_suffix('.tmp')
 temporary.write_text(json.dumps(report, indent=2)+'\n')

@@ -155,3 +155,13 @@ Limites : qualification économique initiale fournie en fixture, pas démontrée
 R4 reste partiel pour les besoins de collecte/réveil exécutables et l'incident SQLite. Ce jalon prouve une nouvelle décision prospective après diagnostic, sans prouver la valeur économique de l'adaptation entière. Retour arrière : retirer la recette et revenir aux fonctions scheduler/pipeline du précédent commit ; conserver les registres, essais et fenêtres de production.
 
 Suite complète fraîche : **408 tests OK en 38,324 s**, commande habituelle `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q`. Recette CLI exécutée séparément avec succès.
+
+## Incident bloquant la découverte : contention SQLite
+
+Deux essais contrôlés du service ont échoué, dont le dernier fournit le code moteur exact : `SQLITE_BUSY` (5), et non `SQLITE_BUSY_SNAPSHOT`. Échec après environ dix secondes dans l'écriture de la provenance du classement, avant toute connexion de découverte pour cet essai. Le collecteur principal reste actif. Une observation des verrous WAL a identifié son PID comme détenteur intermittent du verrou d'écriture ; cela ne prouve pas à lui seul toute la cause des contentions.
+
+Correction ciblée : une fenêtre/provenance identique déjà complète retourne désormais son identité sans demander un verrou d'écriture. Une provenance incomplète reste réparable. Un test maintient un écrivain concurrent et vérifie que le rejeu identique réussit avec un busy_timeout d'une milliseconde, puis que la suppression d'un lien est réparée. Le job affiche maintenant uniquement le code/nom d'erreur SQLite lors d'un échec, sans payload ni paramètres SQL.
+
+Ce lot ne prétend pas éliminer les conflits lors des nouvelles écritures. Il supprime la contention inutile du rejeu du classement. Aucun collecteur principal redémarré, aucune cadence, quota, stratégie ni budget changé. Les besoins de collecte/réveil exécutables restent à raccorder. Retour arrière : revenir aux fonctions de découverte et au script du précédent commit ; conserver les fenêtres et provenances.
+
+Contrôle après correction : le service franchit le rejeu du classement, collecte la session bornée, puis échoue sur `SQLITE_BUSY` dans `save_observation` à l'enregistrement de nouveaux événements (15:06:09 locale). Le service de découverte n'est donc pas rétabli. Suite complète : **409 tests OK en 39,425 s**. Le prochain correctif doit traiter la conservation/reprise de cette écriture, sans répétition de la connexion pour remplacer les événements perdus.

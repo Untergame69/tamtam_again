@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from tamtam_again.storage import Store
 from tamtam_again.discovery_rotation import select_markets
-from tamtam_again.discovery_runtime import collect_session
+from tamtam_again.discovery_runtime import collect_session,recover_pending
 from tamtam_again.discovery import leaderboard_provenance
 
 p = argparse.ArgumentParser()
@@ -19,6 +19,15 @@ a = p.parse_args()
 network = 'hyperliquid-mainnet'
 try:
     with Store(a.db) as store:
+        recovery=recover_pending(store)
+        if recovery['recovered'] or recovery['pending']:
+            if recovery['recovered']:
+                a.output.parent.mkdir(parents=True,exist_ok=True)
+                temporary=a.output.with_suffix('.tmp')
+                temporary.write_text(json.dumps(recovery['recovered'][-1],indent=2)+'\n')
+                temporary.replace(a.output)
+            print(json.dumps({'recovery_only':True,'sessions':len(recovery['recovered']),'pending':recovery['pending']}))
+            raise SystemExit(0)
         ranking = store.connection.execute(
             'select snapshot_id, observed_at from whale_rankings where network=? '
             'order by observed_at desc limit 1', (network,)).fetchone()
@@ -45,7 +54,7 @@ try:
         report['selection'] = selection
         store.connection.execute('create table if not exists discovery_sessions '
             '(session_id text primary key, available_ms integer not null, report_json text not null)')
-        store.connection.execute('insert into discovery_sessions values(?,?,?)',
+        store.connection.execute('insert or ignore into discovery_sessions values(?,?,?)',
             (report['session'], int(time.time()*1000), json.dumps(report, sort_keys=True)))
         store.connection.commit()
 except sqlite3.Error as exc:

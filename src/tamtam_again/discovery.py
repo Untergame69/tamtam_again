@@ -70,7 +70,7 @@ def record_window(store: Store, *, network: str,source: str,market: str,
         store.connection.execute('insert or ignore into discovery_provenance values (?,?,?,?,?)',(network,address.lower(),identity,stamp,json.dumps(proof,sort_keys=True)))
     store.connection.commit()
     return {'window_id':identity,'selected':len(evidence),'new_candidates':new,'coverage':coverage}
-def participants(store: Store,network: str,market: str,events: list[tuple[str,dict[str,Any]]], *,limit: int=100,coverage: str='unknown') -> list[dict[str,Any]]:
+def participants(store: Store,network: str,market: str,events: list[tuple[str,dict[str,Any]]], *,limit: int=100,coverage: str='unknown',available_ms: int | None=None) -> list[dict[str,Any]]:
     if limit<1:raise ValueError('Positive discovery budget required')
     blocked=protected_addresses(store)
     buckets: dict[int,dict[str,dict[str,Any]]]={}; bounds:dict[int,list[int]]={};sessions:dict[int,set[str]]={}
@@ -99,7 +99,7 @@ def participants(store: Store,network: str,market: str,events: list[tuple[str,di
         seed=f'{network}:{market}:{bucket}:address-uniform-v1:'
         chosen=sorted(evidence,key=lambda a:hashlib.sha256((seed+a).encode()).hexdigest())[:limit]
         times=bounds[bucket]
-        reports.append(record_window(store,network=network,source='hyperliquid-public-trades',market=market,start_ms=min(times),end_ms=max(times),available_ms=max(times),version='address-uniform-v1',coverage={'status':coverage,'sessions':sorted(sessions[bucket]),'window_bucket_ms':bucket*60000,'observed_unique_eligible':len(evidence),'cap_per_archived_batch':limit,'protected_pilot_accounts_excluded':True,'bias':'market activity and observed partial window; sampling unique addresses, not fills'},evidence={a:evidence[a] for a in chosen}))
+        reports.append(record_window(store,network=network,source='hyperliquid-public-trades',market=market,start_ms=min(times),end_ms=max(times),available_ms=max(max(times),available_ms or 0),version='address-uniform-v1',coverage={'status':coverage,'sessions':sorted(sessions[bucket]),'window_bucket_ms':bucket*60000,'observed_unique_eligible':len(evidence),'cap_per_archived_batch':limit,'protected_pilot_accounts_excluded':True,'bias':'market activity and observed partial window; sampling unique addresses, not fills'},evidence={a:evidence[a] for a in chosen}))
     return reports
 
 

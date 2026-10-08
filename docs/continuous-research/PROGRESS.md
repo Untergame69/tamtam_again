@@ -650,3 +650,11 @@ Liaison adaptive nouvelle session à borne exacte autorisée, après borne refus
 Ancien state inchangé, référence continue, coût changement distinct, rapport
 reproductible et unknown sur coût absent. Preuve nouvelle conservée séparément
 de la recette précédente ; aucune politique adaptative réelle qualifiée.
+
+### Audit intermédiaire des quinze exigences — 8 octobre
+
+AUDIT-20261008.md conserve le périmètre intégral, preuves identifiées et écarts
+comptabilité/capacité/cohortes/autonomie/multi-instruments/CR. Pas de conclusion
+complète depuis les seules recettes. Contrôle read-only des 8 plans/3 variantes
+contre baseline : 11 empreintes inchangées, aucune observation/résultat réservé
+lu ; preuve pilot-preservation-audit-20261008.json. Goal reste actif.

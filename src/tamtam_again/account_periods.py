@@ -13,6 +13,8 @@ def observed_periods(store, network, address, *, as_of_ms, scope_id='perp:'):
         raise ValueError('Reserved pilot account excluded before raw query')
     if type(as_of_ms) is not int or as_of_ms<0 or not scope_id.startswith('perp:'):
         raise ValueError('Explicit available decision time and perp scope required')
+    from .research_memory import authorized_account_history
+    if not authorized_account_history(store,network,address,as_of_ms):raise ValueError('Account history reserved at requested cutoff')
     points={}; rejected=[]
     for row in store.connection.execute(
         'select * from raw_observations where network=? and entity_type=\'account\' '

@@ -29,7 +29,22 @@ def migrate(store: Store):
         store._discovery_schema_ready=True
 def protected_addresses(store: Store) -> set[str]:
     if not store.connection.execute("select 1 from sqlite_master where name='validation_plans'").fetchone():return set()
-    return {r[0].lower() for r in store.connection.execute('select distinct address from validation_plans where synthetic=0')}
+    # Compatibility: abbreviated fixture/legacy schemas retain the old guard.
+    columns={r[1] for r in store.connection.execute('pragma table_info(validation_plans)')}
+    if not {'plan_id','plan_json'}<=columns or not store.connection.execute(
+            "select 1 from sqlite_master where name='research_window_releases'").fetchone():
+        return {r[0].lower() for r in store.connection.execute('select distinct address from validation_plans where synthetic=0')}
+    import time
+    clock=int(time.time()*1000);blocked=set()
+    for row in store.connection.execute('select plan_id,address,plan_json from validation_plans where synthetic=0'):
+        plan=json.loads(row['plan_json'])
+        # Legacy pilots remain protected even if another plan on their address closes.
+        if not plan.get('population_origin'):
+            blocked.add(row['address'].lower());continue
+        stages={r[0] for r in store.connection.execute('select stage from research_window_releases '
+            'where plan_id=? and released_ms<=?',(row['plan_id'],clock))}
+        if stages!={'comparison','final'}:blocked.add(row['address'].lower())
+    return blocked
 def fingerprint(value: Any):
     return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 def record_window(store: Store, *, network: str,source: str,market: str,

@@ -25,13 +25,19 @@ def _tick(store: Store, *, fixtures=None) -> dict[str,Any]:
     reports = []
     if store.connection.execute("select 1 from sqlite_master where name='experiment_families'").fetchone():
         from .experiments import select_final
-        for family, in store.connection.execute('select family_id from experiment_families').fetchall():
+        from .reserve_cycle import abandoned_final
+        for family,plan_id in store.connection.execute('select family_id,plan_id from experiment_families').fetchall():
+            if abandoned_final(store,plan_id,now_ms()):continue
             try:select_final(store,family)
             except ValueError as exc:
                 reports.append({'family_id':family,'stage':'selection','status':'waiting',
                                 'reason':str(exc),'next_action':'complete comparisons before final opens; otherwise create a new prospective plan'})
     for variant in store.connection.execute("SELECT variant_id FROM strategy_variants").fetchall():
         row,spec,plan = get_variant(store,variant[0])
+        from .reserve_cycle import abandoned_final
+        if abandoned_final(store,row['plan_id'],now_ms()):
+            reports.append({'variant_id':variant[0],'status':'abandoned_for_development','next_action':'new prospective plan required'})
+            continue
         if row["synthetic"] and fixtures is None:
             continue
         for stage in ("comparison","final"):

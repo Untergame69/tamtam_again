@@ -45,6 +45,8 @@ def _run(store,request_id):
     row=store.connection.execute('select network,address,status,policy_json,created_ms from population_research_jobs where request_id=?',(request_id,)).fetchone()
     if not row or row['status']!='sealed':return {'status':'unchanged_no_inference','request_id':request_id}
     if row['address'] in protected_addresses(store):raise ValueError('Reserved account excluded before sealed packet read')
+    from .research_memory import authorized_account_history
+    if not authorized_account_history(store,row['network'],row['address'],row['created_ms']):raise ValueError('Sealed research unavailable at original cutoff')
     policy=json.loads(row['policy_json'])
     if now_ms()-row['created_ms']>policy['max_request_age_ms']:
         store.connection.execute("update population_research_jobs set status='expired',updated_ms=? where request_id=? and status='sealed'",(now_ms(),request_id));store.connection.commit()

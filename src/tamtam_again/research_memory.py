@@ -36,6 +36,34 @@ def release_period(store:Store,evaluation_id:str,policy:dict[str,Any]) -> dict[s
     store.connection.commit()
     return dict(store.connection.execute('select * from research_period_releases where evaluation_id=?',(evaluation_id,)).fetchone())
 
+def window_released(store,plan_id,stage,as_of_ms):
+    if store.connection.execute("select 1 from sqlite_master where name='research_period_releases'").fetchone():
+        release=store.connection.execute('select 1 from research_period_releases r join validation_evaluations e using(evaluation_id) '
+            'where e.plan_id=? and e.stage=? and r.released_ms<=?',(plan_id,stage,as_of_ms)).fetchone()
+        if release:return True
+    if store.connection.execute("select 1 from sqlite_master where name='research_window_releases'").fetchone():
+        return bool(store.connection.execute('select 1 from research_window_releases '
+            'where plan_id=? and stage=? and released_ms<=?',(plan_id,stage,as_of_ms)).fetchone())
+    return False
+
+
+def authorized_account_history(store,network,address,as_of_ms):
+    """Whole-account archives are inclusive at cutoff; authorize before decoding.
+
+    A current release cannot grant access at an earlier historical decision time.
+    No payload, strategy or evaluation outcome is read by this check.
+    """
+    if type(as_of_ms) is not int or as_of_ms<0:return False
+    if not store.connection.execute("select 1 from sqlite_master where name='validation_plans'").fetchone():return True
+    columns={r[1] for r in store.connection.execute('pragma table_info(validation_plans)')}
+    if not {'plan_id','plan_json','network'}<=columns:return False
+    for row in store.connection.execute('select plan_id,plan_json from validation_plans where network=? and address=?',(network,address)):
+        plan=json.loads(row['plan_json'])
+        for stage in ('comparison','final'):
+            if plan[stage]['start_ms']<=as_of_ms and not window_released(store,row['plan_id'],stage,as_of_ms):return False
+    return True
+
+
 def authorized_period(store:Store,period:dict[str,Any],as_of_ms:int) -> bool:
     if not 0<=period['start_ms']<period['end_ms']<=as_of_ms:return False
     for row in store.connection.execute('select plan_id,plan_json from validation_plans where network=? and address=? and (?=\'*\' or coin=?)',(period['network'],period['address'],period['market'],period['market'])):
@@ -43,8 +71,7 @@ def authorized_period(store:Store,period:dict[str,Any],as_of_ms:int) -> bool:
         for stage in ('comparison','final'):
             window=plan[stage]
             if period['start_ms']>=window['end_ms'] or period['end_ms']<=window['start_ms']:continue
-            released=store.connection.execute('select 1 from research_period_releases r join validation_evaluations e using(evaluation_id) where e.plan_id=? and e.stage=? and r.released_ms<=?',(row['plan_id'],stage,as_of_ms)).fetchone()
-            if not released:return False
+            if not window_released(store,row['plan_id'],stage,as_of_ms):return False
     return True
 
 def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:

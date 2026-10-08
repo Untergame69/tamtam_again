@@ -20,6 +20,8 @@ def millis(stamp:str)->int:return int(datetime.fromisoformat(stamp).timestamp()*
 def report_account(store:Store,network:str,address:str,start_ms:int,end_ms:int, *,as_of_ms:int|None=None)->dict[str,Any]:
     address=address.lower();as_of_ms=int(time.time()*1000) if as_of_ms is None else as_of_ms
     if address in protected_addresses(store):raise ValueError('Reserved pilot account excluded from accounting development')
+    from .research_memory import authorized_account_history
+    if not authorized_account_history(store,network,address,as_of_ms):raise ValueError('Account history reserved at requested cutoff')
     if not 0<=start_ms<end_ms<=as_of_ms:raise ValueError('Explicit available period required')
     catalogs=[]
     if store.connection.execute("select 1 from sqlite_master where type='table' and name='collateral_catalogs'").fetchone():

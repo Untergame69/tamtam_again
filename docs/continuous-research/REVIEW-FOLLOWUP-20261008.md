@@ -79,3 +79,28 @@ Retour arrière du service : retirer seulement l'argument `--experiment-policy c
 ### R4 reste partiel
 
 Restent : besoins de collecte/réveil exécutables, protection temporelle des nouvelles adresses avec maintien des pilotes, worker de recherche après diagnostic paper et proposition vers nouvelle décision prospective ; puis recette complète par points d'entrée de production avec interruptions/reprises/budgets/idempotence. Le scellement paper seul ne remplit pas ce parcours. La tranche IA réelle épuisée reste épuisée.
+
+## R4 — cycle temporel des réserves raccordé
+
+Le service population reçoit maintenant `--reserve-policy config/reserve-cycle-policy.json`. La politique `reserve-cycle-v1` est immuable par identité/empreinte. Elle ne traite que les plans liés par `population_experiment_links` et dont l'origine correspond à la demande revue. Les pilotes historiques sans cette origine restent protégés, y compris si un autre plan sur la même adresse est clos.
+
+Après la fin de la finale +1 heure de grâce choisie, les fenêtres évaluées peuvent devenir des données de développement. Une évaluation encore `running` interdit la libération ; ce module n'infère jamais son interruption. Une finale terminée doit conserver sa preuve de consommation sur le périmètre et les bornes exacts. Les résultats et statuts d'origine ne sont ni lus ni modifiés.
+
+À défaut de finale évaluée, la politique choisit une échéance explicite de 24 heures après sa fin : la fenêtre manquée est `abandoned_for_development`. Cette libération ne fabrique aucune évaluation. Un marqueur `development-release:<plan_id>:final` dans `consumed_holdouts` conserve le caractère utilisé de cette période, avec timestamp de libération réel ; le garde de chevauchement existant empêche qu'elle serve ultérieurement de finale vierge. Deux fenêtres/libérations et la consommation sont atomiques et rejouables après incident. Le pipeline ne tente plus de réévaluer un plan dont la finale a été abandonnée pour développement.
+
+La protection par adresse disparaît pour une expérience population uniquement lorsque ses deux fenêtres sont libérées ; tout nouveau plan réel non libéré sur cette adresse la protège à nouveau. Les autorisations de mémoire restent temporelles. Les exports de comptabilité, périodes observées et paquets population contrôlent aussi le cutoff demandé avant toute requête de payload : une libération actuelle ne donne aucun accès dans un export représentant une décision passée pendant la réserve, frontière incluse. Les paquets conservent les preuves de libération et leur disponibilité ; celle-ci n'est jamais présentée comme une nouvelle réception de marché.
+
+### Preuves et état réel
+
+- Tests isolés : délais/grâce, finale manquée, finale évaluée avec consommation, original échec inchangé, évaluation running, pilote historique sur la même adresse, nouvelle réserve, arrêt transactionnel/reprise, refus de réutilisation via le véritable moteur, cutoff historique prélecture et pipeline de production ne réévaluant plus la finale abandonnée.
+- Préflight par la CLI réelle : zéro fenêtre libérée, zéro nouveau plan, zéro modèle ; les 11 checks immuables des 8 plans et 3 variantes concordent avec le checkpoint initial.
+- Service réel exécuté : `Result=success`, `ExecMainStatus=0`, argument `--reserve-policy` présent ; collecteur et timer population actifs. Les huit essais réels restent huit. Aucune période pilote ni résultat réservé n'a été ouvert.
+- Migrations additives : `reserve_cycle_policies`, `research_window_releases`. Aucun marqueur de développement ajouté aux holdouts de production : aucune expérience population liée n'est encore admissible à cette libération.
+
+Les heures de grâce/abandon sont des choix opérationnels configurables ; elles ne constituent pas des seuils statistiques de maturité. Le budget IA réel reste épuisé.
+
+Retour arrière : retirer l'argument `--reserve-policy config/reserve-cycle-policy.json` du seul service recherche population, puis `systemctl --user daemon-reload` (copie préalable `/tmp/tamtam-again-population-research.before-reserve-cycle.service`). Conserver toutes les libérations et consommations : une donnée exposée ne redevient pas réservée vierge. Le retour de code à une protection conservatrice de toute l'adresse reste possible sans supprimer ces registres.
+
+R4 reste partiel : worker paper et nouvelle proposition/décision prospective, besoins de collecte exécutables/réveil et démonstration du parcours complet par entrées de production. Aucun parcours réel jusqu'au paper n'est revendiqué ici.
+
+Vérification fraîche de ce lot : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q` : **397 tests OK en 37,957 s** (neuf tests nouveaux du cycle de réserves). Les tests d'abandon n'injectent aucune réussite économique : ils exercent le garde de consommation et la reprise avec des preuves synthétiques explicitement temporaires.

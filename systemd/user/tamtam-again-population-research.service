@@ -5,7 +5,7 @@ Description=Tamtam Again bounded isolated public population hypotheses
 Type=oneshot
 WorkingDirectory=/home/Untergame/tamtam_again
 Environment=PYTHONPATH=src
-ExecStart=/home/Untergame/tamtam_again/.venv/bin/python scripts/population-research-tick.py --db data/tamtam.sqlite3 --policy config/population-research-policy.json --max-jobs 1 --experiment-policy config/experiment-allocation-policy.json
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python scripts/population-research-tick.py --db data/tamtam.sqlite3 --policy config/population-research-policy.json --max-jobs 1 --experiment-policy config/experiment-allocation-policy.json --reserve-policy config/reserve-cycle-policy.json
 TimeoutStartSec=300
 KillMode=control-group
 NoNewPrivileges=true

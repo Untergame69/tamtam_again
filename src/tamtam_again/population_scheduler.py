@@ -6,8 +6,11 @@ from .research import scheduler_lock
 from .validation import now_ms
 
 
-def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None):
+def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None):
     validate_policy(policy)
+    if reserve_policy is not None:
+        from .reserve_cycle import validate_policy as validate_reserve_policy
+        validate_reserve_policy(reserve_policy)
     if experiment_policy is not None:
         from .experiment_allocation import validate_policy as validate_allocation
         validate_allocation(experiment_policy)
@@ -25,6 +28,10 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         recovered=[r[0] for r in store.connection.execute("select request_id from population_research_jobs where status='running'")]
         store.connection.execute("update population_research_jobs set status='interrupted',actual_cost_usd=NULL,updated_ms=? where status='running'",(now_ms(),))
         store.connection.commit()
+        reserves=None
+        if reserve_policy is not None:
+            from .reserve_cycle import tick as reserve_tick
+            reserves=reserve_tick(store,reserve_policy)
         sealed=[];processed=[];blocked=protected_addresses(store)
         if store.connection.execute("select 1 from sqlite_master where name='population_accounts'").fetchone():
             addresses=[r[0] for r in store.connection.execute("select address from population_accounts where network=? and status!='retired' order by next_due_ms,address",(network,))]
@@ -73,5 +80,5 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                         plans.append({'request_id':request_id,**_prepare_plan(store,request_id,allocated,profile)})
                     except ValueError as exc:plans.append({'request_id':request_id,'status':'waiting','reason':str(exc)})
                 if len(plans)>=max_jobs:break
-        return {'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
+        return {'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False}

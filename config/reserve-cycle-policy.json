@@ -1,0 +1,8 @@
+{
+  "version": "reserve-cycle-v1",
+  "policy_id": "population-closed-reserves-20261008-v1",
+  "justification": "Closed linked population experiments become development evidence after a grace interval. Legacy pilots remain protected. Preserve original evaluations and spent finals; missed finals are explicitly abandoned as development, never fabricated as evaluated or made virgin again.",
+  "grace_ms": 3600000,
+  "abandon_unfinished_after_ms": 86400000,
+  "max_plans_per_tick": 2
+}

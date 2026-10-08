@@ -104,3 +104,24 @@ Retour arrière : retirer l'argument `--reserve-policy config/reserve-cycle-poli
 R4 reste partiel : worker paper et nouvelle proposition/décision prospective, besoins de collecte exécutables/réveil et démonstration du parcours complet par entrées de production. Aucun parcours réel jusqu'au paper n'est revendiqué ici.
 
 Vérification fraîche de ce lot : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q` : **397 tests OK en 37,957 s** (neuf tests nouveaux du cycle de réserves). Les tests d'abandon n'injectent aucune réussite économique : ils exercent le garde de consommation et la reprise avec des preuves synthétiques explicitement temporaires.
+
+## R4 — worker paper raccordé, checkpoint pour revue
+
+Le scheduler de production accepte `--paper-policy config/paper-research-policy.json`. Il scelle les diagnostics disponibles, exécute proposition et revue dans le même runtime isolé que la recherche population, conserve une mémoire typée, puis applique l'allocation externe pour créer une nouvelle expérience prospective. L'origine paper et la session/variante parente sont conservées. La session précédente, ses positions et ses résultats ne sont pas réinitialisés.
+
+Les deux origines partagent le plafond existant de **8 essais**, tous statuts compris. Aucun budget supplémentaire, aucune remise à zéro. Une interruption consomme l'essai et ne relance pas automatiquement le modèle. Les paquets sont revérifiés avant exécution, avec autorisation temporelle inclusive et disponibilité des preuves de libération. Une file bornée de diagnostics évite qu'un premier paquet invalide monopolise l'inspection.
+
+### Vérifications
+
+- Suite complète fraîche : **403 tests OK en 39,514 s**. Commande : `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q`.
+- Six tests d'intégration paper : proposition/revue simulées → mémoire → nouveau plan prospectif ; idempotence ; budget partagé épuisé ; expiration/interruption ; paquet modifié ; garde des réserves avant lecture et inspection bornée. Le diagnostic initial est une fixture : ces tests ne prouvent pas encore le parcours entier depuis une décision paper produite automatiquement.
+- Préflight CLI réel avec `--paper-policy` et `--prepare-only` : zéro job paper, zéro modèle, zéro plan et zéro réserve libérée. Production : huit jobs population, zéro job paper, zéro session paper. L'absence de table de liens d'expériences confirme qu'aucune nouvelle expérience liée n'a été créée.
+- Collecteur principal actif/running. L'installation du seul service recherche a été ajustée sans redémarrer le collecteur. Une première exécution a échoué sur `database is locked` dans l'enregistrement de la politique d'allocation ; le job de découverte présente aussi ce conflit. Ne pas confondre timers actifs et exécutions réussies. Cet incident d'écriture concurrente reste à diagnostiquer si le retry ne réussit pas.
+
+### État et suite
+
+R1/R2 corrigés avec tests de non-régression. R3 fournit des mesures économiques publiques conditionnelles sur des cas réels ; aucune qualification globale ou stratégie rentable n'est certifiée. R4 **partiel** : allocation, cycle des réserves et worker paper raccordés. Restent les besoins de collecte/réveil exécutables et la recette complète par entrées de production, sans injection manuelle des décisions essentielles. Aucune extension de supervision ou VPS dans ce lot.
+
+Retour arrière : retirer `--paper-policy config/paper-research-policy.json` du service puis `systemctl --user daemon-reload` ; copie préalable `/tmp/tamtam-again-population-research.before-paper-worker.service`. Conserver les tables additives, essais, coûts, preuves, fenêtres et mémoires ; ne jamais restaurer un budget en supprimant les jobs.
+
+Le second lancement du service recherche a réussi : `Result=success`, `ExecMainStatus=0`. Le collecteur demeure actif. Cette reprise réussie ne résout pas la cause des conflits SQLite ni les échecs du job de découverte.

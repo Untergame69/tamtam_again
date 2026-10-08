@@ -38,6 +38,14 @@ def registry_trace(store, *, as_of_ms):
             emit('population_research_latest_status',row['request_id'],row['updated_ms'],
                  {'status':row['status'],'actual_cost_usd':row['actual_cost_usd'],
                   'reserved_cost_usd':row['reserved_cost_usd']})
+    if exists('paper_research_jobs'):
+        columns={r[1] for r in store.connection.execute('pragma table_info(paper_research_jobs)')}
+        if {'updated_ms','reserved_cost_usd','actual_cost_usd'}<=columns:
+            for row in store.connection.execute('select request_id,updated_ms,status,actual_cost_usd,reserved_cost_usd '
+                    'from paper_research_jobs where updated_ms is not null and updated_ms<=?',(as_of_ms,)):
+                emit('paper_research_latest_status',row['request_id'],row['updated_ms'],
+                    {'status':row['status'],'actual_cost_usd':row['actual_cost_usd'],
+                     'reserved_cost_usd':row['reserved_cost_usd']})
     if exists('pipeline_decisions'):
         for row in store.connection.execute('select decision_id,created_at from pipeline_decisions'):
             identity=str(row['decision_id'])
@@ -62,6 +70,9 @@ def registry_trace(store, *, as_of_ms):
         for row in store.connection.execute('select request_id,knowledge_id,created_ms from population_research_memory where created_ms<=?',(as_of_ms,)):
             emit('population_memory_imported',row['request_id'],row['created_ms'],
                 {'knowledge_id':row['knowledge_id'],'evidence_ref':'population_research_memory:'+row['request_id']})
+    if exists('paper_research_memory'):
+        for row in store.connection.execute('select request_id,knowledge_id,created_ms from paper_research_memory where created_ms<=?',(as_of_ms,)):
+            emit('paper_memory_imported',row['request_id'],row['created_ms'],{'knowledge_id':row['knowledge_id'],'evidence_ref':'paper_research_memory:'+row['request_id']})
     if exists('strategy_variants'):
         for row in store.connection.execute('select variant_id,plan_id,frozen_ms from strategy_variants where frozen_ms<=?',(as_of_ms,)):
             emit('variant_frozen',row['variant_id'],row['frozen_ms'],{'plan_id':row['plan_id']})

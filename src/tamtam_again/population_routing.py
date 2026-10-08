@@ -5,18 +5,23 @@ from .harness_extensions import capability
 from .validation import now_ms
 
 
-def route(store,request_id):
+def route(store,request_id,*,kind='population'):
+    from .research_jobs import table
+    registry=table(kind)
     store.connection.execute('create table if not exists population_hypothesis_routes '
         '(request_id text primary key,created_ms integer not null,route_json text not null)')
     store.connection.commit()
     previous=store.connection.execute('select route_json from population_hypothesis_routes where request_id=?',(request_id,)).fetchone()
-    if previous:return json.loads(previous[0])
-    row=store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
+    if previous:
+        saved=json.loads(previous[0])
+        if saved.get('research_origin','population')!=kind:raise ValueError('Immutable route origin mismatch')
+        return saved
+    row=store.connection.execute(f'select status,result_json from {registry} where request_id=?',(request_id,)).fetchone()
     if not row or row['status'] in ('sealed','running'):raise ValueError('Terminal population decision required')
     result=json.loads(row['result_json'] or '{}')
     decision=result.get('critique') or result.get('proposal') or {}
-    output={'request_id':request_id,'source_status':row['status'],'promotion_authorized':False,
-        'economic_rejection':False,'evidence_refs':['population_research:'+request_id],
+    output={'request_id':request_id,'research_origin':kind,'source_status':row['status'],'promotion_authorized':False,
+        'economic_rejection':False,'evidence_refs':[('population_research:' if kind=='population' else 'paper_research:')+request_id],
         'diagnostic':decision.get('diagnostic',result.get('error_type','terminal request without hypothesis')),
         'wake':decision.get('wake',{}),'created_ms':now_ms()}
     if row['status']=='hypothesis_recorded':

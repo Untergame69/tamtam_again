@@ -6,8 +6,15 @@ from .research import scheduler_lock
 from .validation import now_ms
 
 
-def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None):
+def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None):
     validate_policy(policy)
+    if paper_policy is not None:
+        if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
+        if paper_policy.get('version')!='paper-adaptation-research-v1' or not paper_policy.get('justification'):
+            raise ValueError('Explicit paper diagnosis policy required')
+        validate_policy({**paper_policy,'version':'population-research-v1'})
+        if paper_policy['max_requests']!=policy['max_requests']:
+            raise ValueError('Both research origins must share the same total request ceiling')
     if reserve_policy is not None:
         from .reserve_cycle import validate_policy as validate_reserve_policy
         validate_reserve_policy(reserve_policy)
@@ -80,5 +87,10 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                         plans.append({'request_id':request_id,**_prepare_plan(store,request_id,allocated,profile)})
                     except ValueError as exc:plans.append({'request_id':request_id,'status':'waiting','reason':str(exc)})
                 if len(plans)>=max_jobs:break
-        return {'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
+        paper=None
+        if paper_policy is not None:
+            if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
+            from .paper_scheduler import _tick as paper_tick
+            paper=paper_tick(store,paper_policy,experiment_policy=experiment_policy,dispatch=dispatch and len(processed)<max_jobs,max_jobs=max_jobs)
+        return {'paper_research':paper,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False}

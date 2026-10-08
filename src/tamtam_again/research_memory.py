@@ -64,13 +64,14 @@ def authorized_account_history(store,network,address,as_of_ms):
     return True
 
 
-def authorized_period(store:Store,period:dict[str,Any],as_of_ms:int) -> bool:
+def authorized_period(store:Store,period:dict[str,Any],as_of_ms:int,*,end_inclusive=False) -> bool:
     if not 0<=period['start_ms']<period['end_ms']<=as_of_ms:return False
     for row in store.connection.execute('select plan_id,plan_json from validation_plans where network=? and address=? and (?=\'*\' or coin=?)',(period['network'],period['address'],period['market'],period['market'])):
         plan=json.loads(row['plan_json'])
         for stage in ('comparison','final'):
             window=plan[stage]
-            if period['start_ms']>=window['end_ms'] or period['end_ms']<=window['start_ms']:continue
+            before=(period['end_ms']<window['start_ms'] if end_inclusive else period['end_ms']<=window['start_ms'])
+            if period['start_ms']>=window['end_ms'] or before:continue
             if not window_released(store,row['plan_id'],stage,as_of_ms):return False
     return True
 
@@ -133,6 +134,17 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
                        p['market']=='*' and p['start_ms']==0 and
                        p['end_ms']>=packet['available_ms']+1 for p in item['periods']):
                 raise ValueError('Whole population packet source period must remain explicit')
+        elif proof['kind']=='paper_research':
+            row=store.connection.execute('select network,address,status,updated_ms,packet_json,result_json from paper_research_jobs where request_id=?',(proof['id'],)).fetchone()
+            if not row or row['status']!='hypothesis_recorded' or row['updated_ms']>now:
+                raise ValueError('Available reviewed paper hypothesis required')
+            packet=json.loads(row['packet_json']);result=json.loads(row['result_json'])
+            if result.get('promotion_authorized') is not False or result.get('profitability_proven') is not False or result.get('critique',{}).get('decision')!='consistent':
+                raise ValueError('Paper research evidence cannot certify profitability')
+            if not packet.get('source_periods') or any(p not in item['periods'] or not authorized_period(store,p,now,end_inclusive=True) for p in packet['source_periods']):
+                raise ValueError('Paper source periods must remain explicit and authorized')
+            if row['address'] not in item['origin_accounts'] or packet['address']!=row['address'] or packet['network']!=row['network']:
+                raise ValueError('Paper source origin mismatch')
         elif proof['kind']=='knowledge':
             row=store.connection.execute('select item_json,created_ms from research_knowledge where knowledge_id=?',(proof['id'],)).fetchone()
             if not row or row['created_ms']>now:raise ValueError('Unknown or unavailable related knowledge')
@@ -158,3 +170,27 @@ def export_knowledge(store:Store, *,as_of_ms:int,network:str,address:str,market:
         if len(canonical(output+[entry]))>max_chars:break
         output.append(entry)
     return output
+
+
+def period_release_evidence(store,period,as_of_ms,*,end_inclusive=False):
+    """Metadata of the earliest available access grant for each intersected window."""
+    output=[]
+    for row in store.connection.execute('select plan_id,plan_json from validation_plans where network=? and address=? and (?=\'*\' or coin=?)',
+            (period['network'],period['address'],period['market'],period['market'])):
+        plan=json.loads(row['plan_json'])
+        for stage in ('comparison','final'):
+            w=plan[stage]
+            before=period['end_ms']<w['start_ms'] if end_inclusive else period['end_ms']<=w['start_ms']
+            if period['start_ms']>=w['end_ms'] or before:continue
+            candidates=[]
+            if store.connection.execute("select 1 from sqlite_master where name='research_period_releases'").fetchone():
+                candidates.extend((r[1],'research_period_releases:'+r[0]) for r in store.connection.execute(
+                    'select r.evaluation_id,r.released_ms from research_period_releases r join validation_evaluations e using(evaluation_id) '
+                    'where e.plan_id=? and e.stage=? and r.released_ms<=?',(row['plan_id'],stage,as_of_ms)))
+            if store.connection.execute("select 1 from sqlite_master where name='research_window_releases'").fetchone():
+                candidates.extend((r[0],'research_window_releases:'+row['plan_id']+':'+stage) for r in store.connection.execute(
+                    'select released_ms from research_window_releases where plan_id=? and stage=? and released_ms<=?',(row['plan_id'],stage,as_of_ms)))
+            if not candidates:raise ValueError('Source window has no available access grant')
+            stamp,ref=min(candidates)
+            output.append({'plan_id':row['plan_id'],'stage':stage,'available_ms':stamp,'evidence_ref':ref})
+    return sorted(output,key=lambda x:(x['plan_id'],x['stage']))

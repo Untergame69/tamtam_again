@@ -7,23 +7,25 @@ from .research import scheduler_lock
 from .validation import now_ms
 
 
-def register_experiment(store,request_id,plan_id,profile):
-    with scheduler_lock(store):return _register_experiment(store,request_id,plan_id,profile)
+def register_experiment(store,request_id,plan_id,profile,*,kind='population'):
+    with scheduler_lock(store):return _register_experiment(store,request_id,plan_id,profile,kind=kind)
 
 
-def _register_experiment(store,request_id,plan_id,profile):
+def _register_experiment(store,request_id,plan_id,profile,*,kind='population'):
+    from .research_jobs import table
+    registry=table(kind)
     store.connection.execute('create table if not exists population_experiment_links '
         '(request_id text primary key,plan_id text unique not null,family_id text not null,'
         'contract_fingerprint text not null,created_ms integer not null)')
     store.connection.commit()
-    contract=fingerprint({'request_id':request_id,'plan_id':plan_id,'profile':profile})
+    contract=fingerprint({'request_id':request_id,'plan_id':plan_id,'profile':profile,**({'research_origin':kind} if kind!='population' else {})})
     prior=store.connection.execute('select * from population_experiment_links where request_id=?',(request_id,)).fetchone()
     if prior:
         if prior['contract_fingerprint']!=contract:raise ValueError('Existing experiment binding is immutable; use a new reviewed hypothesis')
         return {**dict(prior),'status':'already_registered','promotion_authorized':False}
-    decision=route(store,request_id)
+    decision=route(store,request_id,kind=kind)
     if decision['state']!='prospective_plan_required':raise ValueError('Reviewed executable hypothesis without unresolved requirements required')
-    job=store.connection.execute('select network,address,updated_ms,packet_json,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
+    job=store.connection.execute(f'select network,address,updated_ms,packet_json,result_json from {registry} where request_id=?',(request_id,)).fetchone()
     plan=store.connection.execute('select network,address,coin,created_ms,synthetic,plan_json from validation_plans where plan_id=?',(plan_id,)).fetchone()
     if not plan or plan['network']!=job['network'] or plan['address']!=job['address']:
         raise ValueError('New plan must preserve population account and network')

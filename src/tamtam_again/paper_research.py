@@ -2,7 +2,7 @@
 import json
 from .engine import canonical,fingerprint
 from .population_research import validate_policy
-from .research_memory import authorized_period
+from .research_memory import authorized_period,period_release_evidence
 from .validation import now_ms
 
 
@@ -11,6 +11,10 @@ def initialize(store):
         '(request_id text primary key,adaptation_request_id text not null unique,'
         'session_id text not null,created_ms integer not null,packet_json text not null,'
         'policy_json text not null,status text not null)')
+    columns={r[1] for r in store.connection.execute('pragma table_info(paper_research_jobs)')}
+    for name,kind in {'network':'text','address':'text','updated_ms':'integer',
+            'reserved_cost_usd':'text','actual_cost_usd':'text','result_json':'text','usage_json':'text'}.items():
+        if name not in columns:store.connection.execute('alter table paper_research_jobs add column '+name+' '+kind)
 
 
 def packet(store,adaptation_request_id,*,clock_ms,max_chars):
@@ -27,7 +31,7 @@ def packet(store,adaptation_request_id,*,clock_ms,max_chars):
     if not session or not variant:raise ValueError('Attributed immutable paper version required')
     period={'network':variant['network'],'address':variant['address'],'market':'*',
             'start_ms':session['started_ms'],'end_ms':row['created_ms']}
-    if not authorized_period(store,period,clock_ms):
+    if not authorized_period(store,period,clock_ms,end_inclusive=True):
         raise ValueError('Paper research period intersects an unreleased reserve')
     diagnostic=json.loads(store.connection.execute('select diagnostic_json from paper_adaptation_requests where request_id=?',
         (adaptation_request_id,)).fetchone()[0])
@@ -47,6 +51,7 @@ def packet(store,adaptation_request_id,*,clock_ms,max_chars):
     output={'schema_version':'paper-diagnostic-research-v1','network':period['network'],
         'address':period['address'],'session_id':row['session_id'],'variant_id':session['variant_id'],
         'available_ms':row['created_ms'],'source_periods':[period],
+        'source_period_membership':'closed interval of paper availability',
         'observations':{'markets':markets,'frozen_rule':spec,'paper_diagnostic':diagnostic},
         'evidence_refs':['paper_adaptation_requests:'+adaptation_request_id,*diagnostic.get('evidence_refs',[])],
         'research_contract':{'profitability_claim_authorized':False,'strategy_promotion_authorized':False,
@@ -55,6 +60,11 @@ def packet(store,adaptation_request_id,*,clock_ms,max_chars):
                   'paper outcomes are own simulated executions, not public leader decisions',
                   'packet contains no reserved observations or final evaluation results',
                   'no old session resumption, position transfer or research budget rearm']}
+    access=period_release_evidence(store,period,clock_ms,end_inclusive=True)
+    if access:
+        output['access_provenance']=access
+        output['available_ms']=max(output['available_ms'],max(p['available_ms'] for p in access))
+        output['evidence_refs'].extend(p['evidence_ref'] for p in access)
     output['fingerprint']=fingerprint(output)
     if len(canonical(output))>max_chars:return {'status':'needs_data','reason':'complete paper diagnostic exceeds packet budget'}
     return {'status':'packet_ready','packet':output}
@@ -70,6 +80,8 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None):
     initialize(store);store.connection.commit()
     previous=store.connection.execute('select request_id from paper_research_jobs where adaptation_request_id=? and created_ms<=?',(adaptation_request_id,clock)).fetchone()
     if previous:return {'status':'unchanged_no_inference','request_id':previous[0]}
+    from .research_jobs import request_count
+    if request_count(store)>=policy['max_requests']:return {'status':'budget_exhausted'}
     result=packet(store,adaptation_request_id,clock_ms=clock,max_chars=policy['max_packet_chars'])
     if result['status']!='packet_ready':return result
     store.connection.execute('begin immediate')
@@ -78,14 +90,17 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None):
         if previous:
             store.connection.commit();return {'status':'unchanged_no_inference','request_id':previous[0]}
         # A new policy version does not reset counts or rearm failed jobs.
-        if store.connection.execute('select count(*) from paper_research_jobs').fetchone()[0]>=policy['max_requests']:
+        from .research_jobs import request_count
+        if request_count(store)>=policy['max_requests']:
             store.connection.commit();return {'status':'budget_exhausted'}
         recent=store.connection.execute('select max(created_ms) from paper_research_jobs where session_id=?',(result['packet']['session_id'],)).fetchone()[0]
         if recent is not None and clock-recent<policy['minimum_interval_ms']:
             store.connection.commit();return {'status':'waiting','wake_ms':recent+policy['minimum_interval_ms']}
         identity=fingerprint({'adaptation_request_id':adaptation_request_id,'packet':result['packet']['fingerprint']})
-        store.connection.execute('insert into paper_research_jobs values(?,?,?,?,?,?,?)',
+        store.connection.execute('insert into paper_research_jobs '
+            '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,updated_ms) '
+            'values(?,?,?,?,?,?,?,?,?,?)',
             (identity,adaptation_request_id,result['packet']['session_id'],clock,
-             canonical(result['packet']),canonical(policy),'sealed'))
+             canonical(result['packet']),canonical(policy),'sealed',result['packet']['network'],result['packet']['address'],clock))
         store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0}
     except BaseException:store.connection.rollback();raise

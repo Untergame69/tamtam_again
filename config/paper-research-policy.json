@@ -1,0 +1,15 @@
+{
+  "version": "paper-adaptation-research-v1",
+  "description": "Paper diagnosis proposals share the existing population tranche of eight trials. No separate allowance; new tranche requires explicit review. Resource budgets are not evidence thresholds.",
+  "model": "gpt-6.1-sol",
+  "max_requests": 8,
+  "max_packet_chars": 225000,
+  "max_prompt_chars": 260000,
+  "minimum_interval_ms": 86400000,
+  "max_request_age_ms": 3600000,
+  "timeout_seconds": 120,
+  "max_output_tokens": 5000,
+  "call_reservation_usd": "1",
+  "justification": "Diagnosis proposals share the existing eight-request population tranche; this is not a separate allowance or automatic budget increase. Preserve all failed/interrupted trials and require a new future comparison/final.",
+  "max_diagnoses_per_tick": 8
+}

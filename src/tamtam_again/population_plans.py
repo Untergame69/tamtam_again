@@ -8,11 +8,13 @@ from .research import scheduler_lock
 from .validation import create_plan,now_ms,validate_criteria
 
 
-def prepare_plan(store,request_id,policy,profile):
-    with scheduler_lock(store):return _prepare_plan(store,request_id,policy,profile)
+def prepare_plan(store,request_id,policy,profile,*,kind='population'):
+    with scheduler_lock(store):return _prepare_plan(store,request_id,policy,profile,kind=kind)
 
 
-def _prepare_plan(store,request_id,policy,profile):
+def _prepare_plan(store,request_id,policy,profile,*,kind='population'):
+    from .research_jobs import table
+    registry=table(kind)
     if policy.get('version')!='population-plan-v1' or not policy.get('justification'):
         raise ValueError('Versioned prospective-window justification required')
     for key in ('max_plans','comparison_delay_ms','comparison_duration_ms','selection_gap_ms','final_duration_ms'):
@@ -20,7 +22,7 @@ def _prepare_plan(store,request_id,policy,profile):
     if policy.get('isolation') not in ('unavailable','separate_principal'):
         raise ValueError('Explicit actual isolation availability required')
     validate_criteria(policy['criteria'])
-    contract=fingerprint({'request_id':request_id,'policy':policy,'profile':profile})
+    contract=fingerprint({'request_id':request_id,'policy':policy,'profile':profile,**({'research_origin':kind} if kind!='population' else {})})
     store.connection.execute('create table if not exists population_plan_drafts '
         '(request_id text primary key,contract_fingerprint text not null,created_ms integer not null,plan_json text not null)')
     store.connection.commit()
@@ -31,14 +33,14 @@ def _prepare_plan(store,request_id,policy,profile):
         plan_id=fingerprint(plan)
         linked=store.connection.execute("select 1 from sqlite_master where name='population_experiment_links'").fetchone()
         if linked and store.connection.execute('select 1 from population_experiment_links where request_id=?',(request_id,)).fetchone():
-            return _register_experiment(store,request_id,plan_id,profile)
+            return _register_experiment(store,request_id,plan_id,profile,kind=kind)
     else:
         if store.connection.execute('select count(*) from population_plan_drafts').fetchone()[0]>=policy['max_plans']:
             return {'status':'budget_exhausted','promotion_authorized':False}
-        decision=route(store,request_id)
+        decision=route(store,request_id,kind=kind)
         if decision['state']!='prospective_plan_required':
             return {'status':decision['state'],'promotion_authorized':False,'next_action':decision['next_action']}
-        job=store.connection.execute('select network,address,updated_ms,packet_json,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
+        job=store.connection.execute(f'select network,address,updated_ms,packet_json,result_json from {registry} where request_id=?',(request_id,)).fetchone()
         spec=json.loads(job['result_json'])['proposal']['hypothesis']['executable_spec']
         from .population_compilation import validate_packet_compilation
         packet=json.loads(job['packet_json'])
@@ -68,9 +70,11 @@ def _prepare_plan(store,request_id,policy,profile):
             'criteria':policy['criteria'],'budget':budget,
             'population_origin':{'request_id':request_id,'policy_fingerprint':fingerprint(policy),
                 'justification':policy['justification'],'created_ms':now}}
+        if kind=='paper':
+            plan['population_origin'].update(research_origin='paper',parent_session_id=packet['session_id'],parent_variant_id=packet['variant_id'])
         # Save the anchor before downstream commits. Recovery reuses it,
         # never silently moves an exposed or missed final into the future.
         store.connection.execute('insert into population_plan_drafts values(?,?,?,?)',
             (request_id,contract,now,canonical(plan)));store.connection.commit()
     result=create_plan(store,plan)
-    return _register_experiment(store,request_id,result['plan_id'],profile)
+    return _register_experiment(store,request_id,result['plan_id'],profile,kind=kind)

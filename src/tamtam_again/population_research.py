@@ -42,7 +42,8 @@ def seal(store,network,address,policy,*,clock_ms=None):
             (network,address,digest)).fetchone()
         if prior:
             store.connection.commit();return {'status':'unchanged_no_inference','request_id':prior[0]}
-        if store.connection.execute('select count(*) from population_research_jobs').fetchone()[0]>=policy['max_requests']:
+        from .research_jobs import request_count
+        if request_count(store)>=policy['max_requests']:
             store.connection.commit();return {'status':'budget_exhausted'}
         latest=store.connection.execute('select max(created_ms) from population_research_jobs where network=? and address=?',
             (network,address)).fetchone()[0]

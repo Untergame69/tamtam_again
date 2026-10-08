@@ -46,3 +46,25 @@ Migration additive : table paper_adaptation_requests, aucune réécriture d'éta
 Retour arrière : retirer l'appel de record dans paper_tick et recover dans le
 pipeline avec le module ; conserver table, suspensions, snapshots et ledger.
 Aucune reprise automatique d'une session suspendue ne doit accompagner le retour.
+
+## Reprise équitable des preuves manquantes
+
+Le registre additif `paper_adaptation_recovery` conserve, par session, le dernier
+cutoff tenté et le nombre d'échecs de preuve. La sélection bornée traite d'abord
+les dossiers les moins tentés : huit dossiers incomplets ne bloquent plus une
+session suivante disposant de son snapshot. Un échec n'est pas retenté au même
+cutoff. Une correction de preuve permet la création de la demande immuable au
+passage suivant. Aucun retry de modèle, réarmement ou reprise paper n'en découle.
+Le registre mutable de reprise n'est pas présenté comme un journal complet des
+incidents ; le diagnostic scellé reste la preuve immuable.
+
+`registry_trace` inscrit `paper_adaptation_diagnosed` à la date de création du
+diagnostic, avec son identifiant et sa référence, sans exporter JSON diagnostic,
+métriques paper ou contenu réservé. Une suspension antérieure ne rend pas un
+diagnostic futur accessible rétrospectivement.
+
+Tests synthétiques : huit dossiers sans preuve puis un dossier valide ; absence
+de répétition au même cutoff ; arrivée d'une preuve ; visibilité chronologique.
+Retour arrière : restaurer recovery/trace, conserver la nouvelle table sans la
+supprimer. Aucun historique, position ou snapshot n'est modifié par ce rollback.
+La proposition IA après diagnostic reste à raccorder sous politique bornée.

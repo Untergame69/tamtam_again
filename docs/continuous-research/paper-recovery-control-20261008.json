@@ -1,0 +1,12 @@
+{
+  "as_of_ms": 1791448633622,
+  "control": "read-only metadata; no recovery mutation or reserved contents",
+  "counts": {
+    "paper_sessions": 0,
+    "paper_suspensions": null,
+    "paper_adaptation_requests": null,
+    "paper_adaptation_recovery": null
+  },
+  "live_adaptation_demonstrated": false,
+  "proof_scope": "new recovery behavior tested synthetically"
+}

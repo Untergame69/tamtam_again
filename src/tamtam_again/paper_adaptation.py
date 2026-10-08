@@ -80,13 +80,21 @@ def record(store,session_id,*,clock_ms):
 
 def recover(store,*,clock_ms,max_requests=8):
     """Recover missed diagnosis commits; no archive reads, model calls or rearm."""
+    if type(clock_ms) is not int or clock_ms<0:raise ValueError('Explicit recovery clock required')
     if type(max_requests) is not int or not 1<=max_requests<=16:raise ValueError('Bounded recovery required')
     if not store.connection.execute("select 1 from sqlite_master where name='paper_suspensions'").fetchone():return []
-    initialize(store);store.connection.commit()
+    initialize(store)
+    store.connection.execute('create table if not exists paper_adaptation_recovery '
+        '(session_id text primary key,last_attempt_ms integer not null,attempt_count integer not null,'
+        'state text not null)')
+    store.connection.commit()
     sessions=store.connection.execute('select p.session_id from paper_suspensions p '
       'left join paper_adaptation_requests a on a.session_id=p.session_id '
-      'where a.session_id is null and p.suspended_ms<=? order by p.suspended_ms,p.session_id limit ?',
-      (clock_ms,max_requests)).fetchall()
+      'left join paper_adaptation_recovery r on r.session_id=p.session_id '
+      'where a.session_id is null and p.suspended_ms<=? '
+      'and (r.last_attempt_ms is null or r.last_attempt_ms<?) '
+      'order by coalesce(r.attempt_count,0),p.suspended_ms,p.session_id limit ?',
+      (clock_ms,clock_ms,max_requests)).fetchall()
     outputs=[]
     for row in sessions:
         try:
@@ -94,6 +102,12 @@ def recover(store,*,clock_ms,max_requests=8):
             outputs.append(record(store,row[0],clock_ms=clock_ms));store.connection.commit()
         except ValueError as exc:
             store.connection.rollback()
+            store.connection.execute('begin immediate')
+            store.connection.execute('insert into paper_adaptation_recovery values(?,?,1,?) '
+                'on conflict(session_id) do update set last_attempt_ms=excluded.last_attempt_ms,'
+                'attempt_count=attempt_count+1,state=excluded.state',
+                (row[0],clock_ms,'paper_evidence_required'))
+            store.connection.commit()
             outputs.append({'session_id':row[0],'state':'paper_evidence_required','reason':str(exc),
                             'model_calls_authorized':0})
         except BaseException:store.connection.rollback();raise

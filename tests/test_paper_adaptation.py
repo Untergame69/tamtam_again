@@ -49,3 +49,37 @@ class PaperAdaptationTests(unittest.TestCase):
  def test_invalid_recovery_budget(self):
   for n in (0,17,True):
    with self.assertRaises(ValueError):recover(self.s,clock_ms=102,max_requests=n)
+
+ def test_unresolved_old_sessions_do_not_starve_later_valid_session(self):
+  self.fixture()
+  for i in range(8):
+   sid='missing-'+str(i)
+   self.c.execute('insert into paper_suspensions values(?,?,?)',(sid,0,'[]'))
+  self.c.commit()
+  first=recover(self.s,clock_ms=102,max_requests=8)
+  self.assertEqual(len(first),8)
+  self.assertTrue(all(r['state']=='paper_evidence_required' for r in first))
+  second=recover(self.s,clock_ms=103,max_requests=8)
+  self.assertEqual(second[0]['session_id'],'s')
+  self.assertEqual(second[0]['state'],'research_budget_required')
+  self.assertEqual(self.c.execute('select count(*) from paper_adaptation_requests').fetchone()[0],1)
+
+ def test_same_clock_failure_not_repeated_and_future_diagnosis_not_traced(self):
+  from tamtam_again.procedure_trace import registry_trace
+  self.fixture()
+  self.c.execute('delete from paper_snapshots');self.c.commit()
+  self.assertEqual(len(recover(self.s,clock_ms=102)),1)
+  self.assertEqual(recover(self.s,clock_ms=102),[])
+  state=json.loads(self.c.execute('select state_json from paper_sessions').fetchone()[0])
+  self.c.execute('insert into paper_snapshots values(?,?,?,?,?)',('new','s',103,fingerprint(state),'{}'))
+  self.c.commit()
+  result=recover(self.s,clock_ms=104)[0]
+  self.c.execute('alter table paper_sessions add column started_ms integer default 0')
+  self.c.commit()
+  before=registry_trace(self.s,as_of_ms=103)
+  after=registry_trace(self.s,as_of_ms=104)
+  self.assertFalse(any(e['kind']=='paper_adaptation_diagnosed' for e in before['events']))
+  events=[e for e in after['events'] if e['kind']=='paper_adaptation_diagnosed']
+  self.assertEqual(len(events),1)
+  self.assertEqual(events[0]['id'],result['request_id'])
+  self.assertNotIn('observed_paper_metrics',str(events))

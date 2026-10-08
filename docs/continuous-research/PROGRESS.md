@@ -795,3 +795,11 @@ Cela applique le diagnostic à toute la population inventoriée disponible ;
 valorisation consolidée, couverture et adaptation IA restent des écarts ouverts.
 Contrôle réel daté : account-batch-control-20261008.json. Les composants observés
 par devise livrés dans 1b4ee65 ne constituent toujours pas un rendement complet.
+
+### Reprise paper sans blocage des dossiers suivants — 8 octobre
+
+Correction de starvation : registre additif des échecs de preuve, dossiers les
+moins tentés prioritaires et pas de nouveau retry au même cutoff. Diagnostic
+immuable inclus dans la trace chronologique metadata-only à sa création, jamais
+à la date antérieure de suspension. Deux tests de parcours ajoutés ; aucune
+promotion ou IA induite. Preuve synthétique, aucune session réelle revendiquée.

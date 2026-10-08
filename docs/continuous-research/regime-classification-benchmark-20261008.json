@@ -1,0 +1,33 @@
+{
+  "synthetic": true,
+  "real_archive_or_reserved_results_read": false,
+  "real_model_calls": 0,
+  "results": [
+    {
+      "events": 2000,
+      "original_seconds": 0.15241963401786052,
+      "deque_seconds": 0.001316125999437645,
+      "outputs_equal": true,
+      "speedup": 115.80930251585825
+    },
+    {
+      "events": 4000,
+      "original_seconds": 0.6014396569808014,
+      "deque_seconds": 0.002875723992474377,
+      "outputs_equal": true,
+      "speedup": 209.1437351271326
+    },
+    {
+      "events": 8000,
+      "original_seconds": 2.386650077009108,
+      "deque_seconds": 0.005972287995973602,
+      "outputs_equal": true,
+      "speedup": 399.6207280389258
+    }
+  ],
+  "limits": [
+    "dense quote fixture with no expired quotes is deliberately adverse for list scans",
+    "not an observed production speedup or capacity forecast",
+    "other replay or archive costs remain separate"
+  ]
+}

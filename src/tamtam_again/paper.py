@@ -112,20 +112,22 @@ def classify_regimes(events: list[dict[str,Any]], criteria: dict[str,Any]) -> li
     """Causal trend/quiet proxy, explicitly not an exhaustive regime taxonomy."""
     threshold = number(criteria["regime_threshold_bps"])
     window = criteria["regime_window_ms"]
-    history = []
+    from collections import deque
+    history = deque()
     result = list(events)
     for e in sorted(events,key=lambda x:(x["received_ms"],str(x["id"]))):
         if e["kind"] != "bbo":
             continue
         mid = (number(e["bid"])+number(e["ask"]))/2
-        prior = [p for p in history if p[0] <= e["received_ms"] - window]
+        cutoff=e['received_ms']-window
+        while len(history)>1 and history[1][0]<=cutoff:
+            history.popleft()
+        prior=history[0] if history and history[0][0]<=cutoff else None
         if prior:
-            change = (mid/prior[-1][1]-1)*10000
+            change = (mid/prior[1]-1)*10000
             label = "up" if change > threshold else "down" if change < -threshold else "quiet"
             result.append({"id":"regime:"+e["id"],"kind":"regime","event_ms":e["event_ms"],"received_ms":e["received_ms"],"available_ms":e.get("available_ms",e["received_ms"]),"label":label})
         history.append((e["received_ms"],mid))
-        older = [p for p in history if p[0] <= e["received_ms"]-window]
-        history = older[-1:]+[p for p in history if p[0]>e["received_ms"]-window]
     return sorted(result,key=lambda e:(e.get("available_ms",e["received_ms"]),e["received_ms"],str(e["id"])))
 
 

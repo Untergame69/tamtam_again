@@ -766,3 +766,12 @@ connus. 10 samples/~500 s, ~0,59 % fenêtre REST : pas dimensionnement prolongé
 Collecteur ~0,13 cœur, paper ~1 cœur conditionnel sur ses intervalles connus ;
 coût paper sans session à diagnostiquer. Preuve capacity-resources-current.
 337 tests passent en 29,483 s, bounds/restarts/gaps/DB remplacée couverts.
+
+### Coût de classification réduit sans changer les règles
+
+Après observation paper ~1 cœur conditionnel, examen de code seul : trois
+filtrages d'historique par BBO remplacés par deque avec même point de référence.
+Tests comparent l'ancienne fonction exactement (temps égaux/gaps/disponibilité/
+fenêtres/mixed events). Benchmark fixture 8000 quotes : 2,387→0,00597 s, sortie
+identique ; pas mesure production. Archive/replay séparés restent à contrôler.
+Aucun événement/payload/résultat réservé lu ni paramètre de pilote modifié.

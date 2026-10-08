@@ -136,3 +136,26 @@ Reproduction : commande sustained-capacity ci-dessus. Retour arrière du seul
 raccord : retirer resource_series.py et son appel dans le script ; timer et
 mesures peuvent continuer indépendamment. Aucun archive payload ou résultat
 réservé consulté pour ce contrôle.
+
+## Coût de classification des régimes
+
+L'examen du code après le relevé paper coûteux identifie trois scans de la
+fenêtre de quotes à chaque BBO dans classify_regimes. Remplacement par deque :
+on conserve le dernier point <=cutoff et les points récents, avec retraits
+amortis plutôt que trois listes filtrées. Tri initial/final inchangé ; les
+labels, timestamps et règles des pilotes sont conservés. Aucun paramètre de
+stratégie/critère/fenêtre/version n'est ajusté après observation.
+
+Preuve synthétique regime-classification-benchmark-20261008.json : sorties
+identiques à la fonction originale sur 2000/4000/8000 quotes denses ; 8000
+quotes 2,387 s avant / 0,00597 s après. Cas délibérément défavorable aux scans,
+pas accélération observée de production ni capacité déduite. Tests avec quotes
+à timestamps égaux, gaps, fenêtres 0/1/100/60000, disponibilité réordonnée et
+flux sans BBO comparent exactement la fonction originale préservée en fixture.
+
+Les workers déjà démarrés finissent avec leur code chargé ; le prochain tick
+utilise la nouvelle fonction sans redémarrage du collecteur. Revoir les mesures
+cgroup sur cycles comparables : archive/replay/déduplication peuvent rester
+coûteux. Aucun payload ni résultat réservé lu pour l'optimisation. Retour arrière
+ciblé de cette fonction possible, au prix du coût de calcul précédent ; ne pas
+restaurer DB ni retoucher critères/plans figés.

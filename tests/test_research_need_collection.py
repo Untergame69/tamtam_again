@@ -117,3 +117,22 @@ class NeedCollectionTests(unittest.TestCase):
   queries=[];self.s.connection.set_trace_callback(queries.append)
   with self.assertRaises(ValueError):export_wakes(self.s,'synthetic',self.address,as_of_ms=30000)
   self.assertFalse(any('response_json' in q for q in queries))
+
+ def test_partial_or_duplicate_wake_rejected_even_with_recomputed_identity(self):
+  from tamtam_again.research_need_collection import export_wakes
+  from tamtam_again.engine import canonical,fingerprint
+  self.plan(('userFunding','userNonFundingLedgerUpdates'))
+  with patch('tamtam_again.storage.utc_now',return_value='1970-01-01T00:00:20.000+00:00'),patch('tamtam_again.population_history.utc_now',return_value='1970-01-01T00:00:19.000+00:00'):
+   c=self.client([[],[]])
+   tick_for_job(self.s,c,self.job,self.policy,clock_ms=30000)
+   tick_for_job(self.s,c,self.job,self.policy,clock_ms=30000)
+  original=json.loads(self.s.connection.execute('select evidence_json from research_observation_wakes').fetchone()[0])
+  for proofs in ([],original['proofs'][:1],[original['proofs'][0]]*2):
+   with self.subTest(proofs=len(proofs)):
+    evidence={**original,'proofs':proofs}
+    self.s.connection.execute('update research_observation_wakes set evidence_json=?,evidence_fingerprint=?',(canonical(evidence),fingerprint(evidence)));self.s.connection.commit()
+    queries=[];self.s.connection.set_trace_callback(queries.append)
+    with self.assertRaisesRegex(ValueError,'Complete non-promotional'):
+     export_wakes(self.s,'synthetic',self.address,as_of_ms=30000)
+    self.s.connection.set_trace_callback(None)
+    self.assertFalse(any('select response_json' in q for q in queries))

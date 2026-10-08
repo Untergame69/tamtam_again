@@ -216,3 +216,16 @@ Le paquet population exporte les pages promises après nouvelle vérification de
 - Préflight recherche réel : zéro scellement, appel ou plan nouveau ; huit jobs population, zéro job paper, zéro réveil et zéro état d'acquisition. Les sept contrats legacy restent `structured_request_required`, sans interprétation implicite ni dépense pour les reformuler.
 
 Retour arrière service : retirer seulement `--needs-policy /home/Untergame/tamtam_again/config/research-need-collection-policy.json`, puis daemon-reload ; sauvegarde `/tmp/tamtam-again-population.before-research-needs.service`. Conserver tables, essais, preuves et curseurs scoped. Les curseurs ordinaires et les réserves pilotes sont inchangés par cette extension. R4 reste partiel : besoins legacy à structurer sous autorisation de recherche, sources/proofs supplémentaires non prises en charge et parcours enrichi paper à vérifier. Ne pas confondre capacités synthétiques et observations prospectives réelles.
+
+
+## Contrôle de complétude lors de l’export des réveils
+
+L’export revérifie l’ensemble exact des contrats : aucun contrat manquant,
+dupliqué ou supplémentaire n’est admis, même avec une empreinte recalculée.
+Les indicateurs interdisant promotion et affirmation de complétude économique
+sont également exigés. Ce contrôle précède la lecture des pages archivées.
+Régression synthétique : preuves vides, partielles et dupliquées refusées sans
+lecture de payload. Les huit tests ciblés et la suite complète (424 tests, 43,612 s) passent. Le raccordement de la
+réanalyse paper enrichie reste à réaliser ; aucun budget IA réel n’est réarmé.
+Retour arrière : revert du commit de ce contrôle, sans migration ni modification
+de service. La collecte demeure active.

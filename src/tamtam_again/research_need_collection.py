@@ -119,8 +119,20 @@ def export_wakes(store,network,address,*,as_of_ms):
         if plan['network']!=network or plan['address'].lower()!=address.lower():continue
         evidence=json.loads(row['evidence_json'])
         if fingerprint(evidence)!=row['evidence_fingerprint']:raise ValueError('Wake evidence identity changed')
+        requests=[entry['request'] for entry in plan.get('entries',[])]
+        validate_requests(plan.get('required_data',
+            [entry['missing_observation'] for entry in plan.get('entries',[])]),requests)
+        proofs=evidence.get('proofs')
+        if (not requests or not isinstance(proofs,list)
+                or len(proofs)!=len(requests)
+                or any(not isinstance(proof,dict) for proof in proofs)
+                or sorted(canonical(proof.get('source_request')) for proof in proofs)
+                   !=sorted(canonical(request) for request in requests)
+                or evidence.get('promotion_authorized') is not False
+                or evidence.get('economic_completeness_proven') is not False):
+            raise ValueError('Complete non-promotional wake evidence required')
         pages=[]
-        for proof in evidence['proofs']:
+        for proof in proofs:
             request=proof['source_request']
             if request not in [e['request'] for e in plan['entries']] or proof['need_id']!=fingerprint({'plan_id':row['plan_id'],'request':request}):raise ValueError('Wake request provenance mismatch')
             period={'network':network,'address':address,'market':'*','start_ms':request['start_ms'],'end_ms':request['end_ms']}

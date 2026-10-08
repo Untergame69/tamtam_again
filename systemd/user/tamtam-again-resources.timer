@@ -1,0 +1,11 @@
+[Unit]
+Description=tamtam_again periodic resource observations
+
+[Timer]
+OnBootSec=30
+OnUnitInactiveSec=60
+AccuracySec=5
+Unit=tamtam-again-resources.service
+
+[Install]
+WantedBy=timers.target

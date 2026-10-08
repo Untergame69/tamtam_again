@@ -1,0 +1,10 @@
+[Unit]
+Description=tamtam_again metadata-only resource sampling
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/service-resource-sample.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --telemetry /home/Untergame/tamtam_again/data/tamtam.telemetry.sqlite3
+TimeoutStartSec=45
+NoNewPrivileges=true

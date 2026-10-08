@@ -1,0 +1,9 @@
+{
+  "sample_count": 2,
+  "first_recorded_at": 1791447087.3392453,
+  "latest_recorded_at": 1791447105.1972039,
+  "timer_active": true,
+  "service_result": "success",
+  "exec_main_status": 0,
+  "claims_prolonged_capacity": false
+}

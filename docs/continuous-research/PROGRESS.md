@@ -737,3 +737,13 @@ valorisation complète. Adapter exporte séparément contrôles de séries, born
 exactes, conflits/points futurs, jamais rendement ou PnL reconstruit. Contrôle
 réel cinq derniers comptes hors pilotes, zéro API/qualification ; preuve
 portfolio-evidence-control-20261008.json. Valorisation consolidée reste ouverte.
+
+### Instrumentation machine régulière — étapes 2/14
+
+Nouveau service/timer resources projet activé environ chaque minute, mesures
+metadata stockées dans télémétrie séparée. CPU de cgroups projet et InvocationID,
+mémoire anon/cache/kernel distinguée, tailles DB/WAL/SHM/pages et espace disque.
+Pas de différence CPU entre invocations ni unknown transformé en zéro. Services
+oneshot courts et runtime IA externe peuvent manquer ; pas capacité complète.
+Unités systemd vérifiées, exécution success/0 et timer actif. Preuves first et
+activation datées ; suivi prolongé à analyser après accumulation.

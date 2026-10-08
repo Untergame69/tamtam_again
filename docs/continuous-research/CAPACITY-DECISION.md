@@ -79,3 +79,39 @@ PYTHONPATH=src .venv/bin/python scripts/sustained-capacity.py \
 
 Retour arrière : retirer le script et le reducer ; aucune table, configuration,
 ordonnanceur ou abonnement n'a été modifié. Conserver le contrôle daté.
+
+## Mesures machine régulières
+
+Service/timer projet `tamtam-again-resources` activé le 8 octobre. Environ une
+minute entre prélèvements (OnUnitInactiveSec=60, précision 5 s), lecture seule
+PRAGMA page_count/freelist/page_size et stat DB/WAL/SHM, propriétés explicitement
+choisies des six services projet. Les samples restent dans la base de télémétrie
+séparée sous service-resources-v1. Aucune commande/env/secrets/archive lus.
+L'instrumentation ne change aucun service partagé ni collecteur existant.
+
+CPUUsageNSec/InvocationID donnent une différence uniquement à invocation
+identique et compteur croissant ; redémarrage, compteur absent ou inversé reste
+inconnu. Mémoire de cgroup inclut cache et descendants : memory.stat distingue
+anon/file/kernel/shmem, donc MemoryCurrent n'est jamais annoncé comme RSS.
+Services oneshot très courts entre prélèvements peuvent être manqués ; ceci ne
+certifie pas l'ensemble des coûts paper/IA. Le runtime IA extérieur aux cgroups
+projet et les autres usages machine restent hors attribution.
+
+Preuves initiales service-resources-first-20261008.json et
+service-resources-activation-20261008.json : commandes réussies, timer actif.
+Ces samples initiaux n'établissent pas une capacité prolongée. Revoir après une
+époque de collecte et une reprise, en distinguant les intervalles inconnus.
+Le script sustained-capacity lit encore l'ancien canal resources : ne pas
+présenter ce canal comme la nouvelle série ; exploitation de service-resources-v1
+à intégrer au rapport prolongé.
+
+Retour arrière, sans arrêter la collecte :
+
+```sh
+systemctl --user disable --now tamtam-again-resources.timer
+systemctl --user stop tamtam-again-resources.service
+```
+
+Retirer seulement les deux unités resources installées et daemon-reload pour
+annuler l'installation ; conserver les mesures. Zéro endpoint/paiement/recherche
+IA déclenché, aucune migration dans l'archive principale.

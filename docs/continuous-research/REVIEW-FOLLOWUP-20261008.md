@@ -484,3 +484,36 @@ nouveau cutoff, calcul, collecte ou lecture de réserve. Les résultats restent
 14périodes sélectionnées et0périmètre mesuré. Ce détail rend les attentes de
 chaque compte consultables dans Git ; le rapport temporaire complet reste
 la source hachée, sans recopier les réponses brutes.
+
+
+## 9 octobre — revue acceptée et tranche comptable ciblée
+
+Revue externe483be69 acceptée ; reprise selon son ordre comptable. Plan déclaré
+70bcd01, cutoff1791527290652 (08:28:10,652CEST), échéance14:28:10,652CEST.
+Diagnosticsend e2c2106 : champs déclarés et sémantique manquante conservés,
+aucun flux/frais/revenu inventé. Neuf combinaisons de sens/frais restent unknown.
+
+L'archive ultérieure ferme le gap ledger/funding du default87f9…e2cf sur les
+anciennes bornes : capital1193389,3529370001 →5641139,3529369999USDC ;
+flux4447750 ; variation corrigée−2e−10USDC. Résidu observé−2e−10, attribution
+complète toujours inconnue faute de preuve de rétention fills. Pas de compte
+qualifié. Disabledb695…a92d : principal2500000USDC/nativeTokenFee0,0001142 ;
+compte/devise/périmètre de débit et brut/net non établis par les sources
+officielles consultées, net inconnu conservé.
+
+Application uniforme au cutoff :87candidats,45finsanciennes,31sans borne6h,
+11sans deux valorisations ;0fenêtre actuelle,0qualification. Cohorte32slots
+12/12/4/4 intacte ;24h de maintien compatible avec6h. Intervalles observés
+61–62,5min dépassent légèrement fraîcheur1h ; réveil exact et échéance dans
+le rapport, sans abaisser les critères ni augmenter le budget.
+
+439tests OK48,651s ; recette readonly du nouveau rapport recalculée deux fois
+et comparaison byte-à-byte identique. CollecteurPID920368/service actif,
+populationtimer actif. Aucun changementservice/cadence, aucun appel API/IA,
+aucune migration ou écriture production. Anciennes preuves conservées.
+
+Détails, sources, décisions et retour arrière : ACCOUNTING-TRANCHE-20261009.md ;
+plan : ACCOUNTING-TRANCHE-PLAN-20261009.json ; preuve exhaustive :
+ACCOUNTING-TRANCHE-RESULT-20261009.json ; reproduction :
+scripts/accounting-tranche-report.py. Lot prêt pour revue indépendante ;
+qualification globale et raccordement économique de la boucle restent ouverts.

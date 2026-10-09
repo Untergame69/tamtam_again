@@ -1,0 +1,39 @@
+{
+  "version": "targeted-accounting-tranche-v1",
+  "announced_ms": 1791527290652,
+  "archive_cutoff_ms": 1791527290652,
+  "deadline_ms": 1791548890652,
+  "selection_basis": "review accounting gaps and supported modes, never PnL",
+  "cases": [
+    {
+      "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "scope": "perp:",
+      "start_ms": 1791458734427,
+      "end_ms": 1791479504849,
+      "missing_interval_ms": [
+        1791474623434,
+        1791479504849
+      ]
+    },
+    {
+      "address": "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+      "scope": "perp:",
+      "start_ms": 1791458998323,
+      "end_ms": 1791479780164,
+      "unknown_event_ref": "raw_observations:12392108"
+    }
+  ],
+  "population_rule": "all authorized inventoried accounts at archive_cutoff_ms, unchanged six-hour policy; targeted historical cases reported separately, not ranked",
+  "collection_budget": {
+    "new_model_calls": 0,
+    "new_subscriptions": 0,
+    "targeted_logical_requests_max": 2,
+    "network_attempts_max": 12,
+    "pages_per_request_max": 1,
+    "activation": "only if archive fails, via existing quota and lease; announce actual receipt cutoff separately"
+  },
+  "cadence": "existing REST cohort, 32 slots, one job/tick, per-account target 3600s; no service or allocation change in archive phase",
+  "cohort_check": "inspect actual valuation timestamps and cohort residence; if rotation/cadence fails 6h +/-15min and end age<=1h, report exact missing boundary and deadline without weakening policy",
+  "preservation": "exploration and controls untouched; old report and reserved accounts untouched",
+  "success": "justified scope calculation or precise public-data impossibility, uniform whole-population application; no account or strategy promotion"
+}

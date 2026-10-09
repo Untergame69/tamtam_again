@@ -56,8 +56,17 @@ def normalize_event(endpoint: str, row: Any, *, address: str,
                 or not isinstance(delta.get('destinationDex'),str)):
                 return {**result,'reason':'send identity, asset or scope absent'}
             # Gross/net fee semantics are unnecessary only for explicitly zero fees.
-            if number('fee')!=0 or number('nativeTokenFee')!=0:
-                return {**result,'reason':'nonzero send fee accounting not established'}
+            fee=number('fee');native_fee=number('nativeTokenFee')
+            if fee!=0 or native_fee!=0:
+                return {**result,'reason':'nonzero send fee accounting not established',
+                    'reported_transfer':{'principal':str(amount),'token':delta['token'],
+                        'fee':str(fee),'fee_token':delta.get('feeToken'),
+                        'native_token_fee':str(native_fee),'source_account':source,
+                        'destination_account':destination,'source_dex':delta['sourceDex'],
+                        'destination_dex':delta['destinationDex']},
+                    'missing_semantics':['whether reported principal is gross or net of fees',
+                        'asset, account and balance scope debited for each nonzero fee'],
+                    'next_action':'establish ledger field semantics and fee debit scope from authoritative evidence; no inferred flow or income'}
             event.update(currency=delta['token'],
                 amount=str(Decimal(0) if source==destination else amount if destination==account else -amount),
                 boundary_classification='internal' if source==destination else 'external',

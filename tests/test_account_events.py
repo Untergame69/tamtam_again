@@ -36,6 +36,17 @@ class AccountEventTests(unittest.TestCase):
   for r in [normalize('deposit',usdc='NaN'),normalize('deposit',usdc=True),
             normalize('deposit',usdc='-1'),normalize('internalTransfer',usdc='10',user=B,destination=B,fee=0)]:
    self.assertEqual(r['status'],'unknown')
+ def test_nonzero_send_fee_preserves_diagnostic_without_booking(self):
+  for source,destination in ((A,B),(B,A),(A,A)):
+   for fee,native in (('1','0'),('0','0.0001142'),('1','0.0001142')):
+    r=normalize('send',amount='2500000',token='USDC',user=source,
+     destination=destination,sourceDex='',destinationDex='spot',fee=fee,
+     feeToken='',nativeTokenFee=native)
+    self.assertEqual(r['status'],'unknown');self.assertNotIn('event',r)
+    self.assertEqual(r['reported_transfer']['principal'],'2500000')
+    self.assertEqual(r['reported_transfer']['native_token_fee'],native)
+    self.assertEqual(r['reported_transfer']['fee_token'],'')
+    self.assertEqual(len(r['missing_semantics']),2)
  def test_future_availability_guard(self):
   r=normalize_event('userFunding',{'time':300,'hash':'h','delta':{'type':'funding','coin':'BTC','usdc':'10'}},address=A,available_ms=200,evidence_ref='fixture')
   self.assertEqual(r['status'],'unknown');self.assertNotIn('event',r)

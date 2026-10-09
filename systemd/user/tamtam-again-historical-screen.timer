@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily historical population curve screening
+
+[Timer]
+OnCalendar=*-*-* 10:15:00 UTC
+Persistent=true
+Unit=tamtam-again-historical-screen.service
+
+[Install]
+WantedBy=timers.target

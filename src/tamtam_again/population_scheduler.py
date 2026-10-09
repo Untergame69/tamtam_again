@@ -6,6 +6,58 @@ from .research import scheduler_lock
 from .validation import now_ms
 
 
+def historical_research_gate(store,network,address,*,as_of_ms,max_requests,request_id=None):
+    """Gate new population model work on reviewed history, changed data and budget.
+
+    This check never reserves a request or calls a model. ``seal`` remains the
+    authority for content identity, cooldown and the shared request ceiling.
+    """
+    if network=='synthetic':
+        from .research_jobs import request_count
+        current_requests=request_count(store)
+        within_budget=current_requests<=max_requests if request_id else current_requests<max_requests
+        return {'allowed':within_budget,'qualification':True,'new_data':True,'budget':within_budget,
+                'reason':'synthetic acceptance fixture; no real dispatch unless explicitly mocked'}
+    table=store.connection.execute("select 1 from sqlite_master where type='table' and name='population_historical_decisions'").fetchone()
+    if not table:return {'allowed':False,'qualification':False,'new_data':False,'budget':False,'reason':'historical screen not yet available'}
+    row=store.connection.execute('select decision_id,status,as_of_ms from population_historical_decisions '
+        'where network=? and address=? and as_of_ms<=? order by as_of_ms desc,decision_id desc limit 1',
+        (network,address.lower(),as_of_ms)).fetchone()
+    if not row:return {'allowed':False,'qualification':False,'new_data':False,'budget':False,'reason':'no reviewed historical decision'}
+    qualified=row['status']=='credible_deep_dive_candidate'
+    if request_id:
+        prior=store.connection.execute('select created_ms from population_research_jobs where request_id=?',(request_id,)).fetchone()
+        last_request=prior['created_ms'] if prior else None
+    else:
+        last=store.connection.execute('select max(created_ms) from population_research_jobs where network=? and address=?',(network,address)).fetchone()
+        last_request=last[0] if last else None
+    if last_request is None:
+        new_data=True
+    else:
+        latest=store.connection.execute("select max(observed_at) from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
+            "and entity_type='account' and entity_id=? and endpoint in ('portfolio','userFillsByTime','userFunding','userNonFundingLedgerUpdates')",
+            (network,address.lower())).fetchone()[0]
+        if latest:
+            from datetime import datetime
+            latest_ms=int(datetime.fromisoformat(latest).timestamp()*1000)
+            # The qualifying screen must itself include the new observation;
+            # later raw rows wait for the next scheduled screen.
+            new_data=latest_ms>last_request and latest_ms<=row['as_of_ms'] and row['as_of_ms']>last_request
+        else:new_data=False
+    from .research_jobs import request_count
+    current_requests=request_count(store)
+    # A sealed job already occupies one of the shared reservations; it may
+    # dispatch at the ceiling, while a new seal may not exceed it.
+    within_budget=current_requests<=max_requests if request_id else current_requests<max_requests
+    allowed=qualified and new_data and within_budget
+    if not qualified:reason='historical qualification is not sufficient for deeper AI research'
+    elif not new_data:reason='no population observations arrived after the prior research request'
+    elif not within_budget:reason='the existing shared population research request ceiling is exhausted'
+    else:reason='historical qualification, new observations and existing request budget all pass'
+    return {'allowed':allowed,'qualification':qualified,'new_data':new_data,'budget':within_budget,
+            'reason':reason,'historical_decision_ref':'population_historical_decisions:'+row['decision_id']}
+
+
 def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None):
     validate_policy(policy)
     if paper_policy is not None:
@@ -39,7 +91,7 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         if reserve_policy is not None:
             from .reserve_cycle import tick as reserve_tick
             reserves=reserve_tick(store,reserve_policy)
-        sealed=[];processed=[];blocked=protected_addresses(store)
+        sealed=[];processed=[];blocked=protected_addresses(store);historical_gates=[];newly_sealed=set()
         if store.connection.execute("select 1 from sqlite_master where name='population_accounts'").fetchone():
             addresses=[r[0] for r in store.connection.execute("select address from population_accounts where network=? and status!='retired' order by next_due_ms,address",(network,))]
         elif store.connection.execute("select 1 from sqlite_master where name='account_scope_reports'").fetchone():
@@ -49,13 +101,21 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         for address in addresses:
             if address in blocked:continue
             if not authorized_account_history(store,network,address,now_ms()):continue
+            gate=historical_research_gate(store,network,address,as_of_ms=now_ms(),max_requests=policy['max_requests'])
+            historical_gates.append({'address':address,**gate})
+            if not gate['allowed']:continue
             result=seal(store,network,address,policy)
-            if result['status']=='sealed':sealed.append(result)
+            if result['status']=='sealed':sealed.append(result);newly_sealed.add(result['request_id'])
             if result['status']=='budget_exhausted' or len(sealed)>=max_jobs:break
         if dispatch:
             pending=store.connection.execute("select request_id,address from population_research_jobs where network=? and status='sealed' order by created_ms,request_id",(network,)).fetchall()
             for request in pending:
                 if request['address'] in blocked:continue
+                gate=historical_research_gate(store,network,request['address'],as_of_ms=now_ms(),
+                                              max_requests=policy['max_requests'],request_id=request['request_id'])
+                if request['request_id'] not in newly_sealed and not gate['allowed']:
+                    historical_gates.append({'address':request['address'],'request_id':request['request_id'],**gate})
+                    continue
                 processed.append(_run(store,request['request_id']))
                 if len(processed)>=max_jobs:break
         from .population_memory import remember
@@ -96,5 +156,5 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
             from .paper_scheduler import _tick as paper_tick
             paper=paper_tick(store,paper_policy,experiment_policy=experiment_policy,dispatch=dispatch and len(processed)<max_jobs,max_jobs=max_jobs)
-        return {'paper_research':paper,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'interrupted_without_retry':recovered,'memory':memory,
+        return {'paper_research':paper,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False,'observation_plans':observation_plans}

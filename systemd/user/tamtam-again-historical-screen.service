@@ -1,0 +1,12 @@
+[Unit]
+Description=Deterministic historical screening of population portfolio curves
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/population-historical-screen.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --daily-cutoff-utc 10:10 --output-dir /home/Untergame/tamtam_again/data/historical-selection/current
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tamtam-again-historical-screen

@@ -46,3 +46,15 @@ class AllocationTests(unittest.TestCase):
    self.assertEqual(store.connection.execute('select status from population_attempts where attempt_id=?',(job['attempt_id'],)).fetchone()[0],'complete')
  def test_duplicate_addresses_rejected(self):
   with self.assertRaises(ValueError):choose(rows()+rows()[:1],A,epoch=1)
+ def test_history_prioritizes_deepening_without_using_dollar_gains(self):
+  source=rows()
+  for r in source:r['consecutive_deepen_epochs']=2
+  source[3]['consecutive_deepen_epochs']=0;source[3]['historical_priority']=True
+  source[3]['historical_concentration']=0.3;source[3]['historical_positive_months']=5
+  source[4]['consecutive_deepen_epochs']=0;source[4]['historical_priority']=True
+  source[4]['historical_concentration']=0.5;source[4]['historical_positive_months']=4
+  policy={**A,'slots':{'explore':0,'deepen':2,'control_uniform':0,'control_leaderboard':0}}
+  result=choose(source,policy,epoch=1)
+  self.assertEqual(result['groups']['deepen'],[source[3]['address'],source[4]['address']])
+  self.assertEqual(result['groups']['explore'],[])
+  self.assertIn('historical positive curve',next(x['reason'] for x in result['decisions'] if x['address']==source[3]['address']))

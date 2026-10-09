@@ -25,7 +25,18 @@ def choose(rows:list[dict[str,Any]],policy:dict[str,Any], *,epoch:int) -> dict[s
     def order(pool,group):return sorted(pool,key=lambda r:hashlib.sha256((seed+group+r['address']).encode()).hexdigest())
     def take(pool,group,ranked=False):
         available=[r for r in pool if r['address'] not in selected]
-        ordered=sorted(available,key=lambda r:(r['leaderboard_rank'],r['address'])) if ranked else order(available,group)
+        if ranked:
+            ordered=sorted(available,key=lambda r:(r['leaderboard_rank'],r['address']))
+        elif group=='deepen':
+            # Historical provider-curve evidence may prioritize further data
+            # collection, but never affects controls, exploration, or validation.
+            ordered=sorted(available,key=lambda r:(
+                0 if r.get('historical_priority') else 1,
+                r.get('historical_concentration') if r.get('historical_concentration') is not None else 2.0,
+                -r.get('historical_positive_months',0),
+                hashlib.sha256((seed+group+r['address']).encode()).hexdigest()))
+        else:
+            ordered=order(available,group)
         picked=ordered[:policy['slots'][group]]
         groups[group]=[r['address'] for r in picked]
         selected.update({r['address']:group for r in picked})
@@ -47,8 +58,10 @@ def choose(rows:list[dict[str,Any]],policy:dict[str,Any], *,epoch:int) -> dict[s
             'consecutive_deepen_epochs':r.get('consecutive_deepen_epochs',0),
             'collection_question':'Can the observed account be reconciled over a complete comparable period?' if group=='deepen' else 'What public activity and account scope can be observed under the common REST policy?' if group else None,
             'wake_condition':{'next_allocation_epoch':epoch+1} if not group else {'next_rest_due_and_new_available_observations':True},
-            'reason':'bounded '+group+' budget' if group else 'not allocated this epoch; evidence and identity retained',
-            'next_action':'public REST inventory/accounting' if group else 'eligible at next epoch unless blocked',
+            'reason':('historical positive curve; prioritize coverage under bounded deepen budget' if group=='deepen' and r.get('historical_priority') else 'bounded '+group+' budget') if group else 'not allocated this epoch; evidence and identity retained',
+            'historical_screen_status':r.get('historical_screen_status'),
+            'historical_decision_ref':r.get('historical_decision_ref'),
+            'next_action':('collect longer fills and ledger coverage; verify activity and flows' if group=='deepen' and r.get('historical_priority') else 'public REST inventory/accounting') if group else 'eligible at next epoch unless blocked',
             'economic_qualification':False})
     return {'epoch':epoch,'groups':groups,'decisions':decisions,
         'unfilled_slots':{g:policy['slots'][g]-len(groups[g]) for g in groups},
@@ -74,6 +87,15 @@ def allocate_population(store,network:str,population_policy:dict[str,Any], *,now
         if latest:
             ranks={r['address']:r['rank'] for r in store.connection.execute('select address,rank from whale_rankings where snapshot_id=? and window=? and metric=?',(latest[0],policy.get('leaderboard_window','day'),'pnl'))}
         previous=[json.loads(r[0]) for r in store.connection.execute('select snapshot_json from population_cohorts where network=? and epoch<? and policy_json=? order by epoch desc limit ?',(network,epoch,policy_json,policy['max_deepen_epochs']))]
+        history={}
+        if store.connection.execute("select 1 from sqlite_master where type='table' and name='population_historical_decisions'").fetchone():
+            for item in store.connection.execute(
+                    'select decision_id,address,status,decision_json from population_historical_decisions '
+                    'where network=? and as_of_ms<=? order by as_of_ms,decision_id',(network,now_ms)):
+                # Keep the latest decision per address; every earlier decision remains archived.
+                try: decision=json.loads(item['decision_json'])
+                except (TypeError,ValueError): continue
+                history[item['address'].lower()]={'decision_id':item['decision_id'],'status':item['status'],'decision':decision}
         rows=[]
         for candidate in store.candidates(network):
             if int(datetime.fromisoformat(candidate['added_at']).timestamp()*1000)>now_ms:continue
@@ -81,8 +103,16 @@ def allocate_population(store,network:str,population_policy:dict[str,Any], *,now
             for old in previous:
                 if address not in old['groups']['deepen']:break
                 consecutive+=1
+            h=history.get(address.lower(),{});hd=h.get('decision',{})
+            monthly=hd.get('weekly_monthly_consistency',{}).get('180',{}).get('month',{})
+            historical_priority=h.get('status') in ('credible_deep_dive_candidate','reported_positive_pending_activity')
             rows.append({'address':address,'hard_blockers':['reserved pilot/direct subscription'] if address in blocked or candidate['status']=='tracked' else [],
                 'observed_scope':bool(report),'consecutive_deepen_epochs':consecutive,'leaderboard_rank':ranks.get(address),
+                'historical_priority':historical_priority,
+                'historical_concentration':float(monthly['largest_positive_bucket_share_of_positive_delta']) if monthly.get('largest_positive_bucket_share_of_positive_delta') is not None else None,
+                'historical_positive_months':monthly.get('positive_observed_buckets',0),
+                'historical_screen_status':h.get('status'),
+                'historical_decision_ref':'population_historical_decisions:'+h['decision_id'] if h else None,
                 'evidence_refs':['candidates:'+network+':'+address]+(['account_scope_reports:'+report['report_id']] if report else [])+(['whale_rankings:'+latest[0]] if address in ranks else []),
                 'performance':'unknown','observability':'inventory_observed' if report else 'unknown',
                 'reproducibility':'unproven','unknowns':['economic performance','historical completeness','reproducibility'],

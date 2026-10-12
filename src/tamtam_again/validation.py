@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS paper_sessions (
  last_observation_id INTEGER NOT NULL DEFAULT 0,updated_at TEXT NOT NULL);
 """
 STATES = {"needs_data", "collector_correction", "redo_analysis", "ready_to_test", "rejected",
-          "non_identifiable", "unsupported_mechanism", "paper_active", "suspended"}
+          "non_identifiable", "unsupported_mechanism", "paper_active", "experimental_paper", "suspended"}
 
 
 def initialize(store: Store) -> None:
@@ -137,9 +137,15 @@ def create_plan(store: Store, plan: dict[str, Any]) -> dict[str, Any]:
     for key in ("max_runs", "max_same_input_corrections", "max_duration_ms"):
         if type(plan["budget"].get(key)) is not int:
             raise ValueError("Integer run/correction/duration budgets required")
-    for key in ("max_runs", "max_same_input_corrections", "max_duration_ms", "max_cost_usd"):
+    for key in ("max_runs", "max_same_input_corrections", "max_duration_ms"):
         if key not in plan["budget"] or number(plan["budget"][key]) <= 0:
-            raise ValueError("Explicit positive iteration/time/cost budget required")
+            raise ValueError("Explicit positive iteration and duration budgets required")
+    cost_budget = number(plan["budget"].get("max_cost_usd", -1))
+    if plan.get("experiment_mode") == "experimental_paper_only":
+        if cost_budget != 0 or plan["synthetic"]:
+            raise ValueError("Paper-only experiment must be real, non-synthetic and have zero AI budget")
+    elif cost_budget <= 0:
+        raise ValueError("Explicit positive AI cost budget required")
     if plan["isolation"] not in {"unavailable", "separate_principal"}:
         raise ValueError("Declare actual agent isolation availability")
     # A declaration cannot grant OS isolation. Production AI dispatch remains
@@ -211,6 +217,8 @@ def promotion(metrics_normal: dict[str,Any], stressed: dict[str,Any], criteria: 
 
 def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,Any]], *, provenance: str) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
+    if plan.get("experiment_mode") == "experimental_paper_only":
+        raise ValueError("Paper-only experiment is not eligible for economic evaluation or promotion")
     if stage not in {"exploration","comparison","final"}:
         raise ValueError("Unknown validation stage")
     if bool(row["synthetic"]) != (provenance == "synthetic"):

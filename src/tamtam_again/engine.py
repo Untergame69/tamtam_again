@@ -97,6 +97,8 @@ def initial_state(spec: dict[str, Any]) -> dict[str, Any]:
             "session": None, "healthy_at_ms": None, "connected": False, "pending": [],
             "last_ms": -1, "opened_ms": None, "seen": [], "history": [], "fills": [],
             "equity_curve": [], "diagnostics": [], "missed_orders": 0, "partial_orders": 0,
+            "signals_received": 0, "max_exposure_notional_usdc": "0", "wait_conditions": [],
+            "nonexecution_reasons": {},
             "leader_target": "0", "regimes": [], "funding_events": 0, "risk_halted": False, "peak_equity": str(spec["starting_capital_usdc"]), "processing_lags_ms": []}
 
 
@@ -143,21 +145,30 @@ def _fill(state: dict[str, Any], size: Decimal, price: Decimal, fee_bps: Decimal
                            "fee": str(fee), "realized_pnl": str(pnl)})
 
 
+def _miss_order(state: dict[str, Any], reason: str) -> None:
+    state["missed_orders"] += 1
+    reasons=state.setdefault("nonexecution_reasons",{})
+    reasons[reason]=reasons.get(reason,0)+1
+
+
 def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Decimal) -> None:
     remaining = []
     for order in state["pending"]:
         if order["due_ms"] > now:
             remaining.append(order)
             continue
-        if now > order["expires_ms"] or quote_status(state, now, spec["execution"]) != "continuous":
-            state["missed_orders"] += 1
+        if now > order["expires_ms"]:
+            _miss_order(state,"order_ttl_expired")
+            continue
+        if quote_status(state, now, spec["execution"]) != "continuous":
+            _miss_order(state,"quote_or_stream_unavailable")
             continue
         q = state["quote"]
         rules=spec['execution'].get('market_rules')
         if rules:
             from .market_rules import valid_price,round_size
             if rules['available_ms']>now or not all(valid_price(q[side],rules['sz_decimals']) for side in ('bid','ask')):
-                state['missed_orders']+=1
+                _miss_order(state,"venue_rules_unavailable_or_price_precision_invalid")
                 continue
         target = number(order["target"])
         limit = number(spec["max_exposure"]["notional_usdc"])
@@ -174,21 +185,21 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
             continue
         buy = delta > 0
         if rules and abs(delta)*number(q['ask'] if buy else q['bid'])<number(rules['minimum_order_usdc']):
-            state['missed_orders']+=1
+            _miss_order(state,"below_venue_minimum_order_value")
             continue
         passive = spec["execution"]["kind"] == "passive_conservative"
         if passive:
             # Public depth does not establish queue priority. Default no fill,
             # including when the limit is touched. Explicit future queue models
             # must be implemented/versioned before they can change this rule.
-            state["missed_orders"] += 1
+            _miss_order(state,"passive_queue_priority_unavailable")
             continue
         available_key = "ask_size" if buy else "bid_size"
         available = number(q.get(available_key, 0)) * number(spec["execution"]["displayed_size_fraction"]) / stress
         size = min(abs(delta), max(Decimal(0), available)) * (1 if buy else -1)
         if rules:size=round_size(size,rules['sz_decimals'])
         if not size:
-            state["missed_orders"] += 1
+            _miss_order(state,"insufficient_visible_size_or_lot_rounding")
             continue
         if abs(size) < abs(delta):
             state["partial_orders"] += 1
@@ -235,7 +246,10 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         state["quote"] = None
         if not state["connected"]:
             state["pending"] = []
-            state["diagnostics"].append("connection_interrupted")
+            if state.get("experimental_initial_feed") and not state.get("signals_received") and not state.get("fills") and number(state["position"]) == 0:
+                state.setdefault("wait_conditions", []).append("initial_stream_reconnected_before_signal")
+            else:
+                state["diagnostics"].append("connection_interrupted")
     elif kind == "subscriptions":
         if spec["market"] not in event["markets"]:
             state["quote"] = None
@@ -247,8 +261,13 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             state["pending"] = []
             state["diagnostics"].append("market_subscription_missing")
         if state["session"] != event["session"]:
-            if state["session"] is not None:
+            initial_rebind = (state.get("experimental_initial_feed") and not state.get("signals_received")
+                              and not state.get("fills") and number(state["position"]) == 0
+                              and not state["pending"])
+            if state["session"] is not None and not initial_rebind:
                 state["diagnostics"].append("connection_changed_without_reconciliation")
+            if initial_rebind:
+                state.setdefault("wait_conditions", []).append("initial_stream_reconnected_before_signal")
             state["session"], state["connected"] = event["session"], True
             state["quote"] = None
         if state["connected"] and event["session"] == state["session"]:
@@ -278,8 +297,20 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         if event.get("is_snapshot") is not False:
             state["diagnostics"].append("leader_signal_not_live")
         else:
-            state["leader_target"] = str(number(state["leader_target"]) + number(event["delta"]) * number(spec["sizing"]["scale"]))
-            _order(state, spec, number(state["leader_target"]), now)
+            state["experimental_initial_feed"] = False
+            state["signals_received"] = state.get("signals_received", 0) + 1
+            target = number(state["leader_target"]) + number(event["delta"]) * number(spec["sizing"]["scale"])
+            interval=spec["execution"].get("funding_interval_ms")
+            if target and type(interval) is int and interval>0:
+                next_funding=(now//interval+1)*interval
+                if now+spec["latency_ms"]+spec["horizon_ms"]>=next_funding:
+                    _miss_order(state,"position_horizon_overlaps_funding_boundary")
+                else:
+                    state["leader_target"]=str(target)
+                    _order(state,spec,target,now)
+            else:
+                state["leader_target"]=str(target)
+                _order(state,spec,target,now)
     elif kind == "funding":
         # Rate is applied to OUR position at this funding event; leader's USDC
         # funding payment is never reused. Event mark is an observed input.
@@ -298,6 +329,8 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         # Liquidation-side mark includes spread; realized cash already includes
         # fees/slippage. Do not subtract spread again.
         pos = number(state["position"])
+        exposure = abs(pos) * (number(q["bid"]) + number(q["ask"])) / 2
+        state["max_exposure_notional_usdc"] = str(max(number(state.get("max_exposure_notional_usdc", 0)), exposure))
         mark = number(q["bid"] if pos >= 0 else q["ask"])
         unrealized = pos * (mark - number(state["average_price"]))
         equity = number(state["cash"]) + unrealized
@@ -338,6 +371,8 @@ def metrics(state: dict[str, Any], spec: dict[str, Any], block_ms: int, *, confi
             "block_count": len(values), "block_mean_lower_95_descriptive": lower,
             "largest_positive_block_share": positive[0] / sum(positive) if positive else None,
             "regimes": state["regimes"], "fills": len(state["fills"]),
+            "signals_received": state.get("signals_received",0),
+            "max_exposure_notional_usdc": state.get("max_exposure_notional_usdc","0"),
             "missed_orders": state["missed_orders"], "partial_orders": state["partial_orders"],
             "flat_end": number(state["position"]) == 0, "pending_end": len(state["pending"]),
             "funding_events": state["funding_events"], "diagnostics": sorted(set(state["diagnostics"])),

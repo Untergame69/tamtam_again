@@ -88,11 +88,15 @@ def recover(store,*,clock_ms,max_requests=8):
         '(session_id text primary key,last_attempt_ms integer not null,attempt_count integer not null,'
         'state text not null)')
     store.connection.commit()
+    experimental_filter = ("and not exists (select 1 from paper_experimental_sessions e "
+                           "where e.session_id=p.session_id) "
+                           if store.connection.execute("select 1 from sqlite_master where name='paper_experimental_sessions'").fetchone()
+                           else "")
     sessions=store.connection.execute('select p.session_id from paper_suspensions p '
       'left join paper_adaptation_requests a on a.session_id=p.session_id '
       'left join paper_adaptation_recovery r on r.session_id=p.session_id '
       'where a.session_id is null and p.suspended_ms<=? '
-      'and (r.last_attempt_ms is null or r.last_attempt_ms<?) '
+      'and (r.last_attempt_ms is null or r.last_attempt_ms<?) '+experimental_filter+
       'order by coalesce(r.attempt_count,0),p.suspended_ms,p.session_id limit ?',
       (clock_ms,clock_ms,max_requests)).fetchall()
     outputs=[]

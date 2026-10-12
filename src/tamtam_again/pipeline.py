@@ -34,6 +34,10 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
                                 'reason':str(exc),'next_action':'complete comparisons before final opens; otherwise create a new prospective plan'})
     for variant in store.connection.execute("SELECT variant_id FROM strategy_variants").fetchall():
         row,spec,plan = get_variant(store,variant[0])
+        if plan.get("experiment_mode") == "experimental_paper_only":
+            # These versions run prospectively under paper monitoring only.
+            # They are never evaluated or promoted by the N1 scheduler.
+            continue
         from .reserve_cycle import abandoned_final
         if abandoned_final(store,row['plan_id'],now_ms()):
             reports.append({'variant_id':variant[0],'status':'abandoned_for_development','next_action':'new prospective plan required'})
@@ -84,6 +88,10 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
         try:
             if fixtures is None:
                 reports.append(paper_tick(store,session[0]))
+                from .experimental_paper import report_due
+                experimental_report = report_due(store,session[0])
+                if experimental_report:
+                    reports.append(experimental_report)
             else:
                 from .paper import synthetic_recipe_tick
                 events=fixtures.get(session['variant_id'],{}).get('paper',[])

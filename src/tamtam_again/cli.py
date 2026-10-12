@@ -140,6 +140,11 @@ def _parser() -> argparse.ArgumentParser:
     paper_start = commands.add_parser("paper-start", help="Start N2 only after passed real N1 final")
     paper_start.add_argument("variant_id")
     paper_start.add_argument("--restart-reason", help="Required when restarting a retired version")
+    experimental_start = commands.add_parser("paper-experimental-start", help="Start a frozen prospective experiment without N1 promotion")
+    experimental_start.add_argument("variant_id")
+    experimental_start.add_argument("hypothesis", type=Path)
+    experimental_status = commands.add_parser("paper-experimental-status", help="Show experimental paper sessions and latest automatic report")
+    experimental_status.add_argument("session_id", nargs="?")
     paper_retire = commands.add_parser("paper-retire", help="Retire a flat session and preserve its ledger")
     paper_retire.add_argument("session_id")
     paper_retire.add_argument("--reason", required=True)
@@ -177,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validation-recipe":
             from .recipe import run_recipe
             print(json.dumps(run_recipe(args.output),ensure_ascii=False,indent=2))
-        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-retire", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
+        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-experimental-start", "paper-experimental-status", "paper-retire", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
             from .validation import create_plan, register_variant, evaluate, get_variant, initialize
             from .paper import archive_events, classify_regimes, start_paper, retire_paper, paper_tick
             from .qualification import qualify, snapshot_cohort
@@ -202,6 +207,12 @@ def main(argv: list[str] | None = None) -> int:
                     result = evaluate(store,args.variant_id,args.stage,events,provenance=provenance)
                 elif args.command == "paper-start":
                     result = start_paper(store,args.variant_id,restart_reason=args.restart_reason)
+                elif args.command == "paper-experimental-start":
+                    from .experimental_paper import start as start_experimental
+                    result = start_experimental(store,args.variant_id,json.loads(args.hypothesis.read_text()))
+                elif args.command == "paper-experimental-status":
+                    from .experimental_paper import status as experimental_status
+                    result = experimental_status(store,args.session_id)
                 elif args.command == "paper-retire":
                     result = retire_paper(store,args.session_id,reason=args.reason)
                 elif args.command == "paper-tick":
@@ -222,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
                     from .pipeline import tick
                     result = tick(store)
                 else:
+                    from .experimental_paper import status as experimental_paper_status
                     result = {
                         "agent_dispatch": "isolated_v2_worker" if store.connection.execute("SELECT 1 FROM sqlite_master WHERE name='isolated_research_jobs'").fetchone() else "not_configured",
                         "legacy_dispatch": "disabled",
@@ -230,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
                         "variants": [dict(r) for r in store.connection.execute("SELECT variant_id,plan_id,frozen_ms FROM strategy_variants")],
                         "evaluations": [dict(r) for r in store.connection.execute("SELECT evaluation_id,variant_id,stage,status,created_at FROM validation_evaluations")],
                         "paper": [dict(r) for r in store.connection.execute("SELECT session_id,variant_id,status,updated_at FROM paper_sessions")],
+                        "experimental_paper": experimental_paper_status(store),
                         "latest_decisions": [dict(r) for r in store.connection.execute("SELECT * FROM pipeline_decisions WHERE decision_id IN (SELECT max(decision_id) FROM pipeline_decisions GROUP BY network,address,coin)")],
                     }
             print(json.dumps(result,ensure_ascii=False,indent=2))

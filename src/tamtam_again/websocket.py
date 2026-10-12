@@ -26,8 +26,23 @@ MAX_USER_SUBSCRIPTIONS = 10
 
 def _subscriptions(store: Store, network: str, market_limit: int,
                    depth_limit: int = 30) -> tuple[list[str], list[str], list[str]]:
-    accounts = [row["address"] for row in store.candidates(network)
-                if row["status"] == "tracked"]
+    tracked_accounts = [row["address"] for row in store.candidates(network)
+                        if row["status"] == "tracked"]
+    paper_accounts: list[str] = []
+    paper_markets: list[str] = []
+    if store.connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='paper_experimental_sessions'").fetchone():
+        for row in store.connection.execute(
+            "SELECT p.address,p.coin FROM paper_experimental_sessions e "
+            "JOIN paper_sessions p USING(session_id) WHERE e.status='active' AND p.status='active' "
+            "ORDER BY e.created_ms,e.session_id"
+        ):
+            if row["address"] not in paper_accounts:
+                paper_accounts.append(row["address"])
+            if row["coin"] not in paper_markets:
+                paper_markets.append(row["coin"])
+    # A live paper session gets a slot first, but the existing venue and local
+    # user-subscription cap remains unchanged.
+    accounts = list(dict.fromkeys([*paper_accounts, *tracked_accounts]))
     accounts = accounts[:MAX_USER_SUBSCRIPTIONS]
     usage: dict[str, tuple[int, Decimal]] = {}
     latest_fill_by_pair: dict[tuple[str, str], int] = {}
@@ -133,8 +148,8 @@ def _subscriptions(store: Store, network: str, market_limit: int,
     research_markets = list(dict.fromkeys(
         str(row["coin"]) for _, row in [*active_targets, *quiet_targets]
     ))
-    markets = list(dict.fromkeys([*research_markets, *ranked_markets]))[:market_limit]
-    depth_markets = list(dict.fromkeys([*research_markets, *ranked_markets]))[:depth_limit]
+    markets = list(dict.fromkeys([*paper_markets, *research_markets, *ranked_markets]))[:market_limit]
+    depth_markets = list(dict.fromkeys([*paper_markets, *research_markets, *ranked_markets]))[:depth_limit]
     return accounts, markets, depth_markets
 
 
@@ -158,6 +173,20 @@ def _unsubscribe(websocket: Any, subscription: dict[str, Any], active: set[str])
     if key in active:
         websocket.send(json.dumps({"method": "unsubscribe", "subscription": subscription}))
         active.discard(key)
+
+
+def _sync_account_subscriptions(websocket: Any, previous: list[str], current: list[str],
+                                active: set[str], subscription_at: dict[str, str]) -> None:
+    """Release removed user slots before subscribing their replacements."""
+    current_set={address.lower() for address in current}
+    for address in previous:
+        if address.lower() not in current_set:
+            _unsubscribe(websocket,{"type":"userFills","user":address},active)
+            _unsubscribe(websocket,{"type":"userFundings","user":address},active)
+    for address in current:
+        _subscribe(websocket,{"type":"userFundings","user":address},active)
+        if _subscribe(websocket,{"type":"userFills","user":address},active):
+            subscription_at[address.lower()]=utc_now()
 
 
 def _save_message(store: Store, network: str, message: dict[str, Any],
@@ -321,14 +350,8 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                         current_accounts, current_markets, current_depth = _subscriptions(
                             store, network, market_limit, depth_limit
                         )
-                        for address in current_accounts:
-                            _subscribe(websocket, {"type": "userFundings", "user": address}, active)
-                            if _subscribe(websocket, {"type": "userFills", "user": address}, active):
-                                user_fills_subscription_at[address.lower()] = utc_now()
-                        for address in accounts:
-                            if address not in current_accounts:
-                                _unsubscribe(websocket, {"type": "userFills", "user": address}, active)
-                                _unsubscribe(websocket, {"type": "userFundings", "user": address}, active)
+                        _sync_account_subscriptions(websocket,accounts,current_accounts,active,
+                                                    user_fills_subscription_at)
                         accounts = current_accounts
                         new_depth = current_depth
                         for coin in list(market_coins):

@@ -132,16 +132,27 @@ def classify_regimes(events: list[dict[str,Any]], criteria: dict[str,Any]) -> li
 
 
 def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False,
-                restart_reason: str | None = None, reference_binding: dict | None = None) -> dict[str,Any]:
+                restart_reason: str | None = None, reference_binding: dict | None = None,
+                experimental_hypothesis: dict | None = None) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
-    passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
-    if not passed or (row["synthetic"] and not synthetic_recipe):
-        raise ValueError("N2 requires real passed N1; synthetic recipe cannot activate real paper")
-    if not row["synthetic"] and not json.loads(passed[0])["promotable"]:
-        raise ValueError("N1 is not promotable")
+    if experimental_hypothesis is None:
+        passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
+        if not passed or (row["synthetic"] and not synthetic_recipe):
+            raise ValueError("N2 requires real passed N1; synthetic recipe cannot activate real paper")
+        if not row["synthetic"] and not json.loads(passed[0])["promotable"]:
+            raise ValueError("N1 is not promotable")
+    else:
+        from .experimental_paper import initialize as initialize_experimental, validate_start
+        validate_start(store,variant_id,experimental_hypothesis)
+        initialize_experimental(store)
     session_id = uuid4().hex
     started = now_ms()
     state = initial_state(spec)
+    if experimental_hypothesis is not None:
+        # A collector restart may be needed to load the experiment's prioritized
+        # account subscription. Until the first live signal there is no paper
+        # position or decision whose stream continuity can be broken.
+        state["experimental_initial_feed"] = True
     if reference_binding is not None:
         from .procedure_references import validate_reference_start
         validate_reference_start(store,variant_id,reference_binding,started)
@@ -211,14 +222,33 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
         if transferred:
             store.connection.execute('insert into paper_handovers values(?,?,?,?)',
                 (session_id,transferred,started,canonical({**replacement,'capital_snapshot_id':capital_evidence,'opening_capital_usdc':state['cash']})))
+        if experimental_hypothesis is not None:
+            from .engine import fingerprint
+            store.connection.execute('insert into paper_experimental_sessions '
+                '(session_id,hypothesis_id,hypothesis_json,frozen_fingerprint,review_interval_ms,max_duration_ms,'
+                'next_review_ms,review_index,status,created_ms,loss_limit_usdc) '
+                'values(?,?,?,?,?,?,?,0,\'active\',?,?)',
+                (session_id,experimental_hypothesis['hypothesis_id'],canonical(experimental_hypothesis),
+                 fingerprint({'spec':spec,'criteria':row['criteria_json']}),
+                 experimental_hypothesis['review_interval_ms'],experimental_hypothesis['max_duration_ms'],
+                 started+experimental_hypothesis['review_interval_ms'],started,
+                 str(spec['max_exposure']['max_drawdown_usdc'])))
         store.connection.commit()
     except BaseException:
         store.connection.rollback()
         raise
-    if not row["synthetic"] and reference_binding is None:
+    if not row["synthetic"] and reference_binding is None and experimental_hypothesis is None:
         decision(store,row["network"],row["address"],row["coin"],"paper_active","N1 final passed by deterministic engine",{"interruptions":"suspend"},"paper_tick",{"session_id":session_id})
+    elif experimental_hypothesis is not None:
+        decision(store,row["network"],row["address"],row["coin"],"experimental_paper",
+                 "Frozen prospective paper experiment; no N1 evaluation or economic promotion",
+                 {"next_review_ms":started+experimental_hypothesis['review_interval_ms']},
+                 "paper_experimental_review",{"session_id":session_id,
+                 "hypothesis_id":experimental_hypothesis['hypothesis_id']})
     return {"session_id":session_id,"synthetic":bool(row["synthetic"]),"started_ms":started,
-            "capital_policy":capital_policy,"restart_reason":restart_reason}
+            "capital_policy":capital_policy,"restart_reason":restart_reason,
+            "experiment_status":"experimental_paper" if experimental_hypothesis is not None else None,
+            "economic_validation":False if experimental_hypothesis is not None else None}
 
 
 def retire_paper(store: Store, session_id: str, *, reason: str) -> dict[str,Any]:
@@ -248,8 +278,19 @@ def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms):
     healthy=state['healthy_at_ms']
     if clock_ms-session['started_ms']>plan['budget']['max_duration_ms']:
         state['diagnostics'].append('paper_duration_budget_exhausted')
-    if healthy is None or clock_ms-healthy>spec['execution']['heartbeat_timeout_ms']:
+    experimental = store.connection.execute(
+        "SELECT 1 FROM paper_experimental_sessions WHERE session_id=?",(session['session_id'],)
+    ).fetchone() if store.connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='paper_experimental_sessions'"
+    ).fetchone() else None
+    unhealthy = healthy is None or clock_ms-healthy>spec['execution']['heartbeat_timeout_ms']
+    if unhealthy and experimental and clock_ms-session['started_ms']<=180_000:
+        state['wait_conditions']=['awaiting_initial_live_websocket_heartbeat']
+    elif unhealthy:
+        state['wait_conditions']=[]
         state['diagnostics'].append('missing_live_heartbeat')
+    else:
+        state['wait_conditions']=[]
     observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
     if 'paper_monitoring' in plan:
         from .paper_monitor import diagnose
@@ -263,7 +304,7 @@ def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms):
         (canonical(state),status,cursor,utc_now(),session['session_id']))
     snapshot_ms=max(clock_ms,state['last_ms'])
     paper_evidence.record(store,session['session_id'],snapshot_ms,cursor,state,observed_metrics)
-    if status=='suspended':
+    if status=='suspended' and not experimental:
         from .paper_adaptation import record
         record(store,session['session_id'],clock_ms=snapshot_ms)
     return status,observed_metrics
@@ -300,7 +341,10 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
         raise
     if status == "suspended":
         decision(store,row["network"],row["address"],row["coin"],"suspended","N2 deterministic monitoring stopped the session",{"requires_operator_review":True,"new_session_required":True},"inspect_paper_diagnostics",state["diagnostics"])
-    return {"session_id":session_id,"status":status,"processed_events":len(events),"metrics":observed_metrics}
+    result={"session_id":session_id,"status":status,"processed_events":len(events),"metrics":observed_metrics}
+    if status=='active' and state.get('wait_conditions'):
+        result['waiting_for']=state['wait_conditions']
+    return result
 
 
 def synthetic_recipe_tick(store: Store, session_id: str, events: list[dict[str,Any]], *, clock_ms: int | None = None) -> dict[str,Any]:

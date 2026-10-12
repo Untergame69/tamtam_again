@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "a880-hype-live-delta-follow-v1",
+  "observations": [
+    "The archived sample contains 178,438 deduplicated fills, 5 UTC active days and 3.504 days of contiguous fills before page-budget exhaustion.",
+    "32,921 fills (18.45%) are HYPE; their summed size-times-price notional is about 46.4 million USDC, a turnover count rather than account capital or exposure.",
+    "HYPE directions include 7,962 Open Short, 7,507 Close Short, 6,098 Open Long, 10,711 Close Long, and 643 position flips. A lower-bound reconstruction finds 309 flat-start cycles with median 247 seconds and p90 1,335 seconds; truncated history makes this a descriptive subset.",
+    "The declared account PnL curve is positive over the sampled 30/90/180 day points, but net return, capital base, full flows, exposure and full event coverage are unknown."
+  ],
+  "interpretation": "Observed HYPE activity is high-turnover and includes short position episodes and frequent directional reversals. This cannot identify the account program or establish that its fills predict returns.",
+  "claim": "After a fresh a880 HYPE live fill is received, a 0.001-scaled cumulative position in that fill direction may persist for up to two minutes and yield positive simulated net PnL after costs.",
+  "signal": "Only non-snapshot userFills HYPE events from the subscribed live stream; use signed fill size. REST history and the source entry price are never decision inputs.",
+  "entry": "Accumulate signed live fill deltas at scale 0.001; target that virtual position, capped at 100 USDC gross exposure. Orders below the 10 USDC venue minimum are explicitly missed. New nonzero exposure is not entered if the configured latency plus 120-second horizon would cross the next hourly funding boundary.",
+  "exit": "Return to flat after 120 seconds from opening or adjust to the new cumulative target after a later leader fill. Do not infer target inventory from snapshots.",
+  "execution": "Paper market IOC on same-session BBO at received ask/bid plus 5 bps slippage; 4.5 bps taker fee; 5 second declared processing delay; 10% visible-size bound; quote age <=1 second; 10 second order TTL; HYPE size precision 0.01. A missing quote, health receipt or eligible lot produces a recorded non-execution. A prospective position is not opened if its horizon overlaps the next hourly funding boundary; such signals are recorded as non-executions.",
+  "risk": {
+    "starting_capital_usdc": "1000",
+    "max_exposure_usdc": "100",
+    "max_loss_usdc": "10",
+    "max_leverage": "1",
+    "no_live_orders": true,
+    "economic_validation": false
+  },
+  "decision_rules": {
+    "healthy_feed_and_limits_clear": "continue",
+    "missing_live_signal_or_continuity": "collect_data",
+    "loss_or_drawdown_limit": "abandon",
+    "seven_day_duration_end": "propose_new_version_after_review"
+  },
+  "evidence_refs": [
+    "docs/continuous-research/economic-qualification-cards-20261012-g2.md#a880",
+    "docs/continuous-research/archive-reconciliation-a880-20261008.md",
+    "data:tamtam.sqlite3/raw_observations:userFillsByTime/a880/HYPE",
+    "raw_observations:28248343",
+    "raw_observations:28248585",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size"
+  ],
+  "review_interval_ms": 21600000,
+  "max_duration_ms": 604800000
+}

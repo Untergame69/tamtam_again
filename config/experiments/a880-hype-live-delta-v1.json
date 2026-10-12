@@ -1,0 +1,68 @@
+{
+  "schema_version": 2,
+  "type": "follower",
+  "market": "HYPE",
+  "data_sources": [
+    "bbo",
+    "userFills",
+    "streamHealth",
+    "userFundings"
+  ],
+  "signal": {
+    "kind": "leader_delta"
+  },
+  "entry": {
+    "kind": "target_position"
+  },
+  "exit": {
+    "kind": "horizon_or_target"
+  },
+  "sizing": {
+    "scale": "0.001"
+  },
+  "max_exposure": {
+    "notional_usdc": "100",
+    "max_drawdown_usdc": "10",
+    "max_leverage": "1"
+  },
+  "fees": {
+    "maker_bps": "4.5",
+    "taker_bps": "4.5"
+  },
+  "slippage": {
+    "bps": "5"
+  },
+  "latency_ms": 5000,
+  "horizon_ms": 120000,
+  "starting_capital_usdc": "1000",
+  "execution": {
+    "kind": "market_ioc",
+    "heartbeat_timeout_ms": 65000,
+    "unknown_quote_max_age_ms": 1000,
+    "order_ttl_ms": 10000,
+    "displayed_size_fraction": "0.1",
+    "market_rules": {
+      "version": 1,
+      "instrument": "HYPE",
+      "currency": "USDC",
+      "available_ms": 1791802291704,
+      "evidence_refs": [
+        "raw_observations:28248343",
+        "raw_observations:28248585",
+        "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size",
+        "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/error-responses"
+      ],
+      "sz_decimals": 2,
+      "minimum_order_usdc": "10",
+      "max_leverage": "10"
+    },
+    "funding_interval_ms": 3600000
+  },
+  "invalidation_conditions": [
+    "nonpositive net result after simulated fees and slippage",
+    "unknown or interrupted stream or stale quote",
+    "risk/drawdown limit reached",
+    "insufficient live signals after the bounded seven-day collection window",
+    "unobserved funding while an experimental position is held"
+  ]
+}

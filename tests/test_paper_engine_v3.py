@@ -88,6 +88,19 @@ class PaperEngineV3Tests(unittest.TestCase):
         self.assertEqual(state['execution_opportunities'][-1]['outcome'],'missed')
         self.assertEqual(state['execution_opportunities'][-1]['reason'],'order_ttl_expired')
 
+    def test_v4_zero_rounded_entry_is_counted_as_missed_with_reason(self):
+        s=spec_v4();state=initial_state(s)
+        state.update(session='s1',connected=True,healthy_at_ms=2_000,
+            quote={'received_ms':2_000,'source_received_ms':2_000,'available_ms':2_000,
+                   'event_ms':2_000,'session':'s1','source':'bbo','bid':'100','ask':'100.1',
+                   'bid_size':'100','ask_size':'100'},
+            pending=[{'target':'0.004','due_ms':2_010,'expires_ms':12_010,
+                      'intent':'signal_target','priority':10,'reduce_only':False,'decision_ms':2_000}])
+        reduce_event(state,s,event('rounded-zero','timer',2_011))
+        self.assertEqual(state['missed_orders'],1)
+        self.assertEqual(state['nonexecution_reasons']['zero_adjustment_after_rounding'],1)
+        self.assertEqual(state['execution_opportunities'][-1]['outcome'],'missed')
+
     def test_archive_adapter_reads_l2_top_prices_sizes_and_receipt(self):
         with tempfile.TemporaryDirectory() as tmp:
             store=Store(Path(tmp)/'l2.sqlite3');receipt=now_ms()

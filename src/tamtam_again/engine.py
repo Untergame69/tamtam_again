@@ -271,6 +271,7 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         delta=target-pos
         if rules:delta=round_size(delta,rules['sz_decimals'])
         if not delta:
+            _miss_order(state,'zero_adjustment_after_rounding')
             _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='zero_adjustment_after_rounding')
             continue
         buy=delta>0

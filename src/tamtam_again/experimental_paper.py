@@ -63,13 +63,15 @@ REQUIRED_HYPOTHESIS = {
     "claim", "signal", "entry", "exit", "execution", "risk",
     "decision_rules", "evidence_refs", "review_interval_ms", "max_duration_ms",
 }
+COLLECTION_GATE_RECENCY_MS = 600_000
 
 
 def initialize(store: Store) -> None:
     store.connection.executescript(SCHEMA)
 
 
-def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any]) -> tuple[Any, dict, dict]:
+def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
+                   runtime_state: dict[str, Any] | None = None) -> tuple[Any, dict, dict]:
     row, spec, plan = get_variant(store, variant_id)
     if row["synthetic"] or plan.get("experiment_mode") != "experimental_paper_only":
         raise ValueError("Experimental paper requires an explicitly marked real paper-only plan")
@@ -113,12 +115,39 @@ def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any]) ->
         raise ValueError("Hypothesis loss cap must match the frozen executable strategy")
     if hypothesis.get("prestart_collection_gate_required"):
         spec_id=fingerprint(spec)
-        passed=store.connection.execute(
-            "SELECT 1 FROM paper_experimental_collection_gates WHERE spec_fingerprint=? AND passed=1 LIMIT 1",
-            (spec_id,),
+        gate=store.connection.execute(
+            "SELECT * FROM paper_experimental_collection_gates WHERE spec_fingerprint=? "
+            "ORDER BY created_at DESC,gate_id DESC LIMIT 1", (spec_id,),
         ).fetchone()
-        if not passed:
+        if not gate or not gate["passed"]:
             raise ValueError("Freshness/cadence collection gate has not passed for this exact strategy spec")
+        measured=json.loads(gate["measurement_json"])
+        age=now_ms()-int(measured.get("window_end_ms",0))
+        if age<0 or age>COLLECTION_GATE_RECENCY_MS:
+            raise ValueError("Passed collection gate is stale; a new continuous measurement is required")
+        expected_runtime={"paper_timer_interval_ms":500,"paper_timer_accuracy_ms":50,
+            "paper_start_limit_interval_ms":10_000,"paper_start_limit_burst":30,
+            "bbo_flush_interval_ms":250,"quote_age_limit_ms":1000}
+        if measured.get("runtime_config") != expected_runtime:
+            raise ValueError("Passed collection gate does not match the frozen v3 runtime configuration")
+        if not runtime_state or runtime_state.get("runtime_config") != expected_runtime:
+            raise ValueError("Live timer, collector, or service configuration differs from the measured v3 configuration")
+        if runtime_state.get("collector_active") is not True or runtime_state.get("paper_timer_active") is not True:
+            raise ValueError("Live collector and paper timer must both be active at v3 start")
+        if runtime_state.get("collector_pid") != measured.get("collector_pid"):
+            raise ValueError("Collector process changed after the measured window; repeat the gate on its current connection")
+        if runtime_state.get("collector_active_enter") != measured.get("collector_active_enter"):
+            raise ValueError("Collector process age changed after the measured window; repeat the gate")
+        if runtime_state.get("code_revision") != measured.get("code_revision"):
+            raise ValueError("Code revision changed after the measured window; repeat the gate")
+        current_connection=runtime_state.get("current_connection_id")
+        if not current_connection or current_connection != measured.get("connection_id"):
+            raise ValueError("Current HYPE quote connection differs from the measured collection connection")
+        if runtime_state.get("current_quote_age_ms", 10**12)>1000:
+            raise ValueError("Current HYPE quote is older than the frozen 1-second bound")
+        if (runtime_state.get("current_connection_healthy") is not True or
+            runtime_state.get("current_connection_health_age_ms",10**12)>spec["execution"].get("heartbeat_timeout_ms",65_000)):
+            raise ValueError("Current HYPE WebSocket session has no active health confirmation")
     return row, spec, plan
 
 
@@ -130,7 +159,8 @@ def record_collection_gate(store: Store, spec_fingerprint: str,
         raise ValueError("SHA-256 strategy spec fingerprint required")
     required={"window_start_ms","window_end_ms","quote_age_limit_ms","checkpoints","fresh_quotes",
         "connection_ids","reconnects","start_limit_hits","tick_interval_p95_ms","tick_interval_max_ms",
-        "receipt_to_archive_p95_ms"}
+        "receipt_to_archive_p95_ms","runtime_config","collector_pid","collector_active_enter",
+        "code_revision","control_checkpoints"}
     if not isinstance(measurement,dict) or not required<=measurement.keys():
         raise ValueError("Complete prestart collection measurement required")
     start,end=measurement["window_start_ms"],measurement["window_end_ms"]
@@ -140,6 +170,25 @@ def record_collection_gate(store: Store, spec_fingerprint: str,
     ids=measurement["connection_ids"]
     if not isinstance(ids,list) or not all(isinstance(x,str) and x for x in ids):
         raise ValueError("WebSocket connection ids required")
+    proofs=measurement["control_checkpoints"]
+    if (not isinstance(proofs,list) or len(proofs)!=count or
+        any(not isinstance(p,dict) or type(p.get("control_at_ms")) is not int or
+            type(p.get("tick_start_ms")) is not int or type(p.get("observation_id")) is not int
+            for p in proofs)):
+        raise ValueError("A timestamped observation reference is required for every measured control checkpoint")
+    runtime=measurement["runtime_config"]
+    expected_runtime={"paper_timer_interval_ms":500,"paper_timer_accuracy_ms":50,
+        "paper_start_limit_interval_ms":10_000,"paper_start_limit_burst":30,
+        "bbo_flush_interval_ms":250,"quote_age_limit_ms":1000}
+    if not isinstance(runtime,dict):
+        raise ValueError("Measured live runtime configuration required")
+    if (type(measurement["collector_pid"]) is not int or measurement["collector_pid"]<=0 or
+        not isinstance(measurement["collector_active_enter"],str) or
+        not isinstance(measurement["code_revision"],str) or not measurement["code_revision"]):
+        raise ValueError("Collector process identity and code revision required")
+    connection_id=measurement.get("connection_id")
+    if not isinstance(connection_id,str) or not connection_id:
+        raise ValueError("Single measured WebSocket connection id required")
     for key in ("tick_interval_p95_ms","tick_interval_max_ms","receipt_to_archive_p95_ms"):
         if type(measurement[key]) not in (int,float) or not number(measurement[key]).is_finite() or number(measurement[key])<0:
             raise ValueError(f"Nonnegative finite {key} required")
@@ -147,7 +196,8 @@ def record_collection_gate(store: Store, spec_fingerprint: str,
         if type(measurement[key]) is not int or measurement[key]<0:
             raise ValueError(f"Nonnegative integer {key} required")
     passed=(end-start>=600_000 and count>=600 and measurement["quote_age_limit_ms"]==1000
-        and fresh/count>=.95 and len(set(ids))==1 and measurement["reconnects"]==0
+        and fresh/count>=.95 and len(set(ids))==1 and ids[0]==connection_id and measurement["reconnects"]==0
+        and runtime==expected_runtime and measurement.get("runtime_config_stable") is True
         and measurement["start_limit_hits"]==0 and measurement["tick_interval_p95_ms"]<=600
         and measurement["tick_interval_max_ms"]<=1000
         and measurement["receipt_to_archive_p95_ms"]<=300)
@@ -172,12 +222,14 @@ def record_collection_gate(store: Store, spec_fingerprint: str,
 
 def start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
           restart_reason: str | None = None,
-          independent_after_incomplete: bool = False) -> dict[str, Any]:
-    validate_start(store, variant_id, hypothesis)
+          independent_after_incomplete: bool = False,
+          runtime_state: dict[str, Any] | None = None) -> dict[str, Any]:
+    validate_start(store, variant_id, hypothesis, runtime_state=runtime_state)
     from .paper import start_paper
     return start_paper(store, variant_id, experimental_hypothesis=hypothesis,
                        restart_reason=restart_reason,
-                       independent_after_incomplete=independent_after_incomplete)
+                       independent_after_incomplete=independent_after_incomplete,
+                       runtime_state=runtime_state)
 
 
 def execution_diagnosis(state: dict[str, Any], spec: dict[str, Any],

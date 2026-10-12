@@ -150,7 +150,8 @@ def classify_regimes(events: list[dict[str,Any]], criteria: dict[str,Any]) -> li
 def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False,
                 restart_reason: str | None = None, reference_binding: dict | None = None,
                 experimental_hypothesis: dict | None = None,
-                independent_after_incomplete: bool = False) -> dict[str,Any]:
+                independent_after_incomplete: bool = False,
+                runtime_state: dict[str,Any] | None = None) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
     if experimental_hypothesis is None:
         passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
@@ -160,7 +161,7 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
             raise ValueError("N1 is not promotable")
     else:
         from .experimental_paper import initialize as initialize_experimental, validate_start
-        validate_start(store,variant_id,experimental_hypothesis)
+        validate_start(store,variant_id,experimental_hypothesis,runtime_state=runtime_state)
         initialize_experimental(store)
     if independent_after_incomplete and (experimental_hypothesis is None or reference_binding is not None
             or not restart_reason or not restart_reason.strip()):

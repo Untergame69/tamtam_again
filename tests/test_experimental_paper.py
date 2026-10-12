@@ -77,6 +77,34 @@ def hypothesis():
         "review_interval_ms": 21_600_000, "max_duration_ms": 604_800_000}
 
 
+def gate_measurement(*, fresh=600):
+    end=now_ms();start=end-600_000
+    connection="fixture-websocket-session"
+    return {"window_start_ms":start,"window_end_ms":end,"quote_age_limit_ms":1000,
+        "checkpoints":600,"fresh_quotes":fresh,"connection_ids":[connection],
+        "connection_id":connection,"reconnects":0,"start_limit_hits":0,
+        "tick_interval_p95_ms":567,"tick_interval_max_ms":568,
+        "receipt_to_archive_p95_ms":238,
+        "runtime_config":{"paper_timer_interval_ms":500,"paper_timer_accuracy_ms":50,
+            "paper_start_limit_interval_ms":10_000,"paper_start_limit_burst":30,
+            "bbo_flush_interval_ms":250,"quote_age_limit_ms":1000},
+        "runtime_config_stable":True,
+        "collector_pid":1234,"collector_active_enter":"Mon 2026-10-12 15:15:18 CEST",
+        "code_revision":"fixture-revision",
+        "control_checkpoints":[{"control_at_ms":start+i*1000,"tick_start_ms":start+i*1000,
+            "observation_id":i+1} for i in range(600)]}
+
+
+def gate_runtime(measurement):
+    return {"runtime_config":measurement["runtime_config"],"collector_active":True,
+        "paper_timer_active":True,"collector_pid":measurement["collector_pid"],
+        "collector_active_enter":measurement["collector_active_enter"],
+        "code_revision":measurement["code_revision"],
+        "current_connection_id":measurement["connection_id"],"current_quote_age_ms":100,
+        "current_connection_health_age_ms":1_000,
+        "current_connection_healthy":True}
+
+
 class ExperimentalPaperTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -193,25 +221,19 @@ class ExperimentalPaperTests(unittest.TestCase):
             start_experimental(self.store,next_variant,next_hypothesis,
                 restart_reason="Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.",
                 independent_after_incomplete=True)
-        failed_gate=record_collection_gate(self.store,fingerprint(next_spec),{
-            "window_start_ms":1_000_000,"window_end_ms":1_600_000,"quote_age_limit_ms":1000,
-            "checkpoints":600,"fresh_quotes":500,"connection_ids":["fixture-websocket-session"],
-            "reconnects":0,"start_limit_hits":0,"tick_interval_p95_ms":567,
-            "tick_interval_max_ms":568,"receipt_to_archive_p95_ms":238})
+        failed_measurement=gate_measurement(fresh=500)
+        failed_gate=record_collection_gate(self.store,fingerprint(next_spec),failed_measurement)
         self.assertFalse(failed_gate["passed"])
         with self.assertRaisesRegex(ValueError,"collection gate has not passed"):
             start_experimental(self.store,next_variant,next_hypothesis,
                 restart_reason="Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.",
                 independent_after_incomplete=True)
-        gate=record_collection_gate(self.store,fingerprint(next_spec),{
-            "window_start_ms":1_000_000,"window_end_ms":1_600_000,"quote_age_limit_ms":1000,
-            "checkpoints":600,"fresh_quotes":600,"connection_ids":["fixture-websocket-session"],
-            "reconnects":0,"start_limit_hits":0,"tick_interval_p95_ms":567,
-            "tick_interval_max_ms":568,"receipt_to_archive_p95_ms":238})
+        measurement=gate_measurement()
+        gate=record_collection_gate(self.store,fingerprint(next_spec),measurement)
         self.assertTrue(gate["passed"])
         second=start_experimental(self.store,next_variant,next_hypothesis,
             restart_reason="Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.",
-            independent_after_incomplete=True)
+            independent_after_incomplete=True,runtime_state=gate_runtime(measurement))
         new_row=self.store.connection.execute("select state_json from paper_sessions where session_id=?",
                                               (second["session_id"],)).fetchone()
         old_row=self.store.connection.execute("select state_json,status from paper_sessions where session_id=?",
@@ -227,6 +249,18 @@ class ExperimentalPaperTests(unittest.TestCase):
         self.assertIn("no residual",policy["restart_reason"])
         self.assertEqual(self.store.connection.execute("select count(*) from paper_handovers where new_session_id=?",
                                                        (second["session_id"],)).fetchone()[0],0)
+
+    def test_collection_gate_expires_and_cannot_authorize_stale_restart(self):
+        next_spec=spec();next_spec["execution"]["paper_tick_target_ms"]=600
+        plan=create_plan(self.store,real_plan())["plan_id"]
+        variant=register_variant(self.store,plan,next_spec)["variant_id"]
+        h=hypothesis();h["prestart_collection_gate_required"]=True
+        measurement=gate_measurement()
+        record_collection_gate(self.store,fingerprint(next_spec),measurement)
+        from tamtam_again import experimental_paper
+        with patch("tamtam_again.experimental_paper.now_ms",return_value=measurement["window_end_ms"]+600_001):
+            with self.assertRaisesRegex(ValueError,"gate is stale"):
+                start_experimental(self.store,variant,h,runtime_state=gate_runtime(measurement))
 
     def test_initial_subscription_grace_is_an_explicit_wait_not_a_false_suspension(self):
         started = start_experimental(self.store, self.variant, hypothesis())

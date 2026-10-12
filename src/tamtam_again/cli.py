@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import subprocess
 import sys
 import threading
 import time
@@ -26,6 +28,71 @@ from .websocket import run_websocket_collector, tracked_market_symbols
 DEFAULT_DB = Path("data/tamtam.sqlite3")
 NETWORK_NAME = "hyperliquid-mainnet"
 TRACKING_ACTIVITY_DAYS = 7
+
+
+def _paper_collection_runtime_state(store: Store) -> dict[str, Any]:
+    """Read the live systemd settings and current HYPE quote connection at start."""
+    def properties(unit: str, *names: str) -> dict[str, str]:
+        result=subprocess.run(["systemctl","--user","show",unit,*sum((["-p",name] for name in names),[])],
+            check=True,capture_output=True,text=True)
+        result_map={}
+        for line in result.stdout.splitlines():
+            if "=" not in line: continue
+            key,value=line.split("=",1)
+            result_map[key]=(result_map[key]+"\n"+value) if key in result_map else value
+        return result_map
+    timer=properties("tamtam-again-paper.timer","ActiveState","TimersMonotonic","AccuracyUSec")
+    paper=properties("tamtam-again-paper.service","StartLimitIntervalUSec","StartLimitBurst")
+    collector=properties("tamtam-again-collectors.service","ActiveState","MainPID","ActiveEnterTimestamp")
+    revision=subprocess.run(["git","rev-parse","HEAD"],check=True,capture_output=True,text=True).stdout.strip()
+    row=store.connection.execute(
+        "SELECT * FROM raw_observations WHERE source='hyperliquid-websocket-v1' "
+        "AND entity_type='market' AND entity_id='HYPE' AND endpoint='bbo' "
+        "ORDER BY observation_id DESC LIMIT 1").fetchone()
+    connection_id=None; quote_age_ms=10**12
+    if row:
+        payload=decode_observation_payload(row)
+        frames=payload.get("events",[])
+        if frames:
+            frame=max(frames,key=lambda item:item["received_at"])
+            message=frame.get("message",{})
+            connection_id=message.get("_stream",{}).get("connection_id")
+            received=datetime.fromisoformat(frame["received_at"].replace("Z","+00:00"))
+            quote_age_ms=max(0,int((datetime.now(timezone.utc)-received).total_seconds()*1000))
+    health=None
+    if connection_id:
+        health_row=store.connection.execute(
+            "SELECT response_json,response_encoding FROM raw_observations WHERE source='hyperliquid-websocket-v1' "
+            "AND entity_type='stream' AND entity_id=? AND endpoint='streamHealth' "
+            "ORDER BY observation_id DESC LIMIT 1",(connection_id,)).fetchone()
+        if health_row:
+            health=decode_observation_payload(health_row)
+    active_enter=collector.get("ActiveEnterTimestamp","")
+    def milliseconds(value: str) -> int:
+        value=value.strip()
+        for suffix,multiplier in (("ms",1),("s",1000),("us",.001)):
+            if value.endswith(suffix): return round(float(value[:-len(suffix)])*multiplier)
+        return round(float(value))
+    timer_match=re.search(r"OnUnitActiveUSec=([0-9.]+(?:ms|s|us))",timer.get("TimersMonotonic",""))
+    timer_interval_ms=milliseconds(timer_match.group(1)) if timer_match else 0
+    health_age_ms=10**12
+    if health and health.get("recorded_at"):
+        stamp=datetime.fromisoformat(health["recorded_at"].replace("Z","+00:00"))
+        health_age_ms=max(0,int((datetime.now(timezone.utc)-stamp).total_seconds()*1000))
+    return {"runtime_config":{
+            "paper_timer_interval_ms":timer_interval_ms,
+            "paper_timer_accuracy_ms":milliseconds(timer.get("AccuracyUSec","0")),
+            "paper_start_limit_interval_ms":milliseconds(paper.get("StartLimitIntervalUSec","0")),
+            "paper_start_limit_burst":int(paper.get("StartLimitBurst","0")),
+            "bbo_flush_interval_ms":250,"quote_age_limit_ms":1000},
+        "collector_active":collector.get("ActiveState")=="active",
+        "paper_timer_active":timer.get("ActiveState")=="active",
+        "collector_pid":int(collector.get("MainPID","0") or 0),
+        "collector_active_enter":active_enter,
+        "code_revision":revision,"current_connection_id":connection_id,
+        "current_quote_age_ms":quote_age_ms,
+        "current_connection_health_age_ms":health_age_ms,
+        "current_connection_healthy":bool(health and health.get("connected") is True)}
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -216,9 +283,13 @@ def main(argv: list[str] | None = None) -> int:
                     result = start_paper(store,args.variant_id,restart_reason=args.restart_reason)
                 elif args.command == "paper-experimental-start":
                     from .experimental_paper import start as start_experimental
-                    result = start_experimental(store,args.variant_id,json.loads(args.hypothesis.read_text()),
+                    hypothesis=json.loads(args.hypothesis.read_text())
+                    runtime_state=(_paper_collection_runtime_state(store)
+                                   if hypothesis.get("prestart_collection_gate_required") else None)
+                    result = start_experimental(store,args.variant_id,hypothesis,
                                                 restart_reason=args.restart_reason,
-                                                independent_after_incomplete=args.independent_after_incomplete)
+                                                independent_after_incomplete=args.independent_after_incomplete,
+                                                runtime_state=runtime_state)
                 elif args.command == "paper-experimental-status":
                     from .experimental_paper import status as experimental_status
                     result = experimental_status(store,args.session_id)

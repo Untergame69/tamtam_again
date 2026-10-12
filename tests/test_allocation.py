@@ -58,3 +58,11 @@ class AllocationTests(unittest.TestCase):
   self.assertEqual(result['groups']['deepen'],[source[3]['address'],source[4]['address']])
   self.assertEqual(result['groups']['explore'],[])
   self.assertIn('historical positive curve',next(x['reason'] for x in result['decisions'] if x['address']==source[3]['address']))
+ def test_historical_curve_without_scope_is_routed_to_deepen(self):
+  source=rows()
+  for r in source:r['observed_scope']=False
+  source[3]['historical_priority']=True
+  policy={**A,'slots':{'explore':0,'deepen':1,'control_uniform':0,'control_leaderboard':0}}
+  result=choose(source,policy,epoch=1)
+  self.assertEqual(result['groups']['deepen'],[source[3]['address']])
+  self.assertEqual(sum(len(v) for v in result['groups'].values()),1)

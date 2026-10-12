@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from datetime import datetime
 from uuid import uuid4
 
 from .discovery import protected_addresses
@@ -34,9 +35,9 @@ CREATE INDEX IF NOT EXISTS idx_historical_curve_queue_due
 
 
 def validate_policy(policy: dict) -> None:
-    if policy.get("version") != "historical-curve-queue-v1" or not policy.get("sampling_seed"):
+    if policy.get("version") != "historical-curve-queue-v2" or not policy.get("sampling_seed"):
         raise ValueError("Versioned deterministic historical-curve queue policy required")
-    for key in ("max_requests_per_tick", "tick_seconds", "retry_seconds", "lease_seconds", "max_attempts"):
+    for key in ("max_requests_per_tick", "tick_seconds", "retry_seconds", "lease_seconds", "max_attempts", "refresh_after_seconds"):
         if type(policy.get(key)) is not int or policy[key] < 1:
             raise ValueError("Positive bounded curve-queue setting required: " + key)
     if policy["max_requests_per_tick"] > 4:
@@ -87,11 +88,11 @@ def tick(store, client, network: str, policy: dict, *, now_ms: int | None = None
     now_ms = int(time.time() * 1000) if now_ms is None else now_ms
     prepared = prepare(store, network, policy, now_ms=now_ms)
     blocked = protected_addresses(store)
-    scanned = requests = failures = deferred = already_covered = 0
+    scanned = attempts = saved = failures = deferred_before = deferred_after = already_covered = 0
     max_scan = max(policy["max_requests_per_tick"] * 20, policy["max_requests_per_tick"])
-    while requests < policy["max_requests_per_tick"] and scanned < max_scan:
+    while attempts < policy["max_requests_per_tick"] and scanned < max_scan:
         row = store.connection.execute(
-            "select address,attempts from historical_curve_queue where network=? and status in ('pending','retry','deferred_protected') "
+            "select address,attempts from historical_curve_queue where network=? and status in ('pending','retry','deferred_protected','fetched','already_covered') "
             "and next_due_ms<=? and attempts<? order by queue_rank limit 1",
             (network, now_ms, policy["max_attempts"])).fetchone()
         if not row:
@@ -103,7 +104,7 @@ def tick(store, client, network: str, policy: dict, *, now_ms: int | None = None
         try:
             claimed = store.connection.execute(
                 "update historical_curve_queue set status='running',lease_token=?,lease_until_ms=?,last_attempt_ms=?,updated_ms=? "
-                "where network=? and address=? and status in ('pending','retry','deferred_protected') and next_due_ms<=?",
+                "where network=? and address=? and status in ('pending','retry','deferred_protected','fetched','already_covered') and next_due_ms<=?",
                 (lease, now_ms + policy["lease_seconds"] * 1000, now_ms, now_ms, network, address, now_ms)).rowcount
             store.connection.commit()
         except BaseException:
@@ -112,32 +113,39 @@ def tick(store, client, network: str, policy: dict, *, now_ms: int | None = None
         if not claimed:
             continue
         if address in blocked or not authorized_account_history(store, network, address, now_ms):
-            deferred += 1
+            deferred_before += 1
             _finish(store, network, address, lease, status="deferred_protected", now_ms=now_ms,
                     retry_ms=now_ms + 86_400_000)
             continue
         # Existing observations are detected by metadata only. The screen will
         # decode payloads only after the same protection checks at its cutoff.
         existing = store.connection.execute(
-            "select observation_id from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
+            "select observation_id,observed_at from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
             "and entity_type='account' and entity_id=? and endpoint='portfolio' and observed_at<=? order by observed_at desc,observation_id desc limit 1",
             (network, address, utc_now())).fetchone()
         if existing:
-            already_covered += 1
-            _finish(store, network, address, lease, status="already_covered", now_ms=now_ms,
-                    observation_id=existing[0])
-            continue
+            freshness_ms = policy["refresh_after_seconds"] * 1000
+            age_ms = now_ms - int(datetime.fromisoformat(existing["observed_at"]).timestamp() * 1000)
+            if age_ms < freshness_ms:
+                already_covered += 1
+                _finish(store, network, address, lease, status="already_covered", now_ms=now_ms,
+                        observation_id=existing["observation_id"], retry_ms=now_ms + freshness_ms - age_ms)
+                continue
         requested_at = utc_now()
         client.task = "population-historical-curve-queue"
         try:
             store.connection.execute("update historical_curve_queue set attempts=attempts+1,updated_ms=? where network=? and address=? and lease_token=?",
                                      (now_ms, network, address, lease))
             store.connection.commit()
+            attempts += 1
             response = client.post_info({"type": "portfolio", "user": address})
             if not isinstance(response, list):
                 raise ValueError("portfolio response shape invalid")
             if address in protected_addresses(store) or not authorized_account_history(store, network, address, int(time.time() * 1000)):
-                deferred += 1
+                deferred_after += 1
+                store.connection.execute("update historical_curve_queue set attempts=0 where network=? and address=? and lease_token=?",
+                                         (network, address, lease))
+                store.connection.commit()
                 _finish(store, network, address, lease, status="deferred_protected", now_ms=now_ms,
                         retry_ms=now_ms + 86_400_000)
                 continue
@@ -152,15 +160,21 @@ def tick(store, client, network: str, policy: dict, *, now_ms: int | None = None
                 "select observation_id from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
                 "and entity_type='account' and entity_id=? and endpoint='portfolio' and requested_at=? order by observation_id desc limit 1",
                 (network, address, requested_at)).fetchone()
-            requests += 1
+            saved += 1
+            store.connection.execute("update historical_curve_queue set attempts=0 where network=? and address=? and lease_token=?",
+                                     (network, address, lease))
+            store.connection.commit()
             _finish(store, network, address, lease, status="fetched", now_ms=now_ms,
-                    observation_id=observation[0] if observation else None)
+                    observation_id=observation[0] if observation else None,
+                    retry_ms=now_ms + policy["refresh_after_seconds"] * 1000)
         except Exception as exc:
             failures += 1
             _finish(store, network, address, lease, status="retry", now_ms=now_ms,
                     error_type=type(exc).__name__, retry_ms=now_ms + policy["retry_seconds"] * 1000)
-    return {"prepared": prepared, "scanned": scanned, "portfolio_requests": requests,
-            "portfolio_failures": failures, "deferred_protected": deferred,
+    return {"prepared": prepared, "scanned": scanned, "logical_attempts": attempts,
+            "portfolio_requests": attempts, "portfolio_saved": saved,
+            "portfolio_failures": failures, "deferred_before_call": deferred_before,
+            "deferred_after_call": deferred_after, "deferred_protected": deferred_before + deferred_after,
             "already_covered": already_covered, "ai_calls": 0,
             "max_requests_per_tick": policy["max_requests_per_tick"],
             "average_reserved_weight_per_minute_at_cadence": round(

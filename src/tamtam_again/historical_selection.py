@@ -216,11 +216,15 @@ def _period_consistency(points: list[tuple[int, Decimal]], start_ms: int, end_ms
 
 def _authorized_addresses(connection: sqlite3.Connection, network: str, as_of_ms: int) -> tuple[list[str], list[dict[str, str]]]:
     store = type("StoreView", (), {"connection": connection})()
-    query = "select distinct lower(address) from account_scope_reports where network=? and available_ms<=?"
+    cutoff = _iso(as_of_ms)
+    query = "select lower(address) from account_scope_reports where network=? and available_ms<=?"
     params: list[Any] = [network, as_of_ms]
-    if connection.execute("select 1 from sqlite_master where type='table' and name='historical_curve_queue'").fetchone():
-        query += " union select lower(address) from historical_curve_queue where network=? and status in ('fetched','already_covered') and added_at<=?"
-        params.extend((network, _iso(as_of_ms)))
+    if connection.execute("select 1 from sqlite_master where type='table' and name='candidates'").fetchone():
+        query += (" union select distinct lower(c.address) from candidates c join raw_observations o "
+                  "on o.network=c.network and lower(o.entity_id)=lower(c.address) "
+                  "where c.network=? and c.added_at<=? and o.source=? and o.entity_type='account' "
+                  "and o.endpoint='portfolio' and o.observed_at<=?")
+        params.extend((network, cutoff, SOURCE, cutoff))
     rows = connection.execute(query + " order by 1", params).fetchall()
     blocked = {x.lower() for x in protected_addresses(store)}
     allowed, excluded = [], []
@@ -617,19 +621,15 @@ def build_report(connection: sqlite3.Connection, *, network: str, as_of_ms: int)
     for item in ordered: counts[item["status"]] += 1
     recovery_watch = [d for d in ordered if d.get("recovery_watch",{}).get("status")=="watch_recovery_signal"]
     decoded=sum(a.get("evidence",{}).get("payloads_decoded",0) for a in ordered)
-    registry_count = connection.execute("select count(*) from candidates where network=?", (network,)).fetchone()[0] \
+    registry_count = connection.execute("select count(*) from candidates where network=? and added_at<=?", (network, _iso(as_of_ms))).fetchone()[0] \
         if connection.execute("select 1 from sqlite_master where type='table' and name='candidates'").fetchone() else 0
-    queue_progress = {}
-    if connection.execute("select 1 from sqlite_master where type='table' and name='historical_curve_queue'").fetchone():
-        queue_progress = {r[0]: r[1] for r in connection.execute(
-            "select status,count(*) from historical_curve_queue where network=? group by status", (network,))}
     return {"schema_version": 2, "policy_version": POLICY_VERSION, "network": network,
             "as_of_ms": as_of_ms, "as_of_utc": _iso(as_of_ms), "decision_day_utc": _iso(as_of_ms)[:10],
             "cutoff_policy": {"rule": "latest data available at or before the fixed as_of_ms; no future availability",
                               "horizon_rule": "for 30/90/180/365 days use the latest sample at or before cutoff minus horizon; require start boundary lateness <= 3/7/15/30 days respectively and endpoint age <= 3 days; never interpolate",
                               "economic_claim": "allTime pnlHistory change is provider-declared only; not net validated performance"},
             "population": {"inventory": len(allowed) + len(excluded), "authorized_analyzed": len(allowed),
-                           "registry_candidates": registry_count, "historical_curve_queue": queue_progress,
+                           "registry_candidates_available_at_cutoff": registry_count,
                            "excluded_before_payload_read": excluded},
             "status_counts": dict(counts), "accounts": ordered,
             "recovery_watch_count":len(recovery_watch), "recovery_watch_list":recovery_watch,

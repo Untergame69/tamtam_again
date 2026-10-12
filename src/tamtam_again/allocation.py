@@ -44,7 +44,7 @@ def choose(rows:list[dict[str,Any]],policy:dict[str,Any], *,epoch:int) -> dict[s
     # the same REST profile. Public rank is a baseline, never trusted accounting.
     take([r for r in eligible if r.get('leaderboard_rank') is not None],'control_leaderboard',True)
     take(eligible,'control_uniform')
-    take([r for r in eligible if r.get('observed_scope') and r.get('consecutive_deepen_epochs',0)<policy['max_deepen_epochs']],'deepen')
+    take([r for r in eligible if (r.get('observed_scope') or r.get('historical_priority')) and r.get('consecutive_deepen_epochs',0)<policy['max_deepen_epochs']],'deepen')
     take(eligible,'explore')
     decisions=[]
     for r in sorted(rows,key=lambda r:r['address']):

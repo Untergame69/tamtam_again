@@ -1,12 +1,13 @@
 {
-  "version": "historical-curve-queue-v1",
+  "version": "historical-curve-queue-v2",
   "sampling_seed": "historical-curve-queue-first-20261012",
   "max_requests_per_tick": 4,
   "tick_seconds": 900,
   "retry_seconds": 21600,
   "lease_seconds": 300,
   "max_attempts": 6,
+  "refresh_after_seconds": 86400,
   "portfolio_info_weight": 20,
   "local_shared_budget_per_minute": 900,
-  "justification": "Deterministic address-uniform queue independent of detailed REST slots. Four portfolio calls per 15-minute tick reserve at most 80 weights, averaging 5.333 weights/minute. Recent shared telemetry measured 844.83 reserved weights/minute over 60 minutes and 853.70 over 24 hours with zero 429s. The existing local limiter remains authoritative; no request bypasses it. Retries remain bounded and charged to that same limiter. No AI budget or RE call is included."
+  "justification": "Deterministic address-uniform queue independent of detailed REST slots. Four logical portfolio attempts per 15-minute tick reserve at most 80 weights, averaging 5.333 weights/minute; internal HTTP retries remain separately charged by the shared limiter telemetry. New candidates and 24-hour refreshes share this cap and deterministic queue order. Consecutive failures are capped at six; any successful refresh resets the failure count. Recent shared telemetry measured 844.83 reserved weights/minute over 60 minutes and 853.70 over 24 hours with zero 429s. The existing local limiter remains authoritative; no request bypasses it. No AI budget or RE call is included."
 }

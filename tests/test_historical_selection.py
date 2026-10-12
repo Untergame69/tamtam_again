@@ -159,6 +159,24 @@ class HistoricalSelectionTests(unittest.TestCase):
         self.assertEqual(report["population"]["inventory"], 1)
         self.assertEqual([x["address"] for x in report["accounts"]], [self.address])
 
+    def test_queue_status_changes_after_cutoff_do_not_change_frozen_report(self):
+        from tamtam_again.historical_selection import _fingerprint
+        self.db.executescript("create table candidates(network text,address text,added_at text);")
+        queue_address = "0x" + "2" * 40
+        self.db.execute("create table historical_curve_queue(network text,address text,added_at text,status text,updated_ms integer)")
+        self.db.execute("insert into candidates values(?,?,?)", ("hyperliquid-mainnet", queue_address, stamp(self.cut-1)))
+        self.db.execute("insert into historical_curve_queue values(?,?,?,?,?)",
+                        ("hyperliquid-mainnet", queue_address, stamp(self.cut-1), "pending", self.cut-1))
+        self.add_observation("portfolio", [], self.cut-500, {"user": queue_address})
+        self.db.execute("update raw_observations set entity_id=? where entity_id=?", (queue_address, self.address))
+        pending = build_report(self.db, network="hyperliquid-mainnet", as_of_ms=self.cut)
+        self.db.execute("update historical_curve_queue set status='fetched',updated_ms=?", (self.cut+1,))
+        fetched = build_report(self.db, network="hyperliquid-mainnet", as_of_ms=self.cut)
+        self.assertEqual([x['address'] for x in pending['accounts']], [x['address'] for x in fetched['accounts']])
+        self.assertEqual([x['input_fingerprint'] for x in pending['accounts']], [x['input_fingerprint'] for x in fetched['accounts']])
+        self.assertEqual(pending['status_counts'], fetched['status_counts'])
+        self.assertEqual(_fingerprint(pending['population']), _fingerprint(fetched['population']))
+
     def test_ai_gate_uses_observations_inside_cutoff_and_sealed_packet_survives_restart(self):
         from tamtam_again.engine import fingerprint
         self.db.execute("create table population_historical_decisions(decision_id text,network text,address text,status text,as_of_ms integer,decision_json text)")

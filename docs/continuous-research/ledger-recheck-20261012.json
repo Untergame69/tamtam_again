@@ -1,0 +1,38 @@
+{
+  "version": "ledger-archive-recheck-v1",
+  "address": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+  "network": "hyperliquid-mainnet",
+  "authorization": {
+    "protected_at_read": false,
+    "history_released_by_cutoff": true
+  },
+  "event_window": {
+    "membership": "(start_ms,end_ms]",
+    "start_ms": 1791458734427,
+    "end_ms": 1791479504849
+  },
+  "ledger_pages": [
+    {"evidence_ref": "raw_observations:12329687", "events_in_window": 1, "external_usdc_net": "-2111"},
+    {"evidence_ref": "raw_observations:12391150", "events_in_window": 298, "external_usdc_net": "-1179234"},
+    {"evidence_ref": "raw_observations:12392055", "events_in_window": 105, "external_usdc_net": "3882464"},
+    {"evidence_ref": "raw_observations:12393256", "events_in_window": 162, "external_usdc_net": "1746631"}
+  ],
+  "deduplicated_events_in_window": 566,
+  "external_usdc_net": "4447750",
+  "funding_page_refs": [
+    "raw_observations:12329355",
+    "raw_observations:12391149",
+    "raw_observations:12392054",
+    "raw_observations:12393255"
+  ],
+  "native_curve_comparison": {
+    "allTime.pnlHistory": {"start_value": "19412287.119326", "end_value": "18145133.667188", "change": "-1267153.452138"},
+    "allTime.accountValueHistory": {"start_value": "44415017.007359", "end_value": "47602545.830967", "change": "3187528.823608"},
+    "perpAllTime.pnlHistory": {"start_value": "-26.687063", "end_value": "-26.687063", "change": "0"},
+    "perpAllTime.accountValueHistory": {"start_value": "1178399.352937", "end_value": "5634443.352937", "change": "4456044"},
+    "accounting_tranche_capital_change": "4447750",
+    "remaining_difference": "8294",
+    "boundary_limitations": "curve and accounting points are not simultaneous; the full ledger flow total does not reconcile different curve scopes"
+  },
+  "qualification": "Diagnostic only; no economic validation or RE approval"
+}

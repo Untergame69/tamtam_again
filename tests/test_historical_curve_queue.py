@@ -5,9 +5,9 @@ from unittest.mock import patch
 from tamtam_again.historical_curve_queue import prepare, tick
 
 
-POLICY = {"version": "historical-curve-queue-v1", "sampling_seed": "fixture-seed",
+POLICY = {"version": "historical-curve-queue-v2", "sampling_seed": "fixture-seed",
           "max_requests_per_tick": 4, "tick_seconds": 900, "retry_seconds": 21600,
-          "lease_seconds": 300, "max_attempts": 3}
+          "lease_seconds": 300, "max_attempts": 3, "refresh_after_seconds": 86400}
 
 
 class Store:
@@ -40,6 +40,20 @@ class Client:
         self.calls = []
     def post_info(self, payload):
         self.calls.append(payload)
+        return [["allTime", {"pnlHistory": [], "accountValueHistory": []}]]
+
+
+class FailingClient(Client):
+    def post_info(self, payload):
+        self.calls.append(payload)
+        raise TimeoutError("fixture timeout")
+
+
+class AlternatingClient(Client):
+    def post_info(self, payload):
+        self.calls.append(payload)
+        if len(self.calls) % 2:
+            raise TimeoutError("fixture timeout")
         return [["allTime", {"pnlHistory": [], "accountValueHistory": []}]]
 
 
@@ -83,7 +97,51 @@ class HistoricalCurveQueueTests(unittest.TestCase):
              patch("tamtam_again.historical_curve_queue.authorized_account_history", return_value=True):
             resumed = tick(store, client, "hyperliquid-mainnet", POLICY, now_ms=1_800_086_400_000)
         self.assertEqual(resumed["portfolio_requests"], 1)
-        self.assertEqual(store.connection.execute("select attempts from historical_curve_queue").fetchone()[0], 1)
+        self.assertEqual(store.connection.execute("select attempts from historical_curve_queue").fetchone()[0], 0)
+
+    def test_eighty_immediate_failures_consume_only_four_logical_attempts(self):
+        store, client = Store(self.addresses(80)), FailingClient()
+        with patch("tamtam_again.historical_curve_queue.protected_addresses", return_value=set()), \
+             patch("tamtam_again.historical_curve_queue.authorized_account_history", return_value=True):
+            result = tick(store, client, "hyperliquid-mainnet", POLICY, now_ms=1_800_000_000_000)
+        self.assertEqual(len(client.calls), 4)
+        self.assertEqual(result["logical_attempts"], 4)
+        self.assertEqual(result["portfolio_failures"], 4)
+        self.assertEqual(result["portfolio_saved"], 0)
+
+    def test_mixed_success_and_error_outcomes_still_consume_exactly_four_attempts(self):
+        store, client = Store(self.addresses(12)), AlternatingClient()
+        with patch("tamtam_again.historical_curve_queue.protected_addresses", return_value=set()), \
+             patch("tamtam_again.historical_curve_queue.authorized_account_history", return_value=True):
+            result = tick(store, client, "hyperliquid-mainnet", POLICY, now_ms=1_800_000_000_000)
+        self.assertEqual(len(client.calls), 4)
+        self.assertEqual(result["logical_attempts"], 4)
+        self.assertEqual(result["portfolio_failures"], 2)
+        self.assertEqual(result["portfolio_saved"], 2)
+
+    def test_after_call_exclusion_counts_toward_cap_and_is_reported_separately(self):
+        addresses = self.addresses(8)
+        store, client = Store(addresses), Client()
+        protected = [set(), set(), {addresses[0]}, set(), set(), set()]
+        with patch("tamtam_again.historical_curve_queue.protected_addresses", side_effect=protected), \
+             patch("tamtam_again.historical_curve_queue.authorized_account_history", return_value=True):
+            result = tick(store, client, "hyperliquid-mainnet", POLICY, now_ms=1_800_000_000_000)
+        self.assertEqual(result["logical_attempts"], 4)
+        self.assertEqual(len(client.calls), 4)
+        self.assertEqual(result["deferred_after_call"], 1)
+        self.assertEqual(result["portfolio_saved"], 3)
+
+    def test_successful_refresh_resets_consecutive_failure_count(self):
+        store, client = Store(self.addresses(1)), Client()
+        with patch("tamtam_again.historical_curve_queue.protected_addresses", return_value=set()), \
+             patch("tamtam_again.historical_curve_queue.authorized_account_history", return_value=True):
+            first = tick(store, client, "hyperliquid-mainnet", POLICY, now_ms=1_800_000_000_000)
+            self.assertEqual(first["portfolio_saved"], 1)
+            self.assertEqual(store.connection.execute("select attempts from historical_curve_queue").fetchone()[0], 0)
+            refreshed = tick(store, client, "hyperliquid-mainnet", POLICY, now_ms=1_800_086_400_000)
+        self.assertEqual(refreshed["logical_attempts"], 1)
+        self.assertEqual(refreshed["portfolio_saved"], 1)
+        self.assertEqual(len(client.calls), 2)
 
 
 if __name__ == "__main__":

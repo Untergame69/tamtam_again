@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "kind": "bounded_live_quote_freshness_measurement",
+  "instrument": "HYPE",
+  "quote_age_limit_ms": 1000,
+  "no_limit_change": true,
+  "observation_windows": [
+    {
+      "phase": "original_5s_tick",
+      "start_utc": "2026-10-12T13:06:40.679Z",
+      "end_utc": "2026-10-12T13:07:21.176Z",
+      "duration_ms": 40497,
+      "decision_checkpoints": 8,
+      "admissible_quotes": 5,
+      "admissible_fraction": 0.625,
+      "stages_ms": {
+        "decision_quote_receipt_to_archive_p50": 212,
+        "decision_quote_archive_to_tick_p50": 759,
+        "decision_quote_age_max": 1583
+      },
+      "finding": "The wait from archive availability to the next paper tick dominated the sampled decision path. The tick cadence was about 5.5 seconds."
+    },
+    {
+      "phase": "1s_tick_before_start_limit_fix",
+      "duration_ms": 35000,
+      "decision_checkpoints": 16,
+      "admissible_quotes": 12,
+      "admissible_fraction": 0.75,
+      "systemd_start_limit": "Default 5 starts per 10 seconds caused repeated start-limit-hit events and roughly 6.5-second gaps after bursts of five starts."
+    },
+    {
+      "phase": "1s_tick_after_start_limit_fix_before_bbo_flush_fix",
+      "duration_ms": 35000,
+      "decision_checkpoints": 33,
+      "admissible_quotes": 14,
+      "admissible_fraction": 0.4242,
+      "tick_interval_ms": {"p50": 1110, "p90": 1114, "max": 1120},
+      "receive_to_archive_ms": {"p50": 727, "p90": 1053, "max": 1321},
+      "processing_ms": {"p50": 71, "p90": 73, "max": 76},
+      "finding": "Service processing was small; the collector's one-second batch flush and remaining archive-to-tick age exceeded the one-second quote contract too often."
+    },
+    {
+      "phase": "targeted_bbo_flush_and_500ms_tick",
+      "start_utc": "2026-10-12T13:15:41.965Z",
+      "end_utc": "2026-10-12T13:16:16.965Z",
+      "duration_ms": 35000,
+      "collector_connection_id": "7ac28ee839584c6cba35e46ebda7ba47",
+      "bbo_frames": 223,
+      "decision_checkpoints": 63,
+      "admissible_quotes": 63,
+      "admissible_fraction": 1.0,
+      "tick_interval_ms": {"p50": 560, "p90": 566, "p95": 567, "max": 568},
+      "receive_to_archive_ms": {"p50": 140, "p90": 230, "p95": 238, "max": 395},
+      "decision_quote_receipt_to_archive_ms": {"p50": 122, "p90": 230, "p95": 234, "max": 261},
+      "decision_quote_archive_to_tick_ms": {"p50": 146, "p90": 464, "p95": 612, "max": 779},
+      "decision_quote_age_ms": {"p50": 254, "p90": 582, "p95": 771, "max": 834},
+      "service_processing_ms": {"p50": 71, "p90": 73, "p95": 74, "max": 75},
+      "systemd_start_limit_hits": 0,
+      "last_observation_id": 28733692,
+      "finding": "All 63 scheduled checkpoints had a same-connection HYPE quote within the frozen 1000ms bound. This was a quote availability observation only; the reviewed strategy session was suspended and no order decisions or fills were running."
+    }
+  ],
+  "targeted_changes": {
+    "paper_timer": {"OnUnitActiveSec": "500ms", "AccuracySec": "50ms"},
+    "paper_service_start_limit": {"StartLimitIntervalSec": "10s", "StartLimitBurst": 30},
+    "collector": "Flush pending bbo channel observations every 250ms; other market channels retain the existing one-second batch cadence.",
+    "quote_freshness_limit_ms": 1000,
+    "strategy_latency_ms": 5000,
+    "order_ttl_ms": 10000
+  },
+  "launch_gate": {
+    "status": "not_yet_passed",
+    "required_continuous_collection_ms": 600000,
+    "minimum_decision_checkpoints": 600,
+    "minimum_same_connection_quote_fraction": 0.95,
+    "maximum_quote_age_ms": 1000,
+    "maximum_tick_interval_p95_ms": 600,
+    "maximum_tick_interval_ms": 1000,
+    "maximum_receipt_to_archive_p95_ms": 300,
+    "persistence_command_template": ".venv/bin/python -m tamtam_again --db data/tamtam.sqlite3 paper-collection-gate 73d6a4a68adb4c655de8d20a8183790e14568f4efab0293da3ab443998f3898e measurement.json",
+    "requirements": [
+      "One continuous WebSocket session throughout the gate; any reconnect resets the window.",
+      "No systemd start-limit hits and the same quote/decision age calculation used in this report.",
+      "Register the new plan and frozen variant only after the collection gate passes; then start with a fresh, non-transferred ledger after the immutable incomplete disposition."
+    ]
+  },
+  "limitations": [
+    "Timer starts are quote-availability checkpoints, not executions; no paper session was active during this observation.",
+    "A 35-second sample with 100 percent eligible quotes does not satisfy the ten-minute launch gate.",
+    "No live entry, exit, or profitability result is claimed."
+  ]
+}

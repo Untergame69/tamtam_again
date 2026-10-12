@@ -4,8 +4,15 @@
   "session_id": "9bcdbc4b22ef431da580b016e06ad744",
   "variant_id": "0ab7e61e6f3c1ff40f3a9d42a94d64a3af6c2431b8248edfa608c654afcf5974",
   "corrects_report_id": "571efb94de20de1a9a36c2711ef4b71198ed135ffde2698d5d1de56a6521b93b",
-  "database_rectification_id": "0cd98bb4b959f4b86a2b34a649a299c1083bec9df7c45e4442adbb0a016c3d03",
-  "verification_addendum_rectification_id": "7d80053efc48e3e0658a44b8d0c651f28db2e746cb53d61646510a0c21549cd8",
+  "database_rectification_id": "d6fce9ec2f1ad7046a79c61b41f23662dc4a81f521ff69d59c586f9ade246862",
+  "verification_addendum_rectification_id": "97294df4cd0dc709a3f87dcda1bbf0cf94ef1d5ed7d65c16d572199c3c813c96",
+  "final_verification_addendum_id": "7e46524a78d44c4fcb39a54f96b7490283c1f462856d94105e8a91b91d73aabb",
+  "final_launch_gate_test_addendum_id": "d484fa1a46ae2cc0408e501c7d8cbfffad3d806261cfc68de0748b501d70bac1",
+  "incomplete_disposition_id": "26e893ce2643b4de2b528fee174a9313130eddabffc7b875fff37e7ab92d6dba",
+  "initially_announced_ids_restored": [
+    "0cd98bb4b959f4b86a2b34a649a299c1083bec9df7c45e4442adbb0a016c3d03",
+    "7d80053efc48e3e0658a44b8d0c651f28db2e746cb53d61646510a0c21549cd8"
+  ],
   "report_review_index": 1,
   "correction": {
     "corrected_diagnosis": {
@@ -38,6 +45,10 @@
       ],
       "finding": "BBO data is arriving, but none of these three sampled latest quotes met the frozen one-second age bound. A prior spot sample was within the bound; the short observation does not establish consistently eligible quotes at execution time."
     },
+    "quote_freshness_followup": {
+      "evidence_ref": "docs/continuous-research/PAPER-FRESHNESS-GATE-20261012-A880-HYPE.json",
+      "finding": "After collector BBO flush was reduced to 250 ms and paper scheduling to 500 ms with a 30-start/10-second service limit, a continuous 35-second single-connection sample had 63/63 (100%) checkpoints within 1,000 ms. This sample does not pass the ten-minute launch gate."
+    },
     "residual_position": {
       "position_hype": "-0.31",
       "session_status": "suspended",
@@ -55,8 +66,8 @@
       "restart_condition": "First resolve the old residual through an explicitly authorized future-only exit procedure, or record a separately governed administrative-incomplete disposition that preserves the old ledger. Any later paper session must have a distinct session/version identity and must not claim continuity or transferred flatness. For this v2 execution contract, require a same-session BBO age <= 1000 ms at processing, valid venue precision, and an order meeting the 10 USDC minimum."
     },
     "verification": {
-      "targeted_tests": "21 passed: tests.test_paper_engine_v3 and tests.test_experimental_paper",
-      "append_only_verification_history": "The first linked DB rectification recorded 20 passing tests; a linked addendum records the final 21 after a separate below-minimum priority-release test was added.",
+      "targeted_tests": "24 passed: tests.test_collectors.WebsocketFlushTests, tests.test_experimental_paper and tests.test_paper_engine_v3",
+      "append_only_verification_history": "The rectification and later verification addenda are committed independently to SQLite; the final addenda record 24 passing targeted tests, including fail-closed collection-gate enforcement. Reopen verification uses a new Store connection.",
       "source_report_immutable": true,
       "database_position_unchanged": true
     }

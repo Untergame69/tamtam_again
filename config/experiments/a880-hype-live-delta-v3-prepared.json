@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "artifact_type": "conditional_experimental_paper_version",
+  "version_id": "a880-hype-live-delta-follow-v3-independent-600ms",
+  "status": "prepared_not_registered_not_started",
+  "predecessor": {
+    "session_id": "9bcdbc4b22ef431da580b016e06ad744",
+    "disposition_id": "26e893ce2643b4de2b528fee174a9313130eddabffc7b875fff37e7ab92d6dba",
+    "status": "administratively_incomplete",
+    "residual_position_hype": "-0.31",
+    "final_round_trip_result": "unknown"
+  },
+  "independence_contract": {
+    "fresh_session_identity": true,
+    "starting_position": "0",
+    "starting_capital_usdc": "1000",
+    "transfer_prior_position_cash_or_pnl": false,
+    "launch_option": "paper-experimental-start --independent-after-incomplete --restart-reason \"Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.\""
+  },
+  "spec_fingerprint": "73d6a4a68adb4c655de8d20a8183790e14568f4efab0293da3ab443998f3898e",
+  "strategy_spec": {
+    "schema_version": 2,
+    "type": "follower",
+    "market": "HYPE",
+    "data_sources": [
+      "bbo",
+      "userFills",
+      "streamHealth",
+      "userFundings"
+    ],
+    "signal": {
+      "kind": "leader_delta"
+    },
+    "entry": {
+      "kind": "target_position"
+    },
+    "exit": {
+      "kind": "horizon_or_target"
+    },
+    "sizing": {
+      "scale": "0.001"
+    },
+    "max_exposure": {
+      "notional_usdc": "100",
+      "max_drawdown_usdc": "10",
+      "max_leverage": "1"
+    },
+    "fees": {
+      "maker_bps": "4.5",
+      "taker_bps": "4.5"
+    },
+    "slippage": {
+      "bps": "5"
+    },
+    "latency_ms": 5000,
+    "horizon_ms": 120000,
+    "starting_capital_usdc": "1000",
+    "execution": {
+      "kind": "market_ioc",
+      "heartbeat_timeout_ms": 65000,
+      "unknown_quote_max_age_ms": 1000,
+      "order_ttl_ms": 10000,
+      "displayed_size_fraction": "0.1",
+      "market_rules": {
+        "version": 1,
+        "instrument": "HYPE",
+        "currency": "USDC",
+        "available_ms": 1791802291704,
+        "evidence_refs": [
+          "raw_observations:28248343",
+          "raw_observations:28248585",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size",
+          "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/error-responses"
+        ],
+        "sz_decimals": 2,
+        "minimum_order_usdc": "10",
+        "max_leverage": "10"
+      },
+      "funding_interval_ms": 3600000,
+      "max_quote_age_ms": 1000,
+      "paper_tick_target_ms": 600,
+      "market_event_flush_target_ms": 250
+    },
+    "invalidation_conditions": [
+      "nonpositive net result after simulated fees and slippage",
+      "unknown or interrupted stream or stale quote",
+      "risk/drawdown limit reached",
+      "insufficient live signals after the bounded seven-day collection window",
+      "unobserved funding while an experimental position is held"
+    ],
+    "engine": "single_perp_v3"
+  },
+  "hypothesis": {
+    "schema_version": 1,
+    "hypothesis_id": "a880-hype-live-delta-follow-v3-independent-600ms",
+    "observations": [
+      "The archived sample contains 178,438 deduplicated fills, 5 UTC active days and 3.504 days of contiguous fills before page-budget exhaustion.",
+      "32,921 fills (18.45%) are HYPE; their summed size-times-price notional is about 46.4 million USDC, a turnover count rather than account capital or exposure.",
+      "HYPE directions include 7,962 Open Short, 7,507 Close Short, 6,098 Open Long, 10,711 Close Long, and 643 position flips. A lower-bound reconstruction finds 309 flat-start cycles with median 247 seconds and p90 1,335 seconds; truncated history makes this a descriptive subset.",
+      "The declared account PnL curve is positive over the sampled 30/90/180 day points, but net return, capital base, full flows, exposure and full event coverage are unknown.",
+      "Version v1 paper follow-up at 2026-10-12: 180 live signals, 50 order TTL expirations, no simulated fills, no position, and a 5 second requested timer whose observed pipeline ticks took about 23 seconds.",
+      "A 2026-10-12 live measurement after a 250 ms HYPE BBO flush and 500 ms systemd tick found 63/63 quote-availability checkpoints within 1,000 ms; this 35 second sample is insufficient for launch approval."
+    ],
+    "interpretation": "Observed HYPE activity is high-turnover and includes short position episodes and frequent directional reversals. This cannot identify the account program or establish that its fills predict returns. The first paper version was not technically interpretable because pipeline processing lagged the declared 5 second cadence, and its quote freshness depended on processing time rather than source receipt. Version v3 is a separate prospective paper ledger with a 600 ms measured tick target; the one-second source-receipt quote bound is unchanged.",
+    "claim": "Under an explicitly measured 5 second paper tick target and a quote age bound of 1 second from actual source receipt, after a fresh a880 HYPE live fill is received, a 0.001-scaled cumulative position in that fill direction may persist for up to two minutes and yield positive simulated net PnL after costs.",
+    "signal": "Only non-snapshot userFills HYPE events from the subscribed live stream; use signed fill size. REST history and the source entry price are never decision inputs.",
+    "entry": "Accumulate signed live fill deltas at scale 0.001; target that virtual position, capped at 100 USDC gross exposure. Orders below the 10 USDC venue minimum are explicitly missed. New nonzero exposure is not entered if the configured latency plus 120-second horizon would cross the next hourly funding boundary.",
+    "exit": "Return to flat after 120 seconds from opening, regardless of pending signal orders; give reductions and horizon exits priority over subsequent increases. Preserve and flag any nonzero position if a close cannot be simulated.",
+    "execution": "Paper market IOC on same-session BBO whose actual source receipt is no more than 1 second old at execution; retain the source receipt timestamp and separately record processing time. Measure every tick start interval, processing duration, archive scan rows, query time and receipt lag against a 5 second target; orders keep the original 10 second TTL and are never backdated. Reductions and exits outrank increases; funding is rechecked at actual execution. A late quote is stale even when the same-session heartbeat is recent. HYPE size precision 0.01; missing data or an ineligible lot is a recorded non-execution. BBO is archived on a targeted 250 ms flush; paper tick target is 600 ms (observed p95 567 ms); launch waits for the ten-minute compatibility gate in PAPER-FRESHNESS-GATE-20261012-A880-HYPE.json.",
+    "risk": {
+      "starting_capital_usdc": "1000",
+      "max_exposure_usdc": "100",
+      "max_loss_usdc": "10",
+      "max_leverage": "1",
+      "no_live_orders": true,
+      "economic_validation": false
+    },
+    "decision_rules": {
+      "healthy_feed_and_limits_clear": "continue",
+      "missing_live_signal_or_continuity": "collect_data",
+      "loss_or_drawdown_limit": "abandon",
+      "seven_day_duration_end": "propose_new_version_after_review",
+      "prestart_collection_gate": "wait; do not start until one continuous ten-minute collection meets the frozen quote freshness and cadence thresholds"
+    },
+    "prestart_collection_gate_required": true,
+    "evidence_refs": [
+      "docs/continuous-research/economic-qualification-cards-20261012-g2.md#a880",
+      "docs/continuous-research/archive-reconciliation-a880-20261008.md",
+      "data:tamtam.sqlite3/raw_observations:userFillsByTime/a880/HYPE",
+      "raw_observations:28248343",
+      "raw_observations:28248585",
+      "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size",
+      "paper_session:4213c85b23bb426f8fffb4c6901a1a43#v1-operational-followup"
+    ],
+    "review_interval_ms": 21600000,
+    "max_duration_ms": 604800000
+  },
+  "collection_gate_ref": "docs/continuous-research/PAPER-FRESHNESS-GATE-20261012-A880-HYPE.json",
+  "registration_policy": "Create a new plan with prospective windows and register this exact spec only after the collection gate passes. Do not reuse the exhausted v2 plan or register this candidate into an active scheduler before the gate.",
+  "launch_gate": {
+    "required_continuous_collection_ms": 600000,
+    "minimum_decision_checkpoints": 600,
+    "minimum_same_connection_quote_fraction": 0.95,
+    "max_quote_age_ms": 1000,
+    "max_tick_interval_p95_ms": 600,
+    "max_tick_interval_ms": 1000,
+    "max_receipt_to_archive_p95_ms": 300,
+    "zero_start_limit_hits": true,
+    "zero_websocket_reconnects": true
+  },
+  "decision": "do_not_launch_yet",
+  "decision_reason": "The observed compatible window lasted 35 seconds with 63/63 fresh quotes; the predeclared ten-minute/600-checkpoint gate is not yet met. No strategy session or trade was started.",
+  "strategy_spec_file": "config/experiments/a880-hype-live-delta-v3.json",
+  "hypothesis_file": "config/experiments/a880-hype-live-delta-hypothesis-v3.json",
+  "start_sequence": [
+    "Pass PAPER-FRESHNESS-GATE-20261012-A880-HYPE.json for ten continuous minutes and persist its aggregate with paper-collection-gate against spec_fingerprint.",
+    "Create a new prospective validation plan after the gate; do not reuse the exhausted v2 plan; freeze config/experiments/a880-hype-live-delta-v3.json.",
+    "Start config/experiments/a880-hype-live-delta-hypothesis-v3.json with --independent-after-incomplete and the explicit reason in this artifact; runtime gate validation blocks start until the exact spec has a passed collection-gate record."
+  ]
+}

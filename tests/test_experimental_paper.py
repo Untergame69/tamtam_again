@@ -6,10 +6,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tamtam_again.experimental_paper import add_rectification, report_due, start as start_experimental, status
+from tamtam_again.experimental_paper import (add_rectification, record_incomplete_disposition,
+    record_collection_gate, report_due, start as start_experimental, status)
 from tamtam_again.paper import paper_tick, retire_paper, start_paper
 from tamtam_again.paper_adaptation import recover as recover_adaptation
-from tamtam_again.engine import initial_state, reduce_event
+from tamtam_again.engine import fingerprint, initial_state, reduce_event
 from tamtam_again.recipe import synthetic_spec
 from tamtam_again.storage import Store
 from tamtam_again.validation import create_plan, evaluate, now_ms, register_variant
@@ -131,12 +132,101 @@ class ExperimentalPaperTests(unittest.TestCase):
         second=add_rectification(self.store,report["report_id"],correction)
         self.assertEqual(first["rectification_id"],second["rectification_id"])
         self.assertEqual(first["corrects_report_id"],report["report_id"])
+        self.store.close()
+        self.store=Store(self.db)
+        persisted=self.store.connection.execute(
+            "select rectification_id,corrects_report_id,rectification_json from paper_experimental_rectifications where rectification_id=?",
+            (first["rectification_id"],)
+        ).fetchone()
+        self.assertIsNotNone(persisted)
+        self.assertEqual(persisted["corrects_report_id"],report["report_id"])
+        self.assertEqual(json.loads(persisted["rectification_json"]),correction)
         self.assertEqual(self.store.connection.execute(
             "select report_json from paper_experimental_reports where report_id=?",(report["report_id"],)
         ).fetchone()[0],original)
         self.assertEqual(self.store.connection.execute(
             "select count(*) from paper_experimental_rectifications where corrects_report_id=?",(report["report_id"],)
         ).fetchone()[0],1)
+
+    def test_incomplete_disposition_persists_without_flattening_or_closing(self):
+        started = start_experimental(self.store, self.variant, hypothesis())
+        session=self.store.connection.execute("select state_json from paper_sessions where session_id=?",
+                                              (started["session_id"],)).fetchone()
+        state=json.loads(session["state_json"]);state["position"]="-0.31"
+        self.store.connection.execute("update paper_sessions set state_json=?,status='suspended' where session_id=?",
+                                      (json.dumps(state),started["session_id"]))
+        self.store.connection.commit()
+        disposition=record_incomplete_disposition(self.store,started["session_id"],
+            reason="No closing fill was observed; retain the residual and unknown final result.")
+        self.store.close();self.store=Store(self.db)
+        persisted=self.store.connection.execute(
+            "select disposition_json from paper_experimental_dispositions where disposition_id=?",
+            (disposition["disposition_id"],)
+        ).fetchone()
+        self.assertIsNotNone(persisted)
+        result=json.loads(persisted["disposition_json"])
+        live=self.store.connection.execute("select state_json from paper_sessions where session_id=?",
+                                          (started["session_id"],)).fetchone()
+        live_state=json.loads(live["state_json"])
+        self.assertEqual(result["status"],"administratively_incomplete")
+        self.assertEqual(result["residual_position"],"-0.31")
+        self.assertIsNone(result["closing_fill"])
+        self.assertEqual(result["final_round_trip_result"],"unknown")
+        self.assertEqual(live_state["position"],"-0.31")
+
+    def test_independent_version_starts_without_inheriting_incomplete_residual(self):
+        first=start_experimental(self.store,self.variant,hypothesis())
+        state_row=self.store.connection.execute("select state_json from paper_sessions where session_id=?",
+                                                (first["session_id"],)).fetchone()
+        old_state=json.loads(state_row["state_json"]);old_state["position"]="-0.31"
+        self.store.connection.execute("update paper_sessions set state_json=?,status='suspended' where session_id=?",
+                                      (json.dumps(old_state),first["session_id"]))
+        self.store.connection.commit()
+        record_incomplete_disposition(self.store,first["session_id"],
+            reason="Preserve -0.31 HYPE and unknown result; this next version is fully independent.")
+        next_spec=spec();next_spec["execution"]["paper_tick_target_ms"]=600
+        next_plan=create_plan(self.store,real_plan())["plan_id"]
+        next_variant=register_variant(self.store,next_plan,next_spec)["variant_id"]
+        next_hypothesis=hypothesis();next_hypothesis["hypothesis_id"]="a880-hype-live-delta-follow-v3-cadence600ms"
+        next_hypothesis["prestart_collection_gate_required"]=True
+        with self.assertRaisesRegex(ValueError,"collection gate has not passed"):
+            start_experimental(self.store,next_variant,next_hypothesis,
+                restart_reason="Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.",
+                independent_after_incomplete=True)
+        failed_gate=record_collection_gate(self.store,fingerprint(next_spec),{
+            "window_start_ms":1_000_000,"window_end_ms":1_600_000,"quote_age_limit_ms":1000,
+            "checkpoints":600,"fresh_quotes":500,"connection_ids":["fixture-websocket-session"],
+            "reconnects":0,"start_limit_hits":0,"tick_interval_p95_ms":567,
+            "tick_interval_max_ms":568,"receipt_to_archive_p95_ms":238})
+        self.assertFalse(failed_gate["passed"])
+        with self.assertRaisesRegex(ValueError,"collection gate has not passed"):
+            start_experimental(self.store,next_variant,next_hypothesis,
+                restart_reason="Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.",
+                independent_after_incomplete=True)
+        gate=record_collection_gate(self.store,fingerprint(next_spec),{
+            "window_start_ms":1_000_000,"window_end_ms":1_600_000,"quote_age_limit_ms":1000,
+            "checkpoints":600,"fresh_quotes":600,"connection_ids":["fixture-websocket-session"],
+            "reconnects":0,"start_limit_hits":0,"tick_interval_p95_ms":567,
+            "tick_interval_max_ms":568,"receipt_to_archive_p95_ms":238})
+        self.assertTrue(gate["passed"])
+        second=start_experimental(self.store,next_variant,next_hypothesis,
+            restart_reason="Independent v3 ledger after administratively incomplete v2; no residual, cash or result transferred.",
+            independent_after_incomplete=True)
+        new_row=self.store.connection.execute("select state_json from paper_sessions where session_id=?",
+                                              (second["session_id"],)).fetchone()
+        old_row=self.store.connection.execute("select state_json,status from paper_sessions where session_id=?",
+                                              (first["session_id"],)).fetchone()
+        policy=self.store.connection.execute("select capital_policy,restart_reason from paper_session_policy where session_id=?",
+                                             (second["session_id"],)).fetchone()
+        self.assertNotEqual(first["session_id"],second["session_id"])
+        self.assertEqual(json.loads(new_row["state_json"])["position"],"0")
+        self.assertEqual(json.loads(new_row["state_json"])["cash"],"1000")
+        self.assertEqual(json.loads(old_row["state_json"])["position"],"-0.31")
+        self.assertEqual(old_row["status"],"suspended")
+        self.assertEqual(policy["capital_policy"],"independent_paper_after_incomplete")
+        self.assertIn("no residual",policy["restart_reason"])
+        self.assertEqual(self.store.connection.execute("select count(*) from paper_handovers where new_session_id=?",
+                                                       (second["session_id"],)).fetchone()[0],0)
 
     def test_initial_subscription_grace_is_an_explicit_wait_not_a_false_suspension(self):
         started = start_experimental(self.store, self.variant, hypothesis())

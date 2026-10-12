@@ -4,12 +4,20 @@
 
 Le rapport d'expérience R1 reste conservé sans modification. Son identifiant
 `571efb94de20de1a9a36c2711ef4b71198ed135ffde2698d5d1de56a6521b93b` est lié à
-un rectificatif append-only, identifiant
-`0cd98bb4b959f4b86a2b34a649a299c1083bec9df7c45e4442adbb0a016c3d03`, dans
-`paper_experimental_rectifications`. Le détail et les preuves sont conservés
-dans [PAPER-RECTIFICATION-20261012-A880-HYPE-R1.json](PAPER-RECTIFICATION-20261012-A880-HYPE-R1.json).
-L'addendum append-only `7d80053efc48e3e0658a44b8d0c651f28db2e746cb53d61646510a0c21549cd8`
-consigne le résultat final de 21 tests après un ajout de test ciblé.
+un rectificatif append-only dans `paper_experimental_rectifications`. Les
+identifiants de rectificatif annoncés dans la première livraison n'avaient pas
+été validés par SQLite et étaient absents à la réouverture. Après correction
+transactionnelle, les identifiants persistés sont
+`d6fce9ec2f1ad7046a79c61b41f23662dc4a81f521ff69d59c586f9ade246862` (rectificatif),
+`97294df4cd0dc709a3f87dcda1bbf0cf94ef1d5ed7d65c16d572199c3c813c96` (vérification
+intermédiaire) et `7e46524a78d44c4fcb39a54f96b7490283c1f462856d94105e8a91b91d73aabb`
+(preuve finale). Les deux identifiants initialement annoncés ont aussi été
+reconstruits depuis leurs payloads historiques et insérés sans altération :
+`0cd98bb4b959f4b86a2b34a649a299c1083bec9df7c45e4442adbb0a016c3d03` et
+`7d80053efc48e3e0658a44b8d0c651f28db2e746cb53d61646510a0c21549cd8`.
+L'addendum final du gate est `d484fa1a46ae2cc0408e501c7d8cbfffad3d806261cfc68de0748b501d70bac1`.
+Une connexion neuve confirme maintenant les six liens au même rapport. Le détail est dans
+[PAPER-RECTIFICATION-20261012-A880-HYPE-R1.json](PAPER-RECTIFICATION-20261012-A880-HYPE-R1.json).
 
 Le diagnostic correct est une cible de réduction expirée à `-0,30685` depuis
 `-0,31 HYPE`, donc un ajustement de `+0,00315 HYPE` arrondi à zéro avec deux
@@ -26,7 +34,7 @@ son redémarrage à 14:41:16. Le service paper lui-même a duré environ 0,1 s.
 Ce trou n'est pas attribué au temps de traitement, au collecteur ou à la
 cadence nominale; aucun délai d'exécution n'a été allongé.
 
-Observation BBO courte : collecteur et timer actifs. Sur trois relevés espacés
+Lors de cette première observation, collecteur et timer actifs. Sur trois relevés espacés
 d'environ 6 s, les âges du dernier BBO reçu étaient 2 357, 1 390 et 2 438 ms,
 au-dessus de la limite v2 de 1 000 ms. Un instantané antérieur avait été à
 632 ms, ce qui établit une disponibilité ponctuelle, pas une fraîcheur stable
@@ -44,18 +52,63 @@ précision/prix valides et une taille respectant le minimum de 10 USDC. Toute
 expérience ultérieure doit porter une identité/version distincte et ne pas
 prétendre poursuivre un portefeuille réconcilié.
 
-Vérification ciblée : 21 tests passent dans `tests.test_paper_engine_v3` et
-`tests.test_experimental_paper`, dont le cas réel synthétique, une vraie sortie
-obligatoire expirée, un aller-retour synthétique entrée → sortie → bilan à plat,
-et l'ajout idempotent du rectificatif sans modifier le rapport d'origine. Cet
-aller-retour valide le câblage du réducteur; ce n'est ni une preuve paper live
-ni un résultat de rentabilité. Aucune preuve prospective live complète n'était
-admissible : la session existante est suspendue avec résiduel non résolu et la
-fraîcheur sous une seconde n'a pas été stable dans la fenêtre observée.
-Condition de reprise : traiter explicitement le résiduel sans le faire passer
-pour une position clôturée, puis observer un signal admissible avec cotation
-continue âgée d'au plus une seconde au moment de l'exécution. Aucun critère de
-rentabilité ni attente jusqu'à 20:34 n'est requis.
+Vérification ciblée initiale : 21 tests passaient alors dans
+`tests.test_paper_engine_v3` et `tests.test_experimental_paper`.
+
+### Persistance, compatibilité de collecte et version conditionnelle — 12 octobre 2026
+
+La cause des identifiants absents était l'absence de `commit` dans l'API
+d'ajout du rectificatif : la fermeture de la connexion annulait les insertions.
+Les insertions sont maintenant transactionnelles; un test ferme puis rouvre
+SQLite. Une nouvelle connexion vérifie trois rectificatifs liés, le rapport
+d'origine strictement inchangé et la position toujours égale à `-0,31 HYPE`.
+La disposition administrative append-only
+`26e893ce2643b4de2b528fee174a9313130eddabffc7b875fff37e7ab92d6dba` fixe le
+statut `administratively_incomplete`, `closing_fill=null` et le résultat final
+`unknown`; le ledger de la session reste suspendu et intact.
+
+Mesures continues et corrections ciblées :
+
+- À 5 s, 8 checkpoints en 40,5 s : 5/8 (62,5 %) avaient un BBO ≤1 000 ms.
+  L'âge médian réception→archivage de la cotation retenue était 212 ms et
+  archivage→tick 759 ms : l'attente du prochain tick dominait.
+- Un essai à 1 s a d'abord subi la limite systemd par défaut de 5 démarrages/10 s
+  (`start-limit-hit`). Après hausse bornée à 30/10 s, les départs sont devenus
+  réguliers, mais le flush marché à 1 s ne donnait que 14/33 (42,4 %) de BBO
+  admissibles. La latence de traitement restait proche de 71 ms.
+- Le correctif ciblé flushe maintenant les BBO seuls toutes les 250 ms; les
+  autres canaux marché gardent leur cadence d'une seconde. Le timer est à 500 ms,
+  précision systemd 50 ms, et le service autorise 30 départs par 10 s. Sur 35 s,
+  une seule connexion, 223 BBO et 63/63 (100 %) de checkpoints admissibles : âge
+  BBO p50 254 ms, p95 771 ms, max 834 ms; réception→archivage p95 238 ms;
+  archivage→tick p95 612 ms; traitement p95 74 ms; zéro start-limit-hit.
+  La borne d'âge reste explicitement 1 000 ms.
+
+Ces départs sont des checkpoints de disponibilité, pas des exécutions : aucune
+session stratégie n'était active pendant l'observation. La fenêtre de 35 s ne
+remplace pas le gate prospectif de 10 minutes/600 checkpoints avec fraction
+fraîche ≥95 %, même flux, p95 cadence ≤600 ms, p95 réception→archivage ≤300 ms,
+zéro reconnexion et zéro blocage systemd. La version distincte préparée est
+`a880-hype-live-delta-follow-v3-independent-600ms`, spec fingerprint
+`73d6a4a68adb4c655de8d20a8183790e14568f4efab0293da3ab443998f3898e`, borne de
+fraîcheur inchangée et départ à plat sans transfert d'argent, position ou PnL.
+Elle n'est ni inscrite dans un plan actif ni démarrée avant le gate. Son chemin
+démarre explicitement après le prédécesseur incomplet et conserve l'ancien
+ledger; test ciblé vérifie l'absence de transfert. L'hypothèse porte
+`prestart_collection_gate_required`; le démarrage interroge le gate persistant
+associé au hash exact du spec. Le CLI `paper-collection-gate` enregistre le
+rapport dix minutes. Un test ciblé prouve que l'absence et l'échec du gate
+bloquent le lancement, et qu'un gate conforme ouvre ensuite uniquement un
+ledger indépendant. Les fichiers préparés sont
+[le spec v3](../../config/experiments/a880-hype-live-delta-v3.json),
+[l'hypothèse v3](../../config/experiments/a880-hype-live-delta-hypothesis-v3.json)
+et [le manifeste conditionnel](../../config/experiments/a880-hype-live-delta-v3-prepared.json).
+
+Résultat de tranche : ne pas lancer maintenant. Le gate n'a que 35 s observées,
+et aucun cycle réel entrée → sortie → bilan n'a été produit. Après le gate,
+enregistrer un nouveau plan/variant, démarrer la session indépendante et suivre
+le premier cycle paper admissible puis son bilan; aucune rentabilité n'est
+attendue comme condition.
 
 Objectif actif, non terminé. Ce relevé sert à la revue des incréments ; il ne
 constitue pas l'approbation finale indépendante demandée.

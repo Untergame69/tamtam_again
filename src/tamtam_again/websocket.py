@@ -230,10 +230,13 @@ def _save_message(store: Store, network: str, message: dict[str, Any],
 
 
 def _flush_market_events(store: Store, network: str,
-                         pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]]) -> None:
+                         pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]],
+                         channels: set[str] | None = None) -> None:
     if not pending:
         return
-    for (channel, coin), events in pending.items():
+    for (channel, coin), events in list(pending.items()):
+        if channels is not None and channel not in channels:
+            continue
         server_times = []
         for _, message in events:
             data = message.get("data")
@@ -257,7 +260,7 @@ def _flush_market_events(store: Store, network: str,
             window_end_ms=max(server_times) if server_times else None,
             record_count=len(events),
         )
-    pending.clear()
+        del pending[(channel,coin)]
 
 
 def _stream_health(store: Store, network: str, session: str, kind: str,
@@ -285,15 +288,18 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
     telemetry = Telemetry(db_path.with_suffix(".telemetry.sqlite3"))
     metrics = {"frames": 0, "bytes": 0, "queue_peak_messages": 0, "max_flush_lag_seconds": 0.0, "flush_seconds": 0.0, "reconnections": 0}
     measurement_started = time.monotonic()
-    def flush_measured():
+    def flush_measured(channels: set[str] | None = None):
         started = time.monotonic()
-        queued = sum(len(events) for events in pending.values())
+        selected=(events for (channel,_),events in pending.items()
+                  if channels is None or channel in channels)
+        selected=list(selected)
+        queued = sum(len(events) for events in selected)
         metrics["queue_peak_messages"] = max(metrics["queue_peak_messages"], queued)
-        for events in pending.values():
+        for events in selected:
             if events:
                 lag = time.time()-datetime.fromisoformat(events[0][0]).timestamp()
                 metrics["max_flush_lag_seconds"] = max(metrics["max_flush_lag_seconds"], lag)
-        _flush_market_events(store, network, pending)
+        _flush_market_events(store, network, pending,channels)
         metrics["flush_seconds"] += time.monotonic()-started
     while not stop_event.is_set():
         pending: dict[tuple[str, str], list[tuple[str, dict[str, Any]]]] = {}
@@ -333,6 +339,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                 next_heartbeat = time.monotonic() + 30
                 next_refresh = time.monotonic() + 60
                 next_flush = time.monotonic() + 1
+                next_bbo_flush = time.monotonic() + .25
                 last_server_message = time.monotonic()
                 print(json.dumps({"collector": "websocket", "state": "connected",
                                   "tracked_accounts": len(accounts),
@@ -382,8 +389,12 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                         _stream_health(store, network, user_fills_session_id, "subscriptions", sorted(acknowledged_bbo))
                         next_refresh = now + 60
                     try:
-                        raw = websocket.recv(timeout=1)
+                        raw = websocket.recv(timeout=min(1.0,max(.01,next_bbo_flush-time.monotonic())))
                     except TimeoutError:
+                        now=time.monotonic()
+                        if now >= next_bbo_flush:
+                            flush_measured({"bbo"})
+                            next_bbo_flush=now+.25
                         if time.monotonic() >= next_flush:
                             flush_measured()
                             next_flush = time.monotonic() + 1
@@ -427,6 +438,10 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                                 "first_frame_after_subscription": sequence == 1,
                             }
                     _save_message(store, network, message, pending, stream_metadata)
+                    now=time.monotonic()
+                    if now>=next_bbo_flush:
+                        flush_measured({"bbo"})
+                        next_bbo_flush=now+.25
                     if time.monotonic() >= next_flush:
                         flush_measured()
                         next_flush = time.monotonic() + 1

@@ -1,5 +1,7 @@
 [Unit]
 Description=Tamtam Again deterministic local virtual paper tick
+StartLimitIntervalSec=10s
+StartLimitBurst=30
 
 [Service]
 Type=oneshot

@@ -16,10 +16,32 @@ from tamtam_again.providers.hyperliquid import (
 )
 from tamtam_again.storage import Store, decode_observation_payload
 from tamtam_again.whales import rank_leaderboard
+from tamtam_again.websocket import _flush_market_events
 
 
 def address(number: int) -> str:
     return "0x" + format(number, "040x")
+
+
+class WebsocketFlushTests(unittest.TestCase):
+    def test_selective_bbo_flush_preserves_other_market_channels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store=Store(Path(directory)/"flush.sqlite3")
+            stamp="2026-10-12T13:00:00.000+00:00"
+            bbo={"channel":"bbo","data":{"coin":"HYPE","time":1791800400000,
+                "bbo":[{"px":"85","sz":"1"},{"px":"85.1","sz":"2"}]}}
+            trades={"channel":"trades","data":{"coin":"HYPE","time":1791800400000}}
+            pending={("bbo","HYPE"):[(stamp,bbo)],("trades","HYPE"):[(stamp,trades)]}
+            try:
+                _flush_market_events(store,"hyperliquid-mainnet",pending,{"bbo"})
+                self.assertNotIn(("bbo","HYPE"),pending)
+                self.assertIn(("trades","HYPE"),pending)
+                row=store.connection.execute("select * from raw_observations where endpoint='bbo'").fetchone()
+                payload=decode_observation_payload(row)
+                self.assertEqual(len(payload["events"]),1)
+                self.assertEqual(payload["events"][0]["received_at"],stamp)
+            finally:
+                store.close()
 
 
 class MarketRankingTests(unittest.TestCase):

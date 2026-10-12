@@ -144,8 +144,13 @@ def _parser() -> argparse.ArgumentParser:
     experimental_start.add_argument("variant_id")
     experimental_start.add_argument("hypothesis", type=Path)
     experimental_start.add_argument("--restart-reason", help="Required when restarting a retired experimental version")
+    experimental_start.add_argument("--independent-after-incomplete", action="store_true",
+        help="Start a fresh, non-transferred experimental ledger after an immutable incomplete predecessor disposition")
     experimental_status = commands.add_parser("paper-experimental-status", help="Show experimental paper sessions and latest automatic report")
     experimental_status.add_argument("session_id", nargs="?")
+    collection_gate = commands.add_parser("paper-collection-gate", help="Persist and validate the prestart freshness/cadence measurement for one frozen spec")
+    collection_gate.add_argument("spec_fingerprint")
+    collection_gate.add_argument("measurement", type=Path)
     paper_retire = commands.add_parser("paper-retire", help="Retire a flat session and preserve its ledger")
     paper_retire.add_argument("session_id")
     paper_retire.add_argument("--reason", required=True)
@@ -184,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "validation-recipe":
             from .recipe import run_recipe
             print(json.dumps(run_recipe(args.output),ensure_ascii=False,indent=2))
-        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-experimental-start", "paper-experimental-status", "paper-retire", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
+        elif args.command in {"validation-plan", "strategy-freeze", "validation-evaluate", "paper-start", "paper-experimental-start", "paper-experimental-status", "paper-collection-gate", "paper-retire", "paper-tick", "pipeline-status", "pipeline-tick", "pipeline-decision", "qualify", "cohort-snapshot"}:
             from .validation import create_plan, register_variant, evaluate, get_variant, initialize
             from .paper import archive_events, classify_regimes, start_paper, retire_paper, paper_tick
             from .qualification import qualify, snapshot_cohort
@@ -212,10 +217,14 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.command == "paper-experimental-start":
                     from .experimental_paper import start as start_experimental
                     result = start_experimental(store,args.variant_id,json.loads(args.hypothesis.read_text()),
-                                                restart_reason=args.restart_reason)
+                                                restart_reason=args.restart_reason,
+                                                independent_after_incomplete=args.independent_after_incomplete)
                 elif args.command == "paper-experimental-status":
                     from .experimental_paper import status as experimental_status
                     result = experimental_status(store,args.session_id)
+                elif args.command == "paper-collection-gate":
+                    from .experimental_paper import record_collection_gate
+                    result = record_collection_gate(store,args.spec_fingerprint,json.loads(args.measurement.read_text()))
                 elif args.command == "paper-retire":
                     result = retire_paper(store,args.session_id,reason=args.reason,cancel_pending=args.cancel_pending)
                 elif args.command == "paper-tick":

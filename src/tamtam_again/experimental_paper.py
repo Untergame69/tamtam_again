@@ -41,6 +41,21 @@ CREATE TABLE IF NOT EXISTS paper_experimental_rectifications (
  rectification_json TEXT NOT NULL,
  created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS paper_experimental_dispositions (
+ disposition_id TEXT PRIMARY KEY,
+ session_id TEXT NOT NULL REFERENCES paper_experimental_sessions(session_id),
+ disposition_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS paper_experimental_collection_gates (
+ gate_id TEXT PRIMARY KEY,
+ spec_fingerprint TEXT NOT NULL,
+ passed INTEGER NOT NULL CHECK(passed IN (0,1)),
+ measurement_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_paper_collection_gates_spec
+ ON paper_experimental_collection_gates(spec_fingerprint,passed,created_at);
 """
 
 REQUIRED_HYPOTHESIS = {
@@ -96,15 +111,73 @@ def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any]) ->
         raise ValueError("Hypothesis exposure cap must match the frozen executable strategy")
     if number(hypothesis["risk"].get("max_loss_usdc", -1)) != number(spec["max_exposure"]["max_drawdown_usdc"]):
         raise ValueError("Hypothesis loss cap must match the frozen executable strategy")
+    if hypothesis.get("prestart_collection_gate_required"):
+        spec_id=fingerprint(spec)
+        passed=store.connection.execute(
+            "SELECT 1 FROM paper_experimental_collection_gates WHERE spec_fingerprint=? AND passed=1 LIMIT 1",
+            (spec_id,),
+        ).fetchone()
+        if not passed:
+            raise ValueError("Freshness/cadence collection gate has not passed for this exact strategy spec")
     return row, spec, plan
 
 
+def record_collection_gate(store: Store, spec_fingerprint: str,
+                           measurement: dict[str, Any]) -> dict[str, Any]:
+    """Persist an immutable ten-minute quote/cadence gate result for one spec."""
+    initialize(store)
+    if len(spec_fingerprint)!=64 or any(c not in "0123456789abcdef" for c in spec_fingerprint):
+        raise ValueError("SHA-256 strategy spec fingerprint required")
+    required={"window_start_ms","window_end_ms","quote_age_limit_ms","checkpoints","fresh_quotes",
+        "connection_ids","reconnects","start_limit_hits","tick_interval_p95_ms","tick_interval_max_ms",
+        "receipt_to_archive_p95_ms"}
+    if not isinstance(measurement,dict) or not required<=measurement.keys():
+        raise ValueError("Complete prestart collection measurement required")
+    start,end=measurement["window_start_ms"],measurement["window_end_ms"]
+    count,fresh=measurement["checkpoints"],measurement["fresh_quotes"]
+    if any(type(x) is not int for x in (start,end,count,fresh)) or end<start or count<0 or not 0<=fresh<=count:
+        raise ValueError("Invalid collection window or quote counts")
+    ids=measurement["connection_ids"]
+    if not isinstance(ids,list) or not all(isinstance(x,str) and x for x in ids):
+        raise ValueError("WebSocket connection ids required")
+    for key in ("tick_interval_p95_ms","tick_interval_max_ms","receipt_to_archive_p95_ms"):
+        if type(measurement[key]) not in (int,float) or not number(measurement[key]).is_finite() or number(measurement[key])<0:
+            raise ValueError(f"Nonnegative finite {key} required")
+    for key in ("quote_age_limit_ms","reconnects","start_limit_hits"):
+        if type(measurement[key]) is not int or measurement[key]<0:
+            raise ValueError(f"Nonnegative integer {key} required")
+    passed=(end-start>=600_000 and count>=600 and measurement["quote_age_limit_ms"]==1000
+        and fresh/count>=.95 and len(set(ids))==1 and measurement["reconnects"]==0
+        and measurement["start_limit_hits"]==0 and measurement["tick_interval_p95_ms"]<=600
+        and measurement["tick_interval_max_ms"]<=1000
+        and measurement["receipt_to_archive_p95_ms"]<=300)
+    payload={**measurement,"passed":bool(passed),"required_window_ms":600_000,
+        "required_checkpoints":600,"required_fresh_fraction":0.95,"required_quote_age_limit_ms":1000,
+        "required_tick_interval_p95_ms":600,"required_tick_interval_max_ms":1000,
+        "required_receipt_to_archive_p95_ms":300}
+    gate_id=fingerprint({"spec_fingerprint":spec_fingerprint,"measurement":payload})
+    store.connection.execute("BEGIN IMMEDIATE")
+    try:
+        store.connection.execute(
+            "INSERT OR IGNORE INTO paper_experimental_collection_gates VALUES (?,?,?,?,?)",
+            (gate_id,spec_fingerprint,int(passed),canonical(payload),utc_now()),
+        )
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback()
+        raise
+    return {"gate_id":gate_id,"spec_fingerprint":spec_fingerprint,"passed":bool(passed),
+            "measurement":payload}
+
+
 def start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
-          restart_reason: str | None = None) -> dict[str, Any]:
+          restart_reason: str | None = None,
+          independent_after_incomplete: bool = False) -> dict[str, Any]:
     validate_start(store, variant_id, hypothesis)
     from .paper import start_paper
     return start_paper(store, variant_id, experimental_hypothesis=hypothesis,
-                       restart_reason=restart_reason)
+                       restart_reason=restart_reason,
+                       independent_after_incomplete=independent_after_incomplete)
 
 
 def execution_diagnosis(state: dict[str, Any], spec: dict[str, Any],
@@ -279,10 +352,16 @@ def add_rectification(store: Store, report_id: str, correction: dict[str, Any]) 
     if not isinstance(correction,dict) or not correction:
         raise ValueError("Structured rectification required")
     rectification_id=fingerprint({"corrects_report_id":report_id,"correction":correction})
-    store.connection.execute(
-        "INSERT OR IGNORE INTO paper_experimental_rectifications VALUES (?,?,?,?,?)",
-        (rectification_id,report_id,original["session_id"],canonical(correction),utc_now()),
-    )
+    store.connection.execute("BEGIN IMMEDIATE")
+    try:
+        store.connection.execute(
+            "INSERT OR IGNORE INTO paper_experimental_rectifications VALUES (?,?,?,?,?)",
+            (rectification_id,report_id,original["session_id"],canonical(correction),utc_now()),
+        )
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback()
+        raise
     row=store.connection.execute(
         "SELECT rectification_id,corrects_report_id,session_id,rectification_json,created_at "
         "FROM paper_experimental_rectifications WHERE rectification_id=?",(rectification_id,)
@@ -290,6 +369,44 @@ def add_rectification(store: Store, report_id: str, correction: dict[str, Any]) 
     return {"rectification_id":row["rectification_id"],"corrects_report_id":row["corrects_report_id"],
             "session_id":row["session_id"],"rectification":json.loads(row["rectification_json"]),
             "created_at":row["created_at"]}
+
+
+def record_incomplete_disposition(store: Store, session_id: str, *, reason: str) -> dict[str, Any]:
+    """Record administrative incompleteness without flattening or rewriting a ledger."""
+    initialize(store)
+    if not reason.strip():
+        raise ValueError("Explicit incomplete-disposition reason required")
+    session=store.connection.execute(
+        "SELECT status,state_json FROM paper_sessions WHERE session_id=?",(session_id,)
+    ).fetchone()
+    if not session:
+        raise ValueError("Unknown paper session")
+    state=json.loads(session["state_json"])
+    position=str(state["position"])
+    if number(position)==0:
+        raise ValueError("Incomplete residual disposition requires a preserved nonzero position")
+    if state.get("pending"):
+        raise ValueError("Incomplete residual disposition requires no pending paper orders")
+    disposition={"schema_version":1,"status":"administratively_incomplete",
+        "paper_session_status":session["status"],"residual_position":position,
+        "closing_fill":None,"final_round_trip_result":"unknown","reason":reason.strip()}
+    disposition_id=fingerprint({"session_id":session_id,"disposition":disposition})
+    store.connection.execute("BEGIN IMMEDIATE")
+    try:
+        store.connection.execute(
+            "INSERT OR IGNORE INTO paper_experimental_dispositions VALUES (?,?,?,?)",
+            (disposition_id,session_id,canonical(disposition),utc_now()),
+        )
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback()
+        raise
+    row=store.connection.execute(
+        "SELECT disposition_id,session_id,disposition_json,created_at "
+        "FROM paper_experimental_dispositions WHERE disposition_id=?",(disposition_id,)
+    ).fetchone()
+    return {"disposition_id":row["disposition_id"],"session_id":row["session_id"],
+            "disposition":json.loads(row["disposition_json"]),"created_at":row["created_at"]}
 
 
 def status(store: Store, session_id: str | None = None) -> list[dict[str, Any]]:

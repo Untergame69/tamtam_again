@@ -149,7 +149,8 @@ def classify_regimes(events: list[dict[str,Any]], criteria: dict[str,Any]) -> li
 
 def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False,
                 restart_reason: str | None = None, reference_binding: dict | None = None,
-                experimental_hypothesis: dict | None = None) -> dict[str,Any]:
+                experimental_hypothesis: dict | None = None,
+                independent_after_incomplete: bool = False) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
     if experimental_hypothesis is None:
         passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
@@ -161,6 +162,9 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
         from .experimental_paper import initialize as initialize_experimental, validate_start
         validate_start(store,variant_id,experimental_hypothesis)
         initialize_experimental(store)
+    if independent_after_incomplete and (experimental_hypothesis is None or reference_binding is not None
+            or not restart_reason or not restart_reason.strip()):
+        raise ValueError('Independent-after-incomplete restart requires an experimental version and explicit reason')
     # Start after the current archive watermark so the first tick scans only
     # newly received observations. Observation IDs are the incremental cursor.
     observation_cursor = store.connection.execute(
@@ -204,9 +208,12 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
             (row['network'],row['address'],row['coin'])).fetchall()
         if reference_binding is not None:priors=[]
         replacement=plan.get('paper_replacement') if reference_binding is None else None
+        if independent_after_incomplete and replacement:
+            raise ValueError('Independent-after-incomplete start cannot use portfolio replacement or handover')
         transferred=None
         capital_policy='independent_paper_session'
         capital_evidence=None
+        used_incomplete_predecessor=False
         for prior in priors:
             if replacement and prior['status']!='retired':
                 from .paper_handover import eligible
@@ -224,6 +231,22 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
                 transferred=prior['session_id']
                 continue
             previous=json.loads(prior['state_json'])
+            if independent_after_incomplete and prior['status']!='active' \
+                    and number(previous['position'])!=0 and not previous['pending']:
+                disposition_table=store.connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='paper_experimental_dispositions'").fetchone()
+                disposition_row=store.connection.execute(
+                    "SELECT disposition_json FROM paper_experimental_dispositions WHERE session_id=? "
+                    "ORDER BY created_at DESC LIMIT 1",(prior['session_id'],)
+                ).fetchone() if disposition_table else None
+                disposition=json.loads(disposition_row['disposition_json']) if disposition_row else {}
+                if (prior['status']!='suspended' or disposition.get('status')!='administratively_incomplete'
+                        or disposition.get('residual_position')!=str(previous['position'])
+                        or disposition.get('final_round_trip_result')!='unknown'):
+                    raise ValueError('Nonflat predecessor requires a matching immutable incomplete disposition')
+                used_incomplete_predecessor=True
+                capital_policy='independent_paper_after_incomplete'
+                continue
             if prior['status']=='active' or number(previous['position'])!=0 or previous['pending']:
                 raise ValueError('Paper handover requires retired flat prior sessions without pending orders')
             if prior['status']!='retired':
@@ -232,6 +255,8 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
                 raise ValueError('Restart of a retired version requires an explicit reason')
         if replacement and transferred is None:
             raise ValueError('Predeclared replacement requires its suspended predecessor session')
+        if independent_after_incomplete and not used_incomplete_predecessor:
+            raise ValueError('No administratively incomplete predecessor was found for this independent start')
         store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,observation_cursor,utc_now()))
         store.connection.execute('insert into paper_session_policy values(?,?,?)',
                                  (session_id,capital_policy,restart_reason))

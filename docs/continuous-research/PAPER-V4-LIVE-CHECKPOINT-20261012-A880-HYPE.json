@@ -1,0 +1,178 @@
+{
+  "artifact_type": "a880_hype_v4_live_processing_checkpoint",
+  "session_id": "4303114ebedf4d238241a605a41c591c",
+  "checked_at_utc": "2026-10-12T15:09:07.349Z",
+  "paper_status": "active",
+  "experiment_status": "active",
+  "review_index": 0,
+  "first_automatic_review_ms": 1791817943369,
+  "max_duration_ms": 1800000,
+  "last_observation_id": 29542591,
+  "current_connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+  "connected": true,
+  "latest_quote": {
+    "ask": "84.19",
+    "ask_size": "416.59",
+    "available_ms": 1791817743929,
+    "bid": "84.189",
+    "bid_size": "4.15",
+    "event_ms": 1791817743606,
+    "processed_ms": 1791817743929,
+    "received_ms": 1791817743606,
+    "session": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+    "source": "l2Book",
+    "source_received_ms": 1791817743606
+  },
+  "signals_received": 14,
+  "fills_count": 0,
+  "position": "0",
+  "pending_orders": [],
+  "missed_count": 3,
+  "nonexecution_reasons": {
+    "below_venue_minimum_order_value": 3
+  },
+  "execution_opportunities_with_source_evidence": [
+    {
+      "attempt": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791817706286,
+        "eligible": true,
+        "execution_decision_ms": 1791817706305,
+        "fill_size": null,
+        "intent": "signal_target",
+        "outcome": "missed",
+        "position_before": "0",
+        "quote_age_ms": 760,
+        "quote_available_ms": 1791817705739,
+        "quote_received_ms": 1791817705545,
+        "quote_source": "l2Book",
+        "reason": "zero_adjustment_after_rounding",
+        "signal_decision_ms": 1791817701286
+      },
+      "quote_evidence": {
+        "observation_ref": "raw_observations:29537169",
+        "received_at": "2026-10-12T15:08:25.545+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.312",
+        "bid_sz": "295.93",
+        "ask_px": "84.313",
+        "ask_sz": "0.13"
+      }
+    },
+    {
+      "attempt": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791817713544,
+        "eligible": true,
+        "execution_decision_ms": 1791817713613,
+        "fill_size": null,
+        "intent": "signal_target",
+        "outcome": "missed",
+        "position_before": "0",
+        "quote_age_ms": 970,
+        "quote_available_ms": 1791817713060,
+        "quote_received_ms": 1791817712643,
+        "quote_source": "l2Book",
+        "reason": "below_venue_minimum_order_value",
+        "signal_decision_ms": 1791817708544
+      },
+      "quote_evidence": {
+        "observation_ref": "raw_observations:29538180",
+        "received_at": "2026-10-12T15:08:32.643+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.319",
+        "bid_sz": "273.35",
+        "ask_px": "84.323",
+        "ask_sz": "24.15"
+      }
+    },
+    {
+      "attempt": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791817725917,
+        "eligible": true,
+        "execution_decision_ms": 1791817725989,
+        "fill_size": null,
+        "intent": "signal_target",
+        "outcome": "missed",
+        "position_before": "0",
+        "quote_age_ms": 953,
+        "quote_available_ms": 1791817725420,
+        "quote_received_ms": 1791817725036,
+        "quote_source": "l2Book",
+        "reason": "below_venue_minimum_order_value",
+        "signal_decision_ms": 1791817720917
+      },
+      "quote_evidence": {
+        "observation_ref": "raw_observations:29539908",
+        "received_at": "2026-10-12T15:08:45.036+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.257",
+        "bid_sz": "253.38",
+        "ask_px": "84.258",
+        "ask_sz": "134.02"
+      }
+    },
+    {
+      "attempt": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791817743917,
+        "eligible": true,
+        "execution_decision_ms": 1791817743929,
+        "fill_size": null,
+        "intent": "signal_target",
+        "outcome": "missed",
+        "position_before": "0",
+        "quote_age_ms": 803,
+        "quote_available_ms": 1791817743364,
+        "quote_received_ms": 1791817743126,
+        "quote_source": "bbo",
+        "reason": "below_venue_minimum_order_value",
+        "signal_decision_ms": 1791817738917
+      },
+      "quote_evidence": {
+        "observation_ref": "raw_observations:29542497",
+        "received_at": "2026-10-12T15:09:03.126+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.199",
+        "bid_sz": "7.43",
+        "ask_px": "84.21",
+        "ask_sz": "38.19"
+      }
+    }
+  ],
+  "paper_runtime": {
+    "archive_by_kind": {
+      "account": {
+        "query_ms": 0.041,
+        "rows": 2
+      },
+      "bbo": {
+        "query_ms": 0.072,
+        "rows": 2
+      },
+      "health": {
+        "query_ms": 0.031,
+        "rows": 0
+      },
+      "l2Book": {
+        "query_ms": 0.045,
+        "rows": 2
+      }
+    },
+    "archive_query_ms": 0.189,
+    "archive_rows": 6,
+    "events_processed": 12,
+    "finished_ms": 1791817743929,
+    "interval_ms": 565,
+    "max_archive_query_ms": 0.629,
+    "max_interval_ms": 574,
+    "max_processing_ms": 430.275,
+    "max_receipt_lag_ms": 551,
+    "max_receipt_lag_ms_since_start": 551,
+    "processing_ms": 1.345,
+    "started_ms": 1791817743928,
+    "target_interval_ms": 600
+  },
+  "stop_diagnostics": []
+}

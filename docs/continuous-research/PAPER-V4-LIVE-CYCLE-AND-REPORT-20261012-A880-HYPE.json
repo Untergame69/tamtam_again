@@ -1,0 +1,183 @@
+{
+  "artifact_type": "a880_hype_v4_live_entry_exit_and_first_automatic_review",
+  "session_id": "4303114ebedf4d238241a605a41c591c",
+  "checked_at_utc": "2026-10-12T15:14:24.778Z",
+  "first_automatic_report": {
+    "report_ref": "paper_experimental_reports:07ff1e9e935d2aee8f41e44cee764e1e8c4b9c72eed257bda3fe6683e3a3281a",
+    "report_id": "07ff1e9e935d2aee8f41e44cee764e1e8c4b9c72eed257bda3fe6683e3a3281a",
+    "review_index": 1,
+    "created_at": "2026-10-12T15:12:23.446+00:00",
+    "next_action": "continue",
+    "signals": {
+      "executions": 1,
+      "live_non_snapshot_fills": 52,
+      "missed_executions": 20,
+      "nonexecution_reasons": {
+        "below_venue_minimum_order_value": 14,
+        "quote_stale_at_execution": 2,
+        "quote_unavailable_at_execution": 2,
+        "zero_adjustment_after_rounding": 2
+      },
+      "partial_executions": 0
+    },
+    "execution_opportunity_summary": {
+      "eligible": 17,
+      "executed": 1,
+      "miss_reasons": {
+        "below_venue_minimum_order_value": 14,
+        "quote_stale_at_execution": 2,
+        "quote_unavailable_at_execution": 2,
+        "zero_adjustment_after_rounding": 2
+      },
+      "missed": 83
+    },
+    "results_are_descriptive_only": true
+  },
+  "actual_live_executions": [
+    {
+      "execution_opportunity": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791817900678,
+        "eligible": true,
+        "execution_decision_ms": 1791817900756,
+        "fill_size": "0.13",
+        "intent": "signal_target",
+        "outcome": "executed",
+        "position_before": "0.13",
+        "quote_age_ms": 892,
+        "quote_available_ms": 1791817900175,
+        "quote_received_ms": 1791817899864,
+        "quote_source": "bbo",
+        "reason": null,
+        "signal_decision_ms": 1791817895678
+      },
+      "fill_ledger_entry": {
+        "fee": "0.004934952243",
+        "price": "84.3581580",
+        "realized_pnl": "0",
+        "received_ms": 1791817900756,
+        "size": "0.13"
+      },
+      "quote_observation": {
+        "observation_ref": "raw_observations:29564482",
+        "received_at": "2026-10-12T15:11:39.864+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.315",
+        "bid_sz": "28.35",
+        "ask_px": "84.316",
+        "ask_sz": "330.28"
+      }
+    },
+    {
+      "execution_opportunity": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791818004607,
+        "eligible": true,
+        "execution_decision_ms": 1791818004613,
+        "fill_size": "0.13",
+        "intent": "signal_target",
+        "outcome": "executed",
+        "position_before": "0.26",
+        "quote_age_ms": 844,
+        "quote_available_ms": 1791818004072,
+        "quote_received_ms": 1791818003769,
+        "quote_source": "bbo",
+        "reason": null,
+        "signal_decision_ms": 1791817999607
+      },
+      "fill_ledger_entry": {
+        "fee": "0.004941507519",
+        "price": "84.4702140",
+        "realized_pnl": "0",
+        "received_ms": 1791818004613,
+        "size": "0.13"
+      },
+      "quote_observation": {
+        "observation_ref": "raw_observations:29578766",
+        "received_at": "2026-10-12T15:13:23.769+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.427",
+        "bid_sz": "4.01",
+        "ask_px": "84.428",
+        "ask_sz": "602.54"
+      }
+    },
+    {
+      "execution_opportunity": {
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "due_ms": 1791818025930,
+        "eligible": true,
+        "execution_decision_ms": 1791818026534,
+        "fill_size": "-0.26",
+        "intent": "horizon_exit",
+        "outcome": "executed",
+        "position_before": "0.00",
+        "quote_age_ms": 797,
+        "quote_available_ms": 1791818026029,
+        "quote_received_ms": 1791818025737,
+        "quote_source": "l2Book",
+        "reason": null,
+        "signal_decision_ms": 1791818020930
+      },
+      "fill_ledger_entry": {
+        "fee": "0.009868693185",
+        "price": "84.347805",
+        "realized_pnl": "-0.017259060",
+        "received_ms": 1791818026534,
+        "size": "-0.26"
+      },
+      "quote_observation": {
+        "observation_ref": "raw_observations:29582095",
+        "received_at": "2026-10-12T15:13:45.737+00:00",
+        "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+        "bid_px": "84.39",
+        "bid_sz": "22.51",
+        "ask_px": "84.391",
+        "ask_sz": "444.89"
+      }
+    }
+  ],
+  "round_trip_state_at_check": {
+    "fills": [
+      {
+        "fee": "0.004934952243",
+        "price": "84.3581580",
+        "realized_pnl": "0",
+        "received_ms": 1791817900756,
+        "size": "0.13"
+      },
+      {
+        "fee": "0.004941507519",
+        "price": "84.4702140",
+        "realized_pnl": "0",
+        "received_ms": 1791818004613,
+        "size": "0.13"
+      },
+      {
+        "fee": "0.009868693185",
+        "price": "84.347805",
+        "realized_pnl": "-0.017259060",
+        "received_ms": 1791818026534,
+        "size": "-0.26"
+      }
+    ],
+    "position": "0.00",
+    "pending": [],
+    "opened_ms": null,
+    "diagnostics": [],
+    "exit_uncertainties": [],
+    "paper_status": "active"
+  },
+  "current_review_schedule": {
+    "next_review_ms": 1791818243443,
+    "review_interval_ms": 300000,
+    "max_duration_ms": 1800000,
+    "experiment_status": "active"
+  },
+  "scope_note": "The scheduled report was generated by the active paper timer. Live entry and horizon exit were subsequently processed on fresh causal BBO/l2Book; position is flat at this checkpoint. No economic/promotion conclusion is drawn.",
+  "opportunity_log_rectification_ref": "PAPER-V4-OPPORTUNITY-LOG-RECTIFICATION-20261012-A880-HYPE.json",
+  "count_semantics": {
+    "execution_opportunities_missed": "per execution-tick attempts, including retries while an order remains pending",
+    "signals_missed_executions": "order-level missed execution counters; these are not expected to equal attempt rows"
+  }
+}

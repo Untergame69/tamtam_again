@@ -1,0 +1,47 @@
+{
+  "artifact_type": "a880_hype_v4_independent_paper_start",
+  "status": "started",
+  "hypothesis_id": "a880-hype-live-delta-follow-v4-causal-bbo-l2-1s",
+  "session_id": "4303114ebedf4d238241a605a41c591c",
+  "plan_id": "7c5103429c4137efd82f5484e70d3ca91301ca434f6bed04fd112c26f36fb950",
+  "variant_id": "7cdbb1fb5cfaf5d1529cceba88a9db548ae1fda230e23ef6af8d8ffaf1046ffb",
+  "spec_fingerprint": "21f30c3b3636d30f8678a4621021139134fdeb7a6047a71fd217975763f943b0",
+  "hypothesis_fingerprint": "b459a7b17b0480257f1392f7829203a677742792c4598005bdd6d6e530ec08e2",
+  "independent_after_incomplete": true,
+  "predecessor_disposition": "v2 residual preserved; no balance or result transferred",
+  "paper_status": "active",
+  "started_ms": 1791817643369,
+  "initial_observation_cursor": 29528080,
+  "first_automatic_review_ms": 1791817943369,
+  "review_interval_ms": 300000,
+  "max_duration_ms": 1800000,
+  "planned_stop_conditions": {
+    "runtime_health": "start only while configured collector and paper engine timer are active and the current HYPE stream connection is healthy",
+    "per_execution_quote": "require BBO or l2Book receipt age <=1000ms, archived before execution, same healthy connection",
+    "quote_unavailable": "record missed opportunity and exact reason; preserve any open residual",
+    "priority_exit_unresolved": "stop session with priority_exit_unresolved_position; preserve residual and final result unknown",
+    "loss_limit": "stop when predeclared 10 USDC net loss/drawdown limit is reached",
+    "duration_end": "stop after 30 minutes and produce final automatic report",
+    "purpose": "technical interpretation only; no profitability decision or economic promotion"
+  },
+  "runtime_at_start": {
+    "runtime_config": {
+      "paper_timer_interval_ms": 500,
+      "paper_timer_accuracy_ms": 50,
+      "paper_start_limit_interval_ms": 10000,
+      "paper_start_limit_burst": 30,
+      "bbo_flush_interval_ms": 250,
+      "quote_age_limit_ms": 1000
+    },
+    "collector_active": true,
+    "paper_timer_active": true,
+    "collector_pid": 1709847,
+    "collector_active_enter": "Mon 2026-10-12 17:05:56 CEST",
+    "code_revision": "d0fdb92384f87f347c3d637b6aad6e9acd17f25b",
+    "current_connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+    "current_quote_age_ms": 6729,
+    "current_connection_health_age_ms": 7352,
+    "current_connection_healthy": true
+  },
+  "global_95_percent_gate": "descriptive_only_not_a_launch_precondition"
+}

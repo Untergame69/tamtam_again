@@ -74,6 +74,8 @@ class PaperEngineV3Tests(unittest.TestCase):
         self.assertEqual([x['quote_source'] for x in state['execution_opportunities']],['l2Book','bbo'])
         self.assertTrue(all(x['eligible'] for x in state['execution_opportunities']))
         self.assertEqual([x['outcome'] for x in state['execution_opportunities']],['executed','executed'])
+        self.assertEqual([(x['position_before'],x['position_after']) for x in state['execution_opportunities']],
+                         [('0','0.99'),('0.99','0.00')])
 
     def test_v4_stale_priority_exit_preserves_residual_and_records_miss(self):
         s=spec_v4();state=initial_state(s)

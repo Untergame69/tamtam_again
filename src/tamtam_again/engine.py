@@ -186,7 +186,8 @@ def _wait_order(state: dict[str, Any], order: dict[str, Any], reason: str, now: 
 
 
 def _record_v4_opportunity(state:dict[str,Any],spec:dict[str,Any],order:dict[str,Any],now:int,
-                           *,eligible:bool,outcome:str,reason:str|None=None,fill_size:str|None=None)->None:
+                           *,eligible:bool,outcome:str,reason:str|None=None,fill_size:str|None=None,
+                           position_before:str|None=None,position_after:str|None=None)->None:
     if spec.get('execution',{}).get('quote_evidence_contract')!='bbo_or_l2book_v1':return
     quote=state.get('quote') or {}
     received=quote.get('source_received_ms')
@@ -195,8 +196,9 @@ def _record_v4_opportunity(state:dict[str,Any],spec:dict[str,Any],order:dict[str
         'intent':order.get('intent'),'eligible':eligible,'outcome':outcome,'reason':reason,
         'quote_source':quote.get('source'),'quote_received_ms':received,
         'quote_available_ms':quote.get('available_ms'),'quote_age_ms':now-int(received) if received is not None else None,
-        'connection_id':quote.get('session'),'position_before':str(state.get('position','0')),
-        'fill_size':fill_size})
+        'connection_id':quote.get('session'),
+        'position_before':position_before if position_before is not None else str(state.get('position','0')),
+        'position_after':position_after,'fill_size':fill_size})
 
 
 def _funding_boundary(now: int, interval: int) -> int:
@@ -307,9 +309,11 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         if abs(size)<abs(delta):state['partial_orders']+=1
         price=number(q['ask'] if buy else q['bid'])
         price*=1+number(spec['slippage']['bps'])*stress/10000*(1 if buy else -1)
-        _fill(state,size,price,number(spec['fees']['taker_bps'])*stress,now)
+        position_before=str(state['position'])
         _record_v4_opportunity(state,spec,order,now,eligible=True,
-            outcome='partial' if abs(size)<abs(delta) else 'executed',reason=None,fill_size=str(size))
+            outcome='partial' if abs(size)<abs(delta) else 'executed',reason=None,fill_size=str(size),
+            position_before=position_before,position_after=str(number(position_before)+size))
+        _fill(state,size,price,number(spec['fees']['taker_bps'])*stress,now)
         if order.get('reduce_only') and number(state['position'])!=0:
             order['due_ms']=now
             remaining.append(order)

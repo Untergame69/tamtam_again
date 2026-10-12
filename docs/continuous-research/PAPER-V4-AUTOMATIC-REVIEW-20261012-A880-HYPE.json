@@ -1,0 +1,199 @@
+{
+  "artifact_type": "a880_hype_v4_live_start_and_automatic_review_evidence",
+  "checked_at_utc": "2026-10-12T15:13:33.678Z",
+  "version": {
+    "hypothesis_id": "a880-hype-live-delta-follow-v4-causal-bbo-l2-1s",
+    "spec_fingerprint": "21f30c3b3636d30f8678a4621021139134fdeb7a6047a71fd217975763f943b0",
+    "hypothesis_fingerprint": "b459a7b17b0480257f1392f7829203a677742792c4598005bdd6d6e530ec08e2",
+    "plan_id": "7c5103429c4137efd82f5484e70d3ca91301ca434f6bed04fd112c26f36fb950",
+    "variant_id": "7cdbb1fb5cfaf5d1529cceba88a9db548ae1fda230e23ef6af8d8ffaf1046ffb",
+    "code_revision_at_start": "d0fdb92384f87f347c3d637b6aad6e9acd17f25b"
+  },
+  "start": {
+    "session_id": "4303114ebedf4d238241a605a41c591c",
+    "started_ms": 1791817643369,
+    "initial_observation_cursor": 29528080,
+    "paper_status_at_check": "active",
+    "independent_after_incomplete": true,
+    "v4_session_count": 1,
+    "old_sessions_preserved": true
+  },
+  "predeclared_bounds": {
+    "max_duration_ms": 1800000,
+    "review_interval_ms": 300000,
+    "first_review_due_ms": 1791817943369,
+    "loss_limit_usdc": "10",
+    "stop_rules": {
+      "runtime_health": "start only while configured collector and paper engine timer are active and the current HYPE stream connection is healthy",
+      "per_execution_quote": "require BBO or l2Book receipt age <=1000ms, archived before execution, same healthy connection",
+      "quote_unavailable": "record missed opportunity and exact reason; preserve any open residual",
+      "priority_exit_unresolved": "stop session with priority_exit_unresolved_position; preserve residual and final result unknown",
+      "loss_limit": "stop when predeclared 10 USDC net loss/drawdown limit is reached",
+      "duration_end": "stop after 30 minutes and produce final automatic report",
+      "purpose": "technical interpretation only; no profitability decision or economic promotion"
+    }
+  },
+  "launch_conditions": {
+    "global_95_percent_gate": "descriptive only; not queried as a launch precondition",
+    "collector_active": true,
+    "paper_timer_active": true,
+    "collector_pid": 1709847,
+    "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+    "connection_healthy": true,
+    "quote_age_bound_ms": 1000
+  },
+  "actual_engine_processing": {
+    "cursor_after_processing": 29580070,
+    "connection": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+    "connected": true,
+    "latest_quote_source": "bbo",
+    "latest_quote_received_ms": 1791818012254,
+    "latest_quote_age_ms_at_last_tick": 221,
+    "tick_interval_ms": 555,
+    "max_tick_interval_ms": 577,
+    "max_processing_ms": 430.275,
+    "max_receipt_lag_ms": 667,
+    "archive_by_kind": {
+      "account": {
+        "query_ms": 0.033,
+        "rows": 1
+      },
+      "bbo": {
+        "query_ms": 0.067,
+        "rows": 2
+      },
+      "health": {
+        "query_ms": 0.027,
+        "rows": 0
+      },
+      "l2Book": {
+        "query_ms": 0.037,
+        "rows": 1
+      }
+    }
+  },
+  "automatic_review": {
+    "report_id": "07ff1e9e935d2aee8f41e44cee764e1e8c4b9c72eed257bda3fe6683e3a3281a",
+    "review_index": 1,
+    "created_at": "2026-10-12T15:12:23.446+00:00",
+    "observed_through_ms": 1791817943427,
+    "next_action": "continue",
+    "signals": {
+      "executions": 1,
+      "live_non_snapshot_fills": 52,
+      "missed_executions": 20,
+      "nonexecution_reasons": {
+        "below_venue_minimum_order_value": 14,
+        "quote_stale_at_execution": 2,
+        "quote_unavailable_at_execution": 2,
+        "zero_adjustment_after_rounding": 2
+      },
+      "partial_executions": 0
+    },
+    "execution_opportunities": {
+      "eligible": 17,
+      "executed": 1,
+      "miss_reasons": {
+        "below_venue_minimum_order_value": 14,
+        "quote_stale_at_execution": 2,
+        "quote_unavailable_at_execution": 2,
+        "zero_adjustment_after_rounding": 2
+      },
+      "missed": 83
+    },
+    "net_result_descriptive_only": {
+      "drawdown_usdc": "0.012365492243",
+      "fees_usdc": "0.004934952243",
+      "funding_coverage": "observed events are included; absence does not prove zero funding",
+      "funding_events_observed": 0,
+      "funding_usdc_observed": "0",
+      "net_pnl_observed_usdc": "-0.008985492243",
+      "realized_pnl_usdc": "0",
+      "unrealized_pnl_usdc": "-0.004050540000"
+    },
+    "position_at_review": "0.13",
+    "next_review_ms": 1791818243443
+  },
+  "latest_state_after_review": {
+    "signals": 73,
+    "fills": [
+      {
+        "fee": "0.004934952243",
+        "price": "84.3581580",
+        "realized_pnl": "0",
+        "received_ms": 1791817900756,
+        "size": "0.13"
+      },
+      {
+        "fee": "0.004941507519",
+        "price": "84.4702140",
+        "realized_pnl": "0",
+        "received_ms": 1791818004613,
+        "size": "0.13"
+      }
+    ],
+    "position": "0.26",
+    "pending": [
+      {
+        "decision_ms": 1791818012477,
+        "due_ms": 1791818017477,
+        "expires_ms": 1791818027477,
+        "intent": "signal_target",
+        "priority": 10,
+        "reduce_only": false,
+        "target": "0.30335"
+      }
+    ],
+    "missed_orders": 28,
+    "nonexecution_reasons": {
+      "below_venue_minimum_order_value": 16,
+      "quote_stale_at_execution": 4,
+      "quote_unavailable_at_execution": 4,
+      "reduce_only_adjustment_below_venue_minimum": 1,
+      "reduce_only_adjustment_rounded_to_zero": 1,
+      "zero_adjustment_after_rounding": 2
+    },
+    "exit_uncertainties": [],
+    "diagnostics": []
+  },
+  "executed_opportunity_evidence": {
+    "attempt": {
+      "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+      "due_ms": 1791817900678,
+      "eligible": true,
+      "execution_decision_ms": 1791817900756,
+      "fill_size": "0.13",
+      "intent": "signal_target",
+      "outcome": "executed",
+      "position_before": "0.13",
+      "quote_age_ms": 892,
+      "quote_available_ms": 1791817900175,
+      "quote_received_ms": 1791817899864,
+      "quote_source": "bbo",
+      "reason": null,
+      "signal_decision_ms": 1791817895678
+    },
+    "quote": {
+      "observation_ref": "raw_observations:29564482",
+      "received_at": "2026-10-12T15:11:39.864+00:00",
+      "connection_id": "e1730fbdc9ef43f5a1c7978ea7f3519a",
+      "bid_px": "84.315",
+      "bid_sz": "28.35",
+      "ask_px": "84.316",
+      "ask_sz": "330.28"
+    }
+  },
+  "targeted_tests": [
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_v4_quote_requires_recent_receipt_prior_archive_availability_and_same_connection",
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_v4_mixed_bbo_l2_entry_exit_records_causal_opportunities",
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_v4_stale_priority_exit_preserves_residual_and_records_miss",
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_v4_zero_rounded_entry_is_counted_as_missed_with_reason",
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_archive_adapter_reads_l2_top_prices_sizes_and_receipt",
+    "tests.test_experimental_paper.ExperimentalPaperTests.test_v4_starts_on_runtime_health_without_global_freshness_gate_and_reports_due"
+  ],
+  "opportunity_log_rectification_ref": "PAPER-V4-OPPORTUNITY-LOG-RECTIFICATION-20261012-A880-HYPE.json",
+  "count_semantics": {
+    "execution_opportunities_missed": "per execution-tick attempts, including retries while an order remains pending",
+    "signals_missed_executions": "order-level missed execution counters; these are not expected to equal attempt rows"
+  }
+}

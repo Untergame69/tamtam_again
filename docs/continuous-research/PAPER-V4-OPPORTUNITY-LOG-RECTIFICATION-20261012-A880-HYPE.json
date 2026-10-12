@@ -1,0 +1,40 @@
+{
+  "artifact_type": "a880_hype_v4_append_only_opportunity_log_rectification",
+  "session_id": "4303114ebedf4d238241a605a41c591c",
+  "related_automatic_report_id": "07ff1e9e935d2aee8f41e44cee764e1e8c4b9c72eed257bda3fe6683e3a3281a",
+  "created_at_utc": "2026-10-12T15:16:00Z",
+  "issue": "The initial v4 execution-opportunity logger captured position_before after applying the fill. These three historical field values are therefore post-fill values; the fill ledger and final position are unchanged.",
+  "preservation": "The automatic report and original fill ledger remain unchanged. This linked addendum corrects only interpretation of the position fields.",
+  "corrected_execution_positions": [
+    {
+      "execution_ms": 1791817900756,
+      "intent": "signal_target",
+      "size": "0.13",
+      "recorded_position_before": "0.13",
+      "correct_position_before": "0",
+      "position_after": "0.13",
+      "source": "fill ledger sequence"
+    },
+    {
+      "execution_ms": 1791818004613,
+      "intent": "signal_target",
+      "size": "0.13",
+      "recorded_position_before": "0.26",
+      "correct_position_before": "0.13",
+      "position_after": "0.26",
+      "source": "fill ledger sequence"
+    },
+    {
+      "execution_ms": 1791818026534,
+      "intent": "horizon_exit",
+      "size": "-0.26",
+      "recorded_position_before": "0.00",
+      "correct_position_before": "0.26",
+      "position_after": "0.00",
+      "source": "fill ledger sequence"
+    }
+  ],
+  "code_correction": "New execution-opportunity records snapshot position before fill and also record position_after. The mixed BBO/l2Book test asserts both values.",
+  "targeted_test": "tests.test_paper_engine_v3.PaperEngineV3Tests.test_v4_mixed_bbo_l2_entry_exit_records_causal_opportunities",
+  "scope": "No historical experiment, fill, position, or result was rewritten; no session restart was performed."
+}

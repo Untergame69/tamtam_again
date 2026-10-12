@@ -92,10 +92,12 @@ def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any]) ->
     return row, spec, plan
 
 
-def start(store: Store, variant_id: str, hypothesis: dict[str, Any]) -> dict[str, Any]:
+def start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
+          restart_reason: str | None = None) -> dict[str, Any]:
     validate_start(store, variant_id, hypothesis)
     from .paper import start_paper
-    return start_paper(store, variant_id, experimental_hypothesis=hypothesis)
+    return start_paper(store, variant_id, experimental_hypothesis=hypothesis,
+                       restart_reason=restart_reason)
 
 
 def _action(session: Any, state: dict, summary: dict, run: Any, now: int) -> tuple[str, str, str]:

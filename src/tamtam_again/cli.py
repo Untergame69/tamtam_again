@@ -143,6 +143,7 @@ def _parser() -> argparse.ArgumentParser:
     experimental_start = commands.add_parser("paper-experimental-start", help="Start a frozen prospective experiment without N1 promotion")
     experimental_start.add_argument("variant_id")
     experimental_start.add_argument("hypothesis", type=Path)
+    experimental_start.add_argument("--restart-reason", help="Required when restarting a retired experimental version")
     experimental_status = commands.add_parser("paper-experimental-status", help="Show experimental paper sessions and latest automatic report")
     experimental_status.add_argument("session_id", nargs="?")
     paper_retire = commands.add_parser("paper-retire", help="Retire a flat session and preserve its ledger")
@@ -209,7 +210,8 @@ def main(argv: list[str] | None = None) -> int:
                     result = start_paper(store,args.variant_id,restart_reason=args.restart_reason)
                 elif args.command == "paper-experimental-start":
                     from .experimental_paper import start as start_experimental
-                    result = start_experimental(store,args.variant_id,json.loads(args.hypothesis.read_text()))
+                    result = start_experimental(store,args.variant_id,json.loads(args.hypothesis.read_text()),
+                                                restart_reason=args.restart_reason)
                 elif args.command == "paper-experimental-status":
                     from .experimental_paper import status as experimental_status
                     result = experimental_status(store,args.session_id)

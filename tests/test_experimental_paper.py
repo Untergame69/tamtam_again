@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tamtam_again.experimental_paper import report_due, start as start_experimental, status
-from tamtam_again.paper import paper_tick, start_paper
+from tamtam_again.paper import paper_tick, retire_paper, start_paper
 from tamtam_again.paper_adaptation import recover as recover_adaptation
 from tamtam_again.engine import initial_state, reduce_event
 from tamtam_again.recipe import synthetic_spec
@@ -122,6 +122,24 @@ class ExperimentalPaperTests(unittest.TestCase):
         result = paper_tick(self.store, started["session_id"])
         self.assertEqual(result["status"], "active")
         self.assertEqual(result["waiting_for"], ["awaiting_initial_live_websocket_heartbeat"])
+
+    def test_retired_flat_experiment_restarts_only_with_reason_and_new_ledger(self):
+        first = start_experimental(self.store, self.variant, hypothesis())
+        self.store.connection.execute("update paper_sessions set status='suspended' where session_id=?",
+                                      (first["session_id"],))
+        self.store.connection.commit()
+        retire_paper(self.store, first["session_id"], reason="Preserve interrupted flat session")
+        with self.assertRaisesRegex(ValueError, "explicit reason"):
+            start_experimental(self.store, self.variant, hypothesis())
+        second = start_experimental(self.store, self.variant, hypothesis(),
+                                    restart_reason="Fresh prospective episode after collector stream interruption; prior flat ledger retained")
+        self.assertNotEqual(second["session_id"], first["session_id"])
+        state = self.store.connection.execute("select state_json from paper_sessions where session_id=?",
+                                              (second["session_id"],)).fetchone()
+        self.assertEqual(json.loads(state[0])["position"], "0")
+        policy = self.store.connection.execute("select restart_reason from paper_session_policy where session_id=?",
+                                               (second["session_id"],)).fetchone()
+        self.assertIn("prior flat ledger retained", policy[0])
 
     def test_feed_failure_suspends_with_experiment_report_and_never_queues_ai(self):
         started = start_experimental(self.store, self.variant, hypothesis())

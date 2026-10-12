@@ -148,8 +148,8 @@
     "zero_start_limit_hits": true,
     "zero_websocket_reconnects": true
   },
-  "decision": "pending_fresh_ten_minute_collection",
-  "decision_reason": "Start is conditional on a current ten-minute measurement; v3 hypothesis and runtime tick target now consistently declare 600 ms, while the one-second quote age bound is unchanged.",
+  "decision": "do_not_start_after_latest_measurement",
+  "decision_reason": "The ten-minute measurement recorded 993/1069 (92.89%) eligible quotes, below the frozen 95% requirement; 76 decisions saw same-connection BBO older than 1000 ms. Cadence and archive p95 passed. The event-driven BBO feed sometimes remained unchanged for several seconds. A one-time automatic recheck is being scheduled; the one-second limit and all thresholds remain unchanged.",
   "strategy_spec_file": "config/experiments/a880-hype-live-delta-v3.json",
   "hypothesis_file": "config/experiments/a880-hype-live-delta-hypothesis-v3.json",
   "start_sequence": [

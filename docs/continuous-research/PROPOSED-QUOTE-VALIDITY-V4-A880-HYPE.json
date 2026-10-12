@@ -1,0 +1,30 @@
+{
+  "artifact_type": "proposed_quote_validity_contract",
+  "version": "a880-hype-paper-quote-v4-proposal",
+  "status": "proposal_only_not_registered_or_started",
+  "supersedes_for_future_versions_only": "BBO-only quote evidence in v3; v3 artifact and gate remain immutable",
+  "contract": {
+    "decision_time": "paper tick start / actual simulated execution time, evaluated independently at both instants",
+    "admissible_evidence": [
+      "HYPE BBO frame",
+      "HYPE fast l2Book frame"
+    ],
+    "max_source_age_ms": 1000,
+    "availability": "frame must have been archived by the decision instant; source receipt must be at or before that instant; measure receipt-to-archive and archive-to-decision separately",
+    "connection": "frame connection_id must equal the currently healthy collector connection; any reconnect or missing continuity invalidates until a new frame is received on the current connection",
+    "l2Book": "use the actual top bid/ask price and size from levels[0][0] and levels[1][0]; it may stand as current quote evidence only while itself <=1000 ms old; matching an older BBO can confirm equality at l2 receipt time but does not extend freshness beyond the l2 source-age bound",
+    "heartbeat": "health/heartbeat is a connection-liveness signal only and never refreshes quote or book age",
+    "fallback": "if no admissible BBO or l2Book exists, quote status is unknown/stale and execution is rejected; do not carry forward levels or infer unchanged state"
+  },
+  "evidence_ref": "docs/continuous-research/BBO-SILENCE-L2-ANALYSIS-20261012-A880-HYPE.json",
+  "historical_gate_effect": "none; existing failed v3 gate remains failed and v3 is not modified",
+  "same_window_counterfactual": {
+    "v3_bbo_only_admissible": 993,
+    "checkpoints": 1069,
+    "additional_decisions_with_l2_age_le_1000ms": 6,
+    "max_possible_admissible_if_l2_alternative_used": 999,
+    "fraction": 0.934518,
+    "95_percent_threshold_met": false
+  },
+  "decision": "Do not start v3 from the stopped stale retry. Any future launch requires a separately versioned proposal decision and its own bounded gate; no repeated windows are authorized by this artifact."
+}

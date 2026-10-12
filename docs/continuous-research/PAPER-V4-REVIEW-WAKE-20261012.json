@@ -1,0 +1,21 @@
+{
+  "artifact_type": "bounded_quote_contract_review_wake_check",
+  "checked_at_utc": "2026-10-12T14:42:56Z",
+  "scheduled_for_local": "2026-10-12T16:43:02+02:00",
+  "automatic_v3_timer_active": false,
+  "v3_session_count": 0,
+  "v3_sessions": [],
+  "latest_gate_id": "450fcb7f748c4d999d55cf3639d28720a365d3f9d6a841da139ffb99430cbebd",
+  "latest_gate_passed": false,
+  "proposal_ref": "docs/continuous-research/PROPOSED-QUOTE-VALIDITY-V4-A880-HYPE.json",
+  "action": "No collection or launch is performed. Keep v3 blocked unless an independently versioned contract is explicitly approved and separately gated.",
+  "wake_timer": {
+    "unit": "tamtam-again-a880-v4-review-wake.timer",
+    "service": "tamtam-again-a880-v4-review-wake.service",
+    "scheduled_local": "2026-10-12T17:00:00+02:00",
+    "scheduled_utc": "2026-10-12T15:00:00Z",
+    "verified_active": true,
+    "next_elapse": "2026-10-12 17:00:00 CEST",
+    "behavior": "one read-only status check; no collection, retry or start"
+  }
+}

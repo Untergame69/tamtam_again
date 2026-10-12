@@ -1,0 +1,21 @@
+{
+  "artifact_type": "automatic_paper_start_idempotency_evidence",
+  "version_control": {
+    "field_error": "start_experimental returns session_id but not last_observation_id; launcher now reads last_observation_id from committed paper_sessions row.",
+    "post_creation_identity": "session_id is committed to paper_collection_gate_launches immediately after start returns; recovery also resolves it by reserved variant_id if the process ends before that update.",
+    "duplicate_guard": "gate_id primary-key reservation; an interrupted starting reservation is reused/recovered or refused as ambiguous. It is never used to create a second plan/session for the same gate.",
+    "targeted_test": "tests.test_experimental_paper.ExperimentalPaperTests.test_automatic_launch_recovers_committed_session_after_post_create_error",
+    "test_result": "passed"
+  },
+  "operational_start_path": {
+    "gate_for_current_attempt": "450fcb7f748c4d999d55cf3639d28720a365d3f9d6a841da139ffb99430cbebd",
+    "old_one_shot_timer": "tamtam-again-v3-gate-recheck.timer",
+    "timer_stopped_before_trigger": true,
+    "service_start_timestamp": null,
+    "v3_sessions_created_for_gate": 0,
+    "v3_session_rows": [],
+    "decision": "no v3 start; frozen BBO-only gate remains failed; timer will not launch it"
+  },
+  "database_check": "paper_sessions JOIN paper_experimental_sessions filtered by exact v3 hypothesis id at evidence creation time",
+  "test_scope": "A controlled temporary database test simulates a process error after the session transaction commits but before the launcher writes session_id; recovery recovers the same session and cursor, and the session count remains one."
+}

@@ -4870,7 +4870,7 @@
     "order_ttl_ms": 10000
   },
   "launch_gate": {
-    "status": "failed_freshness_fraction",
+    "status": "failed_latest_window_launch_cancelled_for_contract_review",
     "required_continuous_collection_ms": 600000,
     "minimum_decision_checkpoints": 600,
     "minimum_same_connection_quote_fraction": 0.95,
@@ -4893,15 +4893,32 @@
   "last_decision": {
     "result": "do_not_start_v3",
     "gate_id": "450fcb7f748c4d999d55cf3639d28720a365d3f9d6a841da139ffb99430cbebd",
-    "reason": "Fresh quote fraction 92.89% is below the predeclared 95%; quote-age limit remains 1000 ms. No threshold was relaxed."
+    "reason": "Preserve failed BBO-only gate; no retroactive l2Book credit. New l2Book evidence supports a separately versioned v4 contract proposal, not a v3 launch."
   },
   "next_control": {
-    "status": "scheduled",
-    "unit": "tamtam-again-v3-gate-recheck.timer",
-    "activates": "tamtam-again-v3-gate-recheck.service",
-    "scheduled_local": "2026-10-12T16:43:02+02:00",
-    "scheduled_utc": "2026-10-12T14:43:02Z",
-    "action": "One new 600-second collection. If the frozen gate passes, register a fresh experimental_paper_only plan and start independent v3 after rechecking same connection, current quote <=1000ms, runtime configuration and code revision.",
+    "status": "bounded_read_only_wake_scheduled",
+    "timer_unit": "tamtam-again-a880-v4-review-wake.timer",
+    "service_unit": "tamtam-again-a880-v4-review-wake.service",
+    "scheduled_local": "2026-10-12T17:00:00+02:00",
+    "scheduled_utc": "2026-10-12T15:00:00Z",
+    "action": "One read-only check of the failed latest gate, timer state and v3 session count; it performs no collection and cannot launch an experiment.",
     "recursive_retries": false
-  }
+  },
+  "automatic_start_control": {
+    "status": "stopped_before_trigger",
+    "unit": "tamtam-again-v3-gate-recheck.timer",
+    "scheduled_trigger_local": "2026-10-12T16:43:02+02:00",
+    "reason": "The pending action could launch v3 using a BBO-only contract after l2Book showed material gaps; v3 remains immutable and its failed gate is preserved.",
+    "launch_on_pass_disabled": true
+  },
+  "bbo_silence_l2_analysis_ref": "docs/continuous-research/BBO-SILENCE-L2-ANALYSIS-20261012-A880-HYPE.json",
+  "proposed_future_contract_ref": "docs/continuous-research/PROPOSED-QUOTE-VALIDITY-V4-A880-HYPE.json",
+  "launch_path_evidence_ref": "docs/continuous-research/PAPER-V3-LAUNCH-IDEMPOTENCY-20261012.json",
+  "automatic_launch_code_fix": {
+    "status": "implemented_and_targeted_test_passed",
+    "missing_field": "last_observation_id is read from committed paper_sessions using returned session_id",
+    "idempotency": "per-gate launch reservation with recovery by session_id or exact variant_id; ambiguous interrupted start refuses duplicate",
+    "test": "tests.test_experimental_paper.ExperimentalPaperTests.test_automatic_launch_recovers_committed_session_after_post_create_error"
+  },
+  "bounded_wake_evidence_ref": "docs/continuous-research/PAPER-V4-REVIEW-WAKE-20261012.json"
 }

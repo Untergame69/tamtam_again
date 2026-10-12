@@ -35,6 +35,26 @@ def pct(values:list[int|float],p:float)->int:
 def iso(ms:int)->str:
     return datetime.fromtimestamp(ms/1000,timezone.utc).isoformat(timespec='milliseconds').replace('+00:00','Z')
 
+def recover_launch_session(store:Store,gate_id:str)->dict|None:
+    """Recover the exact committed session for a reserved gate; never start a second one."""
+    row=store.connection.execute("SELECT * FROM paper_collection_gate_launches WHERE gate_id=?",(gate_id,)).fetchone()
+    if not row:return None
+    if row['session_id']:
+        session=store.connection.execute("SELECT session_id,last_observation_id FROM paper_sessions WHERE session_id=?",
+            (row['session_id'],)).fetchone()
+        if session:return {"session_id":session['session_id'],"initial_cursor":int(session['last_observation_id']),
+            "variant_id":row['variant_id'],"plan_id":row['plan_id'],"status":row['status']}
+    if row['variant_id']:
+        session=store.connection.execute("SELECT p.session_id,p.last_observation_id,p.variant_id FROM paper_sessions p "
+            "JOIN paper_experimental_sessions e USING(session_id) WHERE p.variant_id=? "
+            "ORDER BY p.started_ms DESC LIMIT 1",(row['variant_id'],)).fetchone()
+        if session:
+            store.connection.execute("UPDATE paper_collection_gate_launches SET session_id=?,status='created',updated_ms=? WHERE gate_id=?",
+                (session['session_id'],now_ms(),gate_id));store.connection.commit()
+            return {"session_id":session['session_id'],"initial_cursor":int(session['last_observation_id']),
+                "variant_id":session['variant_id'],"plan_id":row['plan_id'],"status":"created","recovered":True}
+    return None
+
 def main()->int:
     parser=argparse.ArgumentParser()
     parser.add_argument('--duration-sec',type=int,default=600)
@@ -198,16 +218,57 @@ def main()->int:
     launch_result=None
     if passed and args.launch_on_pass:
         from tamtam_again.experimental_paper import start as start_experimental
-        runtime=None
-        for _ in range(120):
-            runtime=_paper_collection_runtime_state(store)
-            if (runtime['current_connection_id']==measurement['connection_id']
-                and runtime['current_quote_age_ms']<=1000
-                and runtime['current_connection_healthy']):
-                break
-            time.sleep(.5)
+        # A gate can be invoked again after a process error. Reserve its one
+        # launch before creating anything, and reuse the exact variant/session
+        # if the previous process got as far as committing them.
+        store.connection.execute('''CREATE TABLE IF NOT EXISTS paper_collection_gate_launches (
+            gate_id TEXT PRIMARY KEY, spec_fingerprint TEXT NOT NULL,
+            plan_id TEXT, variant_id TEXT, session_id TEXT,
+            status TEXT NOT NULL, error TEXT, updated_ms INTEGER NOT NULL)''')
+        launch_row=store.connection.execute(
+            "SELECT * FROM paper_collection_gate_launches WHERE gate_id=?",(gate['gate_id'],)).fetchone()
+        if launch_row and launch_row['spec_fingerprint']!=spec_id:
+            launch_result={"started":False,"reason":"Gate launch reservation fingerprint mismatch; refusing a second start."}
+        elif launch_row and recover_launch_session(store,gate['gate_id']):
+            recovered=recover_launch_session(store,gate['gate_id'])
+            launch_result={"started":True,"session_id":recovered['session_id'],
+                "variant_id":recovered['variant_id'],"plan_id":recovered['plan_id'],
+                "initial_observation_cursor":recovered['initial_cursor'],
+                "recovered_existing":True,"gate_id":gate['gate_id']}
         else:
-            launch_result={"started":False,"reason":"No current quote within the frozen 1000 ms limit on the measured connection within 60 seconds."}
+            if not launch_row:
+                store.connection.execute("INSERT INTO paper_collection_gate_launches VALUES(?,?,?,?,?,?,?,?)",
+                    (gate['gate_id'],spec_id,None,None,None,'reserved',None,now_ms()))
+                store.connection.commit()
+                launch_row=store.connection.execute(
+                    "SELECT * FROM paper_collection_gate_launches WHERE gate_id=?",(gate['gate_id'],)).fetchone()
+            recovered=recover_launch_session(store,gate['gate_id'])
+            if recovered:
+                launch_result={"started":True,"session_id":recovered['session_id'],"variant_id":recovered['variant_id'],
+                    "plan_id":recovered['plan_id'],"initial_observation_cursor":recovered['initial_cursor'],
+                    "recovered_existing":True,"gate_id":gate['gate_id']}
+            elif launch_row['status'] in ('starting','created','verified'):
+                # The state is ambiguous after a process interruption. Never
+                # create another variant/session to repair an uncertain start.
+                launch_result={"started":False,"reason":"Prior launch was interrupted after entering start; duplicate start refused.",
+                    "variant_id":launch_row['variant_id'],"gate_id":gate['gate_id']}
+            else:
+                store.connection.execute("UPDATE paper_collection_gate_launches SET status='starting',updated_ms=? WHERE gate_id=?",
+                    (now_ms(),gate['gate_id']))
+                store.connection.commit()
+                launch_row=store.connection.execute(
+                    "SELECT * FROM paper_collection_gate_launches WHERE gate_id=?",(gate['gate_id'],)).fetchone()
+        runtime=None
+        if launch_result is None:
+            for _ in range(120):
+                runtime=_paper_collection_runtime_state(store)
+                if (runtime['current_connection_id']==measurement['connection_id']
+                    and runtime['current_quote_age_ms']<=1000
+                    and runtime['current_connection_healthy']):
+                    break
+                time.sleep(.5)
+            else:
+                launch_result={"started":False,"reason":"No current quote within the frozen 1000 ms limit on the measured connection within 60 seconds."}
         if launch_result is None:
             plan=json.loads((ROOT/'config/experiments/a880-hype-live-delta-plan-v2.json').read_text())
             base=now_ms()+60_000;gap=plan['embargo_ms'];width=3_600_000
@@ -215,7 +276,11 @@ def main()->int:
             plan['comparison']={"start_ms":base+width+gap,"end_ms":base+2*width+gap}
             plan['final']={"start_ms":base+2*width+2*gap,"end_ms":base+3*width+2*gap}
             created_plan=create_plan(store,plan)
+            store.connection.execute("UPDATE paper_collection_gate_launches SET plan_id=?,updated_ms=? WHERE gate_id=?",
+                (created_plan['plan_id'],now_ms(),gate['gate_id']));store.connection.commit()
             variant=register_variant(store,created_plan['plan_id'],spec)
+            store.connection.execute("UPDATE paper_collection_gate_launches SET variant_id=?,updated_ms=? WHERE gate_id=?",
+                (variant['variant_id'],now_ms(),gate['gate_id']));store.connection.commit()
             hypothesis=json.loads((ROOT/'config/experiments/a880-hype-live-delta-hypothesis-v3.json').read_text())
             launch_deadline=time.monotonic()+60
             while time.monotonic()<launch_deadline:
@@ -231,7 +296,17 @@ def main()->int:
                 started_paper=start_experimental(store,variant['variant_id'],hypothesis,
                     restart_reason="Independent v3 after administratively incomplete v2; no residual, cash or result transferred.",
                     independent_after_incomplete=True,runtime_state=runtime)
-                session_id=started_paper['session_id'];initial_cursor=started_paper['last_observation_id']
+                session_id=started_paper['session_id']
+                # Persist the identity before doing any post-creation work.
+                store.connection.execute("UPDATE paper_collection_gate_launches SET session_id=?,status='created',updated_ms=? WHERE gate_id=?",
+                    (session_id,now_ms(),gate['gate_id']));store.connection.commit()
+                # start() commits paper_sessions transactionally. Read its
+                # real observation cursor from that committed row; start()'s
+                # return contract intentionally does not include this field.
+                session_row=store.connection.execute(
+                    "SELECT last_observation_id FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
+                if not session_row:raise RuntimeError(f"Started paper session {session_id} is not readable after commit")
+                initial_cursor=int(session_row['last_observation_id'])
                 deadline=time.monotonic()+30;processed=None
                 while time.monotonic()<deadline:
                     row=store.connection.execute("SELECT last_observation_id,state_json,status FROM paper_sessions WHERE session_id=?",
@@ -247,6 +322,8 @@ def main()->int:
                     "plan_id":created_plan['plan_id'],"initial_observation_cursor":initial_cursor,
                     "first_processed_observations":processed,"scheduled_review_ms":exp_row['next_review_ms'],
                     "review_interval_ms":exp_row['review_interval_ms'],"gate_id":gate['gate_id']}
+                store.connection.execute("UPDATE paper_collection_gate_launches SET status='verified',updated_ms=? WHERE gate_id=?",
+                    (now_ms(),gate['gate_id']));store.connection.commit()
                 started_path=ROOT/'docs/continuous-research'/f"PAPER-V3-START-{session_id}.json"
                 started_path.write_text(json.dumps({"artifact_type":"v3_independent_paper_start_evidence",
                     "gate_id":gate['gate_id'],"spec_fingerprint":spec_id,"start":launch_result,

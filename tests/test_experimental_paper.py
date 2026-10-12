@@ -15,6 +15,7 @@ from tamtam_again.recipe import synthetic_spec
 from tamtam_again.storage import Store
 from tamtam_again.validation import create_plan, evaluate, now_ms, register_variant
 from tamtam_again.websocket import MAX_USER_SUBSCRIPTIONS, _subscriptions, _sync_account_subscriptions
+from scripts.paper_collection_gate import recover_launch_session
 
 
 ADDRESS = "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee"
@@ -116,6 +117,30 @@ class ExperimentalPaperTests(unittest.TestCase):
     def tearDown(self):
         self.store.close()
         self.tmp.cleanup()
+
+    def test_automatic_launch_recovers_committed_session_after_post_create_error(self):
+        # Model an error after start_experimental committed but before the
+        # automatic launcher wrote the returned identity into its ledger.
+        started = start_experimental(self.store, self.variant, hypothesis())
+        session = self.store.connection.execute(
+            "select last_observation_id from paper_sessions where session_id=?",
+            (started["session_id"],)).fetchone()
+        self.store.connection.execute("""create table paper_collection_gate_launches (
+            gate_id text primary key, spec_fingerprint text not null, plan_id text,
+            variant_id text, session_id text, status text not null, error text,
+            updated_ms integer not null)""")
+        self.store.connection.execute("insert into paper_collection_gate_launches values(?,?,?,?,?,?,?,?)",
+            ("gate-once", "f" * 64, "plan-once", self.variant, None, "starting", None, now_ms()))
+        self.store.connection.commit()
+
+        recovered = recover_launch_session(self.store, "gate-once")
+        self.assertEqual(recovered["session_id"], started["session_id"])
+        self.assertEqual(recovered["initial_cursor"], session["last_observation_id"])
+        self.assertTrue(recovered["recovered"])
+        again = recover_launch_session(self.store, "gate-once")
+        self.assertEqual(again["session_id"], recovered["session_id"])
+        self.assertEqual(self.store.connection.execute(
+            "select count(*) from paper_sessions where variant_id=?", (self.variant,)).fetchone()[0], 1)
 
     def test_start_is_explicitly_experimental_and_never_evaluated(self):
         with self.assertRaisesRegex(ValueError, "N2 requires real passed N1"):

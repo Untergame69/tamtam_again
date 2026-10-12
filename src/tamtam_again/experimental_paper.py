@@ -117,7 +117,7 @@ def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
         spec_id=fingerprint(spec)
         gate=store.connection.execute(
             "SELECT * FROM paper_experimental_collection_gates WHERE spec_fingerprint=? "
-            "ORDER BY created_at DESC,gate_id DESC LIMIT 1", (spec_id,),
+            "ORDER BY rowid DESC LIMIT 1", (spec_id,),
         ).fetchone()
         if not gate or not gate["passed"]:
             raise ValueError("Freshness/cadence collection gate has not passed for this exact strategy spec")

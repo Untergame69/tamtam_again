@@ -4896,7 +4896,12 @@
     "reason": "Fresh quote fraction 92.89% is below the predeclared 95%; quote-age limit remains 1000 ms. No threshold was relaxed."
   },
   "next_control": {
-    "status": "to_be_scheduled",
-    "bounded": "One automatic recheck, one 600-second collection, no recursive retries if it fails."
+    "status": "scheduled",
+    "unit": "tamtam-again-v3-gate-recheck.timer",
+    "activates": "tamtam-again-v3-gate-recheck.service",
+    "scheduled_local": "2026-10-12T16:43:02+02:00",
+    "scheduled_utc": "2026-10-12T14:43:02Z",
+    "action": "One new 600-second collection. If the frozen gate passes, register a fresh experimental_paper_only plan and start independent v3 after rechecking same connection, current quote <=1000ms, runtime configuration and code revision.",
+    "recursive_retries": false
   }
 }

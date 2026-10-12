@@ -148,13 +148,20 @@
     "zero_start_limit_hits": true,
     "zero_websocket_reconnects": true
   },
-  "decision": "do_not_start_after_latest_measurement",
-  "decision_reason": "The ten-minute measurement recorded 993/1069 (92.89%) eligible quotes, below the frozen 95% requirement; 76 decisions saw same-connection BBO older than 1000 ms. Cadence and archive p95 passed. The event-driven BBO feed sometimes remained unchanged for several seconds. A one-time automatic recheck is being scheduled; the one-second limit and all thresholds remain unchanged.",
+  "decision": "do_not_start_after_latest_measurement_recheck_scheduled",
+  "decision_reason": "The measured window was 600000 ms with 1069 real systemd checkpoints; 993/1069 (92.89%) met the unchanged 1000 ms quote-age bound, below the frozen 95% gate. Cadence, archive delay, connection continuity, runtime configuration, and start-limit criteria passed. The BBO event feed did not refresh during some unchanged-book intervals. A one-shot recheck is scheduled for 2026-10-12 16:43:02 Europe/Paris; it will start v3 only if all frozen gate requirements and live startup checks pass. There will be no recursive retry.",
   "strategy_spec_file": "config/experiments/a880-hype-live-delta-v3.json",
   "hypothesis_file": "config/experiments/a880-hype-live-delta-hypothesis-v3.json",
   "start_sequence": [
     "Pass PAPER-FRESHNESS-GATE-20261012-A880-HYPE.json for ten continuous minutes and persist its aggregate with paper-collection-gate against spec_fingerprint.",
     "Create a new prospective validation plan after the gate; do not reuse the exhausted v2 plan; freeze config/experiments/a880-hype-live-delta-v3.json.",
     "Start config/experiments/a880-hype-live-delta-hypothesis-v3.json with --independent-after-incomplete and the explicit reason in this artifact; runtime gate validation blocks start until the exact spec has a passed collection-gate record."
-  ]
+  ],
+  "next_control": {
+    "unit": "tamtam-again-v3-gate-recheck.timer",
+    "scheduled_local": "2026-10-12T16:43:02+02:00",
+    "collection_duration_ms": 600000,
+    "automatic_start_on_pass": true,
+    "recursive_retries": false
+  }
 }

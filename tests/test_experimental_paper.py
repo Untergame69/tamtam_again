@@ -262,6 +262,18 @@ class ExperimentalPaperTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"gate is stale"):
                 start_experimental(self.store,variant,h,runtime_state=gate_runtime(measurement))
 
+    def test_latest_failed_collection_supersedes_an_earlier_pass(self):
+        next_spec=spec();next_spec["execution"]["paper_tick_target_ms"]=600
+        plan=create_plan(self.store,real_plan())["plan_id"]
+        variant=register_variant(self.store,plan,next_spec)["variant_id"]
+        h=hypothesis();h["prestart_collection_gate_required"]=True
+        good=gate_measurement();passed=record_collection_gate(self.store,fingerprint(next_spec),good)
+        self.assertTrue(passed["passed"])
+        bad=gate_measurement(fresh=500);failed=record_collection_gate(self.store,fingerprint(next_spec),bad)
+        self.assertFalse(failed["passed"])
+        with self.assertRaisesRegex(ValueError,"gate has not passed"):
+            start_experimental(self.store,variant,h,runtime_state=gate_runtime(good))
+
     def test_initial_subscription_grace_is_an_explicit_wait_not_a_false_suspension(self):
         started = start_experimental(self.store, self.variant, hypothesis())
         result = paper_tick(self.store, started["session_id"])

@@ -170,12 +170,30 @@ def main()->int:
         "start_limit_hits":start_limit_hits,"runtime_config_stable":runtime_stable,
         "gate_id":gate['gate_id'],"passed":gate['passed'],"window_ref":f"paper_experimental_collection_gates:{gate['gate_id']}",
         "raw_observation_refs":sorted({f"raw_observations:{f['observation_id']}" for f in frames})}
+    failures=[]
+    if not tick_ms or fresh/len(tick_ms)<.95:
+        failures.append(f"Eligible quotes {fresh}/{len(tick_ms)} ({fresh/len(tick_ms) if tick_ms else 0:.2%}) were below the frozen 95% requirement with max_quote_age_ms=1000.")
+    if len(set(ids))!=1 or reconnects:
+        failures.append(f"Connection continuity failed: connection_ids={sorted(ids)}, reconnects={reconnects}.")
+    if start_limit_hits:
+        failures.append(f"Systemd start-limit hits: {start_limit_hits}.")
+    if pct(intervals,.95)>600 or max(intervals,default=0)>1000:
+        failures.append(f"Tick cadence exceeded the frozen p95/max limits: p95={pct(intervals,.95)} ms, max={max(intervals,default=0)} ms.")
+    if pct(receipt_lag,.95)>300:
+        failures.append(f"Receipt-to-archive p95 exceeded 300 ms: {pct(receipt_lag,.95)} ms.")
+    if not runtime_stable:
+        failures.append("Collector process/session or active collection runtime configuration changed during the window.")
+    if failures:window['failure_reasons']=failures
     report=json.loads(REPORT.read_text());report['observation_windows'].append(window)
-    report['launch_gate']['status']='passed' if gate['passed'] and runtime_stable else 'not_yet_passed'
+    report['launch_gate']['status']='passed' if gate['passed'] and runtime_stable else 'failed_latest_window'
+    report['last_decision']={"result":"start_v3" if gate['passed'] and runtime_stable else "do_not_start_v3",
+        "gate_id":gate['gate_id'],"reason":"All predeclared gate criteria passed." if gate['passed'] and runtime_stable
+            else "; ".join(failures)}
+    report['next_control']={"status":"complete_no_further_retry" if args.launch_on_pass else "not_applicable",
+        "one_shot_recheck":True,"recursive_retries":False}
     REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     result_path=ROOT/'docs/continuous-research'/f"PAPER-FRESHNESS-GATE-{started}-A880-HYPE.json"
     result_path.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-    store.close()
     passed=gate['passed'] and runtime_stable
     launch_result=None
     if passed and args.launch_on_pass:
@@ -233,15 +251,25 @@ def main()->int:
                 started_path.write_text(json.dumps({"artifact_type":"v3_independent_paper_start_evidence",
                     "gate_id":gate['gate_id'],"spec_fingerprint":spec_id,"start":launch_result,
                     "start_runtime_state":runtime},ensure_ascii=False,indent=2)+'\n')
-    if launch_result and launch_result.get('started'):
+    run_success=passed and (not args.launch_on_pass or bool(launch_result and launch_result.get('started')))
+    if args.launch_on_pass:
         window['launch_result']=launch_result
         report=json.loads(REPORT.read_text());report['observation_windows'][-1]=window
+        if run_success:
+            report['launch_gate']['status']='v3_started'
+            report['last_decision']={"result":"start_v3","gate_id":gate['gate_id'],
+                "session_id":launch_result['session_id'],"reason":"Ten-minute gate passed and current connection/configuration/fresh quote were verified at start."}
+        elif passed:
+            report['launch_gate']['status']='passed_start_blocked'
+            report['last_decision']={"result":"do_not_start_v3","gate_id":gate['gate_id'],
+                "reason":launch_result['reason'] if launch_result else "No start result was recorded."}
         REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    store.close()
     store.close()
     print(json.dumps({"gate_id":gate['gate_id'],"passed":passed,
         "measurement_file":str(result_path.relative_to(ROOT)),"checkpoints":len(tick_ms),
         "fresh_quotes":fresh,"fresh_fraction":fresh/len(tick_ms) if tick_ms else 0,
         "launch_result":launch_result},ensure_ascii=False),flush=True)
-    return 0 if passed else 2
+    return 0 if run_success else 2
 
 if __name__=='__main__':raise SystemExit(main())

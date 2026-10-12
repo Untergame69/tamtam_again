@@ -219,8 +219,8 @@ def _authorized_addresses(connection: sqlite3.Connection, network: str, as_of_ms
     query = "select distinct lower(address) from account_scope_reports where network=? and available_ms<=?"
     params: list[Any] = [network, as_of_ms]
     if connection.execute("select 1 from sqlite_master where type='table' and name='historical_curve_queue'").fetchone():
-        query += " union select lower(address) from historical_curve_queue where network=? and status in ('fetched','already_covered')"
-        params.append(network)
+        query += " union select lower(address) from historical_curve_queue where network=? and status in ('fetched','already_covered') and added_at<=?"
+        params.extend((network, _iso(as_of_ms)))
     rows = connection.execute(query + " order by 1", params).fetchall()
     blocked = {x.lower() for x in protected_addresses(store)}
     allowed, excluded = [], []

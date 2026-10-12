@@ -49,7 +49,7 @@ Les lectures de quota proviennent du compteur partagé : 5 min 4 024 poids (804,
 
 ## Vérification et état d'exécution
 
-Les 453 tests du dépôt passent (suite complète : 48,355 s). Les nouveaux tests reproduisent l'attribution d'un saut de frontière, les périodes inconnues, l'ancienne page de fills hors fenêtre, l'activité observée malgré une pagination non exhaustive, une observation postérieure au cutoff, la reprise d'un paquet scellé immuable et les limites de la file (4 appels, rang stable, compte protégé non interrogé et report sans consommation d'essai). Aucun test n'appelle l'API ou un modèle.
+Les 454 tests du dépôt passent (suite complète après le dernier correctif : 44,700 s). Les nouveaux tests reproduisent l'attribution d'un saut de frontière, les périodes inconnues, l'ancienne page de fills hors fenêtre, l'activité observée malgré une pagination non exhaustive, une observation postérieure au cutoff, la reprise d'un paquet scellé immuable, l'exclusion des entrées de file ajoutées après le cutoff et les limites de la file (4 appels, rang stable, compte protégé non interrogé et report sans consommation d'essai). Aucun test n'appelle l'API ou un modèle.
 
 Aucun nouvel appel IA de recherche, aucune nouvelle enveloppe budgétaire et aucun ordre n'ont été créés pour ce lot. Le plafond de recherche existant est resté inchangé. Les tickets TAMTAM_AGAIN-6 et TAMTAM_AGAIN-12 ont été relus avec le client local ; des commentaires de suivi doivent référencer ce rapport et le commit/push.
 

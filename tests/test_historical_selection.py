@@ -150,6 +150,15 @@ class HistoricalSelectionTests(unittest.TestCase):
         self.assertEqual(account["performance_quality"], "unknown")
         self.assertEqual(account["status"], "insufficiently_documented")
 
+    def test_queue_entries_added_after_cutoff_are_not_in_historical_report(self):
+        self.db.execute("create table historical_curve_queue(network text,address text,added_at text,status text)")
+        later = self.cut + DAY_MS
+        self.db.execute("insert into historical_curve_queue values(?,?,?,?)",
+                        ("hyperliquid-mainnet", "0x" + "2" * 40, stamp(later), "fetched"))
+        report = build_report(self.db, network="hyperliquid-mainnet", as_of_ms=self.cut)
+        self.assertEqual(report["population"]["inventory"], 1)
+        self.assertEqual([x["address"] for x in report["accounts"]], [self.address])
+
     def test_ai_gate_uses_observations_inside_cutoff_and_sealed_packet_survives_restart(self):
         from tamtam_again.engine import fingerprint
         self.db.execute("create table population_historical_decisions(decision_id text,network text,address text,status text,as_of_ms integer,decision_json text)")

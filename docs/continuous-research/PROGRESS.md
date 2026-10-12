@@ -1,5 +1,62 @@
 # Compte rendu intermédiaire — 7 octobre 2026
 
+## Rectificatif paper HYPE — 12 octobre 2026
+
+Le rapport d'expérience R1 reste conservé sans modification. Son identifiant
+`571efb94de20de1a9a36c2711ef4b71198ed135ffde2698d5d1de56a6521b93b` est lié à
+un rectificatif append-only, identifiant
+`0cd98bb4b959f4b86a2b34a649a299c1083bec9df7c45e4442adbb0a016c3d03`, dans
+`paper_experimental_rectifications`. Le détail et les preuves sont conservés
+dans [PAPER-RECTIFICATION-20261012-A880-HYPE-R1.json](PAPER-RECTIFICATION-20261012-A880-HYPE-R1.json).
+L'addendum append-only `7d80053efc48e3e0658a44b8d0c651f28db2e746cb53d61646510a0c21549cd8`
+consigne le résultat final de 21 tests après un ajout de test ciblé.
+
+Le diagnostic correct est une cible de réduction expirée à `-0,30685` depuis
+`-0,31 HYPE`, donc un ajustement de `+0,00315 HYPE` arrondi à zéro avec deux
+décimales. Ce n'était pas une fermeture obligatoire à horizon/risque, et le
+rapport R1 qui attribuait l'arrêt à la limite de perte/drawdown est erroné.
+Le moteur retire maintenant cette réduction nulle sans suspension. Les
+intentions `horizon_exit` et `risk_exit` gardent leur priorité et leur
+diagnostic d'incertitude si elles expirent sans clôture. Un ajustement sous le
+minimum de venue ne conserve plus non plus indéfiniment le slot prioritaire.
+
+Le trou de 20 666 ms (12:40:55.798876–12:41:16.464862 UTC) est expliqué par la
+maintenance : les journaux systemd montrent l'arrêt du timer à 14:41:00 CEST et
+son redémarrage à 14:41:16. Le service paper lui-même a duré environ 0,1 s.
+Ce trou n'est pas attribué au temps de traitement, au collecteur ou à la
+cadence nominale; aucun délai d'exécution n'a été allongé.
+
+Observation BBO courte : collecteur et timer actifs. Sur trois relevés espacés
+d'environ 6 s, les âges du dernier BBO reçu étaient 2 357, 1 390 et 2 438 ms,
+au-dessus de la limite v2 de 1 000 ms. Un instantané antérieur avait été à
+632 ms, ce qui établit une disponibilité ponctuelle, pas une fraîcheur stable
+à chaque décision d'exécution. Les cotations suffisamment fraîches ne sont
+donc pas établies par cette observation.
+
+La session v2 reste `suspended`, l'expérience `abandoned`, avec sa position
+virtuelle résiduelle `-0,31 HYPE`, son unique entrée et aucune sortie. Le
+rectificatif la qualifie d'incomplète : position et historique sont préservés,
+aucune clôture rétroactive n'est créée et le résultat aller-retour final reste
+inconnu. La boucle paper normale ne reprend pas une session suspendue. Une
+éventuelle clôture exige une procédure future-only explicite, un flux continu
+de même session, un BBO âgé d'au plus 1 000 ms à l'exécution, des règles de
+précision/prix valides et une taille respectant le minimum de 10 USDC. Toute
+expérience ultérieure doit porter une identité/version distincte et ne pas
+prétendre poursuivre un portefeuille réconcilié.
+
+Vérification ciblée : 21 tests passent dans `tests.test_paper_engine_v3` et
+`tests.test_experimental_paper`, dont le cas réel synthétique, une vraie sortie
+obligatoire expirée, un aller-retour synthétique entrée → sortie → bilan à plat,
+et l'ajout idempotent du rectificatif sans modifier le rapport d'origine. Cet
+aller-retour valide le câblage du réducteur; ce n'est ni une preuve paper live
+ni un résultat de rentabilité. Aucune preuve prospective live complète n'était
+admissible : la session existante est suspendue avec résiduel non résolu et la
+fraîcheur sous une seconde n'a pas été stable dans la fenêtre observée.
+Condition de reprise : traiter explicitement le résiduel sans le faire passer
+pour une position clôturée, puis observer un signal admissible avec cotation
+continue âgée d'au plus une seconde au moment de l'exécution. Aucun critère de
+rentabilité ni attente jusqu'à 20:34 n'est requis.
+
 Objectif actif, non terminé. Ce relevé sert à la revue des incréments ; il ne
 constitue pas l'approbation finale indépendante demandée.
 
@@ -399,7 +456,7 @@ Nouveaux plans peuvent déclarer `paper_monitoring` avec version `paper-loss-bud
 
 ## Remplacement paper atomique prédéclaré — 2026-10-07
 
-Contrat paper_replacement validé avant enregistrement du plan : prédécesseur existant de même périmètre/provenance, délai minimal positif et justification. Start après N1 cible passé peut retirer automatiquement le prédécesseur uniquement suspendu/flat/sans pending, puis créer et lier la nouvelle session dans une transaction. Pipeline existante emprunte cette même fonction ; pas de nouvelle sélection IA. Test synthétique initialement bloqué par réutilisation de finale, corrigé avec nouvelles fenêtres sans assouplir le garde. Vérifie cooldown, position ouverte, rollback d'incident SQLite et idempotence. Suite complète : 220 tests passent en 17,990 s. Contrat/limites PAPER-HANDOVER.md ; capital indépendant, continuité économique de procédure encore à établir. Aucun paper réel ou plan pilote modifié. Table additive paper_handovers et trace causalement raccordée. Retour arrière ciblé sans effacer tables, sessions ou collecte.
+Contrat paper_replacement validé avant enregistrement du plan : prédécesseur existant de même périmètre/provenance, délai minimal positif et justification. Start après N1 cible passé peut retirer automatiquement le prédécesseur uniquement suspendu/flat/sans pending, puis créer et lier la nouvelle session dans une transaction. Pipeline existante emprunte cette même fonction ; pas de nouvelle sélection IA. Test synthétique initialement bloqué par réutilisation de finale, corrigé avec nouvelles fenêtres sans assouplir le garde. Vérifie cooldown, position ouverte, rollback d'incident SQLite et idempotence. Suite complète : 221 tests passent en 17,990 s. Contrat/limites PAPER-HANDOVER.md ; capital indépendant, continuité économique de procédure encore à établir. Aucun paper réel ou plan pilote modifié. Table additive paper_handovers et trace causalement raccordée. Retour arrière ciblé sans effacer tables, sessions ou collecte.
 
 ## Instantanés paper immuables — 2026-10-07
 

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tamtam_again.experimental_paper import report_due, start as start_experimental, status
+from tamtam_again.experimental_paper import add_rectification, report_due, start as start_experimental, status
 from tamtam_again.paper import paper_tick, retire_paper, start_paper
 from tamtam_again.paper_adaptation import recover as recover_adaptation
 from tamtam_again.engine import initial_state, reduce_event
@@ -116,6 +116,27 @@ class ExperimentalPaperTests(unittest.TestCase):
         self.assertEqual(report["report"]["next_action"], "collect_data")
         self.assertIn("non-snapshot HYPE fill", report["report"]["next_action_detail"])
         self.assertEqual(self.store.connection.execute("select count(*) from paper_experimental_reports").fetchone()[0], 1)
+
+    def test_rectification_is_linked_append_only_and_preserves_original_report(self):
+        started = start_experimental(self.store, self.variant, hypothesis())
+        run = self.store.connection.execute("select next_review_ms from paper_experimental_sessions where session_id=?",
+                                            (started["session_id"],)).fetchone()
+        report = report_due(self.store, started["session_id"], clock_ms=run[0])
+        original = self.store.connection.execute(
+            "select report_json from paper_experimental_reports where report_id=?",(report["report_id"],)
+        ).fetchone()[0]
+        correction={"corrects_report_id":report["report_id"],"cause":"lot-rounded-zero adjustment",
+                    "residual_position":"-0.31","final_round_trip_result":"unknown"}
+        first=add_rectification(self.store,report["report_id"],correction)
+        second=add_rectification(self.store,report["report_id"],correction)
+        self.assertEqual(first["rectification_id"],second["rectification_id"])
+        self.assertEqual(first["corrects_report_id"],report["report_id"])
+        self.assertEqual(self.store.connection.execute(
+            "select report_json from paper_experimental_reports where report_id=?",(report["report_id"],)
+        ).fetchone()[0],original)
+        self.assertEqual(self.store.connection.execute(
+            "select count(*) from paper_experimental_rectifications where corrects_report_id=?",(report["report_id"],)
+        ).fetchone()[0],1)
 
     def test_initial_subscription_grace_is_an_explicit_wait_not_a_false_suspension(self):
         started = start_experimental(self.store, self.variant, hypothesis())

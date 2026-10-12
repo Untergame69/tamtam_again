@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tamtam_again.engine import initial_state, number, quote_status, reduce_event
+from tamtam_again.engine import initial_state, metrics, number, quote_status, reduce_event
 from tamtam_again.experimental_paper import _action, execution_diagnosis
 from tamtam_again.paper import archive_events
 from tamtam_again.recipe import synthetic_spec
@@ -120,6 +120,69 @@ class PaperEngineV3Tests(unittest.TestCase):
         self.assertTrue(state['risk_halted'])
         self.assertIn('priority_exit_unresolved_position',state['diagnostics'])
         self.assertEqual(state['exit_uncertainties'][0]['position'],'1')
+
+    def test_actual_zero_after_lot_rounding_does_not_suspend_for_missed_close(self):
+        s=spec_v3();state=initial_state(s)
+        state.update(position='-0.31',average_price='85.007475',opened_ms=1_000,
+                     pending=[{'target':'-0.30685','due_ms':1_010,'expires_ms':1_020,
+                               'intent':'reduction','priority':50,'reduce_only':True}])
+        reduce_event(state,s,event('expired-small-adjustment','timer',1_021))
+        self.assertEqual(state['position'],'-0.31')
+        self.assertEqual(state['pending'],[])
+        self.assertFalse(state['risk_halted'])
+        self.assertNotIn('priority_exit_unresolved_position',state['diagnostics'])
+        self.assertEqual(state['nonexecution_reasons']['reduce_only_adjustment_rounded_to_zero'],1)
+        self.assertEqual(state['exit_uncertainties'],[])
+
+    def test_below_minimum_adjustment_releases_priority_slot(self):
+        s=spec_v3();state=initial_state(s)
+        state.update(position='1',average_price='100',session='s1',connected=True,
+                     healthy_at_ms=1_000,
+                     quote={'received_ms':1_010,'source_received_ms':1_010,'processed_ms':1_010,
+                            'event_ms':1_010,'session':'s1','bid':'100','ask':'100.1',
+                            'bid_size':'100','ask_size':'100'},
+                     pending=[{'target':'0.95','due_ms':1_015,'expires_ms':3_000,
+                               'intent':'reduction','priority':50,'reduce_only':True}])
+        reduce_event(state,s,event('below-min-adjustment','timer',1_020))
+        self.assertEqual(state['pending'],[])
+        self.assertEqual(state['position'],'1')
+        self.assertEqual(state['nonexecution_reasons']['reduce_only_adjustment_below_venue_minimum'],1)
+        self.assertFalse(state['risk_halted'])
+
+    def test_mandatory_exit_keeps_priority_and_unresolved_diagnostic(self):
+        s=spec_v3();state=initial_state(s)
+        state.update(position='-0.31',average_price='85',opened_ms=1_000,
+                     pending=[{'target':'0','due_ms':1_010,'expires_ms':1_020,
+                               'intent':'horizon_exit','priority':100,'reduce_only':True}],
+                     session='s1',connected=False)
+        reduce_event(state,s,event('expired-mandatory-exit','timer',1_021))
+        self.assertEqual(state['position'],'-0.31')
+        self.assertTrue(state['risk_halted'])
+        self.assertIn('priority_exit_unresolved_position',state['diagnostics'])
+        self.assertEqual(state['exit_uncertainties'][0]['position'],'-0.31')
+
+    def test_bounded_synthetic_entry_exit_report_path(self):
+        s=spec_v3();state=initial_state(s)
+        events=[
+            event('conn','connection',1_000,session='s1',connected=True),
+            event('bbo0','bbo',1_010,session='s1',bid='100',ask='100.1',bid_size='100',ask_size='100'),
+            event('hb0','heartbeat',1_020,session='s1'),
+            event('entry-signal','leader_fill',1_030,session='s1',is_snapshot=False,delta='1000'),
+            event('bbo-entry','bbo',6_040,session='s1',bid='100',ask='100.1',bid_size='100',ask_size='100'),
+            event('hb-entry','heartbeat',6_041,session='s1'),
+            event('entry-execution','timer',6_042),
+            event('exit-signal','leader_fill',6_050,session='s1',is_snapshot=False,delta='-1000'),
+            event('bbo-exit','bbo',11_000,session='s1',bid='100.2',ask='100.3',bid_size='100',ask_size='100'),
+            event('hb-exit','heartbeat',11_001,session='s1'),
+            event('exit-execution','timer',11_051),
+        ]
+        for item in events:reduce_event(state,s,item)
+        report=metrics(state,s,1_000)
+        self.assertEqual(len(state['fills']),2)
+        self.assertEqual(number(state['position']),0)
+        self.assertTrue(report['flat_end'])
+        self.assertEqual(report['fills'],2)
+        self.assertEqual(report['fees'],str(number(state['fees'])))
 
     def test_diagnosis_separates_no_opportunity_slow_processing_and_parameter_mismatch(self):
         s=spec_v3();state=initial_state(s)

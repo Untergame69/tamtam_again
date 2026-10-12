@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS paper_experimental_reports (
  created_at TEXT NOT NULL,
  UNIQUE(session_id,review_index)
 );
+CREATE TABLE IF NOT EXISTS paper_experimental_rectifications (
+ rectification_id TEXT PRIMARY KEY,
+ corrects_report_id TEXT NOT NULL REFERENCES paper_experimental_reports(report_id),
+ session_id TEXT NOT NULL REFERENCES paper_experimental_sessions(session_id),
+ rectification_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
 """
 
 REQUIRED_HYPOTHESIS = {
@@ -259,6 +266,30 @@ def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) ->
         raise
     return {"session_id": session_id, "report_id": report_id, "report": payload,
             "next_review_ms": next_review, "experiment_status": status}
+
+
+def add_rectification(store: Store, report_id: str, correction: dict[str, Any]) -> dict[str, Any]:
+    """Append a linked correction while leaving the original report immutable."""
+    initialize(store)
+    original=store.connection.execute(
+        "SELECT session_id FROM paper_experimental_reports WHERE report_id=?",(report_id,)
+    ).fetchone()
+    if not original:
+        raise ValueError("Original experimental report not found")
+    if not isinstance(correction,dict) or not correction:
+        raise ValueError("Structured rectification required")
+    rectification_id=fingerprint({"corrects_report_id":report_id,"correction":correction})
+    store.connection.execute(
+        "INSERT OR IGNORE INTO paper_experimental_rectifications VALUES (?,?,?,?,?)",
+        (rectification_id,report_id,original["session_id"],canonical(correction),utc_now()),
+    )
+    row=store.connection.execute(
+        "SELECT rectification_id,corrects_report_id,session_id,rectification_json,created_at "
+        "FROM paper_experimental_rectifications WHERE rectification_id=?",(rectification_id,)
+    ).fetchone()
+    return {"rectification_id":row["rectification_id"],"corrects_report_id":row["corrects_report_id"],
+            "session_id":row["session_id"],"rectification":json.loads(row["rectification_json"]),
+            "created_at":row["created_at"]}
 
 
 def status(store: Store, session_id: str | None = None) -> list[dict[str, Any]]:

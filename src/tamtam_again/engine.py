@@ -185,9 +185,23 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         pos=number(state['position'])
         if order['due_ms']>now:
             remaining.append(order);continue
+        intent=order.get('intent')
+        mandatory_exit=intent in {'horizon_exit','risk_exit'}
+        # A target adjustment can be smaller than one venue lot. Resolve that
+        # no-op before TTL handling so it cannot be mislabeled as a missed
+        # mandatory close (or hold the priority slot indefinitely).
+        rules=spec['execution'].get('market_rules')
+        if order.get('reduce_only') and pos!=0 and not mandatory_exit and rules:
+            from .market_rules import round_size
+            adjustment_target=number(order['target'])
+            if not _is_reduction(pos,adjustment_target):
+                adjustment_target=Decimal(0)
+            if not round_size(adjustment_target-pos,rules['sz_decimals']):
+                _miss_order(state,'reduce_only_adjustment_rounded_to_zero')
+                continue
         if now>order['expires_ms']:
             _miss_order(state,'order_ttl_expired')
-            if order.get('reduce_only') and pos!=0:
+            if mandatory_exit and pos!=0:
                 uncertainty={'at_ms':now,'reason':'priority_exit_expired_without_simulated_close',
                              'position':str(pos),'target':order['target']}
                 state.setdefault('exit_uncertainties',[]).append(uncertainty)
@@ -202,7 +216,6 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
             _wait_order(state,order,reason,now)
             remaining.append(order);continue
         q=state['quote']
-        rules=spec['execution'].get('market_rules')
         if rules:
             from .market_rules import valid_price,round_size
             if rules['available_ms']>now or not all(valid_price(q[side],rules['sz_decimals']) for side in ('bid','ask')):
@@ -232,8 +245,11 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         buy=delta>0
         if rules and abs(delta)*number(q['ask'] if buy else q['bid'])<number(rules['minimum_order_usdc']):
             if order.get('reduce_only'):
-                _wait_order(state,order,'priority_exit_below_venue_minimum',now)
-                remaining.append(order)
+                if mandatory_exit:
+                    _wait_order(state,order,'priority_exit_below_venue_minimum',now)
+                    remaining.append(order)
+                else:
+                    _miss_order(state,'reduce_only_adjustment_below_venue_minimum')
             else:_miss_order(state,'below_venue_minimum_order_value')
             continue
         if spec['execution']['kind']=='passive_conservative':

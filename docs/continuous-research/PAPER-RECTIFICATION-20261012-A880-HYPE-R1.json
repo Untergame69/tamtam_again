@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "kind": "append_only_paper_report_rectification",
+  "session_id": "9bcdbc4b22ef431da580b016e06ad744",
+  "variant_id": "0ab7e61e6f3c1ff40f3a9d42a94d64a3af6c2431b8248edfa608c654afcf5974",
+  "corrects_report_id": "571efb94de20de1a9a36c2711ef4b71198ed135ffde2698d5d1de56a6521b93b",
+  "database_rectification_id": "0cd98bb4b959f4b86a2b34a649a299c1083bec9df7c45e4442adbb0a016c3d03",
+  "verification_addendum_rectification_id": "7d80053efc48e3e0658a44b8d0c651f28db2e746cb53d61646510a0c21549cd8",
+  "report_review_index": 1,
+  "correction": {
+    "corrected_diagnosis": {
+      "expired_order_intent": "reduction",
+      "position_hype": "-0.31",
+      "target_hype": "-0.30685",
+      "requested_adjustment_hype": "0.00315",
+      "lot_precision_decimals": 2,
+      "rounded_adjustment_hype": "0.00",
+      "cause": "The expired reduce-only target adjustment rounded to zero lots. It was not a failed horizon or risk close. The earlier report incorrectly attributed suspension to the predeclared loss/drawdown limit.",
+      "correct_engine_behavior": "Discard a non-mandatory reduce-only adjustment that rounds to zero without halting. Expired horizon_exit and risk_exit orders remain priority exits and preserve the unresolved-position diagnostic when they cannot close."
+    },
+    "cadence_gap": {
+      "measured_interval_ms": 20666,
+      "previous_tick_start_utc": "2026-10-12T12:40:55.798876Z",
+      "next_tick_start_utc": "2026-10-12T12:41:16.464862Z",
+      "timer_stopped_local": "2026-10-12T14:41:00+02:00",
+      "timer_started_local": "2026-10-12T14:41:16+02:00",
+      "attribution": "The user paper timer was stopped during maintenance and started again 16 seconds later. The service itself ran for about 0.1 seconds. This was a maintenance pause, not evidence of a 20.7-second scheduler delay or a reason to lengthen execution deadlines."
+    },
+    "quote_freshness_observation": {
+      "checked_at_utc": "2026-10-12T12:53:10.452Z",
+      "max_quote_age_ms": 1000,
+      "collector_service": "active",
+      "paper_timer": "active",
+      "samples": [
+        {"sampled_at_utc": "2026-10-12T12:52:58.102Z", "observation_id": 28653905, "quote_received_at_utc": "2026-10-12T12:52:55.745Z", "age_ms": 2357, "bid": "85.515", "ask": "85.516"},
+        {"sampled_at_utc": "2026-10-12T12:53:04.279Z", "observation_id": 28654249, "quote_received_at_utc": "2026-10-12T12:53:02.889Z", "age_ms": 1390, "bid": "85.496", "ask": "85.497"},
+        {"sampled_at_utc": "2026-10-12T12:53:10.452Z", "observation_id": 28654553, "quote_received_at_utc": "2026-10-12T12:53:08.015Z", "age_ms": 2438, "bid": "85.517", "ask": "85.531"}
+      ],
+      "finding": "BBO data is arriving, but none of these three sampled latest quotes met the frozen one-second age bound. A prior spot sample was within the bound; the short observation does not establish consistently eligible quotes at execution time."
+    },
+    "residual_position": {
+      "position_hype": "-0.31",
+      "session_status": "suspended",
+      "experiment_status": "abandoned",
+      "fills": 1,
+      "closing_fill": null,
+      "administrative_outcome": "incomplete",
+      "final_round_trip_result": "unknown",
+      "handling": "Keep the residual position and original fill in the v2 ledger. Do not erase it, mark it flat, or invent a retroactive close. A future-only simulated close would require an explicit exit-only procedure, a continuous session and a BBO no older than one second when execution is processed, plus valid lot/price rules and venue minimum size."
+    },
+    "prospective_proof": {
+      "live_entry_exit_report": "not_performed",
+      "reason": "The old session is suspended and is no longer processed by the normal active-session loop; the residual is unresolved, and the short quote observation did not establish the frozen freshness bound. No eligible live opportunity was demonstrated.",
+      "bounded_synthetic_path": "Targeted tests demonstrate one virtual entry, one virtual exit, a flat end state and a cost-inclusive metrics report. This verifies reducer wiring only; it is not a live paper result or profitability evidence.",
+      "restart_condition": "First resolve the old residual through an explicitly authorized future-only exit procedure, or record a separately governed administrative-incomplete disposition that preserves the old ledger. Any later paper session must have a distinct session/version identity and must not claim continuity or transferred flatness. For this v2 execution contract, require a same-session BBO age <= 1000 ms at processing, valid venue precision, and an order meeting the 10 USDC minimum."
+    },
+    "verification": {
+      "targeted_tests": "21 passed: tests.test_paper_engine_v3 and tests.test_experimental_paper",
+      "append_only_verification_history": "The first linked DB rectification recorded 20 passing tests; a linked addendum records the final 21 after a separate below-minimum priority-release test was added.",
+      "source_report_immutable": true,
+      "database_position_unchanged": true
+    }
+  }
+}

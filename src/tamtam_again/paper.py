@@ -19,6 +19,7 @@ def timestamp(value: str) -> int:
 
 def archive_events(store: Store, network: str, address: str, coin: str, start_ms: int, end_ms: int,
                    *, after_observation_id: int = 0,
+                   include_l2book: bool = False,
                    query_metrics: dict[str, Any] | None = None) -> tuple[list[dict[str,Any]], int]:
     """Only archived local receipts, live fills, and observed funding rates.
 
@@ -39,9 +40,12 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
     # indexes; forcing a table scan there would make pipeline evaluations scan
     # the entire multi-gigabyte live archive.
     observation_source = "raw_observations NOT INDEXED" if after_observation_id > 0 else "raw_observations"
-    for name,clause,extra in [("bbo","entity_type='market' AND entity_id=? AND endpoint='bbo'",(coin,)),
-                              ("account","entity_type='account' AND entity_id=? AND endpoint IN ('userFills','userFundings')",(address,)),
-                              ("health","entity_type='stream' AND endpoint='streamHealth'",())]:
+    clauses=[("bbo","entity_type='market' AND entity_id=? AND endpoint='bbo'",(coin,))]
+    if include_l2book:
+        clauses.append(("l2Book","entity_type='market' AND entity_id=? AND endpoint='l2Book'",(coin,)))
+    clauses.extend([("account","entity_type='account' AND entity_id=? AND endpoint IN ('userFills','userFundings')",(address,)),
+                    ("health","entity_type='stream' AND endpoint='streamHealth'",())])
+    for name,clause,extra in clauses:
         query_started = monotonic_ns()
         batch = store.connection.execute('SELECT * FROM '+observation_source+' WHERE '+common+' AND '+clause,params+extra).fetchall()
         clause_metrics[name] = {"query_ms": round((monotonic_ns()-query_started)/1_000_000, 3),
@@ -81,11 +85,25 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                 if len(bbo) != 2 or not all(isinstance(x,dict) for x in bbo):
                     continue
                 exchange = int(data["time"])
-                if exchange < start_ms or exchange > receipt:
+                if not include_l2book and (exchange < start_ms or exchange > receipt):
                     continue
-                event = {"kind":"bbo","event_ms":exchange,"received_ms":receipt,"available_ms":max(receipt,archived_available),"session":session,
-                         "bid":bbo[0]["px"],"ask":bbo[1]["px"],"bid_size":bbo[0]["sz"],"ask_size":bbo[1]["sz"]}
+                event = {"kind":"bbo","event_ms":receipt if include_l2book else exchange,
+                         "source_event_ms":exchange,"received_ms":receipt,"available_ms":max(receipt,archived_available),"session":session,
+                         "source":"bbo","bid":bbo[0]["px"],"ask":bbo[1]["px"],"bid_size":bbo[0]["sz"],"ask_size":bbo[1]["sz"]}
                 event["id"] = fingerprint(event)
+                events.append(event)
+            elif row["endpoint"] == "l2Book":
+                levels=data.get('levels',[])
+                if data.get('coin')!=coin or len(levels)!=2 or not levels[0] or not levels[1]:
+                    continue
+                bid,ask=levels[0][0],levels[1][0]
+                exchange=int(data.get('time',0))
+                if exchange<=0:
+                    continue
+                event={"kind":"l2book","event_ms":receipt,"source_event_ms":exchange,"received_ms":receipt,
+                    "available_ms":max(receipt,archived_available),"session":session,"source":"l2Book",
+                    "bid":bid['px'],"ask":ask['px'],'bid_size':bid['sz'],'ask_size':ask['sz']}
+                event['id']=fingerprint(event)
                 events.append(event)
             elif row["endpoint"] == "userFills":
                 flag = data.get("isSnapshot")
@@ -394,7 +412,10 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
             raise ValueError("Paper session changed before the tick acquired its lock")
         state = json.loads(session["state_json"])
         archive_profile={}
-        events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),after_observation_id=session["last_observation_id"],query_metrics=archive_profile)
+        events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),
+            after_observation_id=session["last_observation_id"],
+            include_l2book=spec['execution'].get('quote_evidence_contract')=='bbo_or_l2book_v1',
+            query_metrics=archive_profile)
         processed_ms = now_ms()
         max_receipt_lag_ms=max((max(0,processed_ms-int(event['received_ms'])) for event in events),default=0)
         for event in events:

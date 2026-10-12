@@ -155,6 +155,38 @@ class ExperimentalPaperTests(unittest.TestCase):
         self.assertEqual(state["status"], "active")
         self.assertEqual(state["review_index"], 0)
 
+    def test_v4_starts_on_runtime_health_without_global_freshness_gate_and_reports_due(self):
+        plan=real_plan();plan['budget']['max_runs']=2
+        variant_plan=create_plan(self.store,plan)
+        frozen=spec();frozen['data_sources']=list(dict.fromkeys([*frozen['data_sources'],'l2Book']))
+        frozen['execution'].update(quote_evidence_contract='bbo_or_l2book_v1',max_quote_age_ms=1_000)
+        variant=register_variant(self.store,variant_plan['plan_id'],frozen)['variant_id']
+        h=hypothesis();h.update(hypothesis_id='a880-hype-live-delta-follow-v4-causal-bbo-l2-1s',
+            quote_evidence_contract='bbo_or_l2book_v1',runtime_health_required=True,
+            prestart_collection_gate_required=False,review_interval_ms=60_000,max_duration_ms=120_000)
+        runtime={'runtime_config':{'paper_timer_interval_ms':500,'paper_timer_accuracy_ms':50,
+            'paper_start_limit_interval_ms':10_000,'paper_start_limit_burst':30,
+            'bbo_flush_interval_ms':250,'quote_age_limit_ms':1_000},
+            'collector_active':True,'paper_timer_active':True,'collector_pid':77,
+            'current_connection_id':'live-c1','current_connection_healthy':True,
+            'current_connection_health_age_ms':1_000}
+        started=start_experimental(self.store,variant,h,runtime_state=runtime)
+        self.assertEqual(self.store.connection.execute(
+            'select count(*) from paper_experimental_collection_gates').fetchone()[0],0)
+        due=self.store.connection.execute(
+            'select next_review_ms from paper_experimental_sessions where session_id=?',(started['session_id'],)).fetchone()[0]
+        state=json.loads(self.store.connection.execute(
+            'select state_json from paper_sessions where session_id=?',(started['session_id'],)).fetchone()[0])
+        state.update(connected=True,session='live-c1',healthy_at_ms=due-1,
+            execution_opportunities=[{'eligible':True,'outcome':'executed','quote_source':'l2Book'}])
+        self.store.connection.execute('update paper_sessions set state_json=? where session_id=?',
+            (json.dumps(state),started['session_id']));self.store.connection.commit()
+        report=report_due(self.store,started['session_id'],clock_ms=due)
+        self.assertEqual(report['report']['hypothesis_id'],h['hypothesis_id'])
+        self.assertEqual(report['report']['execution_opportunities']['executed'],1)
+        self.assertEqual(self.store.connection.execute(
+            'select count(*) from paper_experimental_reports where session_id=?',(started['session_id'],)).fetchone()[0],1)
+
     def test_automatic_report_records_specific_next_action(self):
         started = start_experimental(self.store, self.variant, hypothesis())
         run = self.store.connection.execute("select next_review_ms from paper_experimental_sessions where session_id=?",

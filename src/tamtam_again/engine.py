@@ -59,6 +59,12 @@ def validate_spec(spec: dict[str, Any]) -> None:
         raise ValueError("Unsupported entry/exit rules")
     if spec["execution"].get("kind") not in {"market_ioc", "passive_conservative"}:
         raise ValueError("Unsupported execution model")
+    quote_contract=spec["execution"].get("quote_evidence_contract")
+    if quote_contract is not None:
+        if quote_contract!="bbo_or_l2book_v1" or not {"bbo","l2Book"}<=set(spec["data_sources"]):
+            raise ValueError("BBO/l2Book quote contract requires both live market streams")
+        if spec["execution"].get("max_quote_age_ms")!=1000:
+            raise ValueError("BBO/l2Book execution freshness remains fixed at one second")
     if 'market_rules' in spec['execution']:
         from .market_rules import validate_execution_rules
         validate_execution_rules(spec['execution']['market_rules'],spec['market'])
@@ -101,6 +107,7 @@ def initial_state(spec: dict[str, Any]) -> dict[str, Any]:
             "session": None, "healthy_at_ms": None, "connected": False, "pending": [],
             "last_ms": -1, "opened_ms": None, "seen": [], "history": [], "fills": [],
             "equity_curve": [], "diagnostics": [], "missed_orders": 0, "partial_orders": 0,
+            "execution_opportunities": [],
             "signals_received": 0, "max_exposure_notional_usdc": "0", "wait_conditions": [],
             "nonexecution_reasons": {},
             "exit_uncertainties": [], "paper_runtime": {},
@@ -112,6 +119,9 @@ def quote_status(state: dict[str, Any], now: int, execution: dict[str, Any]) -> 
     if not state["connected"] and state["session"] is not None:
         return "interrupted"
     if not q or q["received_ms"] >= now or q["event_ms"] > now:
+        return "unavailable"
+    if (execution.get("quote_evidence_contract")=="bbo_or_l2book_v1"
+            and int(q.get("available_ms",10**18))>=now):
         return "unavailable"
     if (state["connected"] and q.get("session") == state["session"]
             and state["healthy_at_ms"] is not None
@@ -175,6 +185,20 @@ def _wait_order(state: dict[str, Any], order: dict[str, Any], reason: str, now: 
     order['last_wait_ms']=now
 
 
+def _record_v4_opportunity(state:dict[str,Any],spec:dict[str,Any],order:dict[str,Any],now:int,
+                           *,eligible:bool,outcome:str,reason:str|None=None,fill_size:str|None=None)->None:
+    if spec.get('execution',{}).get('quote_evidence_contract')!='bbo_or_l2book_v1':return
+    quote=state.get('quote') or {}
+    received=quote.get('source_received_ms')
+    state.setdefault('execution_opportunities',[]).append({
+        'signal_decision_ms':order.get('decision_ms'),'due_ms':order.get('due_ms'),'execution_decision_ms':now,
+        'intent':order.get('intent'),'eligible':eligible,'outcome':outcome,'reason':reason,
+        'quote_source':quote.get('source'),'quote_received_ms':received,
+        'quote_available_ms':quote.get('available_ms'),'quote_age_ms':now-int(received) if received is not None else None,
+        'connection_id':quote.get('session'),'position_before':str(state.get('position','0')),
+        'fill_size':fill_size})
+
+
 def _funding_boundary(now: int, interval: int) -> int:
     return (now // interval + 1) * interval
 
@@ -198,9 +222,11 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
                 adjustment_target=Decimal(0)
             if not round_size(adjustment_target-pos,rules['sz_decimals']):
                 _miss_order(state,'reduce_only_adjustment_rounded_to_zero')
+                _record_v4_opportunity(state,spec,order,now,eligible=False,outcome='missed',reason='reduce_only_adjustment_rounded_to_zero')
                 continue
         if now>order['expires_ms']:
             _miss_order(state,'order_ttl_expired')
+            _record_v4_opportunity(state,spec,order,now,eligible=False,outcome='missed',reason='order_ttl_expired')
             if mandatory_exit and pos!=0:
                 uncertainty={'at_ms':now,'reason':'priority_exit_expired_without_simulated_close',
                              'position':str(pos),'target':order['target']}
@@ -214,12 +240,14 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
             reason={'stale':'quote_stale_at_execution','interrupted':'quote_stream_interrupted',
                     'continuity_unknown':'quote_continuity_unknown'}.get(status,'quote_unavailable_at_execution')
             _wait_order(state,order,reason,now)
+            _record_v4_opportunity(state,spec,order,now,eligible=False,outcome='missed',reason=reason)
             remaining.append(order);continue
         q=state['quote']
         if rules:
             from .market_rules import valid_price,round_size
             if rules['available_ms']>now or not all(valid_price(q[side],rules['sz_decimals']) for side in ('bid','ask')):
                 _wait_order(state,order,'venue_rules_unavailable_or_price_precision_invalid',now)
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='venue_rules_unavailable_or_price_precision_invalid')
                 remaining.append(order);continue
         target=number(order['target'])
         if order.get('reduce_only'):
@@ -232,6 +260,7 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
             interval=spec['execution'].get('funding_interval_ms')
             if type(interval) is int and interval>0 and now+spec['horizon_ms']>=_funding_boundary(now,interval):
                 _miss_order(state,'position_horizon_overlaps_funding_boundary_at_execution')
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='position_horizon_overlaps_funding_boundary_at_execution')
                 continue
         limit=number(spec['max_exposure']['notional_usdc'])
         mark=max(number(q['bid']),number(q['ask']))*(1+number(spec['slippage']['bps'])*stress/10000)
@@ -241,32 +270,45 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         target=max(-limit/mark,min(limit/mark,target))
         delta=target-pos
         if rules:delta=round_size(delta,rules['sz_decimals'])
-        if not delta:continue
+        if not delta:
+            _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='zero_adjustment_after_rounding')
+            continue
         buy=delta>0
         if rules and abs(delta)*number(q['ask'] if buy else q['bid'])<number(rules['minimum_order_usdc']):
             if order.get('reduce_only'):
                 if mandatory_exit:
                     _wait_order(state,order,'priority_exit_below_venue_minimum',now)
+                    _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='priority_exit_below_venue_minimum')
                     remaining.append(order)
                 else:
                     _miss_order(state,'reduce_only_adjustment_below_venue_minimum')
-            else:_miss_order(state,'below_venue_minimum_order_value')
+                    _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='reduce_only_adjustment_below_venue_minimum')
+            else:
+                _miss_order(state,'below_venue_minimum_order_value')
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='below_venue_minimum_order_value')
             continue
         if spec['execution']['kind']=='passive_conservative':
-            _miss_order(state,'passive_queue_priority_unavailable');continue
+            _miss_order(state,'passive_queue_priority_unavailable')
+            _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='passive_queue_priority_unavailable')
+            continue
         available=number(q['ask_size'] if buy else q['bid_size'])*number(spec['execution']['displayed_size_fraction'])/stress
         size=min(abs(delta),max(Decimal(0),available))*(1 if buy else -1)
         if rules:size=round_size(size,rules['sz_decimals'])
         if not size:
             if order.get('reduce_only'):
                 _wait_order(state,order,'priority_exit_insufficient_visible_size',now)
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='priority_exit_insufficient_visible_size')
                 remaining.append(order)
-            else:_miss_order(state,'insufficient_visible_size_or_lot_rounding')
+            else:
+                _miss_order(state,'insufficient_visible_size_or_lot_rounding')
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='insufficient_visible_size_or_lot_rounding')
             continue
         if abs(size)<abs(delta):state['partial_orders']+=1
         price=number(q['ask'] if buy else q['bid'])
         price*=1+number(spec['slippage']['bps'])*stress/10000*(1 if buy else -1)
         _fill(state,size,price,number(spec['fees']['taker_bps'])*stress,now)
+        _record_v4_opportunity(state,spec,order,now,eligible=True,
+            outcome='partial' if abs(size)<abs(delta) else 'executed',reason=None,fill_size=str(size))
         if order.get('reduce_only') and number(state['position'])!=0:
             order['due_ms']=now
             remaining.append(order)
@@ -419,12 +461,14 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             state["quote"] = None
         if state["connected"] and event["session"] == state["session"]:
             state["healthy_at_ms"] = receipt
-    elif kind == "bbo":
+    elif kind in {"bbo", "l2book"}:
         bid, ask = number(event["bid"]), number(event["ask"])
         if not 0 < bid <= ask:
-            raise ValueError("Invalid BBO")
+            raise ValueError("Invalid BBO/l2Book top level")
         state["quote"] = {k: event[k] for k in ("received_ms", "event_ms", "bid", "ask", "bid_size", "ask_size", "session")}
+        state["quote"]["source"] = event.get("source", "bbo" if kind=="bbo" else "l2Book")
         state["quote"]["source_received_ms"] = receipt
+        state["quote"]["available_ms"] = now
         if spec.get('engine')=='single_perp_v3':
             state["quote"]["processed_ms"] = now
         else:

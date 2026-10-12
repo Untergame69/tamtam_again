@@ -393,7 +393,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     except TimeoutError:
                         now=time.monotonic()
                         if now >= next_bbo_flush:
-                            flush_measured({"bbo"})
+                            flush_measured({"bbo","l2Book"})
                             next_bbo_flush=now+.25
                         if time.monotonic() >= next_flush:
                             flush_measured()
@@ -440,7 +440,7 @@ def run_websocket_collector(stop_event: threading.Event, db_path: Path,
                     _save_message(store, network, message, pending, stream_metadata)
                     now=time.monotonic()
                     if now>=next_bbo_flush:
-                        flush_measured({"bbo"})
+                        flush_measured({"bbo","l2Book"})
                         next_bbo_flush=now+.25
                     if time.monotonic() >= next_flush:
                         flush_measured()

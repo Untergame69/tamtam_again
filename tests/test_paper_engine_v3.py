@@ -31,11 +31,80 @@ def spec_v3():
     return s
 
 
+def spec_v4():
+    s=spec_v3()
+    s['data_sources']=list(dict.fromkeys([*s['data_sources'],'l2Book']))
+    s['execution']['quote_evidence_contract']='bbo_or_l2book_v1'
+    return s
+
+
 def event(id,kind,t,**extra):
     return {'id':id,'kind':kind,'event_ms':t,'received_ms':t,**extra}
 
 
 class PaperEngineV3Tests(unittest.TestCase):
+    def test_v4_quote_requires_recent_receipt_prior_archive_availability_and_same_connection(self):
+        s=spec_v4();state=initial_state(s)
+        state.update(connected=True,session='s1',healthy_at_ms=2_500,
+            quote={'received_ms':2_500,'source_received_ms':2_000,'available_ms':2_500,
+                   'event_ms':2_000,'session':'s1','source':'l2Book','bid':'100','ask':'100.1',
+                   'bid_size':'10','ask_size':'11'})
+        self.assertEqual(quote_status(state,3_000,s['execution']),'continuous')
+        self.assertEqual(quote_status(state,3_001,s['execution']),'stale')
+        state['quote']['available_ms']=3_000
+        self.assertEqual(quote_status(state,3_000,s['execution']),'unavailable')
+        state['quote'].update(available_ms=2_500,session='other')
+        self.assertNotEqual(quote_status(state,3_000,s['execution']),'continuous')
+
+    def test_v4_mixed_bbo_l2_entry_exit_records_causal_opportunities(self):
+        s=spec_v4();state=initial_state(s)
+        events=[
+            event('conn','connection',1_000,session='s1',connected=True),
+            event('health','heartbeat',1_005,session='s1'),
+            event('signal-in','leader_fill',1_020,session='s1',is_snapshot=False,delta='1000'),
+            {**event('l2-entry','l2book',5_700,session='s1',source='l2Book',bid='100',ask='100.1',bid_size='500',ask_size='500'),'available_ms':5_700},
+            event('entry-execution','timer',6_021),
+            event('signal-out','leader_fill',6_100,session='s1',is_snapshot=False,delta='-1000'),
+            {**event('bbo-exit','bbo',10_850,session='s1',source='bbo',bid='100.2',ask='100.3',bid_size='500',ask_size='500'),'available_ms':10_850},
+            event('exit-execution','timer',11_101),
+        ]
+        for item in events:reduce_event(state,s,item)
+        self.assertEqual(len(state['fills']),2)
+        self.assertEqual(number(state['position']),0)
+        self.assertEqual([x['quote_source'] for x in state['execution_opportunities']],['l2Book','bbo'])
+        self.assertTrue(all(x['eligible'] for x in state['execution_opportunities']))
+        self.assertEqual([x['outcome'] for x in state['execution_opportunities']],['executed','executed'])
+
+    def test_v4_stale_priority_exit_preserves_residual_and_records_miss(self):
+        s=spec_v4();state=initial_state(s)
+        state.update(session='s1',connected=True,healthy_at_ms=1_000,position='0.5',average_price='100',
+            pending=[{'target':'0','due_ms':1_010,'expires_ms':1_020,'intent':'horizon_exit','priority':100,
+                      'reduce_only':True,'decision_ms':1_000}],
+            quote={'received_ms':1_000,'source_received_ms':1_000,'available_ms':1_000,'event_ms':1_000,
+                   'session':'s1','source':'l2Book','bid':'100','ask':'100.1','bid_size':'500','ask_size':'500'})
+        reduce_event(state,s,event('expired-close','timer',1_021))
+        self.assertEqual(state['position'],'0.5')
+        self.assertIn('priority_exit_unresolved_position',state['diagnostics'])
+        self.assertEqual(state['execution_opportunities'][-1]['outcome'],'missed')
+        self.assertEqual(state['execution_opportunities'][-1]['reason'],'order_ttl_expired')
+
+    def test_archive_adapter_reads_l2_top_prices_sizes_and_receipt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Store(Path(tmp)/'l2.sqlite3');receipt=now_ms()
+            stamp=datetime.fromtimestamp(receipt/1000,timezone.utc).isoformat(timespec='milliseconds').replace('+00:00','Z')
+            store.save_observation(network='hyperliquid-mainnet',source='hyperliquid-websocket-v1',
+                entity_type='market',entity_id='HYPE',endpoint='l2Book',requested_at=stamp,
+                payload={'events':[{'received_at':stamp,'message':{'channel':'l2Book',
+                    '_stream':{'connection_id':'c1'},'data':{'coin':'HYPE','fast':True,'time':receipt,
+                    'levels':[[{'px':'100','sz':'12'}],[{'px':'100.1','sz':'9'}]]}}}]})
+            events,_=archive_events(store,'hyperliquid-mainnet',ADDRESS,'HYPE',receipt-1_000,receipt+2_000,
+                                    include_l2book=True)
+            l2=next(x for x in events if x['kind']=='l2book')
+            self.assertEqual((l2['bid'],l2['ask'],l2['bid_size'],l2['ask_size']),('100','100.1','12','9'))
+            self.assertEqual(l2['received_ms'],receipt)
+            self.assertEqual(l2['session'],'c1')
+            store.close()
+
     def test_actual_quote_receipt_age_is_not_rewritten_to_processing_time(self):
         s=spec_v3();state=initial_state(s)
         reduce_event(state,s,event('conn','connection',1_000,session='s1',connected=True))

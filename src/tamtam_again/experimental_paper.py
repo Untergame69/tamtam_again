@@ -98,6 +98,10 @@ def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
     if duration > plan["budget"]["max_duration_ms"]:
         raise ValueError("Experimental duration exceeds the frozen plan budget")
     required_sources = {"bbo", "userFills", "streamHealth", "userFundings"}
+    if hypothesis.get('quote_evidence_contract')=='bbo_or_l2book_v1':
+        required_sources.add('l2Book')
+        if spec.get('execution',{}).get('quote_evidence_contract')!='bbo_or_l2book_v1':
+            raise ValueError('Hypothesis and executable spec must freeze the same BBO/l2Book contract')
     if not required_sources <= set(spec["data_sources"]):
         raise ValueError("Experimental paper requires live fills, BBO, health and funding sources")
     funding_interval = spec.get("execution", {}).get("funding_interval_ms")
@@ -113,6 +117,19 @@ def validate_start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
         raise ValueError("Hypothesis exposure cap must match the frozen executable strategy")
     if number(hypothesis["risk"].get("max_loss_usdc", -1)) != number(spec["max_exposure"]["max_drawdown_usdc"]):
         raise ValueError("Hypothesis loss cap must match the frozen executable strategy")
+    if hypothesis.get('runtime_health_required'):
+        expected_runtime={"paper_timer_interval_ms":500,"paper_timer_accuracy_ms":50,
+            "paper_start_limit_interval_ms":10_000,"paper_start_limit_burst":30,
+            "bbo_flush_interval_ms":250,"quote_age_limit_ms":1000}
+        if not runtime_state or runtime_state.get('runtime_config')!=expected_runtime:
+            raise ValueError('Live paper timer and market collector runtime settings are not the configured values')
+        if runtime_state.get('collector_active') is not True or runtime_state.get('paper_timer_active') is not True:
+            raise ValueError('Market collector and paper engine timer must both be active before start')
+        if not runtime_state.get('collector_pid') or not runtime_state.get('current_connection_id'):
+            raise ValueError('A running collector PID and current WebSocket connection are required')
+        if (runtime_state.get('current_connection_healthy') is not True or
+            runtime_state.get('current_connection_health_age_ms',10**12)>spec['execution'].get('heartbeat_timeout_ms',65_000)):
+            raise ValueError('Current WebSocket connection is not healthy for HYPE')
     if hypothesis.get("prestart_collection_gate_required"):
         spec_id=fingerprint(spec)
         gate=store.connection.execute(
@@ -348,11 +365,23 @@ def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) ->
         "session_state": session["status"],
         "feed": {"connected": bool(state.get("connected")), "last_heartbeat_ms": state.get("healthy_at_ms"),
                  "quote_age_ms": quote_age, "wait_conditions": state.get("wait_conditions", []),
-                 "diagnostics": sorted(state.get("diagnostics", []))},
+                 "quote_source":quote.get('source') if quote else None,
+                 "quote_received_ms":quote.get('source_received_ms') if quote else None,
+                 "quote_available_ms":quote.get('available_ms') if quote else None,
+                 "quote_connection_id":quote.get('session') if quote else None,
+                 "diagnostics": sorted(state.get("diagnostics", [])),
+                 "exit_uncertainties":state.get('exit_uncertainties',[])},
         "signals": {"live_non_snapshot_fills": int(state.get("signals_received", 0)),
                     "executions": summary["fills"], "missed_executions": summary["missed_orders"],
                     "partial_executions": summary["partial_orders"],
                     "nonexecution_reasons": state.get("nonexecution_reasons", {})},
+        "execution_opportunities": {
+            "records":state.get("execution_opportunities",[]),
+            "eligible":sum(1 for x in state.get("execution_opportunities",[]) if x.get("eligible")),
+            "missed":sum(1 for x in state.get("execution_opportunities",[]) if x.get("outcome")=="missed"),
+            "executed":sum(1 for x in state.get("execution_opportunities",[]) if x.get("outcome") in {"executed","partial"}),
+            "miss_reasons":{key:value for key,value in state.get("nonexecution_reasons",{}).items()},
+        },
         "progress": diagnosis['progress'],
         "execution_diagnosis": {key:value for key,value in diagnosis.items() if key not in {'progress','scheduler'}},
         "scheduler": diagnosis['scheduler'],

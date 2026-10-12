@@ -45,28 +45,29 @@ def _paper_collection_runtime_state(store: Store) -> dict[str, Any]:
     paper=properties("tamtam-again-paper.service","StartLimitIntervalUSec","StartLimitBurst")
     collector=properties("tamtam-again-collectors.service","ActiveState","MainPID","ActiveEnterTimestamp")
     revision=subprocess.run(["git","rev-parse","HEAD"],check=True,capture_output=True,text=True).stdout.strip()
-    row=store.connection.execute(
-        "SELECT * FROM raw_observations WHERE source='hyperliquid-websocket-v1' "
-        "AND entity_type='market' AND entity_id='HYPE' AND endpoint='bbo' "
-        "ORDER BY observation_id DESC LIMIT 1").fetchone()
-    connection_id=None; quote_age_ms=10**12
-    if row:
-        payload=decode_observation_payload(row)
-        frames=payload.get("events",[])
-        if frames:
-            frame=max(frames,key=lambda item:item["received_at"])
-            message=frame.get("message",{})
-            connection_id=message.get("_stream",{}).get("connection_id")
-            received=datetime.fromisoformat(frame["received_at"].replace("Z","+00:00"))
-            quote_age_ms=max(0,int((datetime.now(timezone.utc)-received).total_seconds()*1000))
-    health=None
-    if connection_id:
-        health_row=store.connection.execute(
-            "SELECT response_json,response_encoding FROM raw_observations WHERE source='hyperliquid-websocket-v1' "
-            "AND entity_type='stream' AND entity_id=? AND endpoint='streamHealth' "
-            "ORDER BY observation_id DESC LIMIT 1",(connection_id,)).fetchone()
-        if health_row:
-            health=decode_observation_payload(health_row)
+    health_row=store.connection.execute(
+        "SELECT response_json,response_encoding FROM raw_observations WHERE source='hyperliquid-websocket-v1' "
+        "AND entity_type='stream' AND endpoint='streamHealth' ORDER BY observation_id DESC LIMIT 1").fetchone()
+    health=decode_observation_payload(health_row) if health_row else None
+    connection_id=health.get('session') if health else None
+    quote_age_ms=10**12
+    market_rows=store.connection.execute(
+        "SELECT response_json,response_encoding FROM raw_observations WHERE source='hyperliquid-websocket-v1' "
+        "AND entity_type='market' AND entity_id='HYPE' AND endpoint IN ('bbo','l2Book') "
+        "ORDER BY observation_id DESC LIMIT 20").fetchall()
+    latest_quote=None
+    for market_row in market_rows:
+        for frame in decode_observation_payload(market_row).get('events',[]):
+            message=frame.get('message',{});data=message.get('data',{})
+            if message.get('channel')=='bbo' and len(data.get('bbo',[]))==2:
+                candidate=(frame['received_at'],message.get('_stream',{}).get('connection_id'))
+            elif message.get('channel')=='l2Book' and data.get('coin')=='HYPE' and data.get('levels') and all(data['levels']):
+                candidate=(frame['received_at'],message.get('_stream',{}).get('connection_id'))
+            else:continue
+            if latest_quote is None or candidate[0]>latest_quote[0]:latest_quote=candidate
+    if latest_quote:
+        received=datetime.fromisoformat(latest_quote[0].replace('Z','+00:00'))
+        quote_age_ms=max(0,int((datetime.now(timezone.utc)-received).total_seconds()*1000))
     active_enter=collector.get("ActiveEnterTimestamp","")
     def milliseconds(value: str) -> int:
         value=value.strip()
@@ -92,7 +93,8 @@ def _paper_collection_runtime_state(store: Store) -> dict[str, Any]:
         "code_revision":revision,"current_connection_id":connection_id,
         "current_quote_age_ms":quote_age_ms,
         "current_connection_health_age_ms":health_age_ms,
-        "current_connection_healthy":bool(health and health.get("connected") is True)}
+        "current_connection_healthy":bool(health and health.get("connected") is True
+            and "HYPE" in health.get("markets",[]))}
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -285,7 +287,8 @@ def main(argv: list[str] | None = None) -> int:
                     from .experimental_paper import start as start_experimental
                     hypothesis=json.loads(args.hypothesis.read_text())
                     runtime_state=(_paper_collection_runtime_state(store)
-                                   if hypothesis.get("prestart_collection_gate_required") else None)
+                                   if hypothesis.get("prestart_collection_gate_required")
+                                   or hypothesis.get("runtime_health_required") else None)
                     result = start_experimental(store,args.variant_id,hypothesis,
                                                 restart_reason=args.restart_reason,
                                                 independent_after_incomplete=args.independent_after_incomplete,

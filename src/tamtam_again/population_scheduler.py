@@ -1,4 +1,7 @@
 """Bounded population hypothesis scheduling under the existing process lock."""
+import json
+from datetime import datetime, timezone
+
 from .discovery import protected_addresses
 from .population_research import initialize, seal, validate_policy
 from .population_runtime import _run
@@ -20,37 +23,78 @@ def historical_research_gate(store,network,address,*,as_of_ms,max_requests,reque
                 'reason':'synthetic acceptance fixture; no real dispatch unless explicitly mocked'}
     table=store.connection.execute("select 1 from sqlite_master where type='table' and name='population_historical_decisions'").fetchone()
     if not table:return {'allowed':False,'qualification':False,'new_data':False,'budget':False,'reason':'historical screen not yet available'}
-    row=store.connection.execute('select decision_id,status,as_of_ms from population_historical_decisions '
-        'where network=? and address=? and as_of_ms<=? order by as_of_ms desc,decision_id desc limit 1',
-        (network,address.lower(),as_of_ms)).fetchone()
-    if not row:return {'allowed':False,'qualification':False,'new_data':False,'budget':False,'reason':'no reviewed historical decision'}
-    qualified=row['status']=='credible_deep_dive_candidate'
+    sealed_job=None
     if request_id:
-        prior=store.connection.execute('select created_ms from population_research_jobs where request_id=?',(request_id,)).fetchone()
-        last_request=prior['created_ms'] if prior else None
+        sealed_job=store.connection.execute('select request_id,network,address,input_fingerprint,packet_json,created_ms,status '
+            'from population_research_jobs where request_id=?',(request_id,)).fetchone()
+        if not sealed_job or sealed_job['status']!='sealed':
+            return {'allowed':False,'qualification':False,'new_data':False,'budget':False,
+                    'reason':'request is not an existing sealed reservation'}
+        try:
+            packet=json.loads(sealed_job['packet_json'])
+            from .engine import fingerprint
+            packet_body={k:v for k,v in packet.items() if k!='fingerprint'}
+            immutable_packet=(packet.get('fingerprint')==fingerprint(packet_body) and
+                packet.get('research_input_fingerprint')==sealed_job['input_fingerprint'] and
+                packet.get('address','').lower()==address.lower() and packet.get('network')==network and
+                type(packet.get('available_ms')) is int and packet['available_ms']<=sealed_job['created_ms'])
+        except (TypeError,ValueError,KeyError):
+            immutable_packet=False
+        if not immutable_packet:
+            return {'allowed':False,'qualification':False,'new_data':False,'budget':False,
+                    'reason':'sealed request packet does not match its immutable reservation'}
+        decision_cutoff=min(as_of_ms,sealed_job['created_ms'])
     else:
-        last=store.connection.execute('select max(created_ms) from population_research_jobs where network=? and address=?',(network,address)).fetchone()
+        decision_cutoff=as_of_ms
+    row=store.connection.execute('select decision_id,status,as_of_ms,decision_json from population_historical_decisions '
+        'where network=? and address=? and as_of_ms<=? order by as_of_ms desc,decision_id desc limit 1',
+        (network,address.lower(),decision_cutoff)).fetchone()
+    if not row:return {'allowed':False,'qualification':False,'new_data':False,'budget':False,'reason':'no reviewed historical decision'}
+    try:decision=json.loads(row['decision_json'])
+    except (TypeError,ValueError):decision={}
+    economic=decision.get('economic_research_readiness',{})
+    economic_ok=(decision.get('economic_validation') is True and
+                 economic.get('status')=='approved_for_re' and
+                 economic.get('eligible_for_ai_research') is True and
+                 bool(economic.get('evidence_refs')))
+    qualified=row['status']=='credible_deep_dive_candidate' and economic_ok
+    if request_id:
+        last=store.connection.execute('select max(created_ms) from population_research_jobs where network=? and address=? and created_ms<?',
+            (network,address.lower(),sealed_job['created_ms'])).fetchone()
         last_request=last[0] if last else None
-    if last_request is None:
-        new_data=True
+        new_data=(immutable_packet and row['as_of_ms']<=sealed_job['created_ms'] and
+                  (last_request is None or (row['as_of_ms']>last_request and packet['available_ms']>last_request)))
     else:
-        latest=store.connection.execute("select max(observed_at) from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
-            "and entity_type='account' and entity_id=? and endpoint in ('portfolio','userFillsByTime','userFunding','userNonFundingLedgerUpdates')",
-            (network,address.lower())).fetchone()[0]
-        if latest:
-            from datetime import datetime
-            latest_ms=int(datetime.fromisoformat(latest).timestamp()*1000)
-            # The qualifying screen must itself include the new observation;
-            # later raw rows wait for the next scheduled screen.
-            new_data=latest_ms>last_request and latest_ms<=row['as_of_ms'] and row['as_of_ms']>last_request
-        else:new_data=False
+        last=store.connection.execute('select max(created_ms) from population_research_jobs where network=? and address=?',
+            (network,address.lower())).fetchone()
+        last_request=last[0] if last else None
+        if last_request is None:
+            new_data=True
+        else:
+            rows=store.connection.execute("select observed_at from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
+                "and entity_type='account' and entity_id=? and endpoint in ('portfolio','userFillsByTime','userFunding','userNonFundingLedgerUpdates')",
+                (network,address.lower())).fetchall()
+            decision_cutoff_ms=row['as_of_ms']
+            included_new_observation=False
+            for source_row in rows:
+                observed_at=datetime.fromisoformat(source_row['observed_at'])
+                if observed_at.tzinfo is None:observed_at=observed_at.replace(tzinfo=timezone.utc)
+                observed_ms=int(observed_at.timestamp()*1000)
+                if last_request<observed_ms<=decision_cutoff_ms:
+                    included_new_observation=True
+                    break
+            # Do not let a later observation beyond this screen invalidate data
+            # that the screen actually included. It will be considered next time.
+            new_data=decision_cutoff_ms>last_request and included_new_observation
     from .research_jobs import request_count
     current_requests=request_count(store)
     # A sealed job already occupies one of the shared reservations; it may
     # dispatch at the ceiling, while a new seal may not exceed it.
     within_budget=current_requests<=max_requests if request_id else current_requests<max_requests
     allowed=qualified and new_data and within_budget
-    if not qualified:reason='historical qualification is not sufficient for deeper AI research'
+    if row['status']=='credible_deep_dive_candidate' and not economic_ok:
+        reason='curve/activity screening has not passed the separate economic review required for research RE'
+    elif not qualified:reason='historical qualification is not sufficient for deeper AI research'
     elif not new_data:reason='no population observations arrived after the prior research request'
     elif not within_budget:reason='the existing shared population research request ceiling is exhausted'
     else:reason='historical qualification, new observations and existing request budget all pass'

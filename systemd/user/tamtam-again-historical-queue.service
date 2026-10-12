@@ -1,0 +1,15 @@
+[Unit]
+Description=Bounded public portfolio-curve queue screening
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/population-historical-queue-tick.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --policy /home/Untergame/tamtam_again/config/historical-curve-queue-policy.json
+TimeoutStartSec=300
+KillMode=control-group
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

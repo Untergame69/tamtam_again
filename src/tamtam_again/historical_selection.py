@@ -10,7 +10,7 @@ import hashlib
 import json
 import sqlite3
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -19,7 +19,7 @@ from .discovery import protected_addresses
 from .research_memory import authorized_account_history
 
 SOURCE = "hyperliquid-population-rest-v1"
-POLICY_VERSION = "historical-curves-v1.2"
+POLICY_VERSION = "historical-curves-v2.0"
 DAY_MS = 86_400_000
 HORIZONS = {30: 3, 90: 7, 180: 15, 365: 30}  # horizon days: maximum start-boundary lateness
 
@@ -105,42 +105,123 @@ def _curve_metric(points: list[tuple[int, Decimal]], as_of_ms: int, horizon_days
 
 def _period_consistency(points: list[tuple[int, Decimal]], start_ms: int, end_ms: int,
                         period: str) -> dict[str, Any]:
-    width = 7 if period == "week" else 30
-    groups: dict[str, list[tuple[int, Decimal]]] = defaultdict(list)
-    for t, v in points:
-        if start_ms <= t <= end_ms:
-            dt = datetime.fromtimestamp(t / 1000, timezone.utc)
-            key = dt.strftime("%G-W%V") if period == "week" else dt.strftime("%Y-%m")
-            groups[key].append((t, v))
-    observed = []
-    for key, rows in sorted(groups.items()):
-        rows.sort()
-        if len(rows) >= 2:
-            observed.append({"period": key, "first_ms": rows[0][0], "last_ms": rows[-1][0],
-                             "delta": rows[-1][1] - rows[0][1], "samples": len(rows)})
+    """Attribute every measured boundary-to-boundary change exactly once.
+
+    Adjacent calendar buckets share the same observed boundary value. A bucket
+    uses the last sample at or before each common boundary; no interpolation is
+    used. A missing/late boundary is left unattributed and included in the
+    residual against the full horizon delta.
+    """
+    if period not in ("week", "month") or end_ms <= start_ms:
+        raise ValueError("Comparable non-empty period required")
+    day = 86_400_000
+    tolerance_days = 7
+    max_gap_days = 15 if period == "month" else 10
+    min_bucket_days = 14 if period == "month" else 3
+    min_inside_samples = 2 if period == "month" else 1
+    points = sorted((t, v) for t, v in points if start_ms <= t <= end_ms)
+    if not points:
+        return {"calendar_period": period, "status": "unknown_no_samples", "observed_bucket_deltas": []}
+
+    def floor_bucket(ms: int) -> datetime:
+        dt = datetime.fromtimestamp(ms / 1000, timezone.utc)
+        if period == "week":
+            dt = (dt - timedelta(days=dt.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            dt = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return dt
+
+    def next_bucket(dt: datetime) -> datetime:
+        if period == "week":
+            return dt + timedelta(days=7)
+        return datetime(dt.year + (dt.month == 12), 1 if dt.month == 12 else dt.month + 1, 1, tzinfo=timezone.utc)
+
+    first_bucket = floor_bucket(start_ms)
+    buckets = []
+    cursor = first_bucket
+    while int(cursor.timestamp() * 1000) < end_ms:
+        following = next_bucket(cursor)
+        calendar_start = int(cursor.timestamp() * 1000)
+        calendar_end = int(following.timestamp() * 1000)
+        lo, hi = max(start_ms, calendar_start), min(end_ms, calendar_end)
+        if hi > lo and (hi - lo) >= min_bucket_days * day:
+            key = cursor.strftime("%G-W%V") if period == "week" else cursor.strftime("%Y-%m")
+            # Shared boundary sample belongs to the interval that ends at the
+            # boundary. The next bucket starts from the same prior sample, so
+            # the change ending on the first sample after the boundary is
+            # attributed once to that later bucket.
+            left = next(((t, v) for t, v in reversed(points) if (t == lo if lo == start_ms else t < lo)), None)
+            right = next(((t, v) for t, v in reversed(points) if (t <= hi if hi == end_ms else t < hi)), None)
+            inside = [(t, v) for t, v in points if lo <= t < hi or (hi == end_ms and t == end_ms)]
+            anchors = []
+            for item in ([left] if left else []) + inside + ([right] if right else []):
+                if not anchors or item[0] != anchors[-1][0]:
+                    anchors.append(item)
+            gaps = [b[0] - a[0] for a, b in zip(anchors, anchors[1:])]
+            left_late = (lo - left[0]) / day if left else None
+            right_late = (hi - right[0]) / day if right else None
+            valid = bool(left and right and len(inside) >= min_inside_samples and
+                         left_late <= tolerance_days and right_late <= tolerance_days and
+                         (not gaps or max(gaps) <= max_gap_days * day))
+            delta = right[1] - left[1] if valid else None
+            buckets.append({"period": key, "window_start_ms": lo, "window_end_ms": hi,
+                            "first_sample_ms": inside[0][0] if inside else None,
+                            "last_sample_ms": inside[-1][0] if inside else None,
+                            "start_boundary_sample_ms": left[0] if left else None,
+                            "end_boundary_sample_ms": right[0] if right else None,
+                            "start_boundary_lateness_days": round(left_late, 4) if left_late is not None else None,
+                            "end_boundary_lateness_days": round(right_late, 4) if right_late is not None else None,
+                            "max_sample_gap_days": round(max(gaps) / day, 4) if gaps else 0,
+                            "samples": len(inside), "delta": delta,
+                            "status": "measured" if valid else "unknown_boundary_or_coverage"})
+        cursor = following
+    observed = [r for r in buckets if r["delta"] is not None]
     deltas = [r["delta"] for r in observed]
     positive = [x for x in deltas if x > 0]
     negative = [x for x in deltas if x < 0]
     max_streak = streak = 0
-    for value in deltas:
-        streak = streak + 1 if value < 0 else 0
+    for bucket in buckets:
+        value = bucket["delta"]
+        streak = streak + 1 if value is not None and value < 0 else 0
         max_streak = max(max_streak, streak)
-    return {"calendar_period": period, "bucket_width_days_approx": width,
-            "buckets_with_two_or_more_samples": len(observed),
+    total_delta = points[-1][1] - points[0][1] if len(points) >= 2 else None
+    attributed_delta = sum(deltas, Decimal(0))
+    unattributed_delta = total_delta - attributed_delta if total_delta is not None else None
+    gross = sum((abs(x) for x in deltas), Decimal(0)) + (abs(unattributed_delta) if unattributed_delta is not None else Decimal(0))
+    residual_share = abs(unattributed_delta) / gross if gross else Decimal(0)
+    complete = bool(buckets) and len(observed) == len(buckets) and residual_share <= Decimal("0.10")
+    concentration = max(positive) / sum(positive) if positive and sum(positive) else None
+    if not complete:
+        concentration = None
+    return {"calendar_period": period, "boundary_rule": "last observed sample at or before each common UTC calendar boundary; no interpolation",
+            "bucket_width_days_approx": 7 if period == "week" else 30,
+            "expected_scored_buckets": len(buckets),
+            "measured_buckets": len(observed),
+            "unknown_buckets": len(buckets) - len(observed),
+            "buckets_with_two_or_more_samples": sum(r["samples"] >= 2 for r in observed),
             "positive_observed_buckets": len(positive),
             "negative_observed_buckets": len(negative),
             "positive_share_of_observed_buckets": round(len(positive) / len(observed), 4) if observed else None,
-            "largest_positive_bucket_share_of_positive_delta": str(max(positive) / sum(positive)) if positive and sum(positive) else None,
+            "largest_positive_bucket_share_of_positive_delta": str(concentration) if concentration is not None else None,
             "max_successive_negative_observed_buckets": max_streak,
-            "observed_bucket_deltas": [{**r, "delta": str(r["delta"])} for r in observed],
-            "coverage_note": "Only buckets with at least two provider samples are measured; empty or single-sample buckets are unknown, not losses."}
+            "horizon_delta": str(total_delta) if total_delta is not None else None,
+            "attributed_delta_sum": str(attributed_delta),
+            "unattributed_delta": str(unattributed_delta) if unattributed_delta is not None else None,
+            "unattributed_gross_movement_share": str(residual_share),
+            "boundary_changes_reconcile": total_delta is not None and attributed_delta + unattributed_delta == total_delta,
+            "coverage_complete_for_concentration": complete,
+            "observed_bucket_deltas": [{**r, "delta": str(r["delta"])} for r in buckets],
+            "coverage_note": "Each adjacent bucket shares a sampled boundary. Periods without tolerant boundaries, enough internal samples, or acceptable gaps remain unknown; the unexplained net change is explicitly reported."}
 
 
 def _authorized_addresses(connection: sqlite3.Connection, network: str, as_of_ms: int) -> tuple[list[str], list[dict[str, str]]]:
     store = type("StoreView", (), {"connection": connection})()
-    rows = connection.execute(
-        "select distinct lower(address) from account_scope_reports where network=? and available_ms<=? order by lower(address)",
-        (network, as_of_ms)).fetchall()
+    query = "select distinct lower(address) from account_scope_reports where network=? and available_ms<=?"
+    params: list[Any] = [network, as_of_ms]
+    if connection.execute("select 1 from sqlite_master where type='table' and name='historical_curve_queue'").fetchone():
+        query += " union select lower(address) from historical_curve_queue where network=? and status in ('fetched','already_covered')"
+        params.append(network)
+    rows = connection.execute(query + " order by 1", params).fetchall()
     blocked = {x.lower() for x in protected_addresses(store)}
     allowed, excluded = [], []
     for row in rows:
@@ -227,8 +308,15 @@ def _account_evidence(connection: sqlite3.Connection, network: str, address: str
         elif endpoint == "userFillsByTime":
             if type(request.get("startTime")) is int:
                 start = request["startTime"]
-                end = request.get("endTime") if type(request.get("endTime")) is int else available
-                fill_intervals.append((start, min(end, available), request.get("pagination_status")))
+                requested_end = request.get("endTime") if type(request.get("endTime")) is int else available
+                requested_end = min(requested_end, available)
+                status = request.get("pagination_status", "unknown")
+                covered = request.get("covered_until_ms", request.get("next_cursor_ms"))
+                if type(covered) is not int and status == "pagination_exhausted":
+                    covered = requested_end
+                if type(covered) is int and start <= covered <= requested_end:
+                    fill_intervals.append({"requested_start_ms": start, "requested_end_ms": requested_end,
+                                          "covered_until_ms": covered, "pagination_status": status})
             fill_statuses.append(request.get("pagination_status", "unknown"))
             if isinstance(payload, list):
                 for item in payload:
@@ -288,25 +376,38 @@ def _account_evidence(connection: sqlite3.Connection, network: str, address: str
         item["evidence_refs"] = sorted(set(refs[key]))
         series[key] = item
     # Fills returned by pages are observations, not a proof that no other fills exist.
+    covered_ranges = sorted((x["requested_start_ms"], x["covered_until_ms"], x["pagination_status"])
+                            for x in fill_intervals)
     merged = []
-    for start, end, status in sorted(fill_intervals):
+    for start, end, status in covered_ranges:
         if not merged or start > merged[-1][1]:
             merged.append([start, end, [status]])
         else:
             merged[-1][1] = max(merged[-1][1], end)
             merged[-1][2].append(status)
     query_union_ms = sum(max(0, item[1] - item[0]) for item in merged)
-    lower = min((x[0] for x in fill_intervals), default=None)
-    upper = max((x[1] for x in fill_intervals), default=None)
-    coverage_complete = bool(merged) and len(merged) == 1 and merged[0][0] <= as_of_ms - 25 * DAY_MS and \
-                        merged[0][1] >= as_of_ms - 3 * DAY_MS and all(
-                            status == "pagination_exhausted" for status in merged[0][2])
+    lower = min((x[0] for x in covered_ranges), default=None)
+    upper = max((x[1] for x in covered_ranges), default=None)
+    recent_lo, recent_hi = as_of_ms - 30 * DAY_MS, as_of_ms
+    recent_ranges = []
+    for start, end, _ in covered_ranges:
+        lo, hi = max(start, recent_lo), min(end, recent_hi)
+        if hi > lo:
+            if not recent_ranges or lo > recent_ranges[-1][1]:
+                recent_ranges.append([lo, hi])
+            else:
+                recent_ranges[-1][1] = max(recent_ranges[-1][1], hi)
+    recent_query_ms = sum(hi - lo for lo, hi in recent_ranges)
+    recent_latest_end = max((hi for _, hi in recent_ranges), default=None)
     fill_report = {"fills_observed": len(fills), "oldest_fill_ms": min((f["time"] for f in fills.values()), default=None),
                    "newest_fill_ms": max((f["time"] for f in fills.values()), default=None),
                    "query_start_ms": lower, "query_end_ms": upper,
                    "query_span_days": round(query_union_ms / DAY_MS, 3),
                    "query_contiguous_segments_days": [round((x[1] - x[0]) / DAY_MS, 3) for x in merged],
-                   "activity_coverage_sufficient_30d": coverage_complete,
+                   "query_coverage_30d_days": round(recent_query_ms / DAY_MS, 3),
+                   "query_coverage_30d_segments_days": [round((x[1] - x[0]) / DAY_MS, 3) for x in recent_ranges],
+                   "latest_query_coverage_age_30d_days": round((as_of_ms - recent_latest_end) / DAY_MS, 3) if recent_latest_end is not None else None,
+                   "query_coverage_30d_at_least_25d": recent_query_ms >= 25 * DAY_MS,
                    "pagination_statuses": sorted(set(str(x) for x in fill_statuses)),
                    "truncated_or_retention_unknown": True,
                    "markets_observed": sorted(markets),
@@ -326,8 +427,7 @@ def _account_evidence(connection: sqlite3.Connection, network: str, address: str
             type(o.get("timestamp")) is int and lo <= o["timestamp"] <= hi for o in orders.values())
         fill_report[f"markets_{days}d_observed"] = sorted({str(f.get("coin")) for f in fills.values()
                                                               if lo <= f["time"] <= hi and f.get("coin")})
-    fill_report["coverage_by_requested_ranges"] = [{"start_ms": a, "end_ms": b, "pagination_status": s}
-                                                     for a, b, s in fill_intervals]
+    fill_report["coverage_by_requested_ranges"] = fill_intervals
     flow_totals = defaultdict(Decimal)
     flow_counts = defaultdict(int)
     for event in observed_events.values():
@@ -403,12 +503,21 @@ def _analyze_account(connection: sqlite3.Connection, network: str, address: str,
                             Decimal(horizons[str(d)]["delta"]) > 0 for d in (90, 180))
     has_negative_declared = any(value < 0 for value in available_deltas)
     active_30 = evidence["fill_activity"]["active_days_30d_observed"]
-    fill_span = evidence["fill_activity"]["query_span_days"] or 0
-    activity_quality = "sufficient_30d_observation" if evidence["fill_activity"]["activity_coverage_sufficient_30d"] else "insufficient_or_truncated_fill_history"
-    frequent = activity_quality == "sufficient_30d_observation" and active_30 >= 4 and evidence["fill_activity"]["fills_30d_observed"] >= 20
+    fills_30 = evidence["fill_activity"]["fills_30d_observed"]
+    if fills_30 >= 20 and active_30 >= 4:
+        activity_quality = "frequent_activity_observed_lower_bound"
+    elif fills_30 >= 20:
+        activity_quality = "clustered_activity_observed_lower_bound"
+    elif fills_30 > 0:
+        activity_quality = "some_activity_observed_lower_bound"
+    else:
+        activity_quality = "no_recent_activity_observed_history_unknown"
+    frequent = activity_quality == "frequent_activity_observed_lower_bound"
     months = consistency.get("180", {}).get("month", {})
     concentration = months.get("largest_positive_bucket_share_of_positive_delta")
-    diversified = months.get("buckets_with_two_or_more_samples", 0) >= 4 and concentration is not None and Decimal(concentration) <= Decimal("0.50")
+    diversified = (months.get("coverage_complete_for_concentration") is True and
+                   months.get("buckets_with_two_or_more_samples", 0) >= 4 and
+                   concentration is not None and Decimal(concentration) <= Decimal("0.50"))
     credible = reported_positive and frequent and diversified
     if credible:
         status = "credible_deep_dive_candidate"
@@ -421,9 +530,11 @@ def _analyze_account(connection: sqlite3.Connection, network: str, address: str,
     reasons = []
     if reported_positive: reasons.append("provider-reported PnL change is positive for both comparable 90d and 180d sampled windows")
     else: reasons.append("90d/180d declared PnL result is not positive and proven on both fixed boundary rules")
-    if not frequent: reasons.append("frequent activity is not established from the currently covered fill history")
-    if not diversified: reasons.append("multi-month gain distribution is missing, sparse, or one observed month contributes more than half of positive observed monthly changes")
-    reasons.append("economic PnL and flow-adjusted return remain unverified")
+    if not frequent:
+        reasons.append("frequent activity is not positively observed on at least 4 UTC days; fill counts are lower bounds and pagination/retention remain separate unknowns")
+    if not diversified:
+        reasons.append("multi-month boundary changes are incomplete, sparse, or concentrated; unexplained changes remain explicit")
+    reasons.append("economic validation is false; provider curves alone do not qualify an account for research RE")
     decision = {"address": address, "status": status,
                 "performance_quality": "positive_declared" if reported_positive else
                                       "negative_declared_some_horizons" if has_negative_declared else "unknown",
@@ -441,6 +552,10 @@ def _analyze_account(connection: sqlite3.Connection, network: str, address: str,
                 "perp_all_time_account_value_horizons": perp_value_horizons,
                 "weekly_monthly_consistency": consistency,
                 "activity_quality": activity_quality, "fill_activity": evidence["fill_activity"],
+                "economic_research_readiness": {"status": "blocked_pending_economic_review",
+                    "eligible_for_ai_research": False,
+                    "reason": "declared-curve selection is a data-screen only; no account-specific economic validation has been approved",
+                    "economic_validation": False},
                 "declared_vlm": evidence["vlm"],
                 "observed_flow_diagnostics": evidence["observed_flow_diagnostics"],
                 "current_exposure_observations": evidence["current_exposure_observations"],
@@ -502,18 +617,26 @@ def build_report(connection: sqlite3.Connection, *, network: str, as_of_ms: int)
     for item in ordered: counts[item["status"]] += 1
     recovery_watch = [d for d in ordered if d.get("recovery_watch",{}).get("status")=="watch_recovery_signal"]
     decoded=sum(a.get("evidence",{}).get("payloads_decoded",0) for a in ordered)
-    return {"schema_version": 1, "policy_version": POLICY_VERSION, "network": network,
+    registry_count = connection.execute("select count(*) from candidates where network=?", (network,)).fetchone()[0] \
+        if connection.execute("select 1 from sqlite_master where type='table' and name='candidates'").fetchone() else 0
+    queue_progress = {}
+    if connection.execute("select 1 from sqlite_master where type='table' and name='historical_curve_queue'").fetchone():
+        queue_progress = {r[0]: r[1] for r in connection.execute(
+            "select status,count(*) from historical_curve_queue where network=? group by status", (network,))}
+    return {"schema_version": 2, "policy_version": POLICY_VERSION, "network": network,
             "as_of_ms": as_of_ms, "as_of_utc": _iso(as_of_ms), "decision_day_utc": _iso(as_of_ms)[:10],
             "cutoff_policy": {"rule": "latest data available at or before the fixed as_of_ms; no future availability",
                               "horizon_rule": "for 30/90/180/365 days use the latest sample at or before cutoff minus horizon; require start boundary lateness <= 3/7/15/30 days respectively and endpoint age <= 3 days; never interpolate",
                               "economic_claim": "allTime pnlHistory change is provider-declared only; not net validated performance"},
             "population": {"inventory": len(allowed) + len(excluded), "authorized_analyzed": len(allowed),
+                           "registry_candidates": registry_count, "historical_curve_queue": queue_progress,
                            "excluded_before_payload_read": excluded},
             "status_counts": dict(counts), "accounts": ordered,
             "recovery_watch_count":len(recovery_watch), "recovery_watch_list":recovery_watch,
             "selection_policy": {"positive_declared": "positive pnlHistory deltas at both fixed 90d and 180d bounds",
                                  "candidate_order": "credible candidates first; then positive declared accounts passing the monthly concentration guard ordered by lower concentration, then by more positive observed months, then by more observed months; dollar gains are not a ranking input",
-                                 "credible_candidate": "positive declared at 90d and 180d, at least 20 fills and 4 active UTC days in a continuous, unsaturated fill query coverage of >=25 days, plus >=4 two-sample observed 180d month buckets and no single positive bucket >50% of positive observed monthly gains",
+                                 "credible_candidate": "positive declared at 90d and 180d, at least 20 observed fills on 4 UTC days, plus at least 4 measured 180d monthly boundary intervals, complete concentration coverage, and no single positive month >50% of positive observed monthly changes; fill counts are lower bounds and pagination/retention stay separate",
+                                 "economic_research_gate": "requires a separate approved economic-validation record; curve-only candidates cannot open AI research",
                                  "insufficient": "missing/stale/misaligned curves or insufficient activity / period coverage; unknown is not negative",
                                  "purpose": "route for additional observation or manual review; none of these states validates a strategy"},
             "provider_calls": 0,

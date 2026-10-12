@@ -12,7 +12,7 @@ from xml.sax.saxutils import escape
 from tamtam_again.historical_selection import build_report, persist_decisions
 
 STATUS_FR = {
-    "credible_deep_dive_candidate": "approfondissement crédible",
+    "credible_deep_dive_candidate": "présélection courbes + activité (économie non validée)",
     "reported_positive_pending_activity": "PnL déclaré positif, activité à confirmer",
     "reported_positive_concentrated_or_sparse": "PnL déclaré positif, gains concentrés ou série trop courte",
     "insufficiently_documented": "documentation insuffisante",

@@ -1,0 +1,11 @@
+[Unit]
+Description=Continue bounded historical curve screening over the public candidate registry
+
+[Timer]
+OnBootSec=900
+OnUnitInactiveSec=900
+AccuracySec=10
+Unit=tamtam-again-historical-queue.service
+
+[Install]
+WantedBy=timers.target

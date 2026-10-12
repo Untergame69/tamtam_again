@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timezone
 
 from tamtam_again.historical_selection import build_report, persist_decisions
-from tamtam_again.historical_selection import DAY_MS, _curve_metric
+from tamtam_again.historical_selection import DAY_MS, _curve_metric, _period_consistency
 from tamtam_again.population_scheduler import historical_research_gate
 
 
@@ -44,6 +44,23 @@ class HistoricalSelectionTests(unittest.TestCase):
         self.assertEqual(misaligned["status"], "unknown_missing_or_stale_boundary")
         self.assertIsNone(misaligned["delta"])
 
+    def test_calendar_buckets_attribute_boundary_change_once_and_report_gaps(self):
+        def ms(year, month, day):
+            return int(datetime(year, month, day, tzinfo=timezone.utc).timestamp() * 1000)
+        points = [(ms(2026, 1, 1), 100), (ms(2026, 1, 15), 100), (ms(2026, 1, 30), 101),
+                  (ms(2026, 2, 1), 1101), (ms(2026, 2, 15), 1101), (ms(2026, 2, 27), 1102),
+                  (ms(2026, 3, 1), 1102), (ms(2026, 3, 15), 1103), (ms(2026, 3, 30), 1104),
+                  (ms(2026, 4, 1), 1105)]
+        result = _period_consistency(points, points[0][0], points[-1][0], "month")
+        measured = result["observed_bucket_deltas"]
+        self.assertEqual(result["horizon_delta"], "1005")
+        self.assertEqual(sum((int(x["delta"]) for x in measured if x["status"] == "measured"), 0), 1005)
+        self.assertEqual(result["unattributed_delta"], "0")
+        self.assertEqual(result["largest_positive_bucket_share_of_positive_delta"], "0.9960199004975124")
+        sparse = _period_consistency([(points[0][0], 0), (points[-1][0], 10)], points[0][0], points[-1][0], "month")
+        self.assertFalse(sparse["coverage_complete_for_concentration"])
+        self.assertGreater(sparse["unknown_buckets"], 0)
+
     def test_deposit_does_not_turn_account_value_increase_into_pnl(self):
         pnl = [[self.cut - 190 * DAY_MS, "100"], [self.cut - 100 * DAY_MS, "90"], [self.cut, "110"]]
         value = [[self.cut - 190 * DAY_MS, "1000"], [self.cut, "4451000"]]
@@ -73,7 +90,7 @@ class HistoricalSelectionTests(unittest.TestCase):
         self.assertEqual(account["horizons"]["180"]["delta"], "-20")
         self.assertEqual(account["fill_activity"]["markets_observed"], ["BTC", "xyz:XYZ100"])
         self.assertEqual(account["fill_activity"]["fills_30d_observed"], 2)
-        self.assertEqual(account["activity_quality"], "insufficient_or_truncated_fill_history")
+        self.assertEqual(account["activity_quality"], "some_activity_observed_lower_bound")
 
     def test_revisions_deduplication_and_future_unavailable_data(self):
         sample_end = self.cut - 2000
@@ -98,6 +115,26 @@ class HistoricalSelectionTests(unittest.TestCase):
         self.assertEqual(account["evidence"]["payloads_decoded"], 4)
         self.assertEqual(account["fill_activity"]["fills_observed"], 1)
 
+    def test_old_incomplete_fill_page_does_not_block_recent_observed_activity(self):
+        recent_start = self.cut - 30 * DAY_MS
+        self.add_observation("userFillsByTime", [], self.cut,
+                             {"startTime": recent_start, "endTime": self.cut,
+                              "covered_until_ms": self.cut, "pagination_status": "pagination_exhausted"})
+        self.add_observation("userFillsByTime", [], self.cut - 40 * DAY_MS,
+                             {"startTime": self.cut - 70 * DAY_MS, "endTime": self.cut - 40 * DAY_MS,
+                              "covered_until_ms": self.cut - 50 * DAY_MS, "pagination_status": "page_budget_exhausted"})
+        fills = [{"time": self.cut - (i % 4) * DAY_MS, "coin": "BTC", "tid": i} for i in range(20)]
+        self.add_observation("userFillsByTime", fills, self.cut,
+                             {"startTime": recent_start, "endTime": self.cut,
+                              "covered_until_ms": self.cut, "pagination_status": "page_budget_exhausted"})
+        account = build_report(self.db, network="hyperliquid-mainnet", as_of_ms=self.cut)["accounts"][0]
+        activity = account["fill_activity"]
+        self.assertEqual(activity["fills_30d_observed"], 20)
+        self.assertEqual(activity["active_days_30d_observed"], 4)
+        self.assertEqual(account["activity_quality"], "frequent_activity_observed_lower_bound")
+        self.assertEqual(activity["query_coverage_30d_days"], 30)
+        self.assertIn("page_budget_exhausted", activity["pagination_statuses"])
+
     def test_identical_rerun_is_idempotent_and_does_not_call_provider(self):
         report = build_report(self.db, network="hyperliquid-mainnet", as_of_ms=self.cut)
         first = persist_decisions(self.db, report)
@@ -113,27 +150,44 @@ class HistoricalSelectionTests(unittest.TestCase):
         self.assertEqual(account["performance_quality"], "unknown")
         self.assertEqual(account["status"], "insufficiently_documented")
 
-    def test_ai_gate_requires_qualification_new_data_and_existing_budget(self):
-        self.db.execute("create table population_historical_decisions(decision_id text,network text,address text,status text,as_of_ms integer)")
-        self.db.execute("create table population_research_jobs(request_id text,network text,address text,input_fingerprint text,created_ms integer)")
-        self.db.execute("insert into population_historical_decisions values(?,?,?,?,?)",
-                        ("decision", "hyperliquid-mainnet", self.address, "credible_deep_dive_candidate", self.cut))
+    def test_ai_gate_uses_observations_inside_cutoff_and_sealed_packet_survives_restart(self):
+        from tamtam_again.engine import fingerprint
+        self.db.execute("create table population_historical_decisions(decision_id text,network text,address text,status text,as_of_ms integer,decision_json text)")
+        self.db.execute("create table population_research_jobs(request_id text,network text,address text,input_fingerprint text,packet_json text,created_ms integer,status text)")
         self.db.execute("create table paper_research_jobs(request_id text)")
-        self.db.execute("insert into raw_observations(network,source,entity_type,entity_id,endpoint,request_json,requested_at,observed_at,"
-                        "complete,response_encoding,response_sha256,response_json) values(?,?,?,?,?,?,?,?,?,?,?,?)",
-                        ("hyperliquid-mainnet", "hyperliquid-population-rest-v1", "account", self.address,
-                         "portfolio", "{}", stamp(self.cut), stamp(self.cut), 0, "json", "fixture", "[]"))
-        allowed = historical_research_gate(type("S", (), {"connection": self.db})(), "hyperliquid-mainnet",
-                                          self.address, as_of_ms=self.cut, max_requests=8)
+        decision = {"economic_validation": True, "economic_research_readiness": {
+            "status": "approved_for_re", "eligible_for_ai_research": True, "evidence_refs": ["review:fixture"]}}
+        self.db.execute("insert into population_historical_decisions values(?,?,?,?,?,?)",
+                        ("decision", "hyperliquid-mainnet", self.address, "credible_deep_dive_candidate", self.cut, json.dumps(decision)))
+        self.db.execute("insert into population_research_jobs values(?,?,?,?,?,?,?)",
+                        ("old", "hyperliquid-mainnet", self.address, "input", "{}", self.cut - 1000, "complete"))
+        self.add_observation("portfolio", [], self.cut - 500)
+        self.add_observation("portfolio", [], self.cut + 500)
+        store = type("S", (), {"connection": self.db})()
+        allowed = historical_research_gate(store, "hyperliquid-mainnet", self.address, as_of_ms=self.cut, max_requests=8)
         self.assertTrue(allowed["allowed"])
-        self.db.execute("insert into population_research_jobs values(?,?,?,?,?)",
-                        ("old", "hyperliquid-mainnet", self.address, "input", self.cut + 1000))
-        stale = historical_research_gate(type("S", (), {"connection": self.db})(), "hyperliquid-mainnet",
-                                         self.address, as_of_ms=self.cut, max_requests=8)
-        self.assertFalse(stale["new_data"])
-        exhausted = historical_research_gate(type("S", (), {"connection": self.db})(), "hyperliquid-mainnet",
-                                             self.address, as_of_ms=self.cut, max_requests=1)
+        self.assertTrue(allowed["new_data"])
+        exhausted = historical_research_gate(store, "hyperliquid-mainnet", self.address, as_of_ms=self.cut, max_requests=1)
         self.assertFalse(exhausted["budget"])
+
+        packet_body = {"research_input_fingerprint": "sealed-input", "address": self.address,
+                       "network": "hyperliquid-mainnet", "available_ms": self.cut - 100}
+        packet = {**packet_body, "fingerprint": fingerprint(packet_body)}
+        self.db.execute("insert into population_historical_decisions values(?,?,?,?,?,?)",
+                        ("sealed-decision", "hyperliquid-mainnet", self.address, "credible_deep_dive_candidate", self.cut - 50, json.dumps(decision)))
+        self.db.execute("insert into population_research_jobs values(?,?,?,?,?,?,?)",
+                        ("sealed", "hyperliquid-mainnet", self.address, "sealed-input", json.dumps(packet), self.cut, "sealed"))
+        resumed = historical_research_gate(store, "hyperliquid-mainnet", self.address, as_of_ms=self.cut + DAY_MS,
+                                           max_requests=3, request_id="sealed")
+        self.assertTrue(resumed["allowed"])
+        self.assertTrue(resumed["new_data"])
+        broken = dict(packet)
+        broken["fingerprint"] = "tampered"
+        self.db.execute("update population_research_jobs set packet_json=? where request_id='sealed'", (json.dumps(broken),))
+        rejected = historical_research_gate(store, "hyperliquid-mainnet", self.address, as_of_ms=self.cut + DAY_MS,
+                                            max_requests=3, request_id="sealed")
+        self.assertFalse(rejected["allowed"])
+        self.assertIn("immutable reservation", rejected["reason"])
 
     def test_recovery_watch_uses_fixed_30_90_180_day_windows(self):
         points = [[self.cut - 190 * DAY_MS, "200"], [self.cut - 95 * DAY_MS, "150"],

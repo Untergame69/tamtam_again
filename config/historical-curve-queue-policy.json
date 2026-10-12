@@ -1,7 +1,9 @@
 {
-  "version": "historical-curve-queue-v2",
+  "version": "historical-curve-queue-v3",
   "sampling_seed": "historical-curve-queue-first-20261012",
   "max_requests_per_tick": 4,
+  "discovery_requests_per_tick": 1,
+  "retry_requests_per_tick": 1,
   "tick_seconds": 900,
   "retry_seconds": 21600,
   "lease_seconds": 300,
@@ -9,5 +11,5 @@
   "refresh_after_seconds": 86400,
   "portfolio_info_weight": 20,
   "local_shared_budget_per_minute": 900,
-  "justification": "Deterministic address-uniform queue independent of detailed REST slots. Four logical portfolio attempts per 15-minute tick reserve at most 80 weights, averaging 5.333 weights/minute; internal HTTP retries remain separately charged by the shared limiter telemetry. New candidates and 24-hour refreshes share this cap and deterministic queue order. Consecutive failures are capped at six; any successful refresh resets the failure count. Recent shared telemetry measured 844.83 reserved weights/minute over 60 minutes and 853.70 over 24 hours with zero 429s. The existing local limiter remains authoritative; no request bypasses it. No AI budget or RE call is included."
+  "justification": "Four logical portfolio attempts per 15-minute tick reserve at most 80 weights, averaging 5.333 weights/minute; internal HTTP retries remain separately charged by the shared limiter telemetry. One slot is reserved for never-observed candidates, one for due retries, and two for due refreshes; unused slots are immediately lent to the other lanes. Within discovery, the least recently examined candidate progresses first (initially oldest added); retries progress by oldest last attempt; refreshes progress by oldest observation. Deferrals update their examination age, so a protected prefix cannot consume the 80-row scan on every tick. A fixed hash rank cannot reclaim every slot. At most four logical calls occur per tick. Consecutive failures are capped at six; any successful refresh resets the failure count. The existing local limiter remains authoritative; no request bypasses it. No AI budget or RE call is included."
 }

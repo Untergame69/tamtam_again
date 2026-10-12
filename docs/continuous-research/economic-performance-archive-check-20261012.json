@@ -1,0 +1,1410 @@
+{
+  "accounts": [
+    {
+      "account_mode_at_cutoff": "disabled",
+      "activity": {
+        "active_days_30d_observed": 5,
+        "fills_30d_observed": 178438,
+        "orders_distinct_from_fills_lower_bound": 133925,
+        "pagination_statuses": [
+          "page_budget_exhausted",
+          "pagination_exhausted"
+        ],
+        "query_coverage_30d_days": 3.504,
+        "query_end_ms": 1791761832114,
+        "query_start_ms": 1791418929757
+      },
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "evidence_refs": {
+        "curves_at_exact_horizon_boundaries": {
+          "180": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "227207.400407"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1775692200014,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "125430.410922"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "556318.346513"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1775692200014,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "428068.880922"
+            }
+          },
+          "30": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "227207.400407"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1788992124992,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "117689.032161"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "556318.346513"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1788992124992,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "540223.478923"
+            }
+          },
+          "90": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "227207.400407"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1783552200038,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "109175.011264"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "556318.346513"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1783552200038,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "499914.803727"
+            }
+          }
+        },
+        "fill_pages_with_unique_30d_events": [
+          "raw_observations:10174802",
+          "raw_observations:10175200",
+          "raw_observations:10175670",
+          "raw_observations:10267836",
+          "raw_observations:10268197",
+          "raw_observations:10268753",
+          "raw_observations:10335103",
+          "raw_observations:10335606",
+          "raw_observations:10534468",
+          "raw_observations:10534957",
+          "raw_observations:10733527",
+          "raw_observations:10734056",
+          "raw_observations:10946289",
+          "raw_observations:10946802",
+          "raw_observations:11159952",
+          "raw_observations:11160335",
+          "raw_observations:11365442",
+          "raw_observations:11365993",
+          "raw_observations:11572375",
+          "raw_observations:11572906",
+          "raw_observations:11769953",
+          "raw_observations:11770360",
+          "raw_observations:11969937",
+          "raw_observations:11970217",
+          "raw_observations:12174347",
+          "raw_observations:12174880",
+          "raw_observations:12388558",
+          "raw_observations:12389139",
+          "raw_observations:12389398",
+          "raw_observations:12390269",
+          "raw_observations:12390270",
+          "raw_observations:12390271",
+          "raw_observations:12391472",
+          "raw_observations:12392073",
+          "raw_observations:12392349",
+          "raw_observations:12392350",
+          "raw_observations:12393274",
+          "raw_observations:12393534",
+          "raw_observations:12393535",
+          "raw_observations:12393536",
+          "raw_observations:12483045",
+          "raw_observations:12483598",
+          "raw_observations:12484188",
+          "raw_observations:12579665",
+          "raw_observations:12580239",
+          "raw_observations:12804338",
+          "raw_observations:12804865",
+          "raw_observations:12805454",
+          "raw_observations:12840609",
+          "raw_observations:13047924",
+          "raw_observations:13048477",
+          "raw_observations:13243206",
+          "raw_observations:13243577",
+          "raw_observations:13434307",
+          "raw_observations:18248313",
+          "raw_observations:18248793",
+          "raw_observations:18249275",
+          "raw_observations:18330705",
+          "raw_observations:18331209",
+          "raw_observations:18331687",
+          "raw_observations:18386064",
+          "raw_observations:18386441",
+          "raw_observations:18554693",
+          "raw_observations:18555169",
+          "raw_observations:18716360",
+          "raw_observations:18874121",
+          "raw_observations:19036292",
+          "raw_observations:19202690",
+          "raw_observations:19370257",
+          "raw_observations:19535091",
+          "raw_observations:19695366",
+          "raw_observations:19695770",
+          "raw_observations:19854768",
+          "raw_observations:20011082",
+          "raw_observations:20170971",
+          "raw_observations:20336594",
+          "raw_observations:20512878",
+          "raw_observations:20513329",
+          "raw_observations:20686731",
+          "raw_observations:20687243",
+          "raw_observations:20854719",
+          "raw_observations:20855084",
+          "raw_observations:21017383",
+          "raw_observations:21183323",
+          "raw_observations:21350941",
+          "raw_observations:21514216",
+          "raw_observations:21675462",
+          "raw_observations:21675704",
+          "raw_observations:21836578",
+          "raw_observations:21836920",
+          "raw_observations:22080160",
+          "raw_observations:22242383",
+          "raw_observations:22403082",
+          "raw_observations:22572803",
+          "raw_observations:22743397",
+          "raw_observations:22906900",
+          "raw_observations:23068368",
+          "raw_observations:23232720",
+          "raw_observations:23400729",
+          "raw_observations:23567222",
+          "raw_observations:23730738",
+          "raw_observations:23899302",
+          "raw_observations:24079334",
+          "raw_observations:24251350",
+          "raw_observations:24426855",
+          "raw_observations:24427293",
+          "raw_observations:24626115",
+          "raw_observations:24626589",
+          "raw_observations:24627066",
+          "raw_observations:24863371",
+          "raw_observations:24863872",
+          "raw_observations:24864508",
+          "raw_observations:25063003",
+          "raw_observations:25063555",
+          "raw_observations:25251573",
+          "raw_observations:25437730",
+          "raw_observations:25624391",
+          "raw_observations:25624847",
+          "raw_observations:25813009",
+          "raw_observations:26002078",
+          "raw_observations:26002582"
+        ],
+        "funding_pages_with_normalized_30d_events": [
+          "raw_observations:10176205",
+          "raw_observations:10336152",
+          "raw_observations:10535771",
+          "raw_observations:10734517",
+          "raw_observations:10948467",
+          "raw_observations:11161389",
+          "raw_observations:11367092",
+          "raw_observations:11573953",
+          "raw_observations:11771270",
+          "raw_observations:11971226",
+          "raw_observations:12176002",
+          "raw_observations:12389400",
+          "raw_observations:12390272",
+          "raw_observations:12392351",
+          "raw_observations:12393537",
+          "raw_observations:12484586",
+          "raw_observations:12806043",
+          "raw_observations:12841884",
+          "raw_observations:13049512",
+          "raw_observations:13244101",
+          "raw_observations:13435136",
+          "raw_observations:18250116",
+          "raw_observations:18332113",
+          "raw_observations:18556020",
+          "raw_observations:18717178",
+          "raw_observations:18874889",
+          "raw_observations:19036975",
+          "raw_observations:19203560",
+          "raw_observations:19371343",
+          "raw_observations:19535895",
+          "raw_observations:19696155",
+          "raw_observations:19855608",
+          "raw_observations:20012024",
+          "raw_observations:20172107",
+          "raw_observations:20337479",
+          "raw_observations:20514172",
+          "raw_observations:20687686",
+          "raw_observations:20855442",
+          "raw_observations:21018227",
+          "raw_observations:21184232",
+          "raw_observations:21351815",
+          "raw_observations:21515070",
+          "raw_observations:21676114",
+          "raw_observations:21837319",
+          "raw_observations:22080968",
+          "raw_observations:22243112",
+          "raw_observations:22403861",
+          "raw_observations:22573836",
+          "raw_observations:22744646",
+          "raw_observations:22907681",
+          "raw_observations:23069193",
+          "raw_observations:23233452",
+          "raw_observations:23401528",
+          "raw_observations:23568011",
+          "raw_observations:23731536",
+          "raw_observations:23900271",
+          "raw_observations:24080300",
+          "raw_observations:24252106",
+          "raw_observations:24427730",
+          "raw_observations:24627552",
+          "raw_observations:24865014",
+          "raw_observations:25063973",
+          "raw_observations:25252486",
+          "raw_observations:25438608",
+          "raw_observations:25625285",
+          "raw_observations:25813774",
+          "raw_observations:26003176"
+        ],
+        "ledger_pages_with_normalized_30d_events": [
+          "raw_observations:10176394",
+          "raw_observations:12392352"
+        ],
+        "portfolio_observations": [
+          "raw_observations:10174533",
+          "raw_observations:10265443",
+          "raw_observations:10333873",
+          "raw_observations:10533402",
+          "raw_observations:10732298",
+          "raw_observations:10942522",
+          "raw_observations:11159097",
+          "raw_observations:11363995",
+          "raw_observations:11571107",
+          "raw_observations:11769553",
+          "raw_observations:11968837",
+          "raw_observations:12171054",
+          "raw_observations:12386294",
+          "raw_observations:12389385",
+          "raw_observations:12390256",
+          "raw_observations:12390586",
+          "raw_observations:12390892",
+          "raw_observations:12391155",
+          "raw_observations:12391459",
+          "raw_observations:12391756",
+          "raw_observations:12392060",
+          "raw_observations:12392336",
+          "raw_observations:12393261",
+          "raw_observations:12393521",
+          "raw_observations:12482326",
+          "raw_observations:12576550",
+          "raw_observations:12803586",
+          "raw_observations:12837192",
+          "raw_observations:13046910",
+          "raw_observations:13242862",
+          "raw_observations:13433184",
+          "raw_observations:18247470",
+          "raw_observations:18328615",
+          "raw_observations:18385795",
+          "raw_observations:18553755",
+          "raw_observations:18715328",
+          "raw_observations:18873231",
+          "raw_observations:19035146",
+          "raw_observations:19200621",
+          "raw_observations:19368101",
+          "raw_observations:19534097",
+          "raw_observations:19694383",
+          "raw_observations:19853673",
+          "raw_observations:20009929",
+          "raw_observations:20169626",
+          "raw_observations:20334309",
+          "raw_observations:20511727",
+          "raw_observations:20685621",
+          "raw_observations:20853826",
+          "raw_observations:21016428",
+          "raw_observations:21182297",
+          "raw_observations:21348558",
+          "raw_observations:21511894",
+          "raw_observations:21675137",
+          "raw_observations:21836144",
+          "raw_observations:22079110",
+          "raw_observations:22241397",
+          "raw_observations:22402105",
+          "raw_observations:22571144",
+          "raw_observations:22741184",
+          "raw_observations:22905223",
+          "raw_observations:23068089",
+          "raw_observations:23231752",
+          "raw_observations:23400428",
+          "raw_observations:23566237",
+          "raw_observations:23729801",
+          "raw_observations:23896471",
+          "raw_observations:24076890",
+          "raw_observations:24251081",
+          "raw_observations:24425780",
+          "raw_observations:24625069",
+          "raw_observations:24650778",
+          "raw_observations:24860468",
+          "raw_observations:25061945",
+          "raw_observations:25250443",
+          "raw_observations:25437369",
+          "raw_observations:25623296",
+          "raw_observations:25811916",
+          "raw_observations:25999259"
+        ]
+      },
+      "fees_observed_in_deduplicated_archived_fills_30d": {
+        "USDC": {
+          "amount": "279.079860",
+          "event_count": 178438
+        }
+      },
+      "horizons": {
+        "180": {
+          "account_value_history": {
+            "change": "101776.989485",
+            "end": "227207.400407",
+            "start": "125430.410922"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "227207.400407"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1775692200014,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "125430.410922"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "556318.346513"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1775692200014,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "428068.880922"
+            }
+          },
+          "curve_end_ms": 1791761780592,
+          "curve_start_ms": 1775692200014,
+          "pnl_history": {
+            "change": "128249.465591",
+            "end": "556318.346513",
+            "sampled_peak_to_trough": "-5860.758781",
+            "start": "428068.880922"
+          },
+          "series_change_difference_account_value_minus_pnl": "-26472.476106",
+          "window_days": 180
+        },
+        "30": {
+          "account_value_history": {
+            "change": "109518.368246",
+            "end": "227207.400407",
+            "start": "117689.032161"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "227207.400407"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1788992124992,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "117689.032161"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "556318.346513"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1788992124992,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "540223.478923"
+            }
+          },
+          "curve_end_ms": 1791761780592,
+          "curve_start_ms": 1788992124992,
+          "pnl_history": {
+            "change": "16094.867590",
+            "end": "556318.346513",
+            "sampled_peak_to_trough": "-5860.758781",
+            "start": "540223.478923"
+          },
+          "series_change_difference_account_value_minus_pnl": "93423.500656",
+          "window_days": 30
+        },
+        "90": {
+          "account_value_history": {
+            "change": "118032.389143",
+            "end": "227207.400407",
+            "start": "109175.011264"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "227207.400407"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1783552200038,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "109175.011264"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761780592,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "556318.346513"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1783552200038,
+              "evidence_ref": "raw_observations:25999259",
+              "value": "499914.803727"
+            }
+          },
+          "curve_end_ms": 1791761780592,
+          "curve_start_ms": 1783552200038,
+          "pnl_history": {
+            "change": "56403.542786",
+            "end": "556318.346513",
+            "sampled_peak_to_trough": "-5860.758781",
+            "start": "499914.803727"
+          },
+          "series_change_difference_account_value_minus_pnl": "61628.846357",
+          "window_days": 90
+        }
+      },
+      "mode_observations_by_value": {
+        "disabled": 67
+      },
+      "monthly_180d": {
+        "attributed_delta_sum": "117685.689722",
+        "coverage_complete_for_concentration": true,
+        "horizon_delta": "128249.465591",
+        "largest_positive_bucket_share_of_positive_delta": "0.3240215022580738374202039925",
+        "measured_buckets": 6,
+        "unattributed_delta": "10563.775869",
+        "unattributed_gross_movement_share": "0.08236896598609546716017551347",
+        "unknown_buckets": 0
+      },
+      "observed_flow_diagnostics_30d": [
+        {
+          "currency": "USDC",
+          "event_count": 2,
+          "kind": "flow",
+          "observed_amount": "-23000.0",
+          "scope": "external"
+        },
+        {
+          "currency": "USDC",
+          "event_count": 2141,
+          "kind": "funding",
+          "observed_amount": "1.695495",
+          "scope": "unknown"
+        }
+      ],
+      "selection_status": "credible_deep_dive_candidate",
+      "source_page_counts": {
+        "fill_pages_with_unique_30d_events": 121,
+        "funding_pages_with_normalized_30d_events": 67,
+        "ledger_pages_with_normalized_30d_events": 2,
+        "normalized_funding_events_30d": 2141,
+        "normalized_ledger_events_30d": 2,
+        "portfolio_observations": 79,
+        "raw_fill_rows_before_dedup_across_archived_pages": 178589
+      }
+    },
+    {
+      "account_mode_at_cutoff": "portfolioMargin",
+      "activity": {
+        "active_days_30d_observed": 5,
+        "fills_30d_observed": 891,
+        "orders_distinct_from_fills_lower_bound": 115,
+        "pagination_statuses": [
+          "pagination_exhausted"
+        ],
+        "query_coverage_30d_days": 4.964,
+        "query_end_ms": 1791762116091,
+        "query_start_ms": 1791333218169
+      },
+      "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+      "evidence_refs": {
+        "curves_at_exact_horizon_boundaries": {
+          "180": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "883770.467208"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1775686320000,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "20828.509785"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "366770.057208"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1775686320000,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "801.469785"
+            }
+          },
+          "30": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "883770.467208"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1789169520003,
+              "evidence_ref": "raw_observations:22929255",
+              "value": "686513.9042700001"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "366770.057208"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1789169520003,
+              "evidence_ref": "raw_observations:22929255",
+              "value": "172902.29427"
+            }
+          },
+          "90": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "883770.467208"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1783548903873,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "458637.711887"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "366770.057208"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1783548903873,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "99786.821887"
+            }
+          }
+        },
+        "fill_pages_with_unique_30d_events": [
+          "raw_observations:10187557",
+          "raw_observations:11037292",
+          "raw_observations:11254829",
+          "raw_observations:11457567",
+          "raw_observations:12267695",
+          "raw_observations:12389682",
+          "raw_observations:12390609",
+          "raw_observations:12391510",
+          "raw_observations:12392398",
+          "raw_observations:18267541",
+          "raw_observations:18461559",
+          "raw_observations:18628311",
+          "raw_observations:18786170",
+          "raw_observations:18947212",
+          "raw_observations:19111294",
+          "raw_observations:21091664",
+          "raw_observations:22602336",
+          "raw_observations:24875577",
+          "raw_observations:25262848",
+          "raw_observations:25828051",
+          "raw_observations:26017016"
+        ],
+        "funding_pages_with_normalized_30d_events": [
+          "raw_observations:10187899",
+          "raw_observations:10426634",
+          "raw_observations:10620415",
+          "raw_observations:10825133",
+          "raw_observations:11037739",
+          "raw_observations:11255278",
+          "raw_observations:11458159",
+          "raw_observations:11660683",
+          "raw_observations:11860676",
+          "raw_observations:12059420",
+          "raw_observations:12268272",
+          "raw_observations:12389683",
+          "raw_observations:12390610",
+          "raw_observations:12392991",
+          "raw_observations:12530823",
+          "raw_observations:12755533",
+          "raw_observations:12975895",
+          "raw_observations:13176577",
+          "raw_observations:13370968",
+          "raw_observations:13559572",
+          "raw_observations:18267934",
+          "raw_observations:18462041",
+          "raw_observations:18628682",
+          "raw_observations:18786554",
+          "raw_observations:18947432",
+          "raw_observations:19111676",
+          "raw_observations:19275721",
+          "raw_observations:19442329",
+          "raw_observations:19606558",
+          "raw_observations:19767115",
+          "raw_observations:19923118",
+          "raw_observations:20084213",
+          "raw_observations:20241304",
+          "raw_observations:20407248",
+          "raw_observations:20591104",
+          "raw_observations:20762291",
+          "raw_observations:20928351",
+          "raw_observations:21091941",
+          "raw_observations:21256036",
+          "raw_observations:21421589",
+          "raw_observations:21584907",
+          "raw_observations:21748041",
+          "raw_observations:21910841",
+          "raw_observations:22107570",
+          "raw_observations:22269555",
+          "raw_observations:22429224",
+          "raw_observations:22602819",
+          "raw_observations:22768333",
+          "raw_observations:22929877",
+          "raw_observations:23094864",
+          "raw_observations:23259616",
+          "raw_observations:23430078",
+          "raw_observations:23593805",
+          "raw_observations:23757639",
+          "raw_observations:23927361",
+          "raw_observations:24104696",
+          "raw_observations:24277306",
+          "raw_observations:24454289",
+          "raw_observations:24668379",
+          "raw_observations:24876094",
+          "raw_observations:25073919",
+          "raw_observations:25263341",
+          "raw_observations:25451052",
+          "raw_observations:25638654",
+          "raw_observations:25828399",
+          "raw_observations:26017536"
+        ],
+        "ledger_pages_with_normalized_30d_events": [
+          "raw_observations:10188141",
+          "raw_observations:13559763",
+          "raw_observations:18268138",
+          "raw_observations:25074129"
+        ],
+        "portfolio_observations": [
+          "raw_observations:10186246",
+          "raw_observations:10425159",
+          "raw_observations:10619630",
+          "raw_observations:10823969",
+          "raw_observations:11036938",
+          "raw_observations:11251850",
+          "raw_observations:11457224",
+          "raw_observations:11658862",
+          "raw_observations:11858865",
+          "raw_observations:12057807",
+          "raw_observations:12266222",
+          "raw_observations:12389669",
+          "raw_observations:12390596",
+          "raw_observations:12391497",
+          "raw_observations:12391786",
+          "raw_observations:12392083",
+          "raw_observations:12392385",
+          "raw_observations:12392666",
+          "raw_observations:12392977",
+          "raw_observations:12529183",
+          "raw_observations:12753623",
+          "raw_observations:12975113",
+          "raw_observations:13173859",
+          "raw_observations:13367604",
+          "raw_observations:13556967",
+          "raw_observations:18266571",
+          "raw_observations:18459240",
+          "raw_observations:18627254",
+          "raw_observations:18785212",
+          "raw_observations:18946641",
+          "raw_observations:19111072",
+          "raw_observations:19275124",
+          "raw_observations:19439446",
+          "raw_observations:19605912",
+          "raw_observations:19765879",
+          "raw_observations:19922547",
+          "raw_observations:20083569",
+          "raw_observations:20240580",
+          "raw_observations:20406626",
+          "raw_observations:20588364",
+          "raw_observations:20759678",
+          "raw_observations:20927715",
+          "raw_observations:21091314",
+          "raw_observations:21254814",
+          "raw_observations:21420969",
+          "raw_observations:21582291",
+          "raw_observations:21745427",
+          "raw_observations:21909441",
+          "raw_observations:22105339",
+          "raw_observations:22268247",
+          "raw_observations:22427762",
+          "raw_observations:22601175",
+          "raw_observations:22767731",
+          "raw_observations:22929255",
+          "raw_observations:23092097",
+          "raw_observations:23256974",
+          "raw_observations:23429038",
+          "raw_observations:23593184",
+          "raw_observations:23756268",
+          "raw_observations:23926665",
+          "raw_observations:24103112",
+          "raw_observations:24275121",
+          "raw_observations:24451245",
+          "raw_observations:24666776",
+          "raw_observations:24874343",
+          "raw_observations:25072262",
+          "raw_observations:25261801",
+          "raw_observations:25448189",
+          "raw_observations:25635687",
+          "raw_observations:25825903",
+          "raw_observations:26015750"
+        ]
+      },
+      "fees_observed_in_deduplicated_archived_fills_30d": {
+        "USDC": {
+          "amount": "320.973957",
+          "event_count": 885
+        },
+        "UZEC": {
+          "amount": "0.003779995",
+          "event_count": 6
+        }
+      },
+      "horizons": {
+        "180": {
+          "account_value_history": {
+            "change": "862941.957423",
+            "end": "883770.467208",
+            "start": "20828.509785"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "883770.467208"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1775686320000,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "20828.509785"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "366770.057208"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1775686320000,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "801.469785"
+            }
+          },
+          "curve_end_ms": 1791762094949,
+          "curve_start_ms": 1775686320000,
+          "pnl_history": {
+            "change": "365968.587423",
+            "end": "366770.057208",
+            "sampled_peak_to_trough": "-331858.707762",
+            "start": "801.469785"
+          },
+          "series_change_difference_account_value_minus_pnl": "496973.370000",
+          "window_days": 180
+        },
+        "30": {
+          "account_value_history": {
+            "change": "197256.5629379999",
+            "end": "883770.467208",
+            "start": "686513.9042700001"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "883770.467208"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1789169520003,
+              "evidence_ref": "raw_observations:22929255",
+              "value": "686513.9042700001"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "366770.057208"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1789169520003,
+              "evidence_ref": "raw_observations:22929255",
+              "value": "172902.29427"
+            }
+          },
+          "curve_end_ms": 1791762094949,
+          "curve_start_ms": 1789169520003,
+          "pnl_history": {
+            "change": "193867.762938",
+            "end": "366770.057208",
+            "sampled_peak_to_trough": "-62790.713503",
+            "start": "172902.29427"
+          },
+          "series_change_difference_account_value_minus_pnl": "3388.7999999999",
+          "window_days": 30
+        },
+        "90": {
+          "account_value_history": {
+            "change": "425132.755321",
+            "end": "883770.467208",
+            "start": "458637.711887"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "883770.467208"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1783548903873,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "458637.711887"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791762094949,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "366770.057208"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1783548903873,
+              "evidence_ref": "raw_observations:26015750",
+              "value": "99786.821887"
+            }
+          },
+          "curve_end_ms": 1791762094949,
+          "curve_start_ms": 1783548903873,
+          "pnl_history": {
+            "change": "266983.235321",
+            "end": "366770.057208",
+            "sampled_peak_to_trough": "-228225.192077",
+            "start": "99786.821887"
+          },
+          "series_change_difference_account_value_minus_pnl": "158149.520000",
+          "window_days": 90
+        }
+      },
+      "mode_observations_by_value": {
+        "portfolioMargin": 61
+      },
+      "monthly_180d": {
+        "attributed_delta_sum": "302966.665881",
+        "coverage_complete_for_concentration": true,
+        "horizon_delta": "365968.587423",
+        "largest_positive_bucket_share_of_positive_delta": "0.3915924720365031251988853936",
+        "measured_buckets": 6,
+        "unattributed_delta": "63001.921542",
+        "unattributed_gross_movement_share": "0.06092171305757059927547653431",
+        "unknown_buckets": 0
+      },
+      "observed_flow_diagnostics_30d": [
+        {
+          "currency": "HYPE",
+          "event_count": 2,
+          "kind": "flow",
+          "observed_amount": "-2000.0",
+          "scope": "external"
+        },
+        {
+          "currency": "USDC",
+          "event_count": 3,
+          "kind": "flow",
+          "observed_amount": "-55990.0",
+          "scope": "external"
+        },
+        {
+          "currency": "UNVERIFIED_DEX_CURRENCY",
+          "event_count": 266,
+          "kind": "funding",
+          "observed_amount": "-320.204952",
+          "scope": "unknown"
+        },
+        {
+          "currency": "USDC",
+          "event_count": 28,
+          "kind": "funding",
+          "observed_amount": "6.589680",
+          "scope": "unknown"
+        }
+      ],
+      "selection_status": "credible_deep_dive_candidate",
+      "source_page_counts": {
+        "fill_pages_with_unique_30d_events": 21,
+        "funding_pages_with_normalized_30d_events": 66,
+        "ledger_pages_with_normalized_30d_events": 4,
+        "normalized_funding_events_30d": 294,
+        "normalized_ledger_events_30d": 5,
+        "portfolio_observations": 71,
+        "raw_fill_rows_before_dedup_across_archived_pages": 891
+      }
+    },
+    {
+      "account_mode_at_cutoff": "disabled",
+      "activity": {
+        "active_days_30d_observed": 6,
+        "fills_30d_observed": 25601,
+        "orders_distinct_from_fills_lower_bound": 14918,
+        "pagination_statuses": [
+          "page_budget_exhausted",
+          "pagination_exhausted"
+        ],
+        "query_coverage_30d_days": 4.661,
+        "query_end_ms": 1791761371744,
+        "query_start_ms": 1791358623021
+      },
+      "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "evidence_refs": {
+        "curves_at_exact_horizon_boundaries": {
+          "180": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "10008.377718"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1775687280022,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "17173.683116"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128283.523181"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1775687280022,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "91979.173116"
+            }
+          },
+          "30": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "10008.377718"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1788997680037,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "7976.735722"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128283.523181"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1788997680037,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128363.270454"
+            }
+          },
+          "90": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "10008.377718"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1783553280016,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "16798.5335"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128283.523181"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1783553280016,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "119072.973744"
+            }
+          }
+        },
+        "fill_pages_with_unique_30d_events": [
+          "raw_observations:18202777",
+          "raw_observations:18203203",
+          "raw_observations:18203571",
+          "raw_observations:18323996",
+          "raw_observations:18324315",
+          "raw_observations:18324810",
+          "raw_observations:18375266",
+          "raw_observations:18545441",
+          "raw_observations:18707779",
+          "raw_observations:18865530",
+          "raw_observations:19027285",
+          "raw_observations:19191298",
+          "raw_observations:19355796",
+          "raw_observations:19525774",
+          "raw_observations:19686025",
+          "raw_observations:19845722",
+          "raw_observations:20001117",
+          "raw_observations:20161615",
+          "raw_observations:20323244",
+          "raw_observations:20500165",
+          "raw_observations:20676252",
+          "raw_observations:20845018",
+          "raw_observations:21008328",
+          "raw_observations:21174177",
+          "raw_observations:21339236",
+          "raw_observations:21501686",
+          "raw_observations:21665142",
+          "raw_observations:21828129",
+          "raw_observations:22075635",
+          "raw_observations:22237819",
+          "raw_observations:22398806",
+          "raw_observations:22567295",
+          "raw_observations:22737214",
+          "raw_observations:22900960",
+          "raw_observations:23064293",
+          "raw_observations:23227895",
+          "raw_observations:23396551",
+          "raw_observations:23562268",
+          "raw_observations:23725944",
+          "raw_observations:23891286",
+          "raw_observations:24072362",
+          "raw_observations:24247134",
+          "raw_observations:24421868",
+          "raw_observations:24620042",
+          "raw_observations:24835819",
+          "raw_observations:25038231",
+          "raw_observations:25228502",
+          "raw_observations:25416847",
+          "raw_observations:25603126",
+          "raw_observations:25792335",
+          "raw_observations:25977411",
+          "raw_observations:7196410",
+          "raw_observations:7196993",
+          "raw_observations:7197684",
+          "raw_observations:7309960"
+        ],
+        "funding_pages_with_normalized_30d_events": [
+          "raw_observations:18204049",
+          "raw_observations:18325275",
+          "raw_observations:18545903",
+          "raw_observations:18708212",
+          "raw_observations:18865938",
+          "raw_observations:19027647",
+          "raw_observations:19191673",
+          "raw_observations:19356160",
+          "raw_observations:19526087",
+          "raw_observations:19686388",
+          "raw_observations:19846163",
+          "raw_observations:20001477",
+          "raw_observations:20161872",
+          "raw_observations:20323607",
+          "raw_observations:20500809",
+          "raw_observations:20676723",
+          "raw_observations:20845467",
+          "raw_observations:21008675",
+          "raw_observations:21174530",
+          "raw_observations:21339612",
+          "raw_observations:21502075",
+          "raw_observations:21665600",
+          "raw_observations:21828500",
+          "raw_observations:22076095",
+          "raw_observations:22238285",
+          "raw_observations:22399203",
+          "raw_observations:22567802",
+          "raw_observations:22737368",
+          "raw_observations:22901437",
+          "raw_observations:23064697",
+          "raw_observations:23228194",
+          "raw_observations:23397016",
+          "raw_observations:23562644",
+          "raw_observations:23726320",
+          "raw_observations:23891517",
+          "raw_observations:24072865",
+          "raw_observations:24247610",
+          "raw_observations:24422209",
+          "raw_observations:24620530",
+          "raw_observations:24836833",
+          "raw_observations:25038723",
+          "raw_observations:25228962",
+          "raw_observations:25417362",
+          "raw_observations:25603557",
+          "raw_observations:25792714",
+          "raw_observations:25977798",
+          "raw_observations:7198173"
+        ],
+        "ledger_pages_with_normalized_30d_events": [
+          "raw_observations:18204226",
+          "raw_observations:24620822"
+        ],
+        "portfolio_observations": [
+          "raw_observations:7193429",
+          "raw_observations:7309132",
+          "raw_observations:18201561",
+          "raw_observations:18323668",
+          "raw_observations:18372837",
+          "raw_observations:18543212",
+          "raw_observations:18706797",
+          "raw_observations:18864515",
+          "raw_observations:19026181",
+          "raw_observations:19190310",
+          "raw_observations:19355512",
+          "raw_observations:19525522",
+          "raw_observations:19685796",
+          "raw_observations:19844939",
+          "raw_observations:20000843",
+          "raw_observations:20161361",
+          "raw_observations:20322962",
+          "raw_observations:20497644",
+          "raw_observations:20673784",
+          "raw_observations:20843937",
+          "raw_observations:21008063",
+          "raw_observations:21173658",
+          "raw_observations:21338630",
+          "raw_observations:21500728",
+          "raw_observations:21663047",
+          "raw_observations:21827079",
+          "raw_observations:22074659",
+          "raw_observations:22236921",
+          "raw_observations:22397802",
+          "raw_observations:22566187",
+          "raw_observations:22736934",
+          "raw_observations:22898887",
+          "raw_observations:23063120",
+          "raw_observations:23227608",
+          "raw_observations:23395506",
+          "raw_observations:23561991",
+          "raw_observations:23725744",
+          "raw_observations:23890981",
+          "raw_observations:24069967",
+          "raw_observations:24244758",
+          "raw_observations:24421105",
+          "raw_observations:24619221",
+          "raw_observations:24834588",
+          "raw_observations:25037043",
+          "raw_observations:25225778",
+          "raw_observations:25414127",
+          "raw_observations:25601993",
+          "raw_observations:25791122",
+          "raw_observations:25977098"
+        ]
+      },
+      "fees_observed_in_deduplicated_archived_fills_30d": {
+        "USDC": {
+          "amount": "500.041022",
+          "event_count": 25601
+        }
+      },
+      "horizons": {
+        "180": {
+          "account_value_history": {
+            "change": "-7165.305398",
+            "end": "10008.377718",
+            "start": "17173.683116"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "10008.377718"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1775687280022,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "17173.683116"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128283.523181"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1775687280022,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "91979.173116"
+            }
+          },
+          "curve_end_ms": 1791761365775,
+          "curve_start_ms": 1775687280022,
+          "pnl_history": {
+            "change": "36304.350065",
+            "end": "128283.523181",
+            "sampled_peak_to_trough": "-6845.327618",
+            "start": "91979.173116"
+          },
+          "series_change_difference_account_value_minus_pnl": "-43469.655463",
+          "window_days": 180
+        },
+        "30": {
+          "account_value_history": {
+            "change": "2031.641996",
+            "end": "10008.377718",
+            "start": "7976.735722"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "10008.377718"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1788997680037,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "7976.735722"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128283.523181"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1788997680037,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128363.270454"
+            }
+          },
+          "curve_end_ms": 1791761365775,
+          "curve_start_ms": 1788997680037,
+          "pnl_history": {
+            "change": "-79.747273",
+            "end": "128283.523181",
+            "sampled_peak_to_trough": "-1545.253138",
+            "start": "128363.270454"
+          },
+          "series_change_difference_account_value_minus_pnl": "2111.389269",
+          "window_days": 30
+        },
+        "90": {
+          "account_value_history": {
+            "change": "-6790.155782",
+            "end": "10008.377718",
+            "start": "16798.5335"
+          },
+          "boundary_refs": {
+            "allTime.accountValueHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "10008.377718"
+            },
+            "allTime.accountValueHistory.start_ms": {
+              "event_ms": 1783553280016,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "16798.5335"
+            },
+            "allTime.pnlHistory.end_ms": {
+              "event_ms": 1791761365775,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "128283.523181"
+            },
+            "allTime.pnlHistory.start_ms": {
+              "event_ms": 1783553280016,
+              "evidence_ref": "raw_observations:25977098",
+              "value": "119072.973744"
+            }
+          },
+          "curve_end_ms": 1791761365775,
+          "curve_start_ms": 1783553280016,
+          "pnl_history": {
+            "change": "9210.549437",
+            "end": "128283.523181",
+            "sampled_peak_to_trough": "-6055.683927",
+            "start": "119072.973744"
+          },
+          "series_change_difference_account_value_minus_pnl": "-16000.705219",
+          "window_days": 90
+        }
+      },
+      "mode_observations_by_value": {
+        "disabled": 48
+      },
+      "monthly_180d": {
+        "attributed_delta_sum": "37557.750310",
+        "coverage_complete_for_concentration": true,
+        "horizon_delta": "36304.350065",
+        "largest_positive_bucket_share_of_positive_delta": "0.4251456761175746790889190509",
+        "measured_buckets": 6,
+        "unattributed_delta": "-1253.400245",
+        "unattributed_gross_movement_share": "0.03229484895645603980214185639",
+        "unknown_buckets": 0
+      },
+      "observed_flow_diagnostics_30d": [
+        {
+          "currency": "USDC",
+          "event_count": 3,
+          "kind": "flow",
+          "observed_amount": "-1000.0",
+          "scope": "external"
+        },
+        {
+          "currency": "UNVERIFIED_DEX_CURRENCY",
+          "event_count": 18,
+          "kind": "funding",
+          "observed_amount": "-0.426683",
+          "scope": "unknown"
+        },
+        {
+          "currency": "USDC",
+          "event_count": 134,
+          "kind": "funding",
+          "observed_amount": "1.110173",
+          "scope": "unknown"
+        }
+      ],
+      "selection_status": "credible_deep_dive_candidate",
+      "source_page_counts": {
+        "fill_pages_with_unique_30d_events": 55,
+        "funding_pages_with_normalized_30d_events": 47,
+        "ledger_pages_with_normalized_30d_events": 2,
+        "normalized_funding_events_30d": 152,
+        "normalized_ledger_events_30d": 3,
+        "portfolio_observations": 49,
+        "raw_fill_rows_before_dedup_across_archived_pages": 25614
+      }
+    }
+  ],
+  "analysis_rules": {
+    "currency_conversion": "none; unknown/non-USDC units are not converted",
+    "deduplication": "(coin,time,tid/hash) for fills; normalized event identity for ledger/funding references",
+    "fills_window": "(cutoff - 30d, cutoff]",
+    "performance": "reported allTime.pnlHistory and accountValueHistory compared at the identical stored sample timestamps; neither series is translated into the other"
+  },
+  "authorization_check_before_payload_reads": {
+    "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba": {
+      "history_released": true,
+      "protected": false
+    },
+    "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "history_released": true,
+      "protected": false
+    },
+    "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b": {
+      "history_released": true,
+      "protected": false
+    }
+  },
+  "network": "hyperliquid-mainnet",
+  "schema_version": 1,
+  "selection_basis": "fixed published historical-screen cutoff; no observations received after it",
+  "source_cutoff_ms": 1791789394195
+}

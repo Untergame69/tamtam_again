@@ -1,0 +1,50 @@
+{
+  "schema_version": "offline-historical-queue-fairness-simulation-v1",
+  "queue_policy_version": "historical-curve-queue-v3",
+  "policy": "config/historical-curve-queue-policy.json",
+  "method": "actual tick() over in-memory SQLite, fake client, simulated 900-second clock; no network/API/AI",
+  "tick_interval_seconds": 900,
+  "ticks": 288,
+  "initial_candidates": 500,
+  "new_arrivals_per_day": 80,
+  "daily": [
+    {
+      "day": 1,
+      "discovery_attempts": 363,
+      "retry_attempts": 21,
+      "refresh_attempts": 0,
+      "oldest_never_attempted_age_seconds_observed": 85500,
+      "oldest_due_refresh_wait_seconds_observed": 0,
+      "saved_distinct_cumulative": 356,
+      "newly_saved_distinct": 356,
+      "failures": 28,
+      "max_calls_per_tick": 4
+    },
+    {
+      "day": 2,
+      "discovery_attempts": 175,
+      "retry_attempts": 17,
+      "refresh_attempts": 192,
+      "oldest_never_attempted_age_seconds_observed": 153000,
+      "oldest_due_refresh_wait_seconds_observed": 39600,
+      "saved_distinct_cumulative": 535,
+      "newly_saved_distinct": 179,
+      "failures": 13,
+      "max_calls_per_tick": 4
+    },
+    {
+      "day": 3,
+      "discovery_attempts": 122,
+      "retry_attempts": 14,
+      "refresh_attempts": 248,
+      "oldest_never_attempted_age_seconds_observed": 105300,
+      "oldest_due_refresh_wait_seconds_observed": 66600,
+      "saved_distinct_cumulative": 660,
+      "newly_saved_distinct": 125,
+      "failures": 11,
+      "max_calls_per_tick": 4
+    }
+  ],
+  "provider_calls": 1152,
+  "ai_calls": 0
+}

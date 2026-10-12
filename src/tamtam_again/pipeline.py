@@ -2,9 +2,30 @@
 from __future__ import annotations
 
 from typing import Any
+from .engine import canonical
 from .paper import archive_events, classify_regimes, paper_tick, start_paper
 from .storage import Store
 from .validation import decision, evaluate, get_variant, initialize, now_ms
+
+
+def _coverage_failure_is_frozen(store: Store, network: str, address: str,
+                                coin: str, variant_id: str, stage: str) -> bool:
+    """A completed local receipt window cannot gain eligible late receipts.
+
+    These exact coverage failures require a new prospective plan or an
+    explicit archive correction. Re-reading and decompressing the same
+    high-rate BBO window on every five-second paper tick cannot change them.
+    """
+    evidence = canonical({"variant_id": variant_id, "stage": stage})
+    wake = canonical({"archive_or_plan_correction_required": True})
+    row = store.connection.execute(
+        "SELECT 1 FROM pipeline_decisions WHERE network=? AND address=? AND coin=? "
+        "AND state='needs_data' AND wake_json=? AND evidence_json=? "
+        "AND diagnostic IN ('Heartbeat gap inside validation window', "
+        "'Archive does not establish observation coverage of this complete window') LIMIT 1",
+        (network, address, coin, wake, evidence),
+    ).fetchone()
+    return row is not None
 
 
 def tick(store: Store) -> dict[str,Any]:
@@ -48,6 +69,14 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
             if (fixtures is None or chronological) and now_ms() < plan[stage]["end_ms"]:
                 decision(store,row["network"],row["address"],row["coin"],"needs_data",f"{stage} window not complete",
                          {"received_until_ms":plan[stage]["end_ms"]},"evaluate_unchanged_variant",{"variant_id":variant[0]})
+                break
+            if (fixtures is None and now_ms() >= plan[stage]["end_ms"]
+                    and _coverage_failure_is_frozen(store,row['network'],row['address'],
+                                                    row['coin'],variant[0],stage)):
+                reports.append({"variant_id": variant[0], "stage": stage,
+                                "status": "waiting",
+                                "reason": "Completed archive window already failed its immutable coverage check",
+                                "next_action": "create a new prospective plan after any archive correction"})
                 break
             prior = store.connection.execute("SELECT status,result_json FROM validation_evaluations WHERE variant_id=? AND stage=? ORDER BY created_at DESC LIMIT 1",(variant[0],stage)).fetchone()
             if prior:

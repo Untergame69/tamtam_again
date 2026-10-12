@@ -857,3 +857,49 @@ preuves checkpoint-inventory/state et limites de scellement paper (worker absent
 Reprise après revue : priorité qualification réelle exploitable puis parcours
 diagnostic→nouvelle décision prospective sans injection manuelle essentielle.
 Supervision/dimensionnement/extensions différés sauf blocage direct.
+
+### Revue R1–R4 TAMTAM_AGAIN-6/12 — 12 octobre
+
+Correction prospective après la revue `reviews/tamtam-a5295d1/REVIEW.md`.
+La v1 `962aeb78…` / session `4213c85b…` est retirée avec son ledger intact :
+180 signaux, 50 TTL, zéro fill, position nulle; son ordre en attente a été
+annulé explicitement et comptabilisé. Le code/config v2 sont figés sous un
+nouveau plan `80d605a0…` et une variante `0ab7e61e…`, sans N1 ni budget IA.
+
+R1 : archive paper incrémentale cherchée par `observation_id`; lectures
+historiques gardent leurs index temps/entité. Les fenêtres historiques déjà
+terminées et rejetées pour couverture heartbeat ne sont plus décompressées à
+chaque tick. Profil du scheduler après ce cache : 0,079 s avec cProfile; paper
+tick interne observé entre 3,5 et 12,9 ms, requêtes d'archive 0,29–2,65 ms.
+La cause restante de la dérive de cadence était `AccuracySec` systemd par défaut
+(60 s); unité repo et unité user fixées à 1 s, timer réactivé. Observation live
+systemd après correction : débuts 14:40:22, :28, :33, :39, :44, puis 14:41:16,
+:21, :27, :33 pendant le cycle initial; intervalles stables observés 5–6 s.
+L'intervalle courant et la latence/volume de requête sont persistés par tick;
+le diagnostic compare la mesure du tick courant, tout en conservant les maxima
+historiques.
+
+R2 : les rapports portent les deltas signaux/fills/non-exécutions, les catégories
+absence d'opportunité, retard de traitement/collecte, paramètres incompatibles
+et sortie prioritaire non résolue. Le diagnostic de sortie non résolue arrête la
+version et exige une réconciliation avant redémarrage. Le rapport initial v2,
+émis avant ce correctif, reste immuable et son motif `abandon` attribué au seuil
+de perte était inexact; état causal conservé dans la session et le présent suivi.
+
+R3 : signaux fréquents ne remplacent plus réductions/sorties; réduction permise
+près du funding, nouvelle exposition revalidée à l'exécution réelle. Courte
+observation v2 : 156 signaux, un fill simulé, 16 non-exécutions (7 TTL, 9 quote
+stale), PnL observé -0,0635 USDC après coûts. Une sortie prioritaire n'a pas pu
+être simulée : position `-0,31` maintenue, `priority_exit_unresolved_position`
+et incertitude de sortie enregistrés. Session suspendue/abandonnée, sans
+liquidation inventée ni reprise automatique.
+
+R4 : fraîcheur vérifiée depuis la réception source, limite explicite 1 000 ms;
+heure de traitement conservée séparément. Le TTL d'ordre reste 10 s, inchangé.
+
+28 tests ciblés passent (`test_pipeline_scheduler`, `test_paper_engine_v3`,
+`test_experimental_paper`, `test_paper_runtime`); `systemd-analyze --user verify`
+et `git diff --check` passent. Prochain bilan technique manuel prévu le
+12 octobre à 20:34 CEST, créneau initial de revue v2 : la revue automatique est
+annulée par la suspension; réconcilier l'exposition virtuelle avant toute
+nouvelle session. Aucun résultat ne constitue une preuve de rentabilité.

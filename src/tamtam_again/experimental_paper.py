@@ -100,8 +100,59 @@ def start(store: Store, variant_id: str, hypothesis: dict[str, Any], *,
                        restart_reason=restart_reason)
 
 
-def _action(session: Any, state: dict, summary: dict, run: Any, now: int) -> tuple[str, str, str]:
+def execution_diagnosis(state: dict[str, Any], spec: dict[str, Any],
+                        previous_report: dict[str, Any] | None = None,
+                        *, now_ms: int | None = None) -> dict[str, Any]:
+    """Classify progress since the last review without changing the session."""
+    previous_report=previous_report or {}
+    old=previous_report.get('progress',{})
+    old_signals=int(old.get('signals',previous_report.get('signals',{}).get('live_non_snapshot_fills',0)))
+    old_exec=int(old.get('executions',previous_report.get('signals',{}).get('executions',0)))
+    old_missed=int(old.get('missed',previous_report.get('signals',{}).get('missed_executions',0)))
+    old_reasons=old.get('nonexecution_reasons',previous_report.get('signals',{}).get('nonexecution_reasons',{}))
+    signals=int(state.get('signals_received',0)); executions=len(state.get('fills',[]))
+    missed=int(state.get('missed_orders',0)); reasons=state.get('nonexecution_reasons',{})
+    delta_reasons={key:max(0,int(value)-int(old_reasons.get(key,0)))
+                   for key,value in reasons.items() if int(value)>int(old_reasons.get(key,0))}
+    progress={'signals':signals,'executions':executions,'missed':missed,
+              'delta_signals':max(0,signals-old_signals),
+              'delta_executions':max(0,executions-old_exec),
+              'delta_missed':max(0,missed-old_missed),
+              'nonexecution_reasons':dict(reasons),'delta_nonexecution_reasons':delta_reasons}
+    runtime=state.get('paper_runtime',{})
+    target=int(spec['execution'].get('paper_tick_target_ms',5000))
+    # Diagnose the latest tick against the declared cadence. Lifetime maxima
+    # remain visible for context but must not keep a repaired scheduler in a
+    # permanent delay state.
+    intervals=[int(runtime.get('interval_ms') or 0),
+               int(runtime.get('processing_ms') or 0),
+               int(runtime.get('max_receipt_lag_ms') or 0)]
+    slow=any(value>target for value in intervals)
+    if 'priority_exit_unresolved_position' in state.get('diagnostics',[]):
+        category,action,detail=('priority_exit_unresolved_position','stop_and_reconcile',
+            'A priority close expired without a simulated fill; the nonzero paper position is preserved and this session must be reconciled before any restart.')
+    elif progress['delta_executions']>0:
+        category,action,detail='execution_progress','continue','At least one virtual execution occurred since the previous review; continue this frozen version and keep measuring costs.'
+    elif delta_reasons.get('order_ttl_expired',0):
+        if slow:
+            category,action,detail='processing_or_collection_delay','collect_data','Observed tick interval, processing time, or receipt lag exceeds the declared paper cadence; restore timely processing and collect a fresh quote/fill sequence before interpreting execution.'
+        else:
+            category,action,detail='execution_parameters_incompatible','propose_new_version','Signals were present and the observed tick cadence met its target, but orders still expired without execution; review the frozen execution assumptions and propose a separately frozen version using only later observations.'
+    elif progress['delta_signals']==0:
+        category,action,detail='no_admissible_opportunity','collect_data','No new non-snapshot HYPE signal arrived since the previous review; continue the live subscription and do not infer a signal from REST history.'
+    elif delta_reasons:
+        category,action,detail='no_admissible_opportunity','collect_data','Signals arrived, but the frozen size, venue minimum, funding window, or available liquidity admitted no execution; collect an admissible opportunity without relaxing the current version.'
+    else:
+        category,action,detail='execution_not_observed','collect_data','Signals arrived without a recorded execution or explicit execution miss; inspect the live BBO/health sequence and collect a fresh causal opportunity.'
+    return {'category':category,'recommended_action':action,'detail':detail,
+            'progress':progress,'scheduler':dict(runtime)}
+
+
+def _action(session: Any, state: dict, summary: dict, run: Any, now: int,
+            diagnosis: dict[str, Any]) -> tuple[str, str, str]:
     diagnostics = set(state.get("diagnostics", []))
+    if "priority_exit_unresolved_position" in diagnostics:
+        return "abandon", diagnosis["detail"], "abandoned"
     if (state.get("risk_halted") or number(summary["drawdown_usdc"]) >= number(run["loss_limit_usdc"])
             or "paper_net_loss_budget_exhausted" in diagnostics):
         return "abandon", "The predeclared paper loss or drawdown limit was reached; preserve the ledger and stop this version.", "abandoned"
@@ -118,7 +169,11 @@ def _action(session: Any, state: dict, summary: dict, run: Any, now: int) -> tup
         return "collect_data", "Require a current connection heartbeat and same-session market quote; missing continuity remains unknown.", "active"
     if int(state.get("signals_received", 0)) == 0:
         return "collect_data", "Continue the bounded live subscription until a non-snapshot HYPE fill arrives; no signal has been inferred from REST history.", "active"
-    return "continue", "Feed and causal signals are present and limits remain clear; continue this frozen version to its next scheduled review.", "active"
+    if diagnosis['recommended_action']=='propose_new_version':
+        return 'propose_new_version',diagnosis['detail'],'active'
+    if diagnosis['recommended_action']=='collect_data':
+        return 'collect_data',diagnosis['detail'],'active'
+    return "continue", diagnosis['detail'], "active"
 
 
 def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) -> dict[str, Any] | None:
@@ -136,13 +191,18 @@ def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) ->
         return None
     _, spec, plan = get_variant(store, session["variant_id"])
     summary = metrics(state, spec, plan["criteria"]["block_ms"])
-    next_action, detail, status = _action(session, state, summary, run, now)
+    prior_row=store.connection.execute(
+        "SELECT report_json FROM paper_experimental_reports WHERE session_id=? ORDER BY review_index DESC LIMIT 1",
+        (session_id,)).fetchone()
+    prior_report=json.loads(prior_row['report_json']) if prior_row else None
+    diagnosis=execution_diagnosis(state,spec,prior_report,now_ms=now)
+    next_action, detail, status = _action(session, state, summary, run, now, diagnosis)
     quote = state.get("quote")
     exposure_now = "0"
     quote_age = None
     if quote:
         exposure_now = str(abs(number(state["position"])) * (number(quote["bid"]) + number(quote["ask"])) / 2)
-        quote_age = now - int(quote["received_ms"])
+        quote_age = now - int(quote.get("source_received_ms",quote["received_ms"]))
     report_index = int(run["review_index"]) + 1
     due_ms = int(run["next_review_ms"])
     payload = {
@@ -161,6 +221,9 @@ def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) ->
                     "executions": summary["fills"], "missed_executions": summary["missed_orders"],
                     "partial_executions": summary["partial_orders"],
                     "nonexecution_reasons": state.get("nonexecution_reasons", {})},
+        "progress": diagnosis['progress'],
+        "execution_diagnosis": {key:value for key,value in diagnosis.items() if key not in {'progress','scheduler'}},
+        "scheduler": diagnosis['scheduler'],
         "results_after_simulated_costs": {"net_pnl_observed_usdc": summary["net_pnl"],
                     "realized_pnl_usdc": summary["realized_pnl"], "unrealized_pnl_usdc": summary["unrealized_pnl"],
                     "fees_usdc": summary["fees"], "funding_usdc_observed": summary["funding"],

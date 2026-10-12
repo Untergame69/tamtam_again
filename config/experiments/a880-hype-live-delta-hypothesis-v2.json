@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "a880-hype-live-delta-follow-v2",
+  "observations": [
+    "The archived sample contains 178,438 deduplicated fills, 5 UTC active days and 3.504 days of contiguous fills before page-budget exhaustion.",
+    "32,921 fills (18.45%) are HYPE; their summed size-times-price notional is about 46.4 million USDC, a turnover count rather than account capital or exposure.",
+    "HYPE directions include 7,962 Open Short, 7,507 Close Short, 6,098 Open Long, 10,711 Close Long, and 643 position flips. A lower-bound reconstruction finds 309 flat-start cycles with median 247 seconds and p90 1,335 seconds; truncated history makes this a descriptive subset.",
+    "The declared account PnL curve is positive over the sampled 30/90/180 day points, but net return, capital base, full flows, exposure and full event coverage are unknown.",
+    "Version v1 paper follow-up at 2026-10-12: 180 live signals, 50 order TTL expirations, no simulated fills, no position, and a 5 second requested timer whose observed pipeline ticks took about 23 seconds."
+  ],
+  "interpretation": "Observed HYPE activity is high-turnover and includes short position episodes and frequent directional reversals. This cannot identify the account program or establish that its fills predict returns. The first paper version was not technically interpretable because pipeline processing lagged the declared 5 second cadence, and its quote freshness depended on processing time rather than source receipt.",
+  "claim": "Under an explicitly measured 5 second paper tick target and a quote age bound of 1 second from actual source receipt, after a fresh a880 HYPE live fill is received, a 0.001-scaled cumulative position in that fill direction may persist for up to two minutes and yield positive simulated net PnL after costs.",
+  "signal": "Only non-snapshot userFills HYPE events from the subscribed live stream; use signed fill size. REST history and the source entry price are never decision inputs.",
+  "entry": "Accumulate signed live fill deltas at scale 0.001; target that virtual position, capped at 100 USDC gross exposure. Orders below the 10 USDC venue minimum are explicitly missed. New nonzero exposure is not entered if the configured latency plus 120-second horizon would cross the next hourly funding boundary.",
+  "exit": "Return to flat after 120 seconds from opening, regardless of pending signal orders; give reductions and horizon exits priority over subsequent increases. Preserve and flag any nonzero position if a close cannot be simulated.",
+  "execution": "Paper market IOC on same-session BBO whose actual source receipt is no more than 1 second old at execution; retain the source receipt timestamp and separately record processing time. Measure every tick start interval, processing duration, archive scan rows, query time and receipt lag against a 5 second target; orders keep the original 10 second TTL and are never backdated. Reductions and exits outrank increases; funding is rechecked at actual execution. A late quote is stale even when the same-session heartbeat is recent. HYPE size precision 0.01; missing data or an ineligible lot is a recorded non-execution.",
+  "risk": {
+    "starting_capital_usdc": "1000",
+    "max_exposure_usdc": "100",
+    "max_loss_usdc": "10",
+    "max_leverage": "1",
+    "no_live_orders": true,
+    "economic_validation": false
+  },
+  "decision_rules": {
+    "healthy_feed_and_limits_clear": "continue",
+    "missing_live_signal_or_continuity": "collect_data",
+    "loss_or_drawdown_limit": "abandon",
+    "seven_day_duration_end": "propose_new_version_after_review"
+  },
+  "evidence_refs": [
+    "docs/continuous-research/economic-qualification-cards-20261012-g2.md#a880",
+    "docs/continuous-research/archive-reconciliation-a880-20261008.md",
+    "data:tamtam.sqlite3/raw_observations:userFillsByTime/a880/HYPE",
+    "raw_observations:28248343",
+    "raw_observations:28248585",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size",
+    "paper_session:4213c85b23bb426f8fffb4c6901a1a43#v1-operational-followup"
+  ],
+  "review_interval_ms": 21600000,
+  "max_duration_ms": 604800000
+}

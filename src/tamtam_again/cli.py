@@ -149,6 +149,7 @@ def _parser() -> argparse.ArgumentParser:
     paper_retire = commands.add_parser("paper-retire", help="Retire a flat session and preserve its ledger")
     paper_retire.add_argument("session_id")
     paper_retire.add_argument("--reason", required=True)
+    paper_retire.add_argument("--cancel-pending", action="store_true", help="Record and cancel unfilled virtual orders before retiring a flat session")
     paper_tick_cmd = commands.add_parser("paper-tick", help="Process received archive events once")
     paper_tick_cmd.add_argument("session_id")
     decision_cmd = commands.add_parser("pipeline-decision", help="Record an explicit rejection, wait or non-identifiable diagnosis")
@@ -216,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
                     from .experimental_paper import status as experimental_status
                     result = experimental_status(store,args.session_id)
                 elif args.command == "paper-retire":
-                    result = retire_paper(store,args.session_id,reason=args.reason)
+                    result = retire_paper(store,args.session_id,reason=args.reason,cancel_pending=args.cancel_pending)
                 elif args.command == "paper-tick":
                     result = paper_tick(store,args.session_id)
                 elif args.command == "qualify":

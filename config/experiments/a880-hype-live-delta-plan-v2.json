@@ -1,0 +1,48 @@
+{
+  "network": "hyperliquid-mainnet",
+  "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+  "coin": "HYPE",
+  "synthetic": false,
+  "experiment_mode": "experimental_paper_only",
+  "exploration": {
+    "start_ms": 1794743459349,
+    "end_ms": 1794747059349
+  },
+  "comparison": {
+    "start_ms": 1794833459349,
+    "end_ms": 1794837059349
+  },
+  "final": {
+    "start_ms": 1794923459349,
+    "end_ms": 1794927059349
+  },
+  "embargo_ms": 86400000,
+  "criteria": {
+    "block_ms": 3600000,
+    "min_blocks": 1,
+    "min_regimes": 1,
+    "max_positive_block_share": "1",
+    "min_net_pnl": "0",
+    "max_drawdown_usdc": "10",
+    "min_block_lower_bound": "-1000",
+    "stress_multiplier": "2",
+    "min_stress_net_pnl": "-1000",
+    "require_funding": true,
+    "dependence_justification": "HYPE fills cluster into short related episodes; these administrative fields cannot be used for promotion because experiment_mode disables N1 evaluation.",
+    "regime_threshold_bps": "10",
+    "regime_window_ms": 60000,
+    "confidence_alpha": "0.05"
+  },
+  "budget": {
+    "max_runs": 1,
+    "max_same_input_corrections": 1,
+    "max_duration_ms": 604800000,
+    "max_cost_usd": "0"
+  },
+  "isolation": "unavailable",
+  "paper_monitoring": {
+    "version": "paper-loss-budget-v1",
+    "justification": "Seven-day exploratory paper loss ceiling fixed before launch; stop only this virtual version when net loss reaches 10 USDC.",
+    "max_net_loss_usdc": "10"
+  }
+}

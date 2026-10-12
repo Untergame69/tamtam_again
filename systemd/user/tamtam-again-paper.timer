@@ -4,6 +4,7 @@ Description=Tamtam Again local virtual paper cadence
 [Timer]
 OnBootSec=30
 OnUnitActiveSec=5
+AccuracySec=1s
 Unit=tamtam-again-paper.service
 
 [Install]

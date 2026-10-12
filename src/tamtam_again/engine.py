@@ -32,7 +32,7 @@ def number(value: Any) -> Decimal:
 
 
 def validate_spec(spec: dict[str, Any]) -> None:
-    if isinstance(spec,dict) and spec.get('engine','single_perp_v2')!='single_perp_v2':
+    if isinstance(spec,dict) and spec.get('engine','single_perp_v2') not in {'single_perp_v2','single_perp_v3'}:
         raise ValueError('Unsupported mechanism: dedicated engine requires its own validation adapter')
     required = {"schema_version", "type", "market", "data_sources", "signal", "entry", "exit",
                 "sizing", "max_exposure", "fees", "slippage", "latency_ms", "horizon_ms",
@@ -76,6 +76,10 @@ def validate_spec(spec: dict[str, Any]) -> None:
     for key in ("heartbeat_timeout_ms", "unknown_quote_max_age_ms", "order_ttl_ms"):
         if type(spec["execution"].get(key)) is not int or spec["execution"][key] < 1:
             raise ValueError(f"Positive execution.{key} required")
+    if spec.get('engine') == 'single_perp_v3':
+        for key in ('max_quote_age_ms','paper_tick_target_ms'):
+            if type(spec['execution'].get(key)) is not int or spec['execution'][key] < 1:
+                raise ValueError(f"Positive execution.{key} required for single_perp_v3")
     fraction = number(spec["execution"].get("displayed_size_fraction"))
     if not 0 < fraction <= 1:
         raise ValueError("Displayed size fraction must be in (0,1]")
@@ -99,6 +103,7 @@ def initial_state(spec: dict[str, Any]) -> dict[str, Any]:
             "equity_curve": [], "diagnostics": [], "missed_orders": 0, "partial_orders": 0,
             "signals_received": 0, "max_exposure_notional_usdc": "0", "wait_conditions": [],
             "nonexecution_reasons": {},
+            "exit_uncertainties": [], "paper_runtime": {},
             "leader_target": "0", "regimes": [], "funding_events": 0, "risk_halted": False, "peak_equity": str(spec["starting_capital_usdc"]), "processing_lags_ms": []}
 
 
@@ -111,6 +116,10 @@ def quote_status(state: dict[str, Any], now: int, execution: dict[str, Any]) -> 
     if (state["connected"] and q.get("session") == state["session"]
             and state["healthy_at_ms"] is not None
             and 0 <= now - state["healthy_at_ms"] <= execution["heartbeat_timeout_ms"]):
+        max_age=execution.get('max_quote_age_ms')
+        source_received=int(q.get('source_received_ms',q['received_ms']))
+        if max_age is not None and not 0 <= now-source_received <= max_age:
+            return "stale"
         return "continuous"
     if not state["connected"] and state["session"] is not None:
         return "interrupted"
@@ -151,7 +160,106 @@ def _miss_order(state: dict[str, Any], reason: str) -> None:
     reasons[reason]=reasons.get(reason,0)+1
 
 
+def _is_reduction(position: Decimal, target: Decimal) -> bool:
+    if position == 0:
+        return target == 0
+    if target == 0:
+        return True
+    return position * target > 0 and abs(target) <= abs(position)
+
+
+def _wait_order(state: dict[str, Any], order: dict[str, Any], reason: str, now: int) -> None:
+    if order.get('last_wait_reason') != reason:
+        _miss_order(state,reason)
+        order['last_wait_reason']=reason
+    order['last_wait_ms']=now
+
+
+def _funding_boundary(now: int, interval: int) -> int:
+    return (now // interval + 1) * interval
+
+
+def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Decimal) -> None:
+    remaining=[]
+    for order in state['pending']:
+        pos=number(state['position'])
+        if order['due_ms']>now:
+            remaining.append(order);continue
+        if now>order['expires_ms']:
+            _miss_order(state,'order_ttl_expired')
+            if order.get('reduce_only') and pos!=0:
+                uncertainty={'at_ms':now,'reason':'priority_exit_expired_without_simulated_close',
+                             'position':str(pos),'target':order['target']}
+                state.setdefault('exit_uncertainties',[]).append(uncertainty)
+                if 'priority_exit_unresolved_position' not in state['diagnostics']:
+                    state['diagnostics'].append('priority_exit_unresolved_position')
+                state['risk_halted']=True
+            continue
+        status=quote_status(state,now,spec['execution'])
+        if status!='continuous':
+            reason={'stale':'quote_stale_at_execution','interrupted':'quote_stream_interrupted',
+                    'continuity_unknown':'quote_continuity_unknown'}.get(status,'quote_unavailable_at_execution')
+            _wait_order(state,order,reason,now)
+            remaining.append(order);continue
+        q=state['quote']
+        rules=spec['execution'].get('market_rules')
+        if rules:
+            from .market_rules import valid_price,round_size
+            if rules['available_ms']>now or not all(valid_price(q[side],rules['sz_decimals']) for side in ('bid','ask')):
+                _wait_order(state,order,'venue_rules_unavailable_or_price_precision_invalid',now)
+                remaining.append(order);continue
+        target=number(order['target'])
+        if order.get('reduce_only'):
+            if pos==0:
+                continue
+            # A reduce-only close cannot cross through flat or increase exposure.
+            if not _is_reduction(pos,target):
+                target=Decimal(0)
+        elif target and not _is_reduction(pos,target):
+            interval=spec['execution'].get('funding_interval_ms')
+            if type(interval) is int and interval>0 and now+spec['horizon_ms']>=_funding_boundary(now,interval):
+                _miss_order(state,'position_horizon_overlaps_funding_boundary_at_execution')
+                continue
+        limit=number(spec['max_exposure']['notional_usdc'])
+        mark=max(number(q['bid']),number(q['ask']))*(1+number(spec['slippage']['bps'])*stress/10000)
+        equity=number(state['cash'])+pos*(number(q['bid'] if pos>=0 else q['ask'])-number(state['average_price']))
+        limit=min(limit,max(Decimal(0),equity)*number(spec['max_exposure']['max_leverage']))
+        if rules:limit=min(limit,max(Decimal(0),equity)*number(rules['max_leverage']))
+        target=max(-limit/mark,min(limit/mark,target))
+        delta=target-pos
+        if rules:delta=round_size(delta,rules['sz_decimals'])
+        if not delta:continue
+        buy=delta>0
+        if rules and abs(delta)*number(q['ask'] if buy else q['bid'])<number(rules['minimum_order_usdc']):
+            if order.get('reduce_only'):
+                _wait_order(state,order,'priority_exit_below_venue_minimum',now)
+                remaining.append(order)
+            else:_miss_order(state,'below_venue_minimum_order_value')
+            continue
+        if spec['execution']['kind']=='passive_conservative':
+            _miss_order(state,'passive_queue_priority_unavailable');continue
+        available=number(q['ask_size'] if buy else q['bid_size'])*number(spec['execution']['displayed_size_fraction'])/stress
+        size=min(abs(delta),max(Decimal(0),available))*(1 if buy else -1)
+        if rules:size=round_size(size,rules['sz_decimals'])
+        if not size:
+            if order.get('reduce_only'):
+                _wait_order(state,order,'priority_exit_insufficient_visible_size',now)
+                remaining.append(order)
+            else:_miss_order(state,'insufficient_visible_size_or_lot_rounding')
+            continue
+        if abs(size)<abs(delta):state['partial_orders']+=1
+        price=number(q['ask'] if buy else q['bid'])
+        price*=1+number(spec['slippage']['bps'])*stress/10000*(1 if buy else -1)
+        _fill(state,size,price,number(spec['fees']['taker_bps'])*stress,now)
+        if order.get('reduce_only') and number(state['position'])!=0:
+            order['due_ms']=now
+            remaining.append(order)
+    state['pending']=remaining
+
+
 def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Decimal) -> None:
+    if spec.get('engine')=='single_perp_v3':
+        return _execute_v3(state,spec,now,stress)
     remaining = []
     for order in state["pending"]:
         if order["due_ms"] > now:
@@ -209,8 +317,28 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
     state["pending"] = remaining
 
 
-def _order(state: dict[str, Any], spec: dict[str, Any], target: Decimal, now: int) -> None:
+def _order(state: dict[str, Any], spec: dict[str, Any], target: Decimal, now: int,
+           *, intent: str | None = None) -> None:
     if state["risk_halted"] and target != 0:
+        return
+    if spec.get('engine')=='single_perp_v3':
+        position=number(state['position'])
+        inferred=intent or ('reduction' if _is_reduction(position,target) else 'signal_target')
+        priority={'signal_target':10,'reduction':50,'horizon_exit':100,'risk_exit':200}.get(inferred,10)
+        existing=state.get('pending',[])
+        if existing and int(existing[0].get('priority',0))>priority:
+            return
+        if existing and existing[0].get('intent')=='horizon_exit' and inferred=='horizon_exit':
+            return
+        if number(target)==position:
+            if existing and int(existing[0].get('priority',0))<=priority:
+                state['pending']=[]
+            return
+        reduce_only=inferred in {'reduction','horizon_exit','risk_exit'} or _is_reduction(position,target)
+        state['pending']=[{"target":str(target),"due_ms":now+spec['latency_ms'],
+                           "expires_ms":now+spec['latency_ms']+spec['execution']['order_ttl_ms'],
+                           "intent":inferred,"priority":priority,"reduce_only":reduce_only,
+                           "decision_ms":now}]
         return
     state["pending"] = [{"target": str(target), "due_ms": now + spec["latency_ms"],
                          "expires_ms": now + spec["latency_ms"] + spec["execution"]["order_ttl_ms"]}]
@@ -235,6 +363,9 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         raise ValueError("Stress multiplier must be >= 1")
     state["seen"].append(event_id)
     state["processing_lags_ms"].append(now-receipt)
+    if (spec.get('engine')=='single_perp_v3' and state.get('opened_ms') is not None
+            and number(state['position'])!=0 and now-int(state['opened_ms'])>=spec['horizon_ms']):
+        _order(state,spec,Decimal(0),now,intent='horizon_exit')
     unavailable = (event["kind"] == "connection" and event.get("connected") is False) or (event["kind"] in {"heartbeat","subscriptions"} and "markets" in event and spec["market"] not in event["markets"])
     if not unavailable:
         _execute(state, spec, now, stress)
@@ -278,7 +409,10 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             raise ValueError("Invalid BBO")
         state["quote"] = {k: event[k] for k in ("received_ms", "event_ms", "bid", "ask", "bid_size", "ask_size", "session")}
         state["quote"]["source_received_ms"] = receipt
-        state["quote"]["received_ms"] = now
+        if spec.get('engine')=='single_perp_v3':
+            state["quote"]["processed_ms"] = now
+        else:
+            state["quote"]["received_ms"] = now
         mid = (bid + ask) / 2
         if spec["type"] == "autonomous":
             history = state["history"]
@@ -301,16 +435,31 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             state["signals_received"] = state.get("signals_received", 0) + 1
             target = number(state["leader_target"]) + number(event["delta"]) * number(spec["sizing"]["scale"])
             interval=spec["execution"].get("funding_interval_ms")
-            if target and type(interval) is int and interval>0:
-                next_funding=(now//interval+1)*interval
-                if now+spec["latency_ms"]+spec["horizon_ms"]>=next_funding:
+            horizon_expired=(spec.get('engine')=='single_perp_v3' and state.get('opened_ms') is not None
+                             and number(state['position'])!=0
+                             and now-int(state['opened_ms'])>=spec['horizon_ms'])
+            if horizon_expired:
+                _miss_order(state,'signal_after_horizon_exit_started')
+                _order(state,spec,Decimal(0),now,intent='horizon_exit')
+            elif target and type(interval) is int and interval>0:
+                next_funding=_funding_boundary(now,interval)
+                reduce_only=(spec.get('engine')=='single_perp_v3'
+                             and _is_reduction(number(state['position']),target))
+                lead=spec['latency_ms']+spec['horizon_ms']
+                if not reduce_only and now+lead>=next_funding:
                     _miss_order(state,"position_horizon_overlaps_funding_boundary")
                 else:
                     state["leader_target"]=str(target)
-                    _order(state,spec,target,now)
+                    if spec.get('engine')=='single_perp_v3':
+                        _order(state,spec,target,now,intent='reduction' if reduce_only else 'signal_target')
+                    else:
+                        _order(state,spec,target,now)
             else:
                 state["leader_target"]=str(target)
-                _order(state,spec,target,now)
+                if spec.get('engine')=='single_perp_v3':
+                    _order(state,spec,target,now,intent='reduction' if _is_reduction(number(state['position']),target) else 'signal_target')
+                else:
+                    _order(state,spec,target,now)
     elif kind == "funding":
         # Rate is applied to OUR position at this funding event; leader's USDC
         # funding payment is never reused. Event mark is an observed input.
@@ -322,8 +471,11 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
     elif kind == "regime":
         if event["label"] not in state["regimes"]:
             state["regimes"].append(event["label"])
-    if state["opened_ms"] is not None and now - state["opened_ms"] >= spec["horizon_ms"] and not state["pending"]:
-        _order(state, spec, Decimal(0), now)
+    if state["opened_ms"] is not None and now - state["opened_ms"] >= spec["horizon_ms"]:
+        if spec.get('engine')=='single_perp_v3':
+            _order(state,spec,Decimal(0),now,intent='horizon_exit')
+        elif not state["pending"]:
+            _order(state, spec, Decimal(0), now)
     if state["quote"]:
         q = state["quote"]
         # Liquidation-side mark includes spread; realized cash already includes
@@ -339,7 +491,7 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         if number(state["peak_equity"]) - equity >= number(spec["max_exposure"]["max_drawdown_usdc"]) and not state["risk_halted"]:
             state["risk_halted"] = True
             state["diagnostics"].append("risk_drawdown_limit")
-            _order(state,spec,Decimal(0),now)
+            _order(state,spec,Decimal(0),now,intent='risk_exit' if spec.get('engine')=='single_perp_v3' else None)
 
 
 def metrics(state: dict[str, Any], spec: dict[str, Any], block_ms: int, *, confidence_alpha: float = 0.05) -> dict[str, Any]:

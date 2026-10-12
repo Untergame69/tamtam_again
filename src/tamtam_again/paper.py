@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+from time import monotonic_ns
 from typing import Any
 from uuid import uuid4
 
@@ -17,7 +18,8 @@ def timestamp(value: str) -> int:
 
 
 def archive_events(store: Store, network: str, address: str, coin: str, start_ms: int, end_ms: int,
-                   *, after_observation_id: int = 0) -> tuple[list[dict[str,Any]], int]:
+                   *, after_observation_id: int = 0,
+                   query_metrics: dict[str, Any] | None = None) -> tuple[list[dict[str,Any]], int]:
     """Only archived local receipts, live fills, and observed funding rates.
 
     Historical HTTP fills are never follower signals. No invented connection
@@ -31,10 +33,24 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
     common = "network=? AND observation_id>? AND source='hyperliquid-websocket-v1' AND observed_at>=? AND observed_at<? AND requested_at<?"
     params = (network,after_observation_id,start,end,end)
     rows = []
-    for clause,extra in [("entity_type='market' AND entity_id=? AND endpoint='bbo'",(coin,)),
-                         ("entity_type='account' AND entity_id=? AND endpoint IN ('userFills','userFundings')",(address,)),
-                         ("entity_type='stream' AND endpoint='streamHealth'",())]:
-        rows.extend(store.connection.execute('SELECT * FROM raw_observations WHERE '+common+' AND '+clause,params+extra).fetchall())
+    clause_metrics = {}
+    # Incremental live paper ticks must seek by the INTEGER PRIMARY KEY cursor.
+    # Historical window reads (cursor 0) rely on the existing time/entity
+    # indexes; forcing a table scan there would make pipeline evaluations scan
+    # the entire multi-gigabyte live archive.
+    observation_source = "raw_observations NOT INDEXED" if after_observation_id > 0 else "raw_observations"
+    for name,clause,extra in [("bbo","entity_type='market' AND entity_id=? AND endpoint='bbo'",(coin,)),
+                              ("account","entity_type='account' AND entity_id=? AND endpoint IN ('userFills','userFundings')",(address,)),
+                              ("health","entity_type='stream' AND endpoint='streamHealth'",())]:
+        query_started = monotonic_ns()
+        batch = store.connection.execute('SELECT * FROM '+observation_source+' WHERE '+common+' AND '+clause,params+extra).fetchall()
+        clause_metrics[name] = {"query_ms": round((monotonic_ns()-query_started)/1_000_000, 3),
+                                "rows": len(batch)}
+        rows.extend(batch)
+    if query_metrics is not None:
+        query_metrics.update({"clauses": clause_metrics,
+                              "query_ms": round(sum(x["query_ms"] for x in clause_metrics.values()), 3),
+                              "rows": sum(x["rows"] for x in clause_metrics.values())})
     rows.sort(key=lambda row:row['observation_id'])
     events = []
     cursor = after_observation_id
@@ -145,6 +161,11 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
         from .experimental_paper import initialize as initialize_experimental, validate_start
         validate_start(store,variant_id,experimental_hypothesis)
         initialize_experimental(store)
+    # Start after the current archive watermark so the first tick scans only
+    # newly received observations. Observation IDs are the incremental cursor.
+    observation_cursor = store.connection.execute(
+        "SELECT coalesce(max(observation_id),0) FROM raw_observations WHERE network=?", (row["network"],)
+    ).fetchone()[0]
     session_id = uuid4().hex
     started = now_ms()
     state = initial_state(spec)
@@ -211,10 +232,10 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
                 raise ValueError('Restart of a retired version requires an explicit reason')
         if replacement and transferred is None:
             raise ValueError('Predeclared replacement requires its suspended predecessor session')
-        store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,0,utc_now()))
+        store.connection.execute("INSERT INTO paper_sessions VALUES (?,?,?,?,?,?,?,?,?,?)",(session_id,variant_id,row["network"],row["address"],row["coin"],canonical(state),"active",started,observation_cursor,utc_now()))
         store.connection.execute('insert into paper_session_policy values(?,?,?)',
                                  (session_id,capital_policy,restart_reason))
-        paper_evidence.record(store,session_id,started,0,state,
+        paper_evidence.record(store,session_id,started,observation_cursor,state,
             metrics(state,spec,plan['criteria']['block_ms']))
         if reference_binding is not None:
             store.connection.execute('insert into paper_reference_sessions values(?,?,?,?)',
@@ -251,7 +272,8 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
             "economic_validation":False if experimental_hypothesis is not None else None}
 
 
-def retire_paper(store: Store, session_id: str, *, reason: str) -> dict[str,Any]:
+def retire_paper(store: Store, session_id: str, *, reason: str,
+                 cancel_pending: bool = False) -> dict[str,Any]:
     """Retire only flat sessions; preserve state, ledger and version attribution."""
     if not reason.strip():raise ValueError('Explicit retirement reason required')
     store.connection.execute('create table if not exists paper_retirements '
@@ -262,18 +284,32 @@ def retire_paper(store: Store, session_id: str, *, reason: str) -> dict[str,Any]
         session=store.connection.execute('select * from paper_sessions where session_id=?',(session_id,)).fetchone()
         if not session:raise ValueError('Unknown paper session')
         state=json.loads(session['state_json'])
-        if number(state['position'])!=0 or state['pending']:
-            raise ValueError('Open positions or pending orders remain attributed to the old session')
+        if number(state['position'])!=0:
+            raise ValueError('Open position remains attributed to the old session')
+        pending=list(state['pending'])
+        if pending and not cancel_pending:
+            raise ValueError('Pending orders require explicit cancellation before retirement')
+        if pending:
+            cancelled=state.setdefault('retirement_cancellations',[])
+            cancelled.extend({'at_ms':now_ms(),'order':order,'reason':reason.strip()} for order in pending)
+            reasons=state.setdefault('nonexecution_reasons',{})
+            reasons['pending_cancelled_for_version_retirement']=reasons.get('pending_cancelled_for_version_retirement',0)+len(pending)
+            state['pending']=[]
+            store.connection.execute('update paper_sessions set state_json=? where session_id=?',
+                                     (canonical(state),session_id))
         if session['status']!='retired':
             store.connection.execute('insert into paper_retirements values(?,?,?)',(session_id,now_ms(),reason))
-            store.connection.execute("update paper_sessions set status='retired',updated_at=? where session_id=?",(utc_now(),session_id))
+            store.connection.execute("update paper_sessions set status='retired',updated_at=?,state_json=? where session_id=?",(utc_now(),canonical(state),session_id))
+        if store.connection.execute("select 1 from sqlite_master where type='table' and name='paper_experimental_sessions'").fetchone():
+            store.connection.execute("update paper_experimental_sessions set status='retired' where session_id=?",(session_id,))
         store.connection.commit()
     except BaseException:
         store.connection.rollback();raise
-    return {'session_id':session_id,'status':'retired','ledger_preserved':True}
+    return {'session_id':session_id,'status':'retired','ledger_preserved':True,
+            'cancelled_pending_orders':len(pending) if 'pending' in locals() else 0}
 
 
-def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms):
+def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms,*,runtime_metrics=None):
     """Caller owns transaction; identical safety decisions for live and fixture feeds."""
     healthy=state['healthy_at_ms']
     if clock_ms-session['started_ms']>plan['budget']['max_duration_ms']:
@@ -292,6 +328,8 @@ def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms):
     else:
         state['wait_conditions']=[]
     observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+    if runtime_metrics is not None:
+        state['paper_runtime']=dict(runtime_metrics)
     if 'paper_monitoring' in plan:
         from .paper_monitor import diagnose
         state['diagnostics'].extend(diagnose(plan['paper_monitoring'],observed_metrics))
@@ -311,6 +349,8 @@ def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms):
 
 
 def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
+    tick_started_ms=now_ms()
+    tick_started_ns=monotonic_ns()
     session = store.connection.execute("SELECT * FROM paper_sessions WHERE session_id=?",(session_id,)).fetchone()
     if not session or session["status"] != "active":
         raise ValueError("Paper session unknown or suspended")
@@ -327,14 +367,38 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
         if session["status"] != "active":
             raise ValueError("Paper session changed before the tick acquired its lock")
         state = json.loads(session["state_json"])
-        events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),after_observation_id=session["last_observation_id"])
+        archive_profile={}
+        events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),after_observation_id=session["last_observation_id"],query_metrics=archive_profile)
         processed_ms = now_ms()
+        max_receipt_lag_ms=max((max(0,processed_ms-int(event['received_ms'])) for event in events),default=0)
         for event in events:
             event["available_ms"] = max(processed_ms,state["last_ms"],event.get("available_ms",event["received_ms"]))
             reduce_event(state,spec,event)
         clock_ms = now_ms()
         reduce_event(state,spec,{"id":f"n2-timer:{clock_ms}","kind":"timer","received_ms":clock_ms,"event_ms":clock_ms})
-        status,observed_metrics = _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms)
+        previous_runtime=state.get('paper_runtime',{})
+        interval_ms=(max(0,tick_started_ms-int(previous_runtime['started_ms']))
+                     if previous_runtime.get('started_ms') is not None else None)
+        processing_ms=round((monotonic_ns()-tick_started_ns)/1_000_000,3)
+        max_interval=max(int(previous_runtime.get('max_interval_ms',0)),int(interval_ms or 0))
+        max_processing=max(float(previous_runtime.get('max_processing_ms',0)),processing_ms)
+        max_receipt_lag=max(int(previous_runtime.get('max_receipt_lag_ms',0)),max_receipt_lag_ms)
+        runtime_metrics={"target_interval_ms":int(spec['execution'].get('paper_tick_target_ms',5000)),
+                         "started_ms":tick_started_ms,
+                         "interval_ms":interval_ms,
+                         "max_interval_ms":max_interval,
+                         "archive_query_ms":archive_profile.get('query_ms',0),
+                         "max_archive_query_ms":max(float(previous_runtime.get('max_archive_query_ms',0)),float(archive_profile.get('query_ms',0))),
+                         "archive_rows":archive_profile.get('rows',0),
+                         "archive_by_kind":archive_profile.get('clauses',{}),
+                         "events_processed":len(events),
+                         "max_receipt_lag_ms":max_receipt_lag_ms,
+                         "max_receipt_lag_ms_since_start":max_receipt_lag,
+                         "processing_ms":processing_ms,
+                         "max_processing_ms":max_processing,
+                         "finished_ms":clock_ms}
+        status,observed_metrics = _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms,
+                                                          runtime_metrics=runtime_metrics)
         store.connection.commit()
     except Exception:
         store.connection.rollback()

@@ -1,0 +1,528 @@
+{
+  "schema_version": "archived-public-account-reconciliation-v1",
+  "source_cutoff_ms": 1791789394195,
+  "network": "hyperliquid-mainnet",
+  "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+  "authorization": {
+    "authorized_at_cutoff": true,
+    "currently_protected": false,
+    "checked_before_payload_decoding": true
+  },
+  "selected_interval": {
+    "rule": "shortest interval in this archive with exact allTime curve samples at both ends, same-acquisition default-perp snapshots, and archived flow/funding request windows overlapping both bounds",
+    "start_ms": 1791473085724,
+    "start_utc": "2026-10-08T15:24:45.724000+00:00",
+    "end_ms": 1791476235515,
+    "end_utc": "2026-10-08T16:17:15.515000+00:00",
+    "elapsed_minutes": "52.49651666666666666666666667",
+    "curve_evidence_refs": [
+      "raw_observations:12391756",
+      "raw_observations:12392336"
+    ],
+    "start_acquisition_id": "d254f597ff764b3bb9874d33804f99c3",
+    "end_acquisition_id": "6d78464f858544cbab02f91b28f230d5"
+  },
+  "curve": {
+    "series": "allTime",
+    "pnl_history": {
+      "start": "552382.257798",
+      "end": "556308.453586",
+      "change": "3926.195788"
+    },
+    "account_value_history": {
+      "start": "233473.459731",
+      "end": "226559.335426",
+      "change": "-6914.124305"
+    },
+    "pnl_change_minus_account_value_change": "10840.320093"
+  },
+  "cashflow_bridge": {
+    "observed_external_flows_by_currency": {
+      "USDC": "-11000.0"
+    },
+    "conditional_convention": "For arithmetic only: declared PnL change = account-value change - signed external flow (outflow negative). This is not asserted as the provider formula for every scope.",
+    "conditional_pnl_from_account_value_and_observed_flows_usdc": "4085.875695",
+    "conditional_residual_reported_minus_bridge_usdc": "-159.679907",
+    "amount_attributed_as_provider_pnl": "not independently proven; the transfer explains the direction and most of the difference only under the stated signed-flow convention"
+  },
+  "fills_and_fees": {
+    "dedupe_key": "(coin,time,tid-or-hash)",
+    "unique_fills_in_interval": 6957,
+    "observed_fees_by_currency": {
+      "USDC": "387.231866"
+    },
+    "fee_page_refs_with_interval_fills": [
+      "raw_observations:12393535",
+      "raw_observations:12393536",
+      "raw_observations:12483045",
+      "raw_observations:12483598"
+    ],
+    "fee_total_subtracted_again": false,
+    "treatment": "Displayed separately. The provider portfolio graph is defined from account value plus net deposits/withdrawals; fees are not subtracted again from that graph. Per-event inclusion is not separately exposed by the API."
+  },
+  "funding": {
+    "dedupe": "normalized event identity (time,hash,type,coin,nonce/account fields)",
+    "event_count": 18,
+    "observed_by_currency": {
+      "USDC": "-0.410559"
+    },
+    "event_counts_by_scope": {
+      "perp:": 18
+    },
+    "evidence_pages": [
+      {
+        "evidence_ref": "raw_observations:12392351",
+        "observed_at": "2026-10-08T16:17:40.137+00:00",
+        "requested_interval_ms": [
+          1791465083250,
+          1791476243872
+        ],
+        "record_count": 54,
+        "complete": false,
+        "pagination_status": "pagination_exhausted",
+        "coverage_status": "pagination_only_retention_unknown"
+      }
+    ],
+    "funding_subtracted_again": false,
+    "treatment": "Displayed separately; the portfolio graph has no separate funding term. If settlement is reflected in account value, subtracting it again would double count. The account-level inclusion is not separately decomposed by the API."
+  },
+  "external_ledger_events": {
+    "dedupe": "normalized event identity (time,hash,type,coin,nonce/account fields)",
+    "events": [
+      {
+        "id": "b94c7f33052ebe378c04c1335f71b683ef6811d0e2140d4400a2689da5a3b135",
+        "event_ms": 1791473295207,
+        "available_ms": 1791476263307,
+        "evidence_ref": "raw_observations:12392352",
+        "kind": "flow",
+        "scope_id": "hypercore:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+        "currency": "USDC",
+        "boundary_evidence_ref": "raw_observations:12392352",
+        "amount": "-11000.0",
+        "boundary_classification": "external",
+        "transfer_principal": "11000.0",
+        "source_account": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+        "destination_account": "0xd77a0944d0039e92f3309f9cf52b6926b7c14b6d",
+        "source_dex": "",
+        "destination_dex": ""
+      }
+    ],
+    "evidence_pages": [
+      {
+        "evidence_ref": "raw_observations:12392352",
+        "observed_at": "2026-10-08T16:17:43.307+00:00",
+        "requested_interval_ms": [
+          1791460222588,
+          1791476243872
+        ],
+        "record_count": 1,
+        "complete": false,
+        "pagination_status": "pagination_exhausted",
+        "coverage_status": "pagination_only_retention_unknown"
+      }
+    ],
+    "relation_of_destination_to_related_accounts": "unknown; external here means outside this address boundary"
+  },
+  "positions": {
+    "start_snapshot": {
+      "acquisition_id": "d254f597ff764b3bb9874d33804f99c3",
+      "observed_at": "2026-10-08T15:24:48.800+00:00",
+      "evidence_ref": "raw_observations:12391758",
+      "dex_scope": "default perp DEX only; no cross-DEX sum",
+      "position_count": 18,
+      "gross_position_value_reported": "579772.164170",
+      "summed_unrealized_pnl_reported": "1188.796753",
+      "positions": {
+        "APT": {
+          "szi": "6748.07",
+          "position_value": "4953.08338",
+          "unrealized_pnl": "-10.761698"
+        },
+        "TRX": {
+          "szi": "-1028.0",
+          "position_value": "342.61698",
+          "unrealized_pnl": "0.16367"
+        },
+        "SEI": {
+          "szi": "22206.0",
+          "position_value": "1466.351004",
+          "unrealized_pnl": "-3.409855"
+        },
+        "DOT": {
+          "szi": "-1296.1",
+          "position_value": "1352.48035",
+          "unrealized_pnl": "1.09674"
+        },
+        "ADA": {
+          "szi": "-910.0",
+          "position_value": "213.1311",
+          "unrealized_pnl": "0.44704"
+        },
+        "NEAR": {
+          "szi": "-11521.3",
+          "position_value": "55110.98642",
+          "unrealized_pnl": "130.689997"
+        },
+        "AR": {
+          "szi": "-1204.42",
+          "position_value": "4755.170602",
+          "unrealized_pnl": "20.954469"
+        },
+        "POL": {
+          "szi": "6319.0",
+          "position_value": "612.045702",
+          "unrealized_pnl": "-3.084044"
+        },
+        "ALGO": {
+          "szi": "2853.0",
+          "position_value": "333.60129",
+          "unrealized_pnl": "1.373444"
+        },
+        "HYPE": {
+          "szi": "5038.12",
+          "position_value": "423302.8424",
+          "unrealized_pnl": "872.210954"
+        },
+        "SPX": {
+          "szi": "-513.5",
+          "position_value": "182.92924",
+          "unrealized_pnl": "-0.09243"
+        },
+        "MORPHO": {
+          "szi": "-1210.8",
+          "position_value": "2813.2938",
+          "unrealized_pnl": "12.32372"
+        },
+        "TRUMP": {
+          "szi": "8455.0",
+          "position_value": "14997.479",
+          "unrealized_pnl": "21.151135"
+        },
+        "SOPH": {
+          "szi": "45656.0",
+          "position_value": "166.553088",
+          "unrealized_pnl": "0.99596"
+        },
+        "PUMP": {
+          "szi": "-1208584.0",
+          "position_value": "6503.390504",
+          "unrealized_pnl": "-0.661902"
+        },
+        "0G": {
+          "szi": "-3114.0",
+          "position_value": "875.75022",
+          "unrealized_pnl": "0.77462"
+        },
+        "ZEC": {
+          "szi": "-52.82",
+          "position_value": "60579.258",
+          "unrealized_pnl": "155.76819"
+        },
+        "MET": {
+          "szi": "2659.0",
+          "position_value": "1211.20109",
+          "unrealized_pnl": "-11.143257"
+        }
+      }
+    },
+    "end_snapshot": {
+      "acquisition_id": "6d78464f858544cbab02f91b28f230d5",
+      "observed_at": "2026-10-08T16:17:20.445+00:00",
+      "evidence_ref": "raw_observations:12392338",
+      "dex_scope": "default perp DEX only; no cross-DEX sum",
+      "position_count": 18,
+      "gross_position_value_reported": "25859.447789",
+      "summed_unrealized_pnl_reported": "38.901463",
+      "positions": {
+        "APT": {
+          "szi": "3042.29",
+          "position_value": "2163.980877",
+          "unrealized_pnl": "-5.342723"
+        },
+        "TRX": {
+          "szi": "-255.0",
+          "position_value": "84.9099",
+          "unrealized_pnl": "0.016828"
+        },
+        "SEI": {
+          "szi": "4480.0",
+          "position_value": "293.3504",
+          "unrealized_pnl": "0.203522"
+        },
+        "DOT": {
+          "szi": "3031.2",
+          "position_value": "3140.3232",
+          "unrealized_pnl": "21.171155"
+        },
+        "ADA": {
+          "szi": "6836.0",
+          "position_value": "1576.0398",
+          "unrealized_pnl": "4.7852"
+        },
+        "NEAR": {
+          "szi": "-478.8",
+          "position_value": "2242.26828",
+          "unrealized_pnl": "-9.43236"
+        },
+        "AR": {
+          "szi": "136.06",
+          "position_value": "532.715718",
+          "unrealized_pnl": "-0.961114"
+        },
+        "POL": {
+          "szi": "8546.0",
+          "position_value": "822.46704",
+          "unrealized_pnl": "-0.20912"
+        },
+        "ALGO": {
+          "szi": "-1700.0",
+          "position_value": "201.467",
+          "unrealized_pnl": "-0.782329"
+        },
+        "HYPE": {
+          "szi": "-16.53",
+          "position_value": "1383.075018",
+          "unrealized_pnl": "1.813522"
+        },
+        "SPX": {
+          "szi": "1910.2",
+          "position_value": "674.3006",
+          "unrealized_pnl": "1.692586"
+        },
+        "MORPHO": {
+          "szi": "548.5",
+          "position_value": "1270.6551",
+          "unrealized_pnl": "-0.88344"
+        },
+        "TRUMP": {
+          "szi": "1407.3",
+          "position_value": "2500.34991",
+          "unrealized_pnl": "6.756941"
+        },
+        "SOPH": {
+          "szi": "-12872.0",
+          "position_value": "45.811448",
+          "unrealized_pnl": "0.049831"
+        },
+        "PUMP": {
+          "szi": "93854.0",
+          "position_value": "516.853978",
+          "unrealized_pnl": "-0.755186"
+        },
+        "0G": {
+          "szi": "177.0",
+          "position_value": "49.52814",
+          "unrealized_pnl": "-0.09912"
+        },
+        "ZEC": {
+          "szi": "6.9",
+          "position_value": "7877.73",
+          "unrealized_pnl": "20.986"
+        },
+        "MET": {
+          "szi": "1103.0",
+          "position_value": "483.62138",
+          "unrealized_pnl": "-0.10873"
+        }
+      }
+    },
+    "delta_by_coin": {
+      "0G": {
+        "szi_start": "-3114.0",
+        "szi_end": "177.0",
+        "position_value_start": "875.75022",
+        "position_value_end": "49.52814"
+      },
+      "ADA": {
+        "szi_start": "-910.0",
+        "szi_end": "6836.0",
+        "position_value_start": "213.1311",
+        "position_value_end": "1576.0398"
+      },
+      "ALGO": {
+        "szi_start": "2853.0",
+        "szi_end": "-1700.0",
+        "position_value_start": "333.60129",
+        "position_value_end": "201.467"
+      },
+      "APT": {
+        "szi_start": "6748.07",
+        "szi_end": "3042.29",
+        "position_value_start": "4953.08338",
+        "position_value_end": "2163.980877"
+      },
+      "AR": {
+        "szi_start": "-1204.42",
+        "szi_end": "136.06",
+        "position_value_start": "4755.170602",
+        "position_value_end": "532.715718"
+      },
+      "DOT": {
+        "szi_start": "-1296.1",
+        "szi_end": "3031.2",
+        "position_value_start": "1352.48035",
+        "position_value_end": "3140.3232"
+      },
+      "HYPE": {
+        "szi_start": "5038.12",
+        "szi_end": "-16.53",
+        "position_value_start": "423302.8424",
+        "position_value_end": "1383.075018"
+      },
+      "MET": {
+        "szi_start": "2659.0",
+        "szi_end": "1103.0",
+        "position_value_start": "1211.20109",
+        "position_value_end": "483.62138"
+      },
+      "MORPHO": {
+        "szi_start": "-1210.8",
+        "szi_end": "548.5",
+        "position_value_start": "2813.2938",
+        "position_value_end": "1270.6551"
+      },
+      "NEAR": {
+        "szi_start": "-11521.3",
+        "szi_end": "-478.8",
+        "position_value_start": "55110.98642",
+        "position_value_end": "2242.26828"
+      },
+      "POL": {
+        "szi_start": "6319.0",
+        "szi_end": "8546.0",
+        "position_value_start": "612.045702",
+        "position_value_end": "822.46704"
+      },
+      "PUMP": {
+        "szi_start": "-1208584.0",
+        "szi_end": "93854.0",
+        "position_value_start": "6503.390504",
+        "position_value_end": "516.853978"
+      },
+      "SEI": {
+        "szi_start": "22206.0",
+        "szi_end": "4480.0",
+        "position_value_start": "1466.351004",
+        "position_value_end": "293.3504"
+      },
+      "SOPH": {
+        "szi_start": "45656.0",
+        "szi_end": "-12872.0",
+        "position_value_start": "166.553088",
+        "position_value_end": "45.811448"
+      },
+      "SPX": {
+        "szi_start": "-513.5",
+        "szi_end": "1910.2",
+        "position_value_start": "182.92924",
+        "position_value_end": "674.3006"
+      },
+      "TRUMP": {
+        "szi_start": "8455.0",
+        "szi_end": "1407.3",
+        "position_value_start": "14997.479",
+        "position_value_end": "2500.34991"
+      },
+      "TRX": {
+        "szi_start": "-1028.0",
+        "szi_end": "-255.0",
+        "position_value_start": "342.61698",
+        "position_value_end": "84.9099"
+      },
+      "ZEC": {
+        "szi_start": "-52.82",
+        "szi_end": "6.9",
+        "position_value_start": "60579.258",
+        "position_value_end": "7877.73"
+      }
+    },
+    "treatment": "Default perp DEX only. Position snapshots and their reported unrealized PnL are explanatory state, not extra gains to add to the portfolio curve. Other DEX, spot, vault and related addresses are not consolidated."
+  },
+  "source_coverage": {
+    "fills": {
+      "query_coverage_days_in_30d_archive": 3.504,
+      "archive_statuses": [
+        "page_budget_exhausted",
+        "pagination_exhausted"
+      ],
+      "limit": "userFillsByTime returns up to 2,000 per response; only the most recent 10,000 fills are available",
+      "selected_interval_page_metadata": [
+        {
+          "evidence_ref": "raw_observations:12393535",
+          "observed_at": "2026-10-08T17:58:31.957+00:00",
+          "requested_interval_ms": [
+            1791473016211,
+            1791480948132
+          ],
+          "record_count": 2000,
+          "complete": false,
+          "pagination_status": "page_budget_exhausted",
+          "coverage_status": "pagination_only_retention_unknown"
+        },
+        {
+          "evidence_ref": "raw_observations:12393536",
+          "observed_at": "2026-10-08T17:58:39.949+00:00",
+          "requested_interval_ms": [
+            1791473606437,
+            1791480948132
+          ],
+          "record_count": 2000,
+          "complete": false,
+          "pagination_status": "page_budget_exhausted",
+          "coverage_status": "pagination_only_retention_unknown"
+        },
+        {
+          "evidence_ref": "raw_observations:12483045",
+          "observed_at": "2026-10-08T18:28:58.781+00:00",
+          "requested_interval_ms": [
+            1791474230155,
+            1791480948132
+          ],
+          "record_count": 2000,
+          "complete": false,
+          "pagination_status": "page_budget_exhausted",
+          "coverage_status": "pagination_only_retention_unknown"
+        },
+        {
+          "evidence_ref": "raw_observations:12483598",
+          "observed_at": "2026-10-08T18:29:07.099+00:00",
+          "requested_interval_ms": [
+            1791475381346,
+            1791480948132
+          ],
+          "record_count": 2000,
+          "complete": false,
+          "pagination_status": "page_budget_exhausted",
+          "coverage_status": "pagination_only_retention_unknown"
+        }
+      ]
+    },
+    "funding": {
+      "pages_with_interval_events": 1,
+      "coverage_status": "pagination/retention completeness unproven; source rows have complete=0",
+      "event_time_range_utc": [
+        "2026-10-08T16:00:00.042000+00:00",
+        "2026-10-08T16:00:00.042000+00:00"
+      ]
+    },
+    "ledger": {
+      "pages_with_interval_events": 1,
+      "coverage_status": "pagination/retention completeness unproven; source rows have complete=0",
+      "event_time_range_utc": [
+        "2026-10-08T15:28:15.207000+00:00",
+        "2026-10-08T15:28:15.207000+00:00"
+      ]
+    }
+  },
+  "provider_semantics": {
+    "portfolio_graph_documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/portfolio-graphs",
+    "info_endpoint_documentation": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint",
+    "documented_formula": "Pnl is account value plus net deposits (account value + deposits - withdrawals); graphs sample on deposits/withdrawals and every 15 minutes.",
+    "documented_account_value_scope": "includes unrealized PnL from cross and isolated margin positions, as well as vault balances",
+    "fill_fee_semantics": "The API fill fee is total fee inclusive of builderFee; do not add builderFee a second time.",
+    "limits": [
+      "The archived formula does not independently reconcile this address's event pages or define whether the sent-to address is a linked account.",
+      "The short curve gap, partial fill pages and complete=0 event pages prevent a full accounting certification."
+    ]
+  }
+}

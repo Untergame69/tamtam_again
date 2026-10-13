@@ -21,6 +21,8 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
     inspected=policy.get('max_diagnoses_per_tick',8)
     if type(inspected) is not int or not 1<=inspected<=64:raise ValueError('Bounded diagnosis inspection budget required')
     initialize(store)
+    from .paper_followup import recover_completed_reports
+    followup_tasks=recover_completed_reports(store,clock_ms=now_ms(),max_tasks=min(inspected,8))
     store.connection.execute('create table if not exists paper_research_seal_attempts '
         '(adaptation_request_id text primary key,last_attempt_ms integer not null,attempts integer not null)')
     store.connection.commit()
@@ -87,5 +89,8 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
             allocated=plan_policy(experiment_policy,profile,hypothesis['executable_spec'])
             plans.append({'request_id':row['request_id'],**_prepare_plan(store,row['request_id'],allocated,profile,kind='paper')})
         except ValueError as exc:plans.append({'request_id':row['request_id'],'status':'waiting','reason':str(exc)})
+    # Prepared budget-required packets remain dormant. They are not repeatedly
+    # polled or dispatched until an explicitly authorized activation is supplied.
     return {'sealed':sealed,'processed':processed,'plans':plans,'routes':routes,'memory':memory,
+        'followup_tasks':followup_tasks,
         'interrupted_without_retry':interrupted,'promotion_authorized':False,'observation_plans':observation_plans}

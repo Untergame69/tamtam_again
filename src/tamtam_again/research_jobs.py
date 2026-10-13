@@ -9,7 +9,12 @@ def table(kind):
 
 def request_count(store):
     total=0
-    for name in TABLES.values():
+    for kind,name in TABLES.items():
         if store.connection.execute("select 1 from sqlite_master where type='table' and name=?",(name,)).fetchone():
-            total+=store.connection.execute('select count(*) from '+name).fetchone()[0]
+            # A deterministic, prepared paper handoff makes no inference and
+            # does not reserve a shared model call. Count it only on activation.
+            if kind=='paper':
+                total+=store.connection.execute("select count(*) from paper_research_jobs where status!='budget_required'").fetchone()[0]
+            else:
+                total+=store.connection.execute('select count(*) from '+name).fetchone()[0]
     return total

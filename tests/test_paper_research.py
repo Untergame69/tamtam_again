@@ -48,7 +48,7 @@ class PaperResearchTests(unittest.TestCase):
   self.c.execute('insert into paper_adaptation_requests values(?,?,?,?)',('b','s',201,json.dumps(d)));self.c.commit()
   self.assertEqual(seal(self.s,'b',self.policy,clock_ms=201)['status'],'budget_exhausted')
 
- def test_legacy_migration_preserves_rows_indexes_and_initial_uniqueness(self):
+ def test_legacy_migration_preserves_rows_indexes_and_allows_distinct_packet_jobs(self):
   from tamtam_again.paper_research import initialize
   self.c.execute('create table paper_research_jobs(request_id text primary key,adaptation_request_id text not null unique,session_id text not null,created_ms integer not null,packet_json text not null,policy_json text not null,status text not null)')
   old=('legacy','a','s',150,'{"original":true}','{}','interrupted')
@@ -57,8 +57,9 @@ class PaperResearchTests(unittest.TestCase):
   initialize(self.s);self.c.commit();initialize(self.s);self.c.commit()
   self.assertEqual(tuple(self.c.execute('select request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status from paper_research_jobs').fetchone()),old)
   self.assertTrue(self.c.execute("select 1 from sqlite_master where name='legacy_paper_status'").fetchone())
+  self.c.execute('insert into paper_research_jobs(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status) values(?,?,?,?,?,?,?)',('independent',*old[1:]))
   with self.assertRaises(sqlite3.IntegrityError):
-   self.c.execute('insert into paper_research_jobs(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status) values(?,?,?,?,?,?,?)',('duplicate',*old[1:]))
+   self.c.execute('insert into paper_research_jobs(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status) values(?,?,?,?,?,?,?)',old)
   self.c.rollback()
   self.assertEqual(seal(self.s,'a',self.policy,clock_ms=200)['status'],'unchanged_no_inference')
 

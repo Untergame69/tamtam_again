@@ -19,6 +19,20 @@ def route(store,request_id,*,kind='population'):
     row=store.connection.execute(f'select status,result_json from {registry} where request_id=?',(request_id,)).fetchone()
     if not row or row['status'] in ('sealed','running'):raise ValueError('Terminal population decision required')
     result=json.loads(row['result_json'] or '{}')
+    if kind=='paper' and result.get('route') and not (result.get('critique') or result.get('proposal')):
+        # Carry deterministic report dispositions through the existing route
+        # registry. This prepares work without calling the model or arming v6.
+        output={'request_id':request_id,'research_origin':kind,'source_status':row['status'],
+            'promotion_authorized':False,'economic_rejection':False,
+            'evidence_refs':['paper_research:'+request_id,result.get('source_report_id','')],
+            'diagnostic':result.get('reason','terminal report awaits shared research budget'),
+            'wake':result.get('wake',{}),'created_ms':now_ms(),
+            'state':result.get('state',row['status']),'route':result['route'],
+            'next_action':('wait for explicit shared budget availability; no model call made'
+                if result.get('state')=='budget_required' else result.get('reason','follow the recorded deterministic disposition'))}
+        store.connection.execute('insert or ignore into population_hypothesis_routes values(?,?,?)',
+            (request_id,output['created_ms'],canonical(output)));store.connection.commit()
+        return json.loads(store.connection.execute('select route_json from population_hypothesis_routes where request_id=?',(request_id,)).fetchone()[0])
     decision=result.get('critique') or result.get('proposal') or {}
     output={'request_id':request_id,'research_origin':kind,'source_status':row['status'],'promotion_authorized':False,
         'economic_rejection':False,'evidence_refs':[('population_research:' if kind=='population' else 'paper_research:')+request_id],

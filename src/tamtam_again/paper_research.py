@@ -41,8 +41,15 @@ def initialize(store):
         except BaseException:
             store.connection.execute('rollback to paper_followup_migration')
             store.connection.execute('release paper_followup_migration');raise
-    store.connection.execute('create unique index if not exists paper_research_initial_diagnostic on paper_research_jobs(adaptation_request_id) where parent_request_id is null')
+    # More than one immutable packet can descend from the same diagnostic; the
+    # deterministic request id prevents duplicate presentation of each packet.
+    store.connection.execute('drop index if exists paper_research_initial_diagnostic')
+    store.connection.execute('create unique index if not exists paper_research_initial_packet on paper_research_jobs(adaptation_request_id,request_id) where parent_request_id is null')
     store.connection.execute('create unique index if not exists paper_research_followup_parent on paper_research_jobs(parent_request_id) where parent_request_id is not null')
+    store.connection.execute('create table if not exists paper_outcome_packets '
+        '(adaptation_request_id text primary key,session_id text not null,report_id text not null,'
+        'created_ms integer not null,source_fingerprint text not null,packet_json text not null,'
+        'route_json text not null,task_id text not null unique)')
 
 
 def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=None,_ancestry=()):
@@ -76,6 +83,32 @@ def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=No
         raise ValueError('Rule unavailable before paper session')
     spec=json.loads(spec_row['spec_json'])
     markets=[leg['market'] for leg in spec.get('legs',[])] if spec.get('engine')=='portfolio_reference_v1' else [variant['coin']]
+    prepared_row=store.connection.execute('select session_id,report_id,source_fingerprint,packet_json,task_id '
+        'from paper_outcome_packets where adaptation_request_id=?',(adaptation_request_id,)).fetchone() \
+        if store.connection.execute("select 1 from sqlite_master where name='paper_outcome_packets'").fetchone() else None
+    prepared=json.loads(prepared_row['packet_json']) if prepared_row else diagnostic.get('prepared_packet')
+    if prepared is not None:
+        # Outcome tasks are built once from the terminal report. Reuse that
+        # immutable packet; the report-to-task handoff is not a model call.
+        if not isinstance(prepared,dict):
+            raise ValueError('Prepared terminal report packet provenance mismatch')
+        if prepared.get('session_id')!=row['session_id'] or prepared.get('variant_id')!=session['variant_id']:
+            raise ValueError('Prepared terminal report attribution mismatch')
+        if prepared.get('available_ms',clock_ms+1)>clock_ms:
+            raise ValueError('Prepared terminal report is not yet available')
+        if prepared.get('simulated_parameters',{}).get('spec')!=spec:
+            raise ValueError('Prepared terminal report rule fingerprint mismatch')
+        if prepared.get('fingerprint')!=fingerprint({k:v for k,v in prepared.items() if k!='fingerprint'}):
+            raise ValueError('Prepared terminal report packet fingerprint mismatch')
+        if prepared_row and (prepared_row['session_id']!=row['session_id']
+                or prepared_row['source_fingerprint']!=prepared['fingerprint']):
+            raise ValueError('Prepared outcome registry attribution mismatch')
+        for source_period in prepared.get('source_periods',[]):
+            if not authorized_period(store,source_period,clock_ms,end_inclusive=True):
+                raise ValueError('Prepared paper outcome period is no longer authorized')
+        if len(canonical(prepared))>max_chars:
+            return {'status':'needs_data','reason':'complete prepared outcome packet exceeds packet budget'}
+        return {'status':'packet_ready','packet':prepared}
     output={'schema_version':'paper-diagnostic-research-v1','network':period['network'],
         'address':period['address'],'session_id':row['session_id'],'variant_id':session['variant_id'],
         'available_ms':row['created_ms'],'source_periods':[period],
@@ -163,25 +196,35 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
     clock=now_ms() if clock_ms is None else clock_ms
     if type(clock) is not int or clock<0:raise ValueError('Explicit research clock required')
     initialize(store);store.connection.commit()
-    previous=store.connection.execute('select request_id from paper_research_jobs where adaptation_request_id=? and parent_request_id is ? and created_ms<=?',(adaptation_request_id,parent_request_id,clock)).fetchone()
-    if previous:return {'status':'unchanged_no_inference','request_id':previous[0]}
-    from .research_jobs import request_count
-    if request_count(store)>=policy['max_requests']:return {'status':'budget_exhausted'}
     result=packet(store,adaptation_request_id,clock_ms=clock,max_chars=policy['max_packet_chars'],parent_request_id=parent_request_id)
     if result['status']!='packet_ready':return result
+    identity=fingerprint({'adaptation_request_id':adaptation_request_id,'packet':result['packet']['fingerprint']})
+    previous=store.connection.execute('select request_id,status,packet_json from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
+    prepared_handoff=store.connection.execute('select 1 from paper_outcome_packets where adaptation_request_id=?',(adaptation_request_id,)).fetchone()
+    if not previous and not prepared_handoff:
+        legacy=store.connection.execute('select request_id,status from paper_research_jobs where adaptation_request_id=? and parent_request_id is ? and created_ms<=? order by created_ms,request_id limit 1',(adaptation_request_id,parent_request_id,clock)).fetchone()
+        if legacy and legacy['status']!='budget_required':return {'status':'unchanged_no_inference','request_id':legacy['request_id']}
+    if previous and previous['status']!='budget_required':return {'status':'unchanged_no_inference','request_id':previous['request_id']}
+    from .research_jobs import request_count
+    if request_count(store)>=policy['max_requests']:return {'status':'budget_exhausted'}
     store.connection.execute('begin immediate')
     try:
-        previous=store.connection.execute('select request_id from paper_research_jobs where adaptation_request_id=? and parent_request_id is ? and created_ms<=?',(adaptation_request_id,parent_request_id,clock)).fetchone()
-        if previous:
-            store.connection.commit();return {'status':'unchanged_no_inference','request_id':previous[0]}
+        previous=store.connection.execute('select request_id,status,packet_json from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
+        if previous and previous['status']!='budget_required':
+            store.connection.commit();return {'status':'unchanged_no_inference','request_id':previous['request_id']}
         # A new policy version does not reset counts or rearm failed jobs.
         from .research_jobs import request_count
         if request_count(store)>=policy['max_requests']:
             store.connection.commit();return {'status':'budget_exhausted'}
-        recent=store.connection.execute('select max(created_ms) from paper_research_jobs where session_id=?',(result['packet']['session_id'],)).fetchone()[0]
+        recent=store.connection.execute('select max(created_ms) from paper_research_jobs where session_id=? and status!=\'budget_required\'',(result['packet']['session_id'],)).fetchone()[0]
         if recent is not None and clock-recent<policy['minimum_interval_ms']:
             store.connection.commit();return {'status':'waiting','wake_ms':recent+policy['minimum_interval_ms']}
-        identity=fingerprint({'adaptation_request_id':adaptation_request_id,'packet':result['packet']['fingerprint']})
+        if previous:
+            if previous['request_id']!=identity or previous['packet_json']!=canonical(result['packet']):
+                raise ValueError('Budget-required task packet changed before activation')
+            store.connection.execute('update paper_research_jobs set policy_json=?,status=\'sealed\',reserved_cost_usd=?,updated_ms=? where request_id=? and status=\'budget_required\'',
+                (canonical(policy),str(policy['call_reservation_usd']),clock,identity))
+            store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0,'activated_existing_task':True}
         store.connection.execute('insert into paper_research_jobs '
             '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,updated_ms,parent_request_id) '
             'values(?,?,?,?,?,?,?,?,?,?,?)',

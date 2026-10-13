@@ -140,6 +140,11 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
             reports.append({"session_id":session[0],"status":"waiting","reason":str(exc)})
     from .paper_adaptation import recover as recover_adaptation
     reports.extend(recover_adaptation(store,clock_ms=now_ms(),max_requests=8))
+    if fixtures is None:
+        # A terminal paper outcome becomes the next persistent task inside the
+        # normal pipeline tick. Recovery is bounded and idempotent by session.
+        from .paper_followup import recover_completed_reports
+        reports.extend(recover_completed_reports(store,clock_ms=now_ms(),max_tasks=8))
     result={"processed":reports,"live_orders_enabled":False}
     if fixtures is not None:result.update(synthetic_recipe=True,real_strategy_validated=False)
     return result

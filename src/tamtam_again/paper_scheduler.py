@@ -29,6 +29,9 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
     interrupted=[r[0] for r in store.connection.execute("select request_id from paper_research_jobs where status='running'")]
     store.connection.execute("update paper_research_jobs set status='interrupted',actual_cost_usd=NULL,updated_ms=? where status='running'",(now_ms(),))
     store.connection.commit()
+    from .paper_research import finish_authorized_task
+    for request_id in interrupted:
+        finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='interrupted')
     sealed=[];processed=[];plans=[];routes=[];memory=[];observation_plans=[]
     if store.connection.execute("select 1 from sqlite_master where name='paper_adaptation_requests'").fetchone():
         clock=now_ms()
@@ -63,10 +66,11 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
     if dispatch:
         for row in store.connection.execute("select request_id from paper_research_jobs where status='sealed' order by created_ms,request_id").fetchall():
             try:processed.append(_run(store,row[0]))
-            except ValueError as exc:
+            except Exception as exc:
                 store.connection.execute("update paper_research_jobs set status='suspended',updated_ms=?,result_json=? where request_id=? and status='sealed'",
                     (now_ms(),json.dumps({'error_type':type(exc).__name__,'promotion_authorized':False,'profitability_proven':False}),row[0]))
                 store.connection.commit()
+                finish_authorized_task(store,row[0],actual_cost_usd=None,result_status='suspended')
                 processed.append({'request_id':row[0],'status':'suspended','error_type':type(exc).__name__})
             if len(processed)>=max_jobs:break
     from .population_routing import route

@@ -7,7 +7,19 @@ from .engine import canonical,fingerprint
 
 
 def run(store,request_id):
-    with scheduler_lock(store):return _run(store,request_id)
+    with scheduler_lock(store):
+        try:return _run(store,request_id)
+        except Exception as exc:
+            authorized=store.connection.execute('select 1 from paper_research_task_authorizations where request_id=?',(request_id,)).fetchone()
+            if not authorized:raise
+            from .paper_research import finish_authorized_task
+            from .validation import now_ms
+            from .engine import canonical
+            store.connection.execute("update paper_research_jobs set status='suspended',actual_cost_usd=NULL,usage_json='[]',result_json=?,updated_ms=? where request_id=? and status='sealed'",
+                (canonical({'error_type':type(exc).__name__,'diagnostic':'Activated runtime failed before completion; no automatic retry'}),now_ms(),request_id))
+            store.connection.commit()
+            finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='suspended')
+            return {'status':'suspended','request_id':request_id,'error_type':type(exc).__name__}
 
 
 def _run(store,request_id):

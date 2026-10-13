@@ -304,6 +304,33 @@ class FollowupTests(unittest.TestCase):
             store.connection.close()
             tmp.cleanup()
 
+    def test_authorized_runtime_preflight_failure_is_persisted_and_never_retried(self):
+        from tamtam_again.paper_runtime import run
+        tmp, store = self._runtime_fixture()
+        try:
+            task = present_report(store, "s", "r", clock_ms=30)
+            source_packet = json.loads(store.connection.execute(
+                "select packet_json from paper_research_jobs where request_id=?", (task["job_id"],)).fetchone()[0])
+            authorize_task(store, task["job_id"], authorization_ref="one-task-error-test",
+                authorized_ms=40, packet_fingerprint_value=source_packet["fingerprint"],
+                max_calls=2, max_reserved_cost_usd="2")
+            self.assertEqual(seal(store, task["request_id"], self._policy(), clock_ms=50)["status"], "sealed")
+            with patch("tamtam_again.population_runtime.now_ms", return_value=60), \
+                 patch("tamtam_again.population_runtime.verify", side_effect=RuntimeError("probe failure")), \
+                 patch("tamtam_again.population_runtime.call") as caller:
+                failed = run(store, task["job_id"])
+                replay = run(store, task["job_id"])
+            caller.assert_not_called()
+            self.assertEqual(failed["status"], "suspended")
+            self.assertEqual(replay["status"], "unchanged_no_inference")
+            authorization = store.connection.execute(
+                "select state,calls_started,result_status from paper_research_task_authorizations where request_id=?",
+                (task["job_id"],)).fetchone()
+            self.assertEqual(tuple(authorization), ("completed", 0, "suspended"))
+        finally:
+            store.connection.close()
+            tmp.cleanup()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -67,7 +67,16 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
             from .paper_research import finish_authorized_task
             finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='expired')
         return {'status':'expired','request_id':request_id}
-    verify(policy['model'])
+    try:
+        verify(policy['model'])
+    except Exception as exc:
+        failure={'error_type':type(exc).__name__,'diagnostic':'Runtime isolation check failed; authorized task consumed without retry'}
+        store.connection.execute(f"update {registry} set status='suspended',actual_cost_usd=NULL,usage_json='[]',result_json=?,updated_ms=? where request_id=? and status='sealed'",
+            (canonical(failure),now_ms(),request_id));store.connection.commit()
+        if kind=='paper':
+            from .paper_research import finish_authorized_task
+            finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='suspended')
+        return {'status':'suspended','request_id':request_id,'error_type':type(exc).__name__}
     policy={**policy,'max_prompt_chars':policy.get('max_prompt_chars',policy['max_packet_chars']+8192)}
     changed=store.connection.execute(f"update {registry} set status='running',reserved_cost_usd=?,updated_ms=? where request_id=? and status='sealed'",
         (str(number(policy['call_reservation_usd'])*2),now_ms(),request_id)).rowcount

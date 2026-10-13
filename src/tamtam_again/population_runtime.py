@@ -59,8 +59,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
     from .research_jobs import table
     registry=table(kind)
     policy=json.loads(row['policy_json'])
-    if now_ms()<row['created_ms']:raise ValueError('Research job is not yet available')
-    if now_ms()-row['created_ms']>policy['max_request_age_ms']:
+    activated_ms=(row['activated_ms'] if kind=='paper' and 'activated_ms' in row.keys() and row['activated_ms'] is not None else row['created_ms'])
+    if now_ms()<activated_ms:raise ValueError('Research job is not yet available')
+    if now_ms()-activated_ms>policy['max_request_age_ms']:
         store.connection.execute(f"update {registry} set status='expired',updated_ms=? where request_id=? and status='sealed'",(now_ms(),request_id));store.connection.commit()
         return {'status':'expired','request_id':request_id}
     verify(policy['model'])

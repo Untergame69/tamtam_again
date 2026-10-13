@@ -14,7 +14,7 @@ def initialize(store):
     columns={r[1] for r in store.connection.execute('pragma table_info(paper_research_jobs)')}
     for name,kind in {'network':'text','address':'text','updated_ms':'integer',
             'reserved_cost_usd':'text','actual_cost_usd':'text','result_json':'text','usage_json':'text',
-            'parent_request_id':'text'}.items():
+            'parent_request_id':'text','activated_ms':'integer','data_available_ms':'integer'}.items():
         if name not in columns:store.connection.execute('alter table paper_research_jobs add column '+name+' '+kind)
 
     # Earlier schemas allowed exactly one job per diagnostic. Keep one initial
@@ -50,6 +50,40 @@ def initialize(store):
         '(adaptation_request_id text primary key,session_id text not null,report_id text not null,'
         'created_ms integer not null,source_fingerprint text not null,packet_json text not null,'
         'route_json text not null,task_id text not null unique)')
+    store.connection.execute('create table if not exists paper_research_packet_adaptations '
+        '(request_id text primary key,adapter_version text not null,source_fingerprint text not null,'
+        'adapted_fingerprint text not null,prepared_ms integer not null,activated_ms integer not null,'
+        'data_available_ms integer not null,data_age_ms integer not null,packet_json text not null)')
+
+
+def adapt_outcome_packet(source,*,prepared_ms,activated_ms):
+    """Version the terminal outcome into the runtime/validator packet contract."""
+    if source.get('schema_version')!='paper-outcome-research-v1':
+        raise ValueError('Supported immutable paper outcome packet required')
+    periods=source.get('source_periods') or []
+    if not periods or any(not {'network','address','market','start_ms','end_ms'}<=p.keys() for p in periods):
+        raise ValueError('Explicit source periods required for paper runtime adaptation')
+    networks={p['network'] for p in periods};addresses={p['address'] for p in periods}
+    if len(networks)!=1 or len(addresses)!=1:
+        raise ValueError('Paper runtime adaptation requires one attributed account scope')
+    available=source.get('available_ms')
+    if type(available) is not int or type(prepared_ms) is not int or type(activated_ms) is not int or not available<=prepared_ms<=activated_ms:
+        raise ValueError('Ordered source, preparation and activation times required')
+    market=source.get('simulated_parameters',{}).get('spec',{}).get('market')
+    markets=[market] if isinstance(market,str) and market else sorted({p['market'] for p in periods})
+    result={'schema_version':'paper-diagnostic-research-v2','adapter':{
+            'name':'paper-outcome-to-runtime-v2','source_schema':'paper-outcome-research-v1',
+            'source_fingerprint':source.get('fingerprint'),'adapter_created_ms':activated_ms},
+        'network':next(iter(networks)),'address':next(iter(addresses)),
+        'session_id':source['session_id'],'variant_id':source['variant_id'],
+        'prepared_ms':prepared_ms,'activated_ms':activated_ms,'data_available_ms':available,
+        'data_age_ms_at_activation':activated_ms-available,'available_ms':available,
+        'source_periods':periods,'observations':{'markets':markets,
+            'frozen_rule':source.get('simulated_parameters',{}).get('spec'),
+            'paper_outcome':source},'evidence_refs':source.get('evidence_refs',[]),
+        'research_contract':source.get('research_contract',{})}
+    result['fingerprint']=fingerprint(result)
+    return result
 
 
 def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=None,_ancestry=()):
@@ -199,7 +233,7 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
     result=packet(store,adaptation_request_id,clock_ms=clock,max_chars=policy['max_packet_chars'],parent_request_id=parent_request_id)
     if result['status']!='packet_ready':return result
     identity=fingerprint({'adaptation_request_id':adaptation_request_id,'packet':result['packet']['fingerprint']})
-    previous=store.connection.execute('select request_id,status,packet_json from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
+    previous=store.connection.execute('select request_id,status,packet_json,created_ms from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
     prepared_handoff=store.connection.execute('select 1 from paper_outcome_packets where adaptation_request_id=?',(adaptation_request_id,)).fetchone()
     if not previous and not prepared_handoff:
         legacy=store.connection.execute('select request_id,status from paper_research_jobs where adaptation_request_id=? and parent_request_id is ? and created_ms<=? order by created_ms,request_id limit 1',(adaptation_request_id,parent_request_id,clock)).fetchone()
@@ -209,7 +243,7 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
     if request_count(store)>=policy['max_requests']:return {'status':'budget_exhausted'}
     store.connection.execute('begin immediate')
     try:
-        previous=store.connection.execute('select request_id,status,packet_json from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
+        previous=store.connection.execute('select request_id,status,packet_json,created_ms from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
         if previous and previous['status']!='budget_required':
             store.connection.commit();return {'status':'unchanged_no_inference','request_id':previous['request_id']}
         # A new policy version does not reset counts or rearm failed jobs.
@@ -217,18 +251,32 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
         if request_count(store)>=policy['max_requests']:
             store.connection.commit();return {'status':'budget_exhausted'}
         recent=store.connection.execute('select max(created_ms) from paper_research_jobs where session_id=? and status!=\'budget_required\'',(result['packet']['session_id'],)).fetchone()[0]
-        if recent is not None and clock-recent<policy['minimum_interval_ms']:
+        if not previous and recent is not None and clock-recent<policy['minimum_interval_ms']:
             store.connection.commit();return {'status':'waiting','wake_ms':recent+policy['minimum_interval_ms']}
+        data_available_ms=int(result['packet']['available_ms'])
+        if result['packet'].get('schema_version')=='paper-outcome-research-v1':
+            adapted=adapt_outcome_packet(result['packet'],prepared_ms=(previous['created_ms'] if previous else clock),activated_ms=clock)
+            if len(canonical(adapted))>policy['max_packet_chars']:
+                store.connection.commit();return {'status':'needs_data','reason':'adapted runtime packet exceeds configured packet budget'}
+            prior_adapter=store.connection.execute('select * from paper_research_packet_adaptations where request_id=?',(identity,)).fetchone()
+            if prior_adapter and (prior_adapter['source_fingerprint']!=result['packet']['fingerprint']
+                    or prior_adapter['packet_json']!=canonical(adapted)):
+                raise ValueError('Previously activated packet adaptation is immutable')
+            if not prior_adapter:
+                store.connection.execute('insert into paper_research_packet_adaptations '
+                    '(request_id,adapter_version,source_fingerprint,adapted_fingerprint,prepared_ms,activated_ms,data_available_ms,data_age_ms,packet_json) '
+                    'values(?,?,?,?,?,?,?,?,?)',(identity,'paper-outcome-to-runtime-v2',result['packet']['fingerprint'],
+                    adapted['fingerprint'],adapted['prepared_ms'],clock,data_available_ms,clock-data_available_ms,canonical(adapted)))
         if previous:
             if previous['request_id']!=identity or previous['packet_json']!=canonical(result['packet']):
                 raise ValueError('Budget-required task packet changed before activation')
-            store.connection.execute('update paper_research_jobs set policy_json=?,status=\'sealed\',reserved_cost_usd=?,updated_ms=? where request_id=? and status=\'budget_required\'',
-                (canonical(policy),str(policy['call_reservation_usd']),clock,identity))
-            store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0,'activated_existing_task':True}
+            store.connection.execute('update paper_research_jobs set policy_json=?,status=\'sealed\',reserved_cost_usd=?,activated_ms=?,data_available_ms=?,updated_ms=? where request_id=? and status=\'budget_required\'',
+                (canonical(policy),str(policy['call_reservation_usd']),clock,data_available_ms,clock,identity))
+            store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0,'activated_existing_task':True,'activated_ms':clock,'data_available_ms':data_available_ms}
         store.connection.execute('insert into paper_research_jobs '
-            '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,updated_ms,parent_request_id) '
-            'values(?,?,?,?,?,?,?,?,?,?,?)',
+            '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,updated_ms,parent_request_id,activated_ms,data_available_ms) '
+            'values(?,?,?,?,?,?,?,?,?,?,?,?,?)',
             (identity,adaptation_request_id,result['packet']['session_id'],clock,
-             canonical(result['packet']),canonical(policy),'sealed',result['packet']['network'],result['packet']['address'],clock,parent_request_id))
-        store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0}
+             canonical(result['packet']),canonical(policy),'sealed',result['packet']['network'],result['packet']['address'],clock,parent_request_id,clock,data_available_ms))
+        store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0,'activated_ms':clock,'data_available_ms':data_available_ms}
     except BaseException:store.connection.rollback();raise

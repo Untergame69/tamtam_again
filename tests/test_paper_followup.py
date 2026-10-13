@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from tamtam_again.engine import canonical
 from tamtam_again.paper_followup import choose_route, present_report, reconstruct_lineage
-from tamtam_again.paper_research import seal, packet as research_packet
+from tamtam_again.paper_research import authorize_task, seal, packet as research_packet
 from tamtam_again.population_routing import route
 from tamtam_again.research_jobs import request_count
 
@@ -185,7 +185,16 @@ class FollowupTests(unittest.TestCase):
             task = present_report(store, "s", "r", clock_ms=30)
             preparatory = route(store, task["job_id"], kind="paper")
             self.assertEqual(preparatory["state"], "budget_required")
-            self.assertEqual(request_count(store), 0)
+            store.connection.execute("create table population_research_jobs(request_id text primary key)")
+            store.connection.executemany("insert into population_research_jobs values(?)",
+                [(f"historical-{i}",) for i in range(8)])
+            store.connection.commit()
+            self.assertEqual(request_count(store), 8)
+            source_packet = json.loads(store.connection.execute(
+                "select packet_json from paper_research_jobs where request_id=?", (task["job_id"],)).fetchone()[0])
+            self.assertEqual(authorize_task(store, task["job_id"], authorization_ref="one-task-approval",
+                authorized_ms=100, packet_fingerprint_value=source_packet["fingerprint"],
+                max_calls=2, max_reserved_cost_usd="2")["status"], "authorized")
             activated_ms = 200_000  # far beyond max_request_age from preparation/data receipt
             activation = seal(store, task["request_id"], self._policy(), clock_ms=activated_ms)
             self.assertEqual(activation["status"], "sealed")
@@ -211,7 +220,10 @@ class FollowupTests(unittest.TestCase):
                 result = run(store, task["job_id"])
             self.assertEqual(caller.call_count, 2)
             self.assertEqual(result["status"], "hypothesis_recorded")
-            self.assertEqual(request_count(store), 1)
+            self.assertEqual(request_count(store), 9)
+            auth = store.connection.execute("select state,calls_started,reserved_cost_usd,actual_cost_usd,result_status "
+                "from paper_research_task_authorizations where request_id=?", (task["job_id"],)).fetchone()
+            self.assertEqual(tuple(auth), ("completed", 2, "2", "0.50", "hypothesis_recorded"))
             final_route = route(store, task["job_id"], kind="paper")
             self.assertEqual(final_route["state"], "specification_required")
             self.assertEqual(final_route["supersedes_route_fingerprint"], __import__(

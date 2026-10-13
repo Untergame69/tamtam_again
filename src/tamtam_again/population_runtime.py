@@ -63,6 +63,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
     if now_ms()<activated_ms:raise ValueError('Research job is not yet available')
     if now_ms()-activated_ms>policy['max_request_age_ms']:
         store.connection.execute(f"update {registry} set status='expired',updated_ms=? where request_id=? and status='sealed'",(now_ms(),request_id));store.connection.commit()
+        if kind=='paper':
+            from .paper_research import finish_authorized_task
+            finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='expired')
         return {'status':'expired','request_id':request_id}
     verify(policy['model'])
     policy={**policy,'max_prompt_chars':policy.get('max_prompt_chars',policy['max_packet_chars']+8192)}
@@ -99,6 +102,9 @@ If all necessary observations and parameters are supplied, optionally include hy
 and hypothesis.experiment_profile matching the compiler contract. Otherwise retain a descriptive hypothesis
 and explicit missing observations. Do not invent a rule or force an unknown mechanism into a supported signal.
 Compiler contract:\n'''+canonical(compiler_contract())+'\nRequest id: '+request_id+'\nPacket:\n'+canonical(packet)
+        if kind=='paper':
+            from .paper_research import claim_authorized_call
+            claim_authorized_call(store,request_id)
         call_in_progress=True
         raw,measured=call(policy,prompt);call_in_progress=False;usage.append(measured);artifacts['raw_proposal']=raw
         checkpoint()
@@ -112,6 +118,9 @@ Review any optional executable_spec and experiment_profile for fidelity to the h
 parameter evidence and explicit missing requirements. Do not rewrite them or set promotion criteria.
 Consistent remains a hypothesis requiring prospective evaluation, not proof of an advantage.
 Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
+            if kind=='paper':
+                from .paper_research import claim_authorized_call
+                claim_authorized_call(store,request_id)
             call_in_progress=True
             raw,measured=call(policy,prompt);call_in_progress=False;usage.append(measured);artifacts['raw_critique']=raw
             checkpoint()
@@ -126,4 +135,7 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
     cost=str(sum(number(u['cost_usd']) for u in usage)) if usage and cost_complete else None
     store.connection.execute(f'update {registry} set status=?,actual_cost_usd=?,result_json=?,usage_json=?,updated_ms=? where request_id=? and status=\'running\'',
         (state,cost,canonical(artifacts),canonical(usage),now_ms(),request_id));store.connection.commit()
+    if kind=='paper':
+        from .paper_research import finish_authorized_task
+        finish_authorized_task(store,request_id,actual_cost_usd=cost,result_status=state)
     return {'status':state,'request_id':request_id,'promotion_authorized':False}

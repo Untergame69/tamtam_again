@@ -156,6 +156,12 @@ Refer only to the packet evidence. Specify missing observations rather than inve
 For missing observations you may include hypothesis.observation_requests, one exact object per required_data index, with fields required_data_index, source, endpoint, start_ms, end_ms, proof, decision_use. All indices must be covered exactly once. Do not supply budgets or success criteria.
 Verified local history adapter: source public_rest_history; endpoint userFillsByTime, userFunding or userNonFundingLedgerUpdates; proof pagination_coverage only. It cannot certify retention, inventory continuity or economic completeness. Declare other sources/proofs explicitly when needed; the code will retain an unsupported acquisition/proof rather than guess or claim fulfillment.
 If all necessary observations and parameters are supplied, optionally include hypothesis.executable_spec and hypothesis.experiment_profile matching the compiler contract. Otherwise retain a descriptive hypothesis and explicit missing observations. Do not invent a rule or force an unknown mechanism into a supported signal.'''
+        pilot = packet.get('pilot_research')
+        if isinstance(pilot, dict) and isinstance(pilot.get('question'), str):
+            instructions += ('\nPilot question (answer only from this packet): ' + pilot['question'] +
+                '\nKeep research interest, observability, and compatibility with the current paper engine as separate judgments. '
+                'An incompatible mechanism should route to a technical task; it does not establish economic invalidity. '
+                'Do not request historical links or completeness that the packet marks irrecoverable.')
     return ('Propose a falsifiable mechanism from this sealed paper evidence. No tools exist.\n'
         +instructions+'\nCompiler contract:\n'+canonical(compiler_contract())+
         '\nRequest id: '+request_id+'\nPacket:\n'+encoded)
@@ -179,11 +185,27 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
     _initialize_call_artifacts(store)
     registry=table(kind)
     policy=json.loads(row['policy_json'])
+    pilot_policy=None
+    if kind=='population' and store.connection.execute(
+            "select 1 from sqlite_master where type='table' and name='population_research_pilot_tasks'").fetchone():
+        pilot_task=store.connection.execute('select pilot_id,state from population_research_pilot_tasks where request_id=?',
+            (request_id,)).fetchone()
+        if pilot_task:
+            from .population_pilot import validate_policy
+            allowance=store.connection.execute('select policy_json from population_research_pilot_allowances where pilot_id=?',
+                (pilot_task['pilot_id'],)).fetchone()
+            if not allowance:raise ValueError('Dedicated pilot allowance record missing')
+            pilot_policy=json.loads(allowance['policy_json']);validate_policy(pilot_policy)
+            if policy != pilot_policy['task_policy']:
+                raise ValueError('Sealed task policy differs from its immutable pilot limits')
     usage_mode=policy.get('usage_mode','pay_as_you_go')
     activated_ms=(row['activated_ms'] if kind=='paper' and 'activated_ms' in row.keys() and row['activated_ms'] is not None else row['created_ms'])
     if now_ms()<activated_ms:raise ValueError('Research job is not yet available')
     if now_ms()-activated_ms>policy['max_request_age_ms']:
         store.connection.execute(f"update {registry} set status='expired',updated_ms=? where request_id=? and status='sealed'",(now_ms(),request_id));store.connection.commit()
+        if pilot_policy is not None:
+            from .population_pilot import finish_task
+            finish_task(store, request_id, 'expired')
         if kind=='paper':
             from .paper_research import finish_authorized_task
             finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='expired')
@@ -200,6 +222,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
         failure={'error_type':type(exc).__name__,'diagnostic':'Runtime isolation check failed; authorized task consumed without retry'}
         store.connection.execute(f"update {registry} set status='suspended',actual_cost_usd=NULL,usage_json='[]',result_json=?,updated_ms=? where request_id=? and status='running'",
             (canonical(failure),now_ms(),request_id));store.connection.commit()
+        if pilot_policy is not None:
+            from .population_pilot import finish_task
+            finish_task(store, request_id, 'suspended')
         if kind=='paper':
             from .paper_research import finish_authorized_task
             finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='suspended')
@@ -231,10 +256,16 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
                 if spent_duration+policy['timeout_seconds']*1000>policy['max_total_duration_ms']:
                     raise ValueError('Aggregate subscription duration ceiling would be exceeded; no further call')
             active_call_index=len(usage)+1;active_response_received=False
+            if pilot_policy is not None:
+                from .population_pilot import reserve_call
+                reserve_call(store,request_id,active_call_index,pilot_policy)
             _reserve_call(store,kind,request_id,active_call_index)
             call_in_progress=True
             def capture_provider_response(provider_response):
                 nonlocal active_response_received
+                if pilot_policy is not None:
+                    from .population_pilot import record_provider_response
+                    record_provider_response(store,request_id,active_call_index,provider_response)
                 body,metadata=_safe_response_parts(provider_response)
                 _advance_call(store,kind,request_id,active_call_index,'response_received',
                     time_field='response_received_ms',response_json=body,metadata_json=metadata)
@@ -267,6 +298,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
                     observed={'input_tokens':total_input,'output_tokens':total_output,'duration_ms':total_duration}[field]
                     raise CallContractError({'stage':'usage_validation','code':'aggregate_usage_limit_exceeded',
                         'field':'aggregate.'+field,'observed':observed,'limit':limits[field]})
+            if pilot_policy is not None:
+                from .population_pilot import mark_call_state
+                mark_call_state(store,request_id,active_call_index,'usage_validated')
             _advance_call(store,kind,request_id,active_call_index,'response_validated',
                 time_field='response_validated_ms')
             return result
@@ -275,6 +309,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
         checkpoint()
         proposal=parse_response(raw);validate_response(proposal,packet,request_id=request_id);artifacts['proposal']=proposal
         _advance_call(store,kind,request_id,active_call_index,'result_validated',time_field='result_validated_ms')
+        if pilot_policy is not None:
+            from .population_pilot import mark_call_state
+            mark_call_state(store,request_id,active_call_index,'result_validated')
         state=proposal['decision']
         if state=='hypothesis':
             prompt='''Review causal consistency and testability only, never profitability. No tools exist.
@@ -293,6 +330,9 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
                     'field':'critique','observed':{'decision':critique.get('decision')},
                     'limit':'diagnostic string and wake object with a supported decision'})
             _advance_call(store,kind,request_id,active_call_index,'result_validated',time_field='result_validated_ms')
+            if pilot_policy is not None:
+                from .population_pilot import mark_call_state
+                mark_call_state(store,request_id,active_call_index,'result_validated')
             state='hypothesis_recorded' if critique['decision']=='consistent' else critique['decision']
     except Exception as exc:
         artifacts['error_type']=type(exc).__name__;state='suspended';cost_complete=not call_in_progress
@@ -309,6 +349,10 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
         if active_call_index is not None:
             _advance_call(store,kind,request_id,active_call_index,
                 'rejected' if active_response_received else 'interrupted',diagnostic_json=canonical(diagnostic))
+            if pilot_policy is not None:
+                from .population_pilot import mark_call_state
+                mark_call_state(store,request_id,active_call_index,
+                    'response_rejected' if active_response_received else 'interrupted')
     artifacts.update(profitability_proven=False,promotion_authorized=False,
         runtime_contract_version='reviewed-hypothesis-v3-population-or-paper',research_origin=kind)
     from .research import usage_accounting
@@ -316,6 +360,9 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
     cost=accounting['charged_cost_usd'] if usage and cost_complete else None
     store.connection.execute(f'update {registry} set status=?,actual_cost_usd=?,result_json=?,usage_json=?,updated_ms=? where request_id=? and status=\'running\'',
         (state,cost,canonical(artifacts),canonical(usage),now_ms(),request_id));store.connection.commit()
+    if pilot_policy is not None:
+        from .population_pilot import finish_task
+        finish_task(store,request_id,state)
     if kind=='paper':
         from .paper_research import finish_authorized_task
         finish_authorized_task(store,request_id,actual_cost_usd=cost,result_status=state)

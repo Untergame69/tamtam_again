@@ -20,7 +20,11 @@ def route(store,request_id,*,kind='population'):
     result=json.loads(row['result_json'] or '{}')
     saved=json.loads(previous[0]) if previous else None
     if saved and saved.get('research_origin','population')!=kind:raise ValueError('Immutable route origin mismatch')
-    result_fp=fingerprint({'status':row['status'],'result':result})
+    packet_row=store.connection.execute(f'select packet_json from {registry} where request_id=?',(request_id,)).fetchone()
+    packet_body=json.loads(packet_row[0]) if packet_row else {}
+    pilot_scope=packet_body.get('pilot_research')
+    route_version='prospective-execution-routing-v4' if isinstance(pilot_scope,dict) else 'population-routing-v1'
+    result_fp=fingerprint({'status':row['status'],'result':result,'route_version':route_version})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
     if history:return json.loads(history[0])
     if saved and saved.get('source_result_fingerprint')==result_fp:
@@ -87,6 +91,30 @@ def route(store,request_id,*,kind='population'):
             if row['status']=='suspended' and isinstance(validation_diagnostic,dict):
                 output['next_action']='Correct the recorded response contract before any separately authorized work; this rejected response is not promoted.'
                 output['wake']={'kind':'manual_contract_correction','automatic_retry':False}
+        if (kind=='population' and isinstance(pilot_scope,dict) and row['status']=='needs_data'
+                and isinstance(result.get('critique'),dict)
+                and result['critique'].get('decision')=='needs_data'):
+            diagnostic=result['critique'].get('diagnostic',{})
+            wake=result['critique'].get('wake',{})
+            if isinstance(diagnostic,dict) and wake.get('kind')=='prospective_observation_and_technical_task':
+                missing=diagnostic.get('required_missing_observations')
+                limits=diagnostic.get('limitations')
+                if not isinstance(missing,list) or not missing or not isinstance(limits,list):
+                    raise ValueError('Pilot technical route requires the validated critique evidence fields')
+                output.update(state='technical_task_required',
+                    local_resolution=result.get('local_resolution'),
+                    technical_task={'route_version':'prospective-execution-instrumentation-v1',
+                        'title':'Mesurer les ordres, rétrocessions et l’exécution passive HYPE',
+                        'evidence_question':diagnostic.get('testability'),
+                        'required_observations':missing,
+                        'engine_constraint':(next((item for item in limits if 'IOC engine' in item),None)
+                            or next((item for item in limits if 'passive' in item.lower()),None)),
+                        'historical_backfill_requested':False,
+                        'condition_for_reanalysis':'new authorized prospective evidence with a changed input fingerprint',
+                        'paper_or_orders_authorized':False},
+                    next_action='Traiter la tâche technique d’instrumentation et d’adaptation passive; relancer l’analyse seulement sur des preuves autorisées réellement nouvelles.',
+                    wake={'kind':'changed_authorized_prospective_evidence','historical_backfill_requested':False,
+                        'new_input_fingerprint_required':True,'execution_or_promotion_authorized':False})
     output['source_result_fingerprint']=result_fp
     output['supersedes_route_fingerprint']=fingerprint(saved) if saved else None
     if not saved:

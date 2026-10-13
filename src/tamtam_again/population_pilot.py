@@ -1,0 +1,528 @@
+"""Dedicated, non-renewing research allowance scoped to the three reviewed candidates."""
+import json
+from pathlib import Path
+import hashlib
+from copy import deepcopy
+
+from .engine import canonical, fingerprint
+from .validation import now_ms
+
+
+def validate_policy(policy):
+    if policy.get('version') != 'research-loop-pilot-v1' or policy.get('renewal') is not False:
+        raise ValueError('Explicit non-renewing research pilot policy required')
+    if policy.get('usage_mode') != 'subscription':
+        raise ValueError('This pilot is subscription-only')
+    admission = policy.get('admission', {})
+    if (admission.get('source') != 'historical-selection-20261012-f1-f4'
+            or admission.get('required_status') != 'credible_deep_dive_candidate'
+            or admission.get('cutoff_ms') != policy.get('evidence', {}).get('max_archive_cutoff_ms')
+            or not admission.get('owner_authorization') or 'does not grant' not in admission['owner_authorization']):
+        raise ValueError('Explicit research-only admission authorization and cutoff required')
+    limits = policy.get('pilot_limits', {})
+    expected = {'max_tasks': 3, 'max_calls': 6, 'max_input_tokens': 480000,
+                'max_output_tokens': 30000, 'max_duration_ms': 720000}
+    if limits != expected:
+        raise ValueError('Pilot allowance differs from the specifically authorized ceilings')
+    task = policy.get('task_policy', {})
+    if (task.get('version') != 'population-research-v1' or task.get('usage_mode') != 'subscription'
+            or task.get('max_model_calls') != 2 or task.get('timeout_seconds') != 120
+            or task.get('max_output_tokens') != 5000 or task.get('max_input_tokens_per_call') != 80000
+            or task.get('max_total_input_tokens') != 160000
+            or task.get('max_total_output_tokens') != 10000
+            or task.get('max_total_duration_ms') != 240000):
+        raise ValueError('Per-call and per-task research limits must remain bounded')
+    candidates = policy.get('selection', [])
+    if len(candidates) != 3 or {c.get('candidate') for c in candidates} != {'a880', '67f7', 'be504'}:
+        raise ValueError('Pilot scope must remain the three preselected candidates')
+    if len({c.get('address', '').lower() for c in candidates}) != 3:
+        raise ValueError('Distinct candidate addresses required')
+
+
+def initialize(store, policy):
+    validate_policy(policy)
+    store.connection.execute('create table if not exists population_research_pilot_allowances '
+        '(pilot_id text primary key,policy_fingerprint text not null,policy_json text not null,created_ms integer not null)')
+    store.connection.execute('create table if not exists population_research_pilot_tasks '
+        '(request_id text primary key,pilot_id text not null,candidate text not null,address text not null,'
+        'packet_fingerprint text not null,authorized_ms integer not null,state text not null,'
+        'foreign key(pilot_id) references population_research_pilot_allowances(pilot_id))')
+    store.connection.execute('create table if not exists population_research_pilot_calls '
+        '(request_id text not null,call_index integer not null,pilot_id text not null,state text not null,'
+        'reserved_ms integer not null,max_input_tokens integer not null,max_output_tokens integer not null,'
+        'max_duration_ms integer not null,actual_input_tokens integer,actual_output_tokens integer,'
+        'actual_duration_ms integer,provider_usage_json text,primary key(request_id,call_index))')
+    task_schema=store.connection.execute("select sql from sqlite_master where type='table' and name='population_research_pilot_tasks'").fetchone()[0]
+    if 'unique(pilot_id,candidate)' in task_schema.replace(' ','').lower():
+        # Earlier pilot drafts allowed one task per candidate. Preserve all rows
+        # while permitting a new task for the same candidate only after a new
+        # input fingerprint and within the same non-renewing task allowance.
+        store.connection.execute('begin immediate')
+        store.connection.execute('alter table population_research_pilot_tasks rename to population_research_pilot_tasks_v0')
+        store.connection.execute('create table population_research_pilot_tasks '
+            '(request_id text primary key,pilot_id text not null,candidate text not null,address text not null,'
+            'packet_fingerprint text not null,authorized_ms integer not null,state text not null,'
+            'foreign key(pilot_id) references population_research_pilot_allowances(pilot_id))')
+        store.connection.execute('insert into population_research_pilot_tasks select * from population_research_pilot_tasks_v0')
+        store.connection.execute('drop table population_research_pilot_tasks_v0')
+        store.connection.commit()
+    existing = store.connection.execute('select policy_fingerprint from population_research_pilot_allowances where pilot_id=?',
+        (policy['pilot_id'],)).fetchone()
+    fp = fingerprint(policy)
+    if existing and existing[0] != fp:
+        raise ValueError('Pilot id already bound to a different immutable policy')
+    if not existing:
+        store.connection.execute('insert into population_research_pilot_allowances values(?,?,?,?)',
+            (policy['pilot_id'], fp, canonical(policy), now_ms()))
+    store.connection.commit()
+
+
+def authorize_task(store, policy, *, request_id, candidate, address, packet_fingerprint_value, authorized_ms=None):
+    initialize(store, policy)
+    selected = {item['candidate']: item for item in policy['selection']}
+    item = selected.get(candidate)
+    if not item or item['address'].lower() != address.lower():
+        raise ValueError('Candidate is outside the exact authorized pilot scope')
+    if not request_id or not packet_fingerprint_value:
+        raise ValueError('Sealed task and packet fingerprint required')
+    stamp = now_ms() if authorized_ms is None else authorized_ms
+    old = store.connection.execute('select * from population_research_pilot_tasks where request_id=?',
+        (request_id,)).fetchone()
+    if old:
+        if (old['pilot_id'] == policy['pilot_id'] and old['candidate'] == candidate
+                and old['address'] == address.lower() and old['packet_fingerprint'] == packet_fingerprint_value):
+            return {'status': 'already_authorized', 'request_id': request_id}
+        raise ValueError('Task already has a different or consumed pilot authorization')
+    count = store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',
+        (policy['pilot_id'],)).fetchone()[0]
+    if count >= policy['pilot_limits']['max_tasks']:
+        raise ValueError('Dedicated pilot task allowance exhausted')
+    job = store.connection.execute('select status,packet_json from population_research_jobs where request_id=?',
+        (request_id,)).fetchone()
+    if not job or job['status'] != 'sealed':
+        raise ValueError('Only an exact sealed population research task can be authorized')
+    packet = json.loads(job['packet_json'])
+    if packet.get('fingerprint') != packet_fingerprint_value:
+        raise ValueError('Packet fingerprint does not match the sealed task')
+    store.connection.execute('insert into population_research_pilot_tasks values(?,?,?,?,?,?,?)',
+        (request_id, policy['pilot_id'], candidate, address.lower(), packet_fingerprint_value, stamp, 'authorized'))
+    store.connection.commit()
+    return {'status': 'authorized', 'request_id': request_id, 'candidate': candidate}
+
+
+def reserve_call(store, request_id, call_index, policy):
+    """Consume a worst-case reservation before provider entry; failed calls stay consumed."""
+    initialize(store, policy)
+    task = store.connection.execute('select pilot_id,state from population_research_pilot_tasks where request_id=?',
+        (request_id,)).fetchone()
+    if not task or task['pilot_id'] != policy['pilot_id'] or task['state'] not in {'authorized','needs_critique'}:
+        raise ValueError('Task lacks an active task-specific pilot authorization')
+    per_task = policy['task_policy']
+    if not 1 <= call_index <= per_task['max_model_calls']:
+        raise ValueError('Per-task model call ceiling exhausted')
+    old = store.connection.execute('select 1 from population_research_pilot_calls where request_id=? and call_index=?',
+        (request_id, call_index)).fetchone()
+    if old:
+        raise ValueError('Pilot call reservation already consumed; no retry')
+    limits = policy['pilot_limits']
+    rows = store.connection.execute('select count(*),coalesce(sum(max_input_tokens),0),'
+        'coalesce(sum(max_output_tokens),0),coalesce(sum(max_duration_ms),0) '
+        'from population_research_pilot_calls where pilot_id=?', (policy['pilot_id'],)).fetchone()
+    reserve = (per_task['max_input_tokens_per_call'], per_task['max_output_tokens'],
+               per_task['timeout_seconds'] * 1000)
+    if rows[0] + 1 > limits['max_calls']:
+        raise ValueError('Dedicated pilot call allowance exhausted')
+    if rows[1] + reserve[0] > limits['max_input_tokens']:
+        raise ValueError('Dedicated pilot input-token reservation exhausted')
+    if rows[2] + reserve[1] > limits['max_output_tokens']:
+        raise ValueError('Dedicated pilot output-token reservation exhausted')
+    if rows[3] + reserve[2] > limits['max_duration_ms']:
+        raise ValueError('Dedicated pilot duration reservation exhausted')
+    store.connection.execute('insert into population_research_pilot_calls '
+        '(request_id,call_index,pilot_id,state,reserved_ms,max_input_tokens,max_output_tokens,max_duration_ms) '
+        'values(?,?,?,\'reserved\',?,?,?,?)',
+        (request_id, call_index, policy['pilot_id'], now_ms(), *reserve))
+    store.connection.commit()
+    return {'max_input_tokens': reserve[0], 'max_output_tokens': reserve[1], 'max_duration_ms': reserve[2]}
+
+
+def record_provider_response(store, request_id, call_index, response):
+    usage = response.get('usage') if isinstance(response, dict) else None
+    if not isinstance(usage, dict):
+        store.connection.execute('update population_research_pilot_calls set state=\'response_received\',provider_usage_json=? '
+            'where request_id=? and call_index=?', (canonical({'usage': 'unknown'}), request_id, call_index))
+    else:
+        fields = (usage.get('input_tokens'), usage.get('output_tokens'), response.get('duration_ms'))
+        normalized = tuple(value if type(value) is int and value >= 0 else None for value in fields)
+        store.connection.execute('update population_research_pilot_calls set state=\'response_received\', '
+            'actual_input_tokens=?,actual_output_tokens=?,actual_duration_ms=?,provider_usage_json=? '
+            'where request_id=? and call_index=?', (*normalized, canonical(usage), request_id, call_index))
+    store.connection.commit()
+
+
+def mark_call_state(store, request_id, call_index, state):
+    allowed={'usage_validated','result_validated','structurally_revalidated','response_rejected','interrupted'}
+    if state not in allowed:raise ValueError('Known pilot inference attempt state required')
+    store.connection.execute('update population_research_pilot_calls set state=? where request_id=? and call_index=?',
+        (state,request_id,call_index))
+    store.connection.commit()
+
+
+def finish_task(store, request_id, state):
+    store.connection.execute('update population_research_pilot_tasks set state=? where request_id=?',
+        (state, request_id))
+    store.connection.commit()
+
+
+def adapt_required_data_objects_v1(response):
+    """Losslessly project structured missing-observation objects to string contract fields."""
+    if not isinstance(response, dict) or response.get('decision') != 'hypothesis':
+        raise ValueError('Adapter v1 applies only to a hypothesis response')
+    adapted = deepcopy(response)
+    hypothesis = adapted.get('hypothesis')
+    items = hypothesis.get('required_data') if isinstance(hypothesis, dict) else None
+    required_keys = {'index', 'observation', 'source', 'decision_use'}
+    if not isinstance(items, list) or not items or any(not isinstance(item, dict) or set(item) != required_keys
+            or not isinstance(item.get('observation'), str) or not item['observation'].strip()
+            or not isinstance(item.get('source'), str) or not item['source'].strip()
+            or not isinstance(item.get('decision_use'), str) or not item['decision_use'].strip()
+            or type(item.get('index')) is not int for item in items):
+        raise ValueError('Response does not have the exact unambiguous required-data object shape')
+    if [item['index'] for item in items] != list(range(len(items))):
+        raise ValueError('Required-data object indices are not a lossless ordered sequence')
+    hypothesis['required_data'] = [item['observation'] for item in items]
+    hypothesis['required_data_context_v1'] = deepcopy(items)
+    return adapted
+
+
+def revalidate_and_critique(store, policy, request_id):
+    """Apply only the versioned structural adapter, then use the task's remaining critique call."""
+    from .population_runtime import (STATES, _initialize_call_artifacts, _advance_call,
+        _reserve_call, _safe_response_parts, call, parse_response, validate_response, verify)
+    job = store.connection.execute('select * from population_research_jobs where request_id=?',
+        (request_id,)).fetchone()
+    auth = store.connection.execute('select pilot_id,state from population_research_pilot_tasks where request_id=?',
+        (request_id,)).fetchone()
+    if not job or job['status'] != 'suspended' or not auth or auth['pilot_id'] != policy['pilot_id']:
+        return {'status': 'unchanged_no_inference', 'request_id': request_id}
+    prior = json.loads(job['result_json'] or '{}')
+    diagnostic = prior.get('validation_diagnostic') or {}
+    if diagnostic.get('code') != 'required_data_invalid':
+        return {'status': 'unchanged_no_inference', 'request_id': request_id,
+            'reason': 'no registered deterministic adapter for the recorded rejection'}
+    if auth['state'] != 'suspended':
+        return {'status': 'unchanged_no_inference', 'request_id': request_id,
+            'reason': 'task is not in the expected rejected-response state'}
+    raw = prior.get('raw_proposal')
+    if not isinstance(raw, str):
+        return {'status': 'suspended', 'request_id': request_id, 'reason': 'rejected raw proposal is absent'}
+    source = parse_response(raw)
+    adapted = adapt_required_data_objects_v1(source)
+    packet = json.loads(job['packet_json'])
+    validate_response(adapted, packet, request_id=request_id)
+    source_sha = hashlib.sha256(raw.encode()).hexdigest()
+    mark_call_state(store,request_id,1,'structurally_revalidated')
+    store.connection.execute('create table if not exists population_research_adaptation_artifacts '
+        '(request_id text not null,adapter_version text not null,source_response_sha256 text not null,'
+        'source_response_json text not null,adapted_response_json text not null,validation_state text not null,'
+        'created_ms integer not null,primary key(request_id,adapter_version))')
+    artifact = store.connection.execute('select source_response_sha256,adapted_response_json from '
+        'population_research_adaptation_artifacts where request_id=? and adapter_version=?',
+        (request_id, 'required-data-object-projection-v1')).fetchone()
+    if artifact:
+        if artifact['source_response_sha256'] != source_sha or artifact['adapted_response_json'] != canonical(adapted):
+            raise ValueError('Structural adaptation artifact identity changed')
+        return {'status': 'already_adapted', 'request_id': request_id,
+            'adapter_version': 'required-data-object-projection-v1'}
+    store.connection.execute('insert into population_research_adaptation_artifacts values(?,?,?,?,?,?,?)',
+        (request_id, 'required-data-object-projection-v1', source_sha, canonical(source),
+         canonical(adapted), 'revalidated', now_ms()))
+    prior['structural_adaptation'] = {'adapter_version': 'required-data-object-projection-v1',
+        'source_response_sha256': source_sha, 'validation_state': 'revalidated',
+        'adapted_proposal': adapted}
+    store.connection.execute('update population_research_jobs set result_json=?,updated_ms=? where request_id=? and status=\'suspended\'',
+        (canonical(prior), now_ms(), request_id))
+    store.connection.execute("update population_research_pilot_tasks set state='needs_critique' where request_id=? and state='suspended'",
+        (request_id,))
+    store.connection.commit()
+    try:
+        verify(policy['task_policy']['model'])
+        store.connection.execute("update population_research_jobs set status='running',updated_ms=? where request_id=? and status='suspended'",
+            (now_ms(), request_id));store.connection.commit()
+        _initialize_call_artifacts(store)
+        existing_usage=json.loads(job['usage_json'] or '[]')
+        call_index=len(existing_usage)+1
+        if call_index != 2:
+            raise ValueError('Critique is the only remaining call after one proposal; no task retry')
+        task_policy=policy['task_policy']
+        if (sum(int(u.get('input_tokens') or 0) for u in existing_usage)+task_policy['max_input_tokens_per_call']>task_policy['max_total_input_tokens']
+                or sum(int(u.get('output_tokens') or 0) for u in existing_usage)+task_policy['max_output_tokens']>task_policy['max_total_output_tokens']
+                or sum(int(u.get('duration_ms') or 0) for u in existing_usage)+task_policy['timeout_seconds']*1000>task_policy['max_total_duration_ms']):
+            raise ValueError('Per-task aggregate subscription ceiling prevents the single critique; no retry')
+        reserve_call(store, request_id, call_index, policy)
+        _reserve_call(store, 'population', request_id, call_index)
+        captured=False
+        def capture(response):
+            nonlocal captured
+            record_provider_response(store, request_id, call_index, response)
+            body, metadata = _safe_response_parts(response)
+            _advance_call(store, 'population', request_id, call_index, 'response_received',
+                time_field='response_received_ms', response_json=body, metadata_json=metadata)
+            captured=True
+        prompt=('Review only causal consistency and testability. This is the same preserved proposal '
+            'after a deterministic, versioned structural projection; do not rewrite its content. No tools. '
+            'Do not claim profitability or authorize strategy promotion. Return JSON with decision '
+            'consistent|needs_data|non_identifiable|unsupported_mechanism|reject, diagnostic and wake. '
+            'Treat prospective lifecycle, continuous order/quote timing and fee schedule observations as required '
+            'where the packet does not contain them. Packet:\n'+canonical(packet)+'\nProposal:\n'+canonical(adapted))
+        try:
+            critique_raw, measured=call(policy['task_policy'], prompt, on_response=capture)
+        except Exception as exc:
+            failed=prior
+            failed.update(error_type=type(exc).__name__, validation_diagnostic=getattr(exc,'diagnostic',
+                {'stage':'provider_call','code':'critique_call_failed','field':'critique','observed':type(exc).__name__,
+                 'limit':'one critique only; no retry'}))
+            store.connection.execute("update population_research_jobs set status='suspended',result_json=?,usage_json=?,updated_ms=? where request_id=? and status='running'",
+                (canonical(failed),canonical(existing_usage),now_ms(),request_id));store.connection.commit()
+            _advance_call(store,'population',request_id,call_index,'interrupted' if not captured else 'rejected',
+                diagnostic_json=canonical(failed['validation_diagnostic']))
+            finish_task(store, request_id, 'suspended')
+            return {'status':'suspended','request_id':request_id,'validation_diagnostic':failed['validation_diagnostic']}
+        usage=existing_usage+[measured]
+        mark_call_state(store,request_id,call_index,'usage_validated')
+        _advance_call(store,'population',request_id,call_index,'response_validated',time_field='response_validated_ms')
+        critique=parse_response(critique_raw)
+        if not critique.get('diagnostic') or not isinstance(critique.get('wake'),dict) or critique.get('decision') not in STATES|{'consistent'}:
+            raise ValueError('Critique response did not satisfy the existing decision contract')
+        mark_call_state(store,request_id,call_index,'result_validated')
+        _advance_call(store,'population',request_id,call_index,'result_validated',time_field='result_validated_ms')
+        prior.update(proposal=adapted,critique=critique,structural_adaptation={
+            'adapter_version':'required-data-object-projection-v1','source_response_sha256':source_sha,
+            'validation_state':'revalidated','original_rejection_preserved':True},
+            promotion_authorized=False,profitability_proven=False)
+        state='hypothesis_recorded' if critique['decision']=='consistent' else critique['decision']
+        if state=='needs_data' and isinstance(critique.get('diagnostic'),dict):
+            prior['local_resolution']={'version':'population-pilot-local-resolution-v1',
+                'state':'not_locally_resolvable',
+                'checked_sources':['the sealed cutoff-only account scope report',
+                    'the versioned a880/HYPE deterministic episode economics report'],
+                'unavailable_observations':critique['diagnostic'].get('required_missing_observations',[]),
+                'reason':'the decision requires prospective order lifecycle, local clock, fee schedule and reconciliation evidence absent from the sealed cutoff; historical backfill is explicitly not requested',
+                'new_input_fingerprint_required':True,'model_calls':0}
+        from .research import usage_accounting
+        accounting=usage_accounting(usage);prior['usage_accounting']=accounting
+        store.connection.execute('update population_research_jobs set status=?,result_json=?,usage_json=?,actual_cost_usd=NULL,updated_ms=? where request_id=? and status=\'running\'',
+            (state,canonical(prior),canonical(usage),now_ms(),request_id));store.connection.commit()
+        finish_task(store, request_id, state)
+        from .population_routing import route
+        routed=route(store,request_id)
+        if routed.get('state')=='needs_data' and state=='hypothesis_recorded':
+            from .research_needs import register
+            local=register(store,request_id)
+        elif routed.get('state')=='needs_data':
+            local=prior.get('local_resolution')
+        else:local=None
+        return {'status':state,'request_id':request_id,'route':routed,'local_resolution':local,
+            'adapter_version':'required-data-object-projection-v1','usage_accounting':accounting}
+    except Exception as exc:
+        diagnostic=getattr(exc,'diagnostic',{'stage':'adapted_critique','code':'deterministic_adaptation_or_critique_failed',
+            'field':'adapted_response','observed':type(exc).__name__,'limit':'preserve artifacts; no retry'})
+        prior['adapted_critique_diagnostic']=diagnostic
+        store.connection.execute("update population_research_jobs set status='suspended',result_json=?,updated_ms=? where request_id=? and status in ('running','suspended')",
+            (canonical(prior),now_ms(),request_id));store.connection.commit()
+        finish_task(store,request_id,'suspended')
+        return {'status':'suspended','request_id':request_id,'diagnostic':diagnostic}
+
+
+def report(store, policy):
+    initialize(store, policy)
+    p = policy['pilot_id']
+    calls = store.connection.execute('select count(*),coalesce(sum(max_input_tokens),0),'
+        'coalesce(sum(max_output_tokens),0),coalesce(sum(max_duration_ms),0),'
+        'coalesce(sum(actual_input_tokens),0),coalesce(sum(actual_output_tokens),0),'
+        'coalesce(sum(actual_duration_ms),0) from population_research_pilot_calls where pilot_id=?', (p,)).fetchone()
+    tasks = store.connection.execute('select candidate,request_id,state from population_research_pilot_tasks '
+        'where pilot_id=? order by authorized_ms,candidate', (p,)).fetchall()
+    return {'pilot_id': p, 'tasks': [dict(row) for row in tasks],
+        'calls_reserved': calls[0], 'input_tokens_reserved': calls[1], 'output_tokens_reserved': calls[2],
+        'duration_ms_reserved': calls[3], 'input_tokens_reported': calls[4],
+        'output_tokens_reported': calls[5], 'duration_ms_reported': calls[6],
+        'non_renewing': True}
+
+
+def _historically_qualified(store, network, address, cutoff):
+    from .research_memory import authorized_account_history
+    if not authorized_account_history(store, network, address, cutoff):
+        return False, 'account history is outside the authorized archive scope'
+    row = store.connection.execute('select status,decision_json from population_historical_decisions '
+        'where network=? and address=? and as_of_ms<=? order by as_of_ms desc,decision_id desc limit 1',
+        (network, address.lower(), cutoff)).fetchone()
+    if not row:
+        return False, 'no reviewed historical decision is available'
+    try:
+        decision = json.loads(row['decision_json'])
+    except (TypeError, ValueError):
+        return False, 'historical decision payload is invalid'
+    # User explicitly authorized this isolated descriptive-research exception.
+    # Preserve the false economic-validation state as evidence; never mutate the
+    # shared gate or imply strategy/experiment eligibility.
+    if row['status'] != 'credible_deep_dive_candidate':
+        return False, 'candidate is not one of the archived historical prescreens'
+    return True, 'authorized historical prescreen verified; economic validation remains false'
+
+
+def _a880_summary(path):
+    raw = Path(path).read_bytes()
+    source = json.loads(raw)
+    keep = ('version', 'cutoff_utc', 'source_fill_count', 'source_fill_page_count',
+        'source_fill_page_incomplete_count', 'position_chain', 'episode_summary', 'by_segment',
+        'by_utc_exit_day', 'duration_groups', 'maker_taker_groups', 'inversion_count',
+        'inversion_split_by_crossed', 'funding', 'closedPnl_raw_control', 'order_book', 'limitations')
+    return {k: source[k] for k in keep if k in source}, hashlib.sha256(raw).hexdigest()
+
+
+def _seal_candidate(store, policy, candidate, *, clock_ms=None):
+    from .population_packet import packet_for_authorized_pilot
+    item = next(row for row in policy['selection'] if row['candidate'] == candidate)
+    clock = now_ms() if clock_ms is None else clock_ms
+    cutoff = policy['admission']['cutoff_ms']
+    admitted, reason = _historically_qualified(store, policy['network'], item['address'], cutoff)
+    if not admitted:
+        return {'status': 'candidate_ineligible', 'candidate': candidate, 'reason': reason}
+    task_policy = policy['task_policy']
+    base = packet_for_authorized_pilot(store, policy['network'], item['address'],
+        as_of_ms=cutoff, max_chars=task_policy['max_packet_chars'],
+        allowed_addresses=[entry['address'] for entry in policy['selection']])
+    if base.get('status') != 'packet_ready':
+        return {'status': base.get('status', 'needs_data'), 'candidate': candidate,
+            'reason': base.get('reason', 'authorized descriptive packet not ready')}
+    packet = base['packet']
+    activity = packet.get('observations', {}).get('activity', {})
+    if not activity.get('observed_unique_fills'):
+        return {'status': 'needs_data', 'candidate': candidate,
+            'reason': 'no observed activity to motivate descriptive inference'}
+    if not activity.get('observed_fill_content_fingerprint'):
+        return {'status': 'needs_data', 'candidate': candidate,
+            'reason': 'fill content fingerprint absent; equal counts do not establish unchanged input'}
+    source_refs = []
+    if candidate == 'a880':
+        summary, digest = _a880_summary(Path(__file__).parents[2] / policy['evidence']['a880_hype_economics'])
+        if summary.get('cutoff_utc') != '2026-10-12T07:16:34.195+00:00':
+            raise ValueError('a880 deterministic source report differs from its versioned cutoff')
+        packet['observations']['a880_hype_episode_economics'] = summary
+        source_refs.append('docs/continuous-research/A880-HYPE-EPISODE-ECONOMICS-20261013.json#sha256:' + digest)
+    packet['pilot_research'] = {k: item[k] for k in ('candidate', 'rank', 'research_interest',
+        'observability', 'paper_engine_compatibility') if k in item}
+    if item.get('question'):
+        packet['pilot_research']['question'] = item['question']
+    packet['pilot_research'].update({'pilot_id': policy['pilot_id'], 'policy_version': policy['version'],
+        'economic_validation': 'false; this is owner-authorized descriptive research only',
+        'execution_compatibility_is_separate': True, 'promotion_authorized': False,
+        'admission_cutoff_ms': cutoff})
+    packet['evidence_refs'].extend(source_refs)
+    packet['research_input_fingerprint'] = fingerprint({'base': packet['research_input_fingerprint'],
+        'pilot_id': policy['pilot_id'], 'candidate': candidate, 'question': item.get('question'),
+        'deterministic_source_hashes': [ref.rsplit(':', 1)[-1] for ref in source_refs]})
+    packet.pop('fingerprint', None)
+    packet['fingerprint'] = fingerprint(packet)
+    digest = packet['research_input_fingerprint']
+    existing = store.connection.execute('select request_id,status from population_research_jobs '
+        'where network=? and address=? and input_fingerprint=?',
+        (policy['network'], item['address'].lower(), digest)).fetchone()
+    if existing:
+        return {'status': 'unchanged_no_inference', 'candidate': candidate,
+            'request_id': existing['request_id'], 'source_status': existing['status']}
+    request_id = fingerprint({'network': policy['network'], 'address': item['address'].lower(),
+        'research_input_fingerprint': digest, 'pilot_id': policy['pilot_id']})
+    from .population_research import initialize as init_jobs
+    init_jobs(store)
+    store.connection.execute('begin immediate')
+    try:
+        store.connection.execute('insert into population_research_jobs '
+            '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+            'values(?,?,?,?,?,?,? ,\'sealed\',?)',
+            (request_id, policy['network'], item['address'].lower(), digest, canonical(packet),
+             canonical(task_policy), clock, clock))
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback()
+        raise
+    auth = authorize_task(store, policy, request_id=request_id, candidate=candidate,
+        address=item['address'], packet_fingerprint_value=packet['fingerprint'], authorized_ms=clock)
+    return {'status': 'sealed', 'candidate': candidate, 'request_id': request_id,
+        'packet_fingerprint': packet['fingerprint'], 'authorization': auth, 'model_calls': 0}
+
+
+def tick_locked(store, policy, *, dispatch=True, clock_ms=None):
+    """One bounded pilot transition, called under the existing research scheduler lock."""
+    validate_policy(policy)
+    initialize(store, policy)
+    clock = now_ms() if clock_ms is None else clock_ms
+    existing = store.connection.execute('select t.request_id,t.candidate,j.status from population_research_pilot_tasks t '
+        'join population_research_jobs j using(request_id) where t.pilot_id=? order by t.authorized_ms,t.candidate',
+        (policy['pilot_id'],)).fetchall()
+    if existing:
+        pending = next((row for row in existing if row['status'] == 'sealed'), None)
+        if pending and dispatch:
+            from .population_runtime import execute_job
+            job = store.connection.execute('select * from population_research_jobs where request_id=?',
+                (pending['request_id'],)).fetchone()
+            result = execute_job(store, pending['request_id'], job)
+            from .population_routing import route
+            routed = route(store, pending['request_id'])
+            plan = None
+            if routed.get('state') == 'needs_data':
+                from .research_needs import register
+                plan = register(store, pending['request_id'], clock_ms=clock)
+            return {'status': result['status'], 'candidate': pending['candidate'],
+                'request_id': pending['request_id'], 'route': routed, 'local_resolution': plan,
+                'allowance': report(store, policy)}
+        terminal = existing[-1]
+        if terminal['status'] not in {'sealed', 'running'}:
+            if terminal['status'] == 'suspended':
+                saved=store.connection.execute('select result_json from population_research_jobs where request_id=?',
+                    (terminal['request_id'],)).fetchone()
+                prior=json.loads(saved[0] or '{}') if saved else {}
+                if (prior.get('validation_diagnostic') or {}).get('code') == 'required_data_invalid':
+                    if not dispatch:
+                        return {'status':'structural_revalidation_ready','candidate':terminal['candidate'],
+                            'request_id':terminal['request_id'],'model_calls':0,'allowance':report(store,policy)}
+                    result=revalidate_and_critique(store,policy,terminal['request_id'])
+                    return {**result,'candidate':terminal['candidate'],'allowance':report(store,policy)}
+            from .population_routing import route
+            routed = route(store, terminal['request_id'])
+            if routed.get('state') == 'needs_data':
+                updated = _seal_candidate(store, policy, terminal['candidate'], clock_ms=clock)
+                if updated.get('status') == 'sealed' and dispatch:
+                    from .population_runtime import execute_job
+                    job = store.connection.execute('select * from population_research_jobs where request_id=?',
+                        (updated['request_id'],)).fetchone()
+                    executed = execute_job(store, updated['request_id'], job)
+                    new_route = route(store, updated['request_id'])
+                    return {**updated, 'status': executed['status'], 'route': new_route,
+                        'prior_request_id': terminal['request_id'], 'allowance': report(store, policy)}
+                return {**updated, 'prior_request_id': terminal['request_id'],
+                    'route': routed, 'allowance': report(store, policy)}
+            return {'status': 'already_processed', 'candidate': terminal['candidate'],
+                'request_id': terminal['request_id'], 'route': routed, 'allowance': report(store, policy)}
+        return {'status': 'waiting', 'candidate': terminal['candidate'],
+            'request_id': terminal['request_id'], 'allowance': report(store, policy)}
+    for item in sorted(policy['selection'], key=lambda row: row['rank']):
+        result = _seal_candidate(store, policy, item['candidate'], clock_ms=clock)
+        if result.get('status') == 'candidate_ineligible':
+            continue
+        if result.get('status') == 'sealed' and dispatch:
+            from .population_runtime import execute_job
+            job = store.connection.execute('select * from population_research_jobs where request_id=?',
+                (result['request_id'],)).fetchone()
+            executed = execute_job(store, result['request_id'], job)
+            from .population_routing import route
+            routed = route(store, result['request_id'])
+            plan = None
+            if routed.get('state') == 'needs_data':
+                from .research_needs import register
+                plan = register(store, result['request_id'], clock_ms=clock)
+            result.update(status=executed['status'], route=routed, local_resolution=plan,
+                allowance=report(store, policy))
+        return {**result, 'allowance': report(store, policy)}
+    return {'status': 'no_admissible_candidate', 'allowance': report(store, policy)}

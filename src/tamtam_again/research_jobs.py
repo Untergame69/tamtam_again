@@ -22,5 +22,12 @@ def request_count(store):
                     # states prove that a paper research attempt was engaged.
                     total+=store.connection.execute("select count(*) from paper_research_jobs where status not in ('budget_required','archived')").fetchone()[0]
             else:
-                total+=store.connection.execute('select count(*) from '+name).fetchone()[0]
+                if kind=='population' and store.connection.execute(
+                        "select 1 from sqlite_master where type='table' and name='population_research_pilot_tasks'").fetchone():
+                    # The dedicated pilot carries its own immutable allowance and must
+                    # neither borrow from nor consume the pre-existing shared budget.
+                    total+=store.connection.execute('select count(*) from population_research_jobs j '
+                        'where not exists(select 1 from population_research_pilot_tasks p where p.request_id=j.request_id)').fetchone()[0]
+                else:
+                    total+=store.connection.execute('select count(*) from '+name).fetchone()[0]
     return total

@@ -134,3 +134,54 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
                 'required_chars':len(canonical(packet)),'max_chars':max_chars,
                 'evidence_refs':packet['evidence_refs']}
     return {'status':'packet_ready','packet':packet}
+
+
+def packet_for_authorized_pilot(store,network,address,*,as_of_ms,max_chars,allowed_addresses):
+    """Versioned cutoff-only adapter for owner-authorized research on an existing prescreen.
+
+    The general packet path excludes any account with an open prospective plan.
+    This narrow adapter uses one already-archived descriptive scope report at a
+    cutoff proven not to intersect an unreleased period; it never reads raw
+    account history, prospective outcomes, memory, or wakes.
+    """
+    address=address.lower()
+    if address not in {value.lower() for value in allowed_addresses}:
+        raise ValueError('Exact pilot address allowlist required')
+    if type(as_of_ms) is not int or as_of_ms<0 or type(max_chars) is not int or max_chars<1:
+        raise ValueError('Explicit pilot cutoff and positive packet budget required')
+    from .research_memory import authorized_account_history
+    if not authorized_account_history(store,network,address,as_of_ms):
+        raise ValueError('Pilot cutoff intersects an unreleased or unauthorized account period')
+    if not store.connection.execute("select 1 from sqlite_master where name='account_scope_reports'").fetchone():
+        return {'status':'needs_data','reason':'population scope registry absent'}
+    row=store.connection.execute('select report_id,available_ms,payload_json from account_scope_reports '
+        'where network=? and address=? and available_ms<=? order by available_ms desc,rowid desc limit 1',
+        (network,address,as_of_ms)).fetchone()
+    if not row:
+        return {'status':'needs_data','reason':'no authorized descriptive scope report exists at the pilot cutoff'}
+    report=json.loads(row['payload_json'])
+    if report.get('address',address).lower()!=address:
+        raise ValueError('Scope report address does not match the pilot allowlist')
+    from .adaptation import population_descriptor
+    fields=('mode','role','subaccounts','perp_dexes_observed','spot_observed','spot_inventory','markets',
+        'simultaneous_position_snapshot','activity','current_pass_behavior_profile','market_mechanisms',
+        'fill_coverage','capital_aggregation','external_hedges')
+    observations={key:report[key] for key in fields if key in report}
+    packet={'schema_version':'population-descriptive-pilot-adapter-v1','network':network,'address':address,
+        'research_input_fingerprint':fingerprint(population_descriptor(report)),
+        'available_ms':row['available_ms'],'evidence_refs':['account_scope_reports:'+row['report_id']],
+        'observations':observations,'qualification':{'performance':'unproven',
+            'observability':'partial_public_inventory','reproducibility':'unproven'},
+        'research_contract':{'purpose':'owner-authorized descriptive research; no strategy or execution approval',
+            'supported_decisions':['hypothesis','needs_data','non_identifiable','unsupported_mechanism','reject'],
+            'profitability_claim_authorized':False,'strategy_promotion_authorized':False,
+            'live_follower_signal':False},
+        'limits':['only the archived scope report available by the explicit pilot cutoff is included',
+            'no raw account pages, released prospective outcomes, memory or observation wakes are read',
+            'the historic prescreen does not constitute economic validation or an execution qualification']}
+    packet['pilot_packet_adapter']='population-descriptive-pilot-adapter-v1'
+    packet['fingerprint']=fingerprint(packet)
+    if len(canonical(packet))>max_chars:
+        return {'status':'needs_data','reason':'authorized descriptive report exceeds pilot packet budget',
+            'required_chars':len(canonical(packet)),'max_chars':max_chars}
+    return {'status':'packet_ready','packet':packet}

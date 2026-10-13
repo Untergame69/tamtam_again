@@ -1,0 +1,178 @@
+{
+  "schema_version": "research-loop-pilot-proof-v1",
+  "pilot_id": "research-loop-pilot-20261013-v1",
+  "policy_version": "research-loop-pilot-v1",
+  "policy_fingerprint": "8acf153b3761722be0be988ce00b419e4e7a60aa89d6aaf8853ec57deefc7fca",
+  "historical_cutoff_ms": 1791789394195,
+  "candidate": "a880",
+  "request_id": "b11881eee7db616f972569ef89ab0dcf6ef5b59e1f8a7d6d3db36262b20aea31",
+  "input_fingerprint": "62d4bbfb6fa6ffddbc3d2628b25c60f5fb5115196e4204024d590ba3431a08f5",
+  "packet_fingerprint": "c2e92dc88d35641c80d85972928ad05e3ae6502d59127a4d69ee7c2d6d3c6f5a",
+  "source_report_sha256": "88a04ac81e68b1cfaeaf4d5c87f4016c42e8afa158e8f6e5b01168e450896529",
+  "job_status": "needs_data",
+  "provider_attempts": [
+    {
+      "call_index": 1,
+      "state": "structurally_revalidated",
+      "input_tokens": 65770,
+      "output_tokens": 2344,
+      "duration_ms": 84648,
+      "cost_status": "included",
+      "cost_usd_declared": 0.0
+    },
+    {
+      "call_index": 2,
+      "state": "result_validated",
+      "input_tokens": 67258,
+      "output_tokens": 546,
+      "duration_ms": 22082,
+      "cost_status": "included",
+      "cost_usd_declared": 0.0
+    }
+  ],
+  "structural_adapter": {
+    "adapter_version": "required-data-object-projection-v1",
+    "source_response_sha256": "0146d2bc845b253f0cf16b8c77e8ceb3bef1fcd82e06f3497318cf79193961d2",
+    "validation_state": "revalidated"
+  },
+  "original_validation_diagnostic_preserved": {
+    "code": "required_data_invalid",
+    "field": "hypothesis.required_data",
+    "limit": "list of nonempty strings",
+    "observed": "list",
+    "stage": "result_validation"
+  },
+  "validated_decision": {
+    "state": "needs_data",
+    "critique": "needs_data",
+    "required_missing_observations": [
+      "Authorized prospective decision and complete order lifecycle records, including unfilled orders, cancellations, replacements and order-to-fill links.",
+      "Continuous sequenced order, quote, depth and trade timing with local receipt clocks, clock-offset measurements, execution delays and explicit capture gaps.",
+      "Applicable account fee and rebate schedules, schedule changes, fee currency and settlement reconciliation.",
+      "Continuous inventory and ledger reconciliation with initial and terminal valuations, funding, transfers, shared-collateral context and explicit external-hedge coverage.",
+      "A prospectively fixed attribution protocol covering the full order population, markout horizons, boundaries, reversal allocation, missingness and dependent observations."
+    ]
+  },
+  "local_resolution": {
+    "checked_sources": [
+      "the sealed cutoff-only account scope report",
+      "the versioned a880/HYPE deterministic episode economics report"
+    ],
+    "model_calls": 0,
+    "new_input_fingerprint_required": true,
+    "reason": "the decision requires prospective order lifecycle, local clock, fee schedule and reconciliation evidence absent from the sealed cutoff; historical backfill is explicitly not requested",
+    "state": "not_locally_resolvable",
+    "unavailable_observations": [
+      "Authorized prospective decision and complete order lifecycle records, including unfilled orders, cancellations, replacements and order-to-fill links.",
+      "Continuous sequenced order, quote, depth and trade timing with local receipt clocks, clock-offset measurements, execution delays and explicit capture gaps.",
+      "Applicable account fee and rebate schedules, schedule changes, fee currency and settlement reconciliation.",
+      "Continuous inventory and ledger reconciliation with initial and terminal valuations, funding, transfers, shared-collateral context and explicit external-hedge coverage.",
+      "A prospectively fixed attribution protocol covering the full order population, markout horizons, boundaries, reversal allocation, missingness and dependent observations."
+    ],
+    "version": "population-pilot-local-resolution-v1"
+  },
+  "persistent_route": {
+    "created_ms": 1791903300061,
+    "diagnostic": {
+      "causal_consistency": "The preserved proposal is consistent as a descriptive, falsifiable hypothesis. It separates observed signed-fee accounting from an unidentified rebate-aware decision rule and does not infer causal incentives, execution feasibility or account-wide economics from completed fills.",
+      "historical_support": "The reported bounded accounting identity is coherent: price cash flow minus signed fees plus strictly attributed funding equals 520.02868669 USDC. This identifies a fee contribution within the selected archive scope, not a reconciled account return or a causal trading mechanism.",
+      "limitations": [
+        "Historical receipt availability, unfilled orders and queue priority cannot be recovered from this packet.",
+        "Incomplete pages, censored inventory and the position-chain rupture preclude complete historical attribution.",
+        "Maker-only and mixed episode comparisons condition on realized execution outcomes and cannot identify a passive-execution causal effect.",
+        "The current IOC engine cannot test the proposed passive mechanism as-is; this technical limitation does not refute the mechanism."
+      ],
+      "required_missing_observations": [
+        "Authorized prospective decision and complete order lifecycle records, including unfilled orders, cancellations, replacements and order-to-fill links.",
+        "Continuous sequenced order, quote, depth and trade timing with local receipt clocks, clock-offset measurements, execution delays and explicit capture gaps.",
+        "Applicable account fee and rebate schedules, schedule changes, fee currency and settlement reconciliation.",
+        "Continuous inventory and ledger reconciliation with initial and terminal valuations, funding, transfers, shared-collateral context and explicit external-hedge coverage.",
+        "A prospectively fixed attribution protocol covering the full order population, markout horizons, boundaries, reversal allocation, missingness and dependent observations."
+      ],
+      "review_scope": "Content preserved. No profitability finding, execution authorization or strategy promotion is issued.",
+      "testability": "Prospective observations can test fee semantics, settlement and component attribution. Whether rebates caused quoting or inventory decisions remains unidentified without policy evidence and, for an incentive-effect claim, a separately justified intervention or exogenous fee change."
+    },
+    "economic_rejection": false,
+    "evidence_refs": [
+      "population_research:b11881eee7db616f972569ef89ab0dcf6ef5b59e1f8a7d6d3db36262b20aea31"
+    ],
+    "local_resolution": {
+      "checked_sources": [
+        "the sealed cutoff-only account scope report",
+        "the versioned a880/HYPE deterministic episode economics report"
+      ],
+      "model_calls": 0,
+      "new_input_fingerprint_required": true,
+      "reason": "the decision requires prospective order lifecycle, local clock, fee schedule and reconciliation evidence absent from the sealed cutoff; historical backfill is explicitly not requested",
+      "state": "not_locally_resolvable",
+      "unavailable_observations": [
+        "Authorized prospective decision and complete order lifecycle records, including unfilled orders, cancellations, replacements and order-to-fill links.",
+        "Continuous sequenced order, quote, depth and trade timing with local receipt clocks, clock-offset measurements, execution delays and explicit capture gaps.",
+        "Applicable account fee and rebate schedules, schedule changes, fee currency and settlement reconciliation.",
+        "Continuous inventory and ledger reconciliation with initial and terminal valuations, funding, transfers, shared-collateral context and explicit external-hedge coverage.",
+        "A prospectively fixed attribution protocol covering the full order population, markout horizons, boundaries, reversal allocation, missingness and dependent observations."
+      ],
+      "version": "population-pilot-local-resolution-v1"
+    },
+    "next_action": "Traiter la tâche technique d’instrumentation et d’adaptation passive; relancer l’analyse seulement sur des preuves autorisées réellement nouvelles.",
+    "promotion_authorized": false,
+    "request_id": "b11881eee7db616f972569ef89ab0dcf6ef5b59e1f8a7d6d3db36262b20aea31",
+    "research_origin": "population",
+    "source_result_fingerprint": "04c2a66f4b70ad173443a007257644cc95dc7fa7ad2c5c9eaae19bca4e881dbc",
+    "source_status": "needs_data",
+    "state": "technical_task_required",
+    "supersedes_route_fingerprint": "e13c6398c94cbceb721e4b66cd308b5444eca173c57ce2321ad40eb1fcdf9158",
+    "technical_task": {
+      "condition_for_reanalysis": "new authorized prospective evidence with a changed input fingerprint",
+      "engine_constraint": "The current IOC engine cannot test the proposed passive mechanism as-is; this technical limitation does not refute the mechanism.",
+      "evidence_question": "Prospective observations can test fee semantics, settlement and component attribution. Whether rebates caused quoting or inventory decisions remains unidentified without policy evidence and, for an incentive-effect claim, a separately justified intervention or exogenous fee change.",
+      "historical_backfill_requested": false,
+      "paper_or_orders_authorized": false,
+      "required_observations": [
+        "Authorized prospective decision and complete order lifecycle records, including unfilled orders, cancellations, replacements and order-to-fill links.",
+        "Continuous sequenced order, quote, depth and trade timing with local receipt clocks, clock-offset measurements, execution delays and explicit capture gaps.",
+        "Applicable account fee and rebate schedules, schedule changes, fee currency and settlement reconciliation.",
+        "Continuous inventory and ledger reconciliation with initial and terminal valuations, funding, transfers, shared-collateral context and explicit external-hedge coverage.",
+        "A prospectively fixed attribution protocol covering the full order population, markout horizons, boundaries, reversal allocation, missingness and dependent observations."
+      ],
+      "route_version": "prospective-execution-instrumentation-v1",
+      "title": "Mesurer les ordres, rétrocessions et l’exécution passive HYPE"
+    },
+    "validation_diagnostic": {
+      "code": "required_data_invalid",
+      "field": "hypothesis.required_data",
+      "limit": "list of nonempty strings",
+      "observed": "list",
+      "stage": "result_validation"
+    },
+    "wake": {
+      "execution_or_promotion_authorized": false,
+      "historical_backfill_requested": false,
+      "kind": "changed_authorized_prospective_evidence",
+      "new_input_fingerprint_required": true
+    }
+  },
+  "technical_task_issue": "TAMTAM_AGAIN-14",
+  "allowance": {
+    "pilot_id": "research-loop-pilot-20261013-v1",
+    "tasks": [
+      {
+        "candidate": "a880",
+        "request_id": "b11881eee7db616f972569ef89ab0dcf6ef5b59e1f8a7d6d3db36262b20aea31",
+        "state": "needs_data"
+      }
+    ],
+    "calls_reserved": 2,
+    "input_tokens_reserved": 160000,
+    "output_tokens_reserved": 10000,
+    "duration_ms_reserved": 240000,
+    "input_tokens_reported": 133028,
+    "output_tokens_reported": 2890,
+    "duration_ms_reported": 106730,
+    "non_renewing": true
+  },
+  "shared_request_count": 11,
+  "paper_or_real_orders_started": false,
+  "automatic_retry": false,
+  "renewal": false
+}

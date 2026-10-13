@@ -102,7 +102,7 @@ def historical_research_gate(store,network,address,*,as_of_ms,max_requests,reque
             'reason':reason,'historical_decision_ref':'population_historical_decisions:'+row['decision_id']}
 
 
-def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None):
+def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None,pilot_policy=None):
     validate_policy(policy)
     if paper_policy is not None:
         if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
@@ -130,7 +130,14 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         # Acquiring it proves no such worker is still executing this DB's job.
         recovered=[r[0] for r in store.connection.execute("select request_id from population_research_jobs where status='running'")]
         store.connection.execute("update population_research_jobs set status='interrupted',actual_cost_usd=NULL,updated_ms=? where status='running'",(now_ms(),))
+        if recovered and store.connection.execute("select 1 from sqlite_master where type='table' and name='population_research_pilot_tasks'").fetchone():
+            store.connection.executemany("update population_research_pilot_tasks set state='interrupted' where request_id=? and state in ('authorized','needs_critique')",
+                [(request_id,) for request_id in recovered])
         store.connection.commit()
+        pilot=None
+        if pilot_policy is not None:
+            from .population_pilot import tick_locked
+            pilot=tick_locked(store,pilot_policy,dispatch=dispatch)
         reserves=None
         if reserve_policy is not None:
             from .reserve_cycle import tick as reserve_tick
@@ -155,6 +162,8 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             pending=store.connection.execute("select request_id,address from population_research_jobs where network=? and status='sealed' order by created_ms,request_id",(network,)).fetchall()
             for request in pending:
                 if request['address'] in blocked:continue
+                if pilot and pilot.get('status') not in {'waiting','already_processed','no_admissible_candidate','unchanged_no_inference'}:
+                    break
                 gate=historical_research_gate(store,network,request['address'],as_of_ms=now_ms(),
                                               max_requests=policy['max_requests'],request_id=request['request_id'])
                 if request['request_id'] not in newly_sealed and not gate['allowed']:
@@ -200,5 +209,5 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
             from .paper_scheduler import _tick as paper_tick
             paper=paper_tick(store,paper_policy,experiment_policy=experiment_policy,dispatch=dispatch and len(processed)<max_jobs,max_jobs=max_jobs)
-        return {'paper_research':paper,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
+        return {'paper_research':paper,'pilot_research':pilot,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False,'observation_plans':observation_plans}

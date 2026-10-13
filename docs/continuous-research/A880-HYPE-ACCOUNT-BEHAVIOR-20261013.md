@@ -1,5 +1,7 @@
 # a880/HYPE — comportement observable du compte
 
+**Rectificatif lié :** la lecture de `closedPnl` et des épisodes de position ci-dessous a été précisée dans [la consolidation du 13 octobre](A880-HYPE-SOURCE-AND-CANDIDATE-CONSOLIDATION-20261013.md). Le rapport original et ses mesures restent conservés; cette consolidation corrige l’interprétation du champ API et ajoute une reconstruction locale par `startPosition`.
+
 Analyse exploratoire, arrêtée à l’archive autorisée du **13 octobre 2026 à 10:02:11.701 UTC**. Reproduction en lecture seule :
 
 ```sh

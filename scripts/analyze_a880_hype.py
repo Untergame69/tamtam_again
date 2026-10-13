@@ -15,7 +15,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tamtam_again.hype_diagnostics import fee_crossed_summary, gap_summary, live_fills, ms, quantiles
+from tamtam_again.hype_diagnostics import fee_crossed_summary, gap_summary, live_fills, ms, quantiles, start_position_chain_summary
 from tamtam_again.research_memory import authorized_account_history
 
 ADDRESS = "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee"
@@ -91,9 +91,10 @@ def analyze(db_path: str, as_of_ms: int | None = None) -> dict:
                         rest_hype_times.append(int(f["time"]))
         rest_fees = [float(f["fee"]) for f in rest_tids.values() if f.get("fee") is not None]
         rest_fee_crossed = fee_crossed_summary(rest_tids.values())
+        start_position_chain = start_position_chain_summary(rest_tids.values())
 
         # Signed directions and sizes describe recorded HYPE fills. Position
-        # episodes are deliberately not inferred from the incomplete fill pages.
+        # chains below use startPosition locally but retain incomplete-page limits.
         history_fills = sorted(rest_tids.values(), key=lambda f: (int(f.get("time", 0)), str(f.get("tid", ""))))
         signed = lambda f: float(f.get("sz", 0)) * (1 if f.get("side") == "B" else -1 if f.get("side") == "A" else 0)
         buys = [f for f in history_fills if f.get("side") == "B"]
@@ -155,7 +156,14 @@ def analyze(db_path: str, as_of_ms: int | None = None) -> dict:
                 if len(fill_times) > 1 and fill_times[-1] > fill_times[0] else None,
             "closedPnl_field": {"rows": len(closed_pnl), "sum_usdc": round(sum(closed_pnl), 8),
                 "positive_rows": sum(x > 0 for x in closed_pnl), "negative_rows": sum(x < 0 for x in closed_pnl),
-                "interpretation": "provider closedPnl field, not account return; it includes fee under the documented per-fill convention"},
+                "interpretation": "API field values are reported separately from fee. The UI documentation describes a frontend PnL convention; the API field documentation does not establish that convention for this field."},
+            "open_fill_fee_closedPnl_zero": {
+                "open_dirs": sorted({"Open Long", "Open Short"} & {str(f.get("dir")) for f in history_fills}),
+                "rows": sum(f.get("dir") in ("Open Long", "Open Short") and float(f.get("fee", 0)) != 0 and float(f.get("closedPnl", 0)) == 0 for f in history_fills),
+                "fee_sum_usdc": round(sum(float(f.get("fee", 0)) for f in history_fills if f.get("dir") in ("Open Long", "Open Short") and float(f.get("fee", 0)) != 0 and float(f.get("closedPnl", 0)) == 0), 8),
+                "closedPnl_sum_usdc": 0.0,
+                "interpretation": "Observed opening-fill rows; fee and API closedPnl are distinct fields. No conversion between them is inferred."},
+            "start_position_chain": start_position_chain,
             "signed_fee_usdc": round(sum(float(f["fee"]) for f in history_fills if f.get("fee") is not None), 8),
             "fee_by_token": {token: round(amount, 8) for token, amount in sorted(fees_by_token.items())},
             "builderFee_rows": sum(f.get("builderFee") is not None for f in history_fills),

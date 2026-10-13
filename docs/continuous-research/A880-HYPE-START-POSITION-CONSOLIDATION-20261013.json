@@ -1,0 +1,474 @@
+{
+  "artifact_type": "a880_hype_start_position_chain_analysis",
+  "version": "1.0.0",
+  "cutoff_utc": "2026-10-12T07:16:34.195Z",
+  "authorization": "authorized_account_history checked by scripts/analyze_a880_hype.py before decoding fills",
+  "reproduction": "PYTHONPATH=src python scripts/analyze_a880_hype.py --database data/tamtam.sqlite3 --as-of-ms 1791789394195 --output /tmp/a880-analysis-oct12.json",
+  "account": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+  "coin": "HYPE",
+  "source_pages": {
+    "userFills": {
+      "observations": 1,
+      "first_observation_id": 12389413,
+      "last_observation_id": 12389413,
+      "incomplete_pages": 1
+    },
+    "userFillsByTime": {
+      "observations": 170,
+      "first_observation_id": 10174802,
+      "last_observation_id": 26002582,
+      "incomplete_pages": 170
+    }
+  },
+  "unique_fills": 32921,
+  "opening_fee_closedPnl_zero": {
+    "open_dirs": [
+      "Open Long",
+      "Open Short"
+    ],
+    "rows": 14060,
+    "fee_sum_usdc": -300.370771,
+    "closedPnl_sum_usdc": 0.0,
+    "interpretation": "Observed opening-fill rows; fee and API closedPnl are distinct fields. No conversion between them is inferred."
+  },
+  "start_position_chain": {
+    "unique_fills_with_start_position": 32921,
+    "fills_skipped_missing_position_fields": 0,
+    "timestamp_groups": 25549,
+    "multi_fill_timestamp_groups": 4072,
+    "multi_fill_timestamp_group_fill_count": 11444,
+    "ambiguous_timestamp_groups": 0,
+    "invalid_timestamp_groups": [],
+    "position_chain_segments": [
+      {
+        "segment": 1,
+        "start_ms": 1791398766027,
+        "end_ms": 1791501246833,
+        "fill_count": 17876,
+        "start_position": "-299.43",
+        "end_position": "148.82",
+        "left_censored": true,
+        "right_censored": true
+      },
+      {
+        "segment": 2,
+        "start_ms": 1791559884495,
+        "end_ms": 1791761808842,
+        "fill_count": 15045,
+        "start_position": "-45.02",
+        "end_position": "164.73",
+        "left_censored": true,
+        "right_censored": true
+      }
+    ],
+    "position_chain_ruptures": [
+      {
+        "after_time_ms": 1791501246833,
+        "after_tid": "227611949733369",
+        "previous_end_position": "148.82",
+        "before_time_ms": 1791559884495,
+        "before_tid": "575635846653678",
+        "next_start_position": "-45.02",
+        "position_discontinuity": "-193.84",
+        "elapsed_ms": 58637662
+      }
+    ],
+    "locally_reconstructible_flat_to_flat_episode_count": 652,
+    "episode_duration_ms": {
+      "n": 652,
+      "p50": 176123,
+      "p95": 1787853,
+      "max": 18338566
+    },
+    "episode_examples_first_10": [
+      {
+        "start_ms": 1791398938331,
+        "entry_tid": "935058211341920",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399021864,
+        "exit_tid": "341798982810732",
+        "duration_ms": 83533,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-4.18",
+        "reversal_close_qty": "7.75",
+        "reversal_open_qty": "4.18"
+      },
+      {
+        "start_ms": 1791399021864,
+        "entry_tid": "341798982810732",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399278903,
+        "exit_tid": "1040708582251099",
+        "duration_ms": 257039,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "0.03",
+        "reversal_close_qty": "3.45",
+        "reversal_open_qty": "0.03"
+      },
+      {
+        "start_ms": 1791399278903,
+        "entry_tid": "1040708582251099",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399302775,
+        "exit_tid": "391104018243404",
+        "duration_ms": 23872,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-24.15",
+        "reversal_close_qty": "50.28",
+        "reversal_open_qty": "24.15"
+      },
+      {
+        "start_ms": 1791399302775,
+        "entry_tid": "391104018243404",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399477035,
+        "exit_tid": "973576231332512",
+        "duration_ms": 174260,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "3.82",
+        "reversal_close_qty": "1.82",
+        "reversal_open_qty": "3.82"
+      },
+      {
+        "start_ms": 1791399477035,
+        "entry_tid": "973576231332512",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399525310,
+        "exit_tid": "142507215234865",
+        "duration_ms": 48275,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-3.18",
+        "reversal_close_qty": "0.39",
+        "reversal_open_qty": "3.18"
+      },
+      {
+        "start_ms": 1791399525310,
+        "entry_tid": "142507215234865",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399654760,
+        "exit_tid": "148790411325593",
+        "duration_ms": 129450,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "0.18",
+        "reversal_close_qty": "3.45",
+        "reversal_open_qty": "0.18"
+      },
+      {
+        "start_ms": 1791399654760,
+        "entry_tid": "148790411325593",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399669457,
+        "exit_tid": "7634685171978",
+        "duration_ms": 14697,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-2.83",
+        "reversal_close_qty": "2.8",
+        "reversal_open_qty": "2.83"
+      },
+      {
+        "start_ms": 1791399669457,
+        "entry_tid": "7634685171978",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399672056,
+        "exit_tid": "227606308175821",
+        "duration_ms": 2599,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "0.18",
+        "reversal_close_qty": "2.07",
+        "reversal_open_qty": "0.18"
+      },
+      {
+        "start_ms": 1791399672056,
+        "entry_tid": "227606308175821",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791399744565,
+        "exit_tid": "543686514732458",
+        "duration_ms": 72509,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-5.64",
+        "reversal_close_qty": "0.18",
+        "reversal_open_qty": "5.64"
+      },
+      {
+        "start_ms": 1791399744565,
+        "entry_tid": "543686514732458",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791400096810,
+        "exit_tid": "96881689866459",
+        "duration_ms": 352245,
+        "segment": 1,
+        "close_type": "position_reversal",
+        "reversal_post_position": "1.88",
+        "reversal_close_qty": "0.22",
+        "reversal_open_qty": "1.88"
+      }
+    ],
+    "episode_examples_last_10": [
+      {
+        "start_ms": 1791757112150,
+        "entry_tid": "79868757178021",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791757608556,
+        "exit_tid": "781932840605564",
+        "duration_ms": 496406,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-2.14",
+        "reversal_close_qty": "3.75",
+        "reversal_open_qty": "2.14"
+      },
+      {
+        "start_ms": 1791757608556,
+        "entry_tid": "781932840605564",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791757614053,
+        "exit_tid": "430618535313036",
+        "duration_ms": 5497,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "1.19",
+        "reversal_close_qty": "2.14",
+        "reversal_open_qty": "1.19"
+      },
+      {
+        "start_ms": 1791757614053,
+        "entry_tid": "430618535313036",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791757623033,
+        "exit_tid": "1084138605698518",
+        "duration_ms": 8980,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-3.09",
+        "reversal_close_qty": "2.86",
+        "reversal_open_qty": "3.09"
+      },
+      {
+        "start_ms": 1791757623033,
+        "entry_tid": "1084138605698518",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791757793897,
+        "exit_tid": "806844447141454",
+        "duration_ms": 170864,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "1.19",
+        "reversal_close_qty": "3.18",
+        "reversal_open_qty": "1.19"
+      },
+      {
+        "start_ms": 1791757793897,
+        "entry_tid": "806844447141454",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791758070389,
+        "exit_tid": "291609096228244",
+        "duration_ms": 276492,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-1.89",
+        "reversal_close_qty": "3.9",
+        "reversal_open_qty": "1.89"
+      },
+      {
+        "start_ms": 1791758070389,
+        "entry_tid": "291609096228244",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791758156663,
+        "exit_tid": "542644131250181",
+        "duration_ms": 86274,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "2.71",
+        "reversal_close_qty": "3.0",
+        "reversal_open_qty": "2.71"
+      },
+      {
+        "start_ms": 1791758156663,
+        "entry_tid": "542644131250181",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791758329244,
+        "exit_tid": "1091965882238109",
+        "duration_ms": 172581,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-50.98",
+        "reversal_close_qty": "1.26",
+        "reversal_open_qty": "50.98"
+      },
+      {
+        "start_ms": 1791758329244,
+        "entry_tid": "1091965882238109",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791758576428,
+        "exit_tid": "1094566158643483",
+        "duration_ms": 247184,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "4.68",
+        "reversal_close_qty": "0.86",
+        "reversal_open_qty": "4.68"
+      },
+      {
+        "start_ms": 1791758576428,
+        "entry_tid": "1094566158643483",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791759152768,
+        "exit_tid": "77385069870570",
+        "duration_ms": 576340,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "-3.70",
+        "reversal_close_qty": "0.97",
+        "reversal_open_qty": "3.70"
+      },
+      {
+        "start_ms": 1791759152768,
+        "entry_tid": "77385069870570",
+        "start_position": "0",
+        "end_position": "0",
+        "end_ms": 1791759614035,
+        "exit_tid": "642738208749110",
+        "duration_ms": 461267,
+        "segment": 2,
+        "close_type": "position_reversal",
+        "reversal_post_position": "0.90",
+        "reversal_close_qty": "2.43",
+        "reversal_open_qty": "0.90"
+      }
+    ],
+    "coverage_warning": "Local arithmetic coherence is not proof that incomplete REST pages contain every fill. Segment endpoints are censored and ruptures are not bridged."
+  },
+  "market_quote_archive": {
+    "ETH": {
+      "bbo": {
+        "observations": 484129,
+        "first_observation_id": 16094,
+        "last_observation_id": 27536887,
+        "first_archived": "2026-10-02T07:58:07.181+00:00",
+        "last_archived": "2026-10-12T07:16:33.110+00:00"
+      },
+      "l2Book": {
+        "observations": 484670,
+        "first_observation_id": 12789,
+        "last_observation_id": 27536904,
+        "first_archived": "2026-10-02T07:55:02.734+00:00",
+        "last_archived": "2026-10-12T07:16:33.151+00:00"
+      }
+    },
+    "HYPE": {
+      "bbo": {
+        "observations": 458570,
+        "first_observation_id": 16099,
+        "last_observation_id": 27536889,
+        "first_archived": "2026-10-02T07:58:07.224+00:00",
+        "last_archived": "2026-10-12T07:16:33.115+00:00"
+      },
+      "l2Book": {
+        "observations": 459211,
+        "first_observation_id": 12791,
+        "last_observation_id": 27536905,
+        "first_archived": "2026-10-02T07:55:02.762+00:00",
+        "last_archived": "2026-10-12T07:16:33.152+00:00"
+      }
+    },
+    "xyz:DRAM": {
+      "bbo": {
+        "observations": 294960,
+        "first_observation_id": 46992,
+        "last_observation_id": 27536864,
+        "first_archived": "2026-10-02T08:31:28.079+00:00",
+        "last_archived": "2026-10-12T07:16:32.003+00:00"
+      },
+      "l2Book": {
+        "observations": 390789,
+        "first_observation_id": 1794373,
+        "last_observation_id": 27536918,
+        "first_archived": "2026-10-03T10:05:55.385+00:00",
+        "last_archived": "2026-10-12T07:16:33.181+00:00"
+      }
+    },
+    "xyz:GOLD": {
+      "bbo": {
+        "observations": 108379,
+        "first_observation_id": 261139,
+        "last_observation_id": 25200064,
+        "first_archived": "2026-10-02T13:49:43.944+00:00",
+        "last_archived": "2026-10-11T19:12:30.141+00:00"
+      },
+      "l2Book": {
+        "observations": 174113,
+        "first_observation_id": 3127400,
+        "last_observation_id": 25200037,
+        "first_archived": "2026-10-06T09:32:25.828+00:00",
+        "last_archived": "2026-10-11T19:12:30.106+00:00"
+      }
+    },
+    "xyz:INTC": {
+      "bbo": {
+        "observations": 196524,
+        "first_observation_id": 261131,
+        "last_observation_id": 20900667,
+        "first_archived": "2026-10-02T13:49:43.877+00:00",
+        "last_archived": "2026-10-10T17:16:35.315+00:00"
+      },
+      "l2Book": {
+        "observations": 265046,
+        "first_observation_id": 3071471,
+        "last_observation_id": 20900655,
+        "first_archived": "2026-10-06T09:02:59.012+00:00",
+        "last_archived": "2026-10-10T17:16:35.285+00:00"
+      }
+    },
+    "xyz:XYZ100": {
+      "bbo": {
+        "observations": 335322,
+        "first_observation_id": 215450,
+        "last_observation_id": 27536929,
+        "first_archived": "2026-10-02T13:04:48.277+00:00",
+        "last_archived": "2026-10-12T07:16:33.209+00:00"
+      },
+      "l2Book": {
+        "observations": 432451,
+        "first_observation_id": 1698344,
+        "last_observation_id": 27536926,
+        "first_archived": "2026-10-03T08:26:52.862+00:00",
+        "last_archived": "2026-10-12T07:16:33.201+00:00"
+      }
+    }
+  },
+  "candidate_source": "docs/continuous-research/economic-qualification-cards-20261012-g2.md",
+  "limits": [
+    "REST fill pages are marked incomplete; source retention and missing-page absence are unknown.",
+    "startPosition establishes arithmetic before each observed fill only; two chain boundaries are left/right censored and the timestamp gap rupture is not bridged.",
+    "Flat-to-flat episodes are locally reconstructible within the observed segments, not proven exhaustive account episodes.",
+    "Prices and fees remain observed fill fields; the API closedPnl field is not interpreted using the frontend formula."
+  ]
+}

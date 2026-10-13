@@ -65,6 +65,12 @@ def validate_spec(spec: dict[str, Any]) -> None:
             raise ValueError("BBO/l2Book quote contract requires both live market streams")
         if spec["execution"].get("max_quote_age_ms")!=1000:
             raise ValueError("BBO/l2Book execution freshness remains fixed at one second")
+    residual_policy=spec["execution"].get("small_residual_policy")
+    if residual_policy not in (None,"avoid_uncloseable_residual_v1"):
+        raise ValueError("Unsupported small residual reduction policy")
+    if residual_policy is not None and (spec.get('engine')!='single_perp_v3'
+                                         or 'market_rules' not in spec['execution']):
+        raise ValueError("Small residual policy requires versioned perp market rules")
     if 'market_rules' in spec['execution']:
         from .market_rules import validate_execution_rules
         validate_execution_rules(spec['execution']['market_rules'],spec['market'])
@@ -270,6 +276,15 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         limit=min(limit,max(Decimal(0),equity)*number(spec['max_exposure']['max_leverage']))
         if rules:limit=min(limit,max(Decimal(0),equity)*number(rules['max_leverage']))
         target=max(-limit/mark,min(limit/mark,target))
+        residual_policy=spec['execution'].get('small_residual_policy')
+        exit_px=number(q['bid'] if pos>0 else q['ask'])
+        minimum=number(rules['minimum_order_usdc']) if rules else Decimal(0)
+        if (residual_policy=='avoid_uncloseable_residual_v1' and rules
+                and order.get('reduce_only') and pos!=0 and target*pos>0
+                and abs(target)<abs(pos) and 0<abs(target)*exit_px<minimum):
+            # Never intentionally leave a subminimum perp remainder when the
+            # full close itself is above the documented order minimum.
+            target=Decimal(0)
         delta=target-pos
         if rules:delta=round_size(delta,rules['sz_decimals'])
         if not delta:
@@ -297,6 +312,18 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         available=number(q['ask_size'] if buy else q['bid_size'])*number(spec['execution']['displayed_size_fraction'])/stress
         size=min(abs(delta),max(Decimal(0),available))*(1 if buy else -1)
         if rules:size=round_size(size,rules['sz_decimals'])
+        if (size and residual_policy=='avoid_uncloseable_residual_v1' and rules
+                and order.get('reduce_only') and pos!=0):
+            remainder=abs(pos+size)
+            if 0<remainder*exit_px<minimum:
+                # A partial fill that would create dust is capped so at least
+                # one minimum-notional, lot-rounded position remains open.
+                lot=Decimal(1).scaleb(-rules['sz_decimals'])
+                minimum_position=(minimum/exit_px/lot).to_integral_value(rounding='ROUND_CEILING')*lot
+                maximum_reduction=max(Decimal(0),abs(pos)-minimum_position)
+                safe_size=min(abs(size),maximum_reduction)
+                safe_size=(safe_size/lot).to_integral_value(rounding='ROUND_DOWN')*lot
+                size=safe_size*(1 if size>0 else -1)
         if not size:
             if order.get('reduce_only'):
                 _wait_order(state,order,'priority_exit_insufficient_visible_size',now)

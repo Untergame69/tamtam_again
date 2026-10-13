@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "request_id": "a880-hype-v4-closeable-reduction-20261013",
+  "request_kind": "bounded_execution_model_correction_and_research",
+  "status": "correction_implemented; prospective_research_not_authorized",
+  "created_at": "2026-10-13",
+  "source_session_id": "4303114ebedf4d238241a605a41c591c",
+  "source_final_report_id": "217019a2b7915f7e4b34baddccb23a8159edc08e8d6fea6bd671893980c4248c",
+  "diagnosis": {
+    "code": "priority_exit_unresolved_position",
+    "cause": "The preserved +0.05 HYPE residual was worth about 4.219625 USDC at the last quote. The conservative simulator rejected the priority reduce-only close below the documented $10 order minimum until its TTL expired.",
+    "historical_result": "Five complete negative cycles totaling -0.311334140534 USDC net after simulated fees; sixth cycle incomplete with +0.05 HYPE residual.",
+    "preservation": "Do not rewrite report #5, any v4 fill, final state, or cycle outcome."
+  },
+  "proof_refs": [
+    "paper_experimental_reports:217019a2b7915f7e4b34baddccb23a8159edc08e8d6fea6bd671893980c4248c",
+    "paper_suspensions:4303114ebedf4d238241a605a41c591c",
+    "paper_sessions:4303114ebedf4d238241a605a41c591c",
+    "docs/continuous-research/PAPER-V4-FINAL-20261013-A880-HYPE.md",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/error-responses",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/order-types",
+    "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size"
+  ],
+  "correction": {
+    "policy_id": "avoid_uncloseable_residual_v1",
+    "implementation": "Opt-in engine policy: avoid leaving a positive residual below the documented minimum when a complete close is admissible; cap partial fills so the remainder is zero or at least the minimum notional after lot rounding.",
+    "already_subminimum": "Preserve position and report unresolved priority exit; never manufacture a fill or free closure.",
+    "activation": "Opt-in only for a separately versioned future spec. No v1-v4 history/spec was changed."
+  },
+  "targeted_tests": [
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_opt_in_reduction_policy_closes_instead_of_leaving_subminimum_residual",
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_opt_in_reduction_policy_caps_partial_fill_above_minimum_closeable_position",
+    "tests.test_paper_engine_v3.PaperEngineV3Tests.test_opt_in_reduction_policy_preserves_already_subminimum_position"
+  ],
+  "future_question": "La politique de réduction qui évite les reliquats sous-minimum réduit-elle les sorties prioritaires non résolues, tout en préservant les reliquats déjà sous-minimum et sans simuler de fill non admissible ?",
+  "resumption_condition": [
+    "The v4 +0.05 HYPE residual remains explicitly carried as unresolved; no new session may assume it was closed or omit it.",
+    "The opt-in policy passes targeted tests against documented venue rules, including partial visible liquidity, lot rounding, and a residual already below minimum.",
+    "Any proposed next experience names the question above, a distinct version, bounded duration/stops, and its residual disposition before launch.",
+    "No restart under this request until those conditions are reviewed; this record authorizes zero new model calls and zero real orders."
+  ],
+  "new_experience_authorized": false,
+  "model_calls_authorized": 0,
+  "real_orders_authorized": false,
+  "ai_research_queue_submission": false,
+  "queue_note": "Kept as a versioned Git request artifact to avoid triggering the paper research scheduler or consuming any existing/new model budget."
+}

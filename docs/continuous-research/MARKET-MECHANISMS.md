@@ -75,3 +75,28 @@ Rollback : arrêter le worker population avant annulation ciblée du commit,
 conserver catalogues et rapports. Aucun changement du service collecteur ni
 des variantes figées. Les profils d'expérience, l'extension multi-instruments
 et l'allocation adaptative restent à livrer.
+
+## Addendum — reliquats perpétuels sous le minimum (13 octobre 2026)
+
+La documentation officielle expose `MinTradeNtl` (« Order must have minimum
+value of $10 ») et l'erreur `ReduceOnly` séparément. Elle définit Reduce Only
+comme une contrainte empêchant l'ordre d'augmenter la position, sans documenter
+d'exception au minimum pour fermer un petit reliquat. Le moteur reste donc
+conservateur : un reliquat dont la valeur est sous 10 USD n'est pas déclaré
+closable à partir de ces pages seules.
+
+La politique optionnelle `avoid_uncloseable_residual_v1` évite, pour les
+nouvelles variantes qui la déclarent, de produire volontairement un reliquat
+positif inférieur à 10 USD lorsqu'une fermeture complète admissible est
+possible. Si la profondeur visible ne permet qu'un fill partiel, la taille est
+plafonnée pour conserver une position arrondie dont le notionnel atteint au
+moins 10 USD. Un reliquat déjà inférieur au seuil reste inchangé et la sortie
+prioritaire conserve le diagnostic; aucun fill de convenance n'est simulé.
+
+Cette politique n'est pas activée rétroactivement sur v1–v4 et ne constitue pas
+une preuve de fermeture réelle. Sa validation n'autorise pas à elle seule une
+nouvelle expérience.
+
+Sources officielles : [erreurs API](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/error-responses),
+[types d'ordre](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/order-types),
+[précision et lots](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size).

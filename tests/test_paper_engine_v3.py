@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 import tempfile
 import unittest
 from pathlib import Path
@@ -89,6 +90,57 @@ class PaperEngineV3Tests(unittest.TestCase):
         self.assertIn('priority_exit_unresolved_position',state['diagnostics'])
         self.assertEqual(state['execution_opportunities'][-1]['outcome'],'missed')
         self.assertEqual(state['execution_opportunities'][-1]['reason'],'order_ttl_expired')
+
+    def test_opt_in_reduction_policy_closes_instead_of_leaving_subminimum_residual(self):
+        s=spec_v3();s['execution']['small_residual_policy']='avoid_uncloseable_residual_v1'
+        state=initial_state(s)
+        state.update(connected=True,session='s1',healthy_at_ms=1_000,position='0.29',average_price='84',
+            pending=[{'target':'0.05','due_ms':1_900,'expires_ms':5_000,'intent':'reduction',
+                      'priority':50,'reduce_only':True,'decision_ms':1_800}],
+            quote={'received_ms':1_800,'event_ms':1_800,'session':'s1','bid':'84','ask':'84.01',
+                   'bid_size':'1000','ask_size':'1000'})
+        reduce_event(state,s,event('reduce','timer',2_000))
+        self.assertEqual(number(state['position']),0)
+        self.assertEqual(state['fills'][0]['size'],'-0.29')
+        self.assertEqual(state['pending'],[])
+
+    def test_opt_in_reduction_policy_caps_partial_fill_above_minimum_closeable_position(self):
+        s=spec_v3();s['execution']['small_residual_policy']='avoid_uncloseable_residual_v1'
+        state=initial_state(s)
+        state.update(connected=True,session='s1',healthy_at_ms=1_000,position='0.29',average_price='84',
+            pending=[{'target':'0.05','due_ms':1_900,'expires_ms':5_000,'intent':'reduction',
+                      'priority':50,'reduce_only':True,'decision_ms':1_800}],
+            quote={'received_ms':1_800,'event_ms':1_800,'session':'s1','bid':'84','ask':'84.01',
+                   'bid_size':'2','ask_size':'1000'})
+        reduce_event(state,s,event('reduce','timer',2_000))
+        self.assertEqual(state['fills'][0]['size'],'-0.17')
+        self.assertEqual(number(state['position']),Decimal('0.12'))
+        self.assertGreaterEqual(number(state['position'])*Decimal('84'),Decimal('10'))
+        self.assertEqual(len(state['pending']),1)
+
+    def test_opt_in_reduction_policy_preserves_already_subminimum_position(self):
+        s=spec_v3();s['execution']['small_residual_policy']='avoid_uncloseable_residual_v1'
+        state=initial_state(s)
+        state.update(connected=True,session='s1',healthy_at_ms=1_000,position='0.05',average_price='84',
+            pending=[{'target':'0','due_ms':1_900,'expires_ms':5_000,'intent':'horizon_exit',
+                      'priority':100,'reduce_only':True,'decision_ms':1_800}],
+            quote={'received_ms':1_800,'event_ms':1_800,'session':'s1','bid':'84','ask':'84.01',
+                   'bid_size':'1000','ask_size':'1000'})
+        reduce_event(state,s,event('reduce','timer',2_000))
+        self.assertEqual(number(state['position']),Decimal('0.05'))
+        self.assertEqual(state['fills'],[])
+        self.assertEqual(state['pending'][0]['last_wait_reason'],'priority_exit_below_venue_minimum')
+
+    def test_small_residual_policy_is_opt_in_and_does_not_rewrite_legacy_specs(self):
+        s=spec_v3();state=initial_state(s)
+        state.update(connected=True,session='s1',healthy_at_ms=1_000,position='0.29',average_price='84',
+            pending=[{'target':'0.05','due_ms':1_900,'expires_ms':5_000,'intent':'reduction',
+                      'priority':50,'reduce_only':True,'decision_ms':1_800}],
+            quote={'received_ms':1_800,'event_ms':1_800,'session':'s1','bid':'84','ask':'84.01',
+                   'bid_size':'1000','ask_size':'1000'})
+        reduce_event(state,s,event('reduce','timer',2_000))
+        self.assertEqual(state['fills'][0]['size'],'-0.24')
+        self.assertEqual(number(state['position']),Decimal('0.05'))
 
     def test_v4_zero_rounded_entry_is_counted_as_missed_with_reason(self):
         s=spec_v4();state=initial_state(s)

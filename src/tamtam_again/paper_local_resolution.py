@@ -354,6 +354,138 @@ def prepare_from_local_archives(store,request_id,*,clock_ms=None,max_chars=MAX_P
         'available_ms':data_available_ms,'classifications':categories}
 
 
+def _compact_analysis_packet(source_packet,source_resolution_id,retry_of_request_id,prepared_ms):
+    """Reduce repeated event rows to exact deterministic counts while retaining archive proofs."""
+    bundle=source_packet['observations']['local_archive_bundle']
+    vocab=bundle['vocabulary'];columns=bundle['opportunity_columns']
+    reason_by_code={index:value for index,value in enumerate(vocab['reason'])}
+    outcome_by_code={index:value for index,value in enumerate(vocab['outcome'])}
+    source_by_code={index:value for index,value in enumerate(vocab['quote_source'])}
+    reasons=Counter();outcomes=Counter();quote_sources=Counter()
+    for values in bundle['opportunities']:
+        row=dict(zip(columns,values))
+        if row.get('reason_code') is not None:reasons[reason_by_code[row['reason_code']]]+=1
+        outcomes[outcome_by_code[row['outcome_code']]]+=1
+        quote_sources[source_by_code[row['quote_source_code']]]+=1
+    endpoint=bundle['paper_endpoint'];coverage=bundle['coverage']
+    body={'schema_version':'paper-local-evidence-analysis-v1',
+        'network':source_packet['network'],'address':source_packet['address'],
+        'session_id':source_packet['session_id'],'variant_id':source_packet.get('variant_id'),
+        'available_ms':source_packet['available_ms'],'prepared_ms':prepared_ms,
+        'source_periods':source_packet['source_periods'],
+        'source_period_membership':source_packet['source_period_membership'],
+        'source_packet_fingerprint':source_packet['fingerprint'],
+        'source_resolution_id':source_resolution_id,'retry_of_request_id':retry_of_request_id,
+        'parent_research':source_packet['parent_research'],
+        'observations':{'markets':source_packet['observations']['markets'],
+            'deterministic_summary':{
+                'coverage':coverage,'attempt_count':len(bundle['opportunities']),
+                'outcome_counts':dict(sorted(outcomes.items())),
+                'recorded_reason_counts':dict(sorted(reasons.items())),
+                'quote_source_counts':dict(sorted(quote_sources.items())),
+                'attempt_field_counts':bundle['attempt_field_counts'],
+                'paper_endpoint':endpoint,
+                'missing_data_resolutions':source_packet['observations']['missing_data_resolutions'],
+                'interpretation_limits':[
+                    'Recorded reason labels describe engine classifications, not counterfactual profitability.',
+                    'Retrospective time matches do not identify the exact quote or source event used by a decision.',
+                    'A suspended virtual position cannot be closed by later live quote collection.',
+                    'The full source packet and raw archive references remain preserved under source_packet_fingerprint.']},
+            'archive_response_hashes':bundle['archive_response_hashes'],
+            'archive_observation_manifest_columns':bundle['archive_observation_manifest_columns'],
+            'archive_observation_manifest':bundle['archive_observation_manifest']},
+        'evidence_refs':list(dict.fromkeys([
+            'paper_local_evidence_resolutions:'+source_resolution_id,
+            'paper_research:'+retry_of_request_id,
+            'paper_local_evidence_bundle:'+fingerprint(bundle),
+            *source_packet['evidence_refs']]))}
+    body['fingerprint']=fingerprint(body)
+    return body
+
+
+def prepare_single_analysis_retry(store,failed_request_id,*,clock_ms):
+    """Prepare one compact, immutable child linked to a suspended local analysis attempt."""
+    from .paper_research import initialize
+    initialize(store);store.connection.commit()
+    if type(clock_ms) is not int or clock_ms<0:raise ValueError('Explicit retry preparation time required')
+    failed=store.connection.execute('select request_id,adaptation_request_id,session_id,network,address,status,policy_json,packet_json,'
+        'parent_request_id,local_resolution_id,data_available_ms from paper_research_jobs where request_id=?',
+        (failed_request_id,)).fetchone()
+    if not failed or failed['status']!='suspended' or not failed['local_resolution_id']:
+        raise ValueError('A suspended local evidence analysis attempt is required')
+    auth=store.connection.execute('select state,calls_started,max_calls,usage_mode,max_input_tokens_per_call,'
+        'max_total_input_tokens,max_total_output_tokens,max_total_duration_ms,result_status '
+        'from paper_research_task_authorizations where request_id=?',(failed_request_id,)).fetchone()
+    if not auth or auth['state']!='completed' or auth['result_status']!='suspended' or auth['calls_started']<1:
+        raise ValueError('Consumed failed attempt authorization must remain immutable')
+    old_packet=json.loads(failed['packet_json']);old_resolution=store.connection.execute(
+        'select * from paper_local_evidence_resolutions where resolution_id=?',(failed['local_resolution_id'],)).fetchone()
+    if not old_resolution or old_resolution['child_request_id']!=failed_request_id:
+        raise ValueError('Original local packet and resolution identity mismatch')
+    source_packet=json.loads(old_resolution['packet_json'])
+    if old_packet.get('fingerprint')!=source_packet.get('fingerprint'):
+        raise ValueError('Failed attempt packet fingerprint differs from its source resolution')
+    prior=store.connection.execute('select request_id,local_resolution_id,packet_json from paper_research_jobs '
+        'where retry_of_request_id=?',(failed_request_id,)).fetchone()
+    if prior:
+        retry_packet=json.loads(prior['packet_json'])
+        return {'status':'unchanged','retry_request_id':prior['request_id'],
+            'resolution_id':prior['local_resolution_id'],'packet_fingerprint':retry_packet['fingerprint'],
+            'packet_chars':len(canonical(retry_packet))}
+    if clock_ms<old_resolution['prepared_ms'] or clock_ms<old_resolution['data_available_ms']:
+        raise ValueError('Original packet evidence is not yet available at retry preparation')
+    periods=source_packet.get('source_periods') or []
+    if not periods or any(not authorized_period(store,p,clock_ms,end_inclusive=True) for p in periods):
+        raise ValueError('Original packet period is not authorized for retry')
+    compact=_compact_analysis_packet(source_packet,old_resolution['resolution_id'],failed_request_id,clock_ms)
+    packet_json=canonical(compact)
+    if len(packet_json)>MAX_PACKET_CHARS:raise ValueError('Compact retry packet exceeds the existing packet character limit')
+    child_id=fingerprint({'adaptation_request_id':failed['adaptation_request_id'],'packet':compact['fingerprint']})
+    resolution_id=fingerprint({'source_resolution_id':old_resolution['resolution_id'],
+        'retry_of_request_id':failed_request_id,'packet_fingerprint':compact['fingerprint']})
+    evidence_fingerprint=fingerprint({'source_evidence_fingerprint':old_resolution['evidence_fingerprint'],
+        'retry_packet_fingerprint':compact['fingerprint']})
+    if failed['parent_request_id']!=old_resolution['parent_request_id']:
+        raise ValueError('Retry source parent changed')
+    store.connection.execute('begin immediate')
+    try:
+        if store.connection.execute('select 1 from paper_research_jobs where retry_of_request_id=?',(failed_request_id,)).fetchone():
+            raise ValueError('A retry is already registered for this failed attempt')
+        source_row=store.connection.execute('select status,result_json from paper_research_jobs where request_id=?',
+            (failed['parent_request_id'],)).fetchone()
+        source_result=json.loads(source_row['result_json']) if source_row else {}
+        if not source_row or source_row['status']!='needs_data' or fingerprint({'status':source_row['status'],'result':source_result})!=old_resolution['source_result_fingerprint']:
+            raise ValueError('Original needs-data parent result changed')
+        stamp=clock_ms
+        store.connection.execute('insert into paper_local_evidence_resolutions '
+            '(resolution_id,parent_request_id,source_result_fingerprint,source_packet_fingerprint,evidence_fingerprint,'
+            'prepared_ms,data_available_ms,child_request_id,resolution_json,packet_json) values(?,?,?,?,?,?,?,?,?,?)',
+            (resolution_id,failed['parent_request_id'],old_resolution['source_result_fingerprint'],
+             old_resolution['source_packet_fingerprint'],evidence_fingerprint,stamp,old_resolution['data_available_ms'],
+             child_id,canonical({'resolution_id':resolution_id,'parent_request_id':failed['parent_request_id'],
+                'source_resolution_id':old_resolution['resolution_id'],'retry_of_request_id':failed_request_id,
+                'source_result_fingerprint':old_resolution['source_result_fingerprint'],
+                'evidence_fingerprint':evidence_fingerprint,'prepared_ms':stamp,
+                'data_available_ms':old_resolution['data_available_ms']}),packet_json))
+        store.connection.execute('insert into paper_research_jobs '
+            '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,'
+            'updated_ms,parent_request_id,activated_ms,data_available_ms,local_resolution_id,result_json,retry_of_request_id) '
+            'values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            (child_id,failed['adaptation_request_id'],failed['session_id'],stamp,packet_json,failed['policy_json'],
+             'budget_required',failed['network'],failed['address'],stamp,failed['parent_request_id'],None,
+             old_resolution['data_available_ms'],resolution_id,
+             canonical({'state':'budget_required','retry_of_request_id':failed_request_id,
+                'source_packet_fingerprint':source_packet['fingerprint'],
+                'promotion_authorized':False,'profitability_proven':False}),failed_request_id))
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback();raise
+    return {'status':'prepared','retry_request_id':child_id,'resolution_id':resolution_id,
+        'retry_of_request_id':failed_request_id,'source_packet_fingerprint':source_packet['fingerprint'],
+        'packet_fingerprint':compact['fingerprint'],'packet_chars':len(packet_json),
+        'available_ms':compact['available_ms'],'prepared_ms':clock_ms}
+
+
 def packet_for_resolution(store,resolution_id,*,clock_ms,max_chars,phase='prepare'):
     """Revalidate a dormant packet before seal or an activated packet at runtime."""
     if phase not in {'prepare','execute'}:
@@ -363,7 +495,7 @@ def packet_for_resolution(store,resolution_id,*,clock_ms,max_chars,phase='prepar
     if not row or row['prepared_ms']>clock_ms or row['data_available_ms']>clock_ms:
         raise ValueError('Available immutable local evidence resolution required')
     packet=json.loads(row['packet_json'])
-    child=store.connection.execute('select request_id,adaptation_request_id,packet_json,local_resolution_id,status,activated_ms,data_available_ms from paper_research_jobs where request_id=?',
+    child=store.connection.execute('select request_id,adaptation_request_id,packet_json,local_resolution_id,status,activated_ms,data_available_ms,retry_of_request_id from paper_research_jobs where request_id=?',
         (row['child_request_id'],)).fetchone()
     expected_state=(child is not None and child['status']=='budget_required' and child['activated_ms'] is None) if phase=='prepare' \
         else (child is not None and child['status']=='sealed' and child['activated_ms']==clock_ms
@@ -376,6 +508,29 @@ def packet_for_resolution(store,resolution_id,*,clock_ms,max_chars,phase='prepar
     expected_request_id=fingerprint({'adaptation_request_id':child['adaptation_request_id'],'packet':packet['fingerprint']})
     if expected_request_id!=row['child_request_id']:
         raise ValueError('Local child request identity does not match its sealed packet')
+    retry_of=child['retry_of_request_id']
+    if retry_of:
+        if packet.get('schema_version')!='paper-local-evidence-analysis-v1' \
+                or packet.get('retry_of_request_id')!=retry_of \
+                or packet.get('source_resolution_id') is None or packet.get('prepared_ms')!=row['prepared_ms']:
+            raise ValueError('Versioned local retry packet identity changed')
+        failed=store.connection.execute('select status,local_resolution_id,packet_json from paper_research_jobs where request_id=?',
+            (retry_of,)).fetchone()
+        authorization=store.connection.execute('select state,calls_started,result_status from paper_research_task_authorizations where request_id=?',
+            (retry_of,)).fetchone()
+        source_resolution=store.connection.execute('select packet_json,child_request_id,parent_request_id from paper_local_evidence_resolutions where resolution_id=?',
+            (packet['source_resolution_id'],)).fetchone()
+        if not failed or failed['status']!='suspended' or failed['local_resolution_id']!=packet['source_resolution_id'] \
+                or not authorization or authorization['state']!='completed' or authorization['result_status']!='suspended' \
+                or authorization['calls_started']<1 or not source_resolution or source_resolution['child_request_id']!=retry_of \
+                or source_resolution['parent_request_id']!=row['parent_request_id']:
+            raise ValueError('Retry must remain linked to its preserved suspended attempt')
+        source_packet=json.loads(source_resolution['packet_json'])
+        expected_retry=_compact_analysis_packet(source_packet,packet['source_resolution_id'],retry_of,row['prepared_ms'])
+        if canonical(expected_retry)!=canonical(packet) or json.loads(failed['packet_json']).get('fingerprint')!=source_packet.get('fingerprint'):
+            raise ValueError('Deterministic retry packet derivation or source fingerprint mismatch')
+    elif packet.get('schema_version')=='paper-local-evidence-analysis-v1':
+        raise ValueError('Compact analysis packets require an immutable failed-attempt link')
     if phase=='execute':
         authorization=store.connection.execute('select state,packet_fingerprint,activated_ms from paper_research_task_authorizations where request_id=?',
             (child['request_id'],)).fetchone()
@@ -401,8 +556,12 @@ def packet_for_resolution(store,resolution_id,*,clock_ms,max_chars,phase='prepar
     if not periods or any(not authorized_period(store,p,clock_ms,end_inclusive=True) for p in periods):
         raise ValueError('Inherited source periods are not authorized at activation')
     from datetime import datetime,timezone
-    manifest=packet['observations']['local_archive_bundle']['archive_observation_manifest']
-    response_hashes=packet['observations']['local_archive_bundle']['archive_response_hashes']
+    if packet.get('schema_version')=='paper-local-evidence-analysis-v1':
+        manifest=packet['observations']['archive_observation_manifest']
+        response_hashes=packet['observations']['archive_response_hashes']
+    else:
+        manifest=packet['observations']['local_archive_bundle']['archive_observation_manifest']
+        response_hashes=packet['observations']['local_archive_bundle']['archive_response_hashes']
     for observation_id,response_hash_index,available_ms in manifest:
         response_sha256=response_hashes[response_hash_index]
         archived=store.connection.execute('select network,source,entity_type,entity_id,endpoint,observed_at,response_sha256 '

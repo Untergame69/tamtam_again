@@ -15,7 +15,7 @@ def initialize(store):
     for name,kind in {'network':'text','address':'text','updated_ms':'integer',
             'reserved_cost_usd':'text','actual_cost_usd':'text','result_json':'text','usage_json':'text',
             'parent_request_id':'text','activated_ms':'integer','data_available_ms':'integer',
-            'local_resolution_id':'text'}.items():
+            'local_resolution_id':'text','retry_of_request_id':'text'}.items():
         if name not in columns:store.connection.execute('alter table paper_research_jobs add column '+name+' '+kind)
 
     # Earlier schemas allowed exactly one job per diagnostic. Keep one initial
@@ -49,6 +49,7 @@ def initialize(store):
     store.connection.execute('drop index if exists paper_research_followup_parent')
     store.connection.execute('create index if not exists paper_research_followup_parent on paper_research_jobs(parent_request_id) where parent_request_id is not null')
     store.connection.execute('create unique index if not exists paper_research_local_resolution on paper_research_jobs(local_resolution_id) where local_resolution_id is not null')
+    store.connection.execute('create unique index if not exists paper_research_single_retry on paper_research_jobs(retry_of_request_id) where retry_of_request_id is not null')
     store.connection.execute('create table if not exists paper_outcome_packets '
         '(adaptation_request_id text primary key,session_id text not null,report_id text not null,'
         'created_ms integer not null,source_fingerprint text not null,packet_json text not null,'
@@ -129,6 +130,8 @@ def claim_authorized_call(store,request_id):
     if store.connection.execute('select changes()').fetchone()[0]!=1:
         raise ValueError('No unused call in the dedicated task authorization')
     store.connection.commit()
+    return store.connection.execute('select calls_started from paper_research_task_authorizations where request_id=?',
+        (request_id,)).fetchone()[0]
 
 
 def finish_authorized_task(store,request_id,*,actual_cost_usd,result_status):

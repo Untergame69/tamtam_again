@@ -202,9 +202,17 @@ def _prepare(store: Store, policy: dict[str, Any], status: dict[str, Any] | None
 
 def parse_response(text: str) -> dict[str, Any]:
     # Strict JSON, no executable generated code or markdown extraction.
-    result = json.loads(text)
+    try:
+        result = json.loads(text)
+    except (json.JSONDecodeError,TypeError) as exc:
+        raise CallContractError({'stage':'result_validation','code':'malformed_provider_response',
+            'field':'response','observed':{'type':type(exc).__name__,
+                'length_chars':len(text) if isinstance(text,str) else None,
+                'line':getattr(exc,'lineno',None),'column':getattr(exc,'colno',None)},
+            'limit':'strict JSON object'}) from None
     if not isinstance(result,dict):
-        raise ValueError('Structured JSON object required')
+        raise CallContractError({'stage':'result_validation','code':'response_root_not_object',
+            'field':'response','observed':type(result).__name__,'limit':'JSON object'})
     return result
 
 def enforce_profile(spec: dict[str, Any], packet: dict[str, Any]) -> None:
@@ -295,25 +303,58 @@ Accept means structurally testable only. Packet:\n'''+canonical(packet)+'\nPropo
               'wake':{'requires':'specific correction and new authorized bounded experiment'}},usage)
         return {'run_id':run_id,'status':'suspended','error_type':type(exc).__name__}
 
-def call(policy: dict[str, Any], prompt: str) -> tuple[str,dict[str, Any]]:
+class CallContractError(ValueError):
+    """A safe, structured description of a rejected provider result."""
+    def __init__(self, diagnostic: dict[str, Any]):
+        self.diagnostic=diagnostic
+        super().__init__(diagnostic['code'])
+
+
+def call(policy: dict[str, Any], prompt: str, *, on_response=None) -> tuple[str,dict[str, Any]]:
     if len(prompt)>policy['max_prompt_chars']:
-        raise ValueError('Prompt input budget exceeded')
-    response=infer({'model':policy['model'],'max_output_tokens':policy['max_output_tokens'],'prompt':prompt},timeout_seconds=policy['timeout_seconds'])
-    usage={**response['usage'],'duration_ms':response['duration_ms'],'model':policy['model']}
+        raise CallContractError({'stage':'prompt_preflight','code':'prompt_character_limit_exceeded',
+            'field':'prompt_chars','observed':len(prompt),'limit':policy['max_prompt_chars']})
+    captured=False
+    def persist_before_validation(response):
+        nonlocal captured
+        if on_response is not None and not captured:
+            on_response(response);captured=True
+    response=infer({'model':policy['model'],'max_output_tokens':policy['max_output_tokens'],'prompt':prompt},
+        timeout_seconds=policy['timeout_seconds'],on_response=persist_before_validation)
+    # The isolation layer invokes on_response before it checks provider status;
+    # this point is deliberately later than durable response capture.
+    persist_before_validation(response)
+    raw_usage=response.get('usage') if isinstance(response,dict) else None
+    if not isinstance(raw_usage,dict):
+        raise CallContractError({'stage':'usage_validation','code':'usage_object_missing',
+            'field':'usage','observed':type(raw_usage).__name__ if raw_usage is not None else None,
+            'limit':'provider response must contain a usage object'})
+    usage={**raw_usage,'duration_ms':response.get('duration_ms'),'model':policy['model']}
     if policy.get('usage_mode','pay_as_you_go')=='subscription':
         if usage.get('cost_status') not in {'included','estimated','known'}:
-            raise ValueError('Unknown subscription cost status; no further call')
-        if usage.get('input_tokens') is None or usage.get('output_tokens') is None:
-            raise ValueError('Subscription token usage missing; no further call')
-        if type(usage['input_tokens']) is not int or type(usage['output_tokens']) is not int \
-                or usage['input_tokens']>policy['max_input_tokens_per_call'] \
-                or usage['output_tokens']>policy['max_output_tokens']:
-            raise ValueError('Per-call subscription token ceiling exceeded; no further call')
+            raise CallContractError({'stage':'usage_validation','code':'invalid_cost_status',
+                'field':'usage.cost_status','observed':usage.get('cost_status'),
+                'limit':['included','estimated','known']})
+        for key in ('input_tokens','output_tokens'):
+            if type(usage.get(key)) is not int:
+                raise CallContractError({'stage':'usage_validation','code':'token_usage_missing_or_invalid',
+                    'field':'usage.'+key,'observed':usage.get(key),
+                    'limit':'integer token count required'})
+        limits={'input_tokens':policy['max_input_tokens_per_call'],
+                'output_tokens':policy['max_output_tokens']}
+        for key,limit in limits.items():
+            value=usage[key]
+            if value>limit:
+                raise CallContractError({'stage':'usage_validation','code':'per_call_token_limit_exceeded',
+                    'field':'usage.'+key,'observed':value,'limit':limit})
         if usage.get('cost_status')!='included' and usage.get('cost_usd') is None:
-            raise ValueError('Reported subscription charge is missing; no further call')
-    elif usage['cost_status'] not in {'included','estimated','known'} or usage['cost_usd'] is None or number(usage['cost_usd']) > number(policy['call_reservation_usd']):
-        raise ValueError('Unknown or exceeded inference cost; no further call')
-    return response['response'],usage
+            raise CallContractError({'stage':'usage_validation','code':'reported_charge_missing',
+                'field':'usage.cost_usd','observed':None,'limit':'required for estimated or known cost'})
+    elif usage.get('cost_status') not in {'included','estimated','known'} or usage.get('cost_usd') is None or number(usage['cost_usd']) > number(policy['call_reservation_usd']):
+        raise CallContractError({'stage':'usage_validation','code':'unknown_or_exceeded_inference_cost',
+            'field':'usage.cost_usd','observed':usage.get('cost_usd'),
+            'limit':policy['call_reservation_usd']})
+    return response.get('response'),usage
 
 
 def usage_accounting(usage: list[dict[str, Any]]) -> dict[str, Any]:

@@ -41,10 +41,15 @@ def route(store,request_id,*,kind='population'):
                 if result.get('state')=='budget_required' else result.get('reason','follow the recorded deterministic disposition'))}
     else:
         decision=result.get('critique') or result.get('proposal') or {}
+        validation_diagnostic=result.get('validation_diagnostic')
         output={'request_id':request_id,'research_origin':kind,'source_status':row['status'],'promotion_authorized':False,
             'economic_rejection':False,'evidence_refs':[('population_research:' if kind=='population' else 'paper_research:')+request_id],
-            'diagnostic':decision.get('diagnostic',result.get('error_type','terminal request without hypothesis')),
+            'diagnostic':decision.get('diagnostic',
+                (validation_diagnostic.get('code') if isinstance(validation_diagnostic,dict) else None)
+                or result.get('error_type','terminal request without hypothesis')),
             'wake':decision.get('wake',{}),'created_ms':now_ms()}
+        if isinstance(validation_diagnostic,dict):
+            output['validation_diagnostic']=validation_diagnostic
         if row['status']=='hypothesis_recorded':
             if (result.get('promotion_authorized') is not False or result.get('profitability_proven') is not False
                     or decision.get('decision')!='consistent'):
@@ -79,6 +84,9 @@ def route(store,request_id,*,kind='population'):
                 'non_identifiable':'archive until a new source makes mechanism observable',
                 'reject':'archive economic or hypothesis rejection with its original diagnostic',
             }.get(row['status'],'resolve interruption or contract failure before any explicitly budgeted new attempt'))
+            if row['status']=='suspended' and isinstance(validation_diagnostic,dict):
+                output['next_action']='Correct the recorded response contract before any separately authorized work; this rejected response is not promoted.'
+                output['wake']={'kind':'manual_contract_correction','automatic_retry':False}
     output['source_result_fingerprint']=result_fp
     output['supersedes_route_fingerprint']=fingerprint(saved) if saved else None
     if not saved:

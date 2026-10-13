@@ -109,6 +109,25 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.s.connection.execute('select count(*) from population_hypothesis_route_history where request_id=?',(self.request,)).fetchone()[0],1)
         self.assertFalse(self.s.connection.execute("select 1 from sqlite_master where name='strategy_variants'").fetchone())
 
+    def test_suspended_response_contract_failure_is_persisted_in_route_without_promotion(self):
+        from tamtam_again.population_routing import route
+        diagnostic={'stage':'result_validation','code':'hypothesis_fields_missing',
+            'field':'hypothesis','observed':[],
+            'limit':['mechanism','type','markets','signal','entry','exit','sizing','risk',
+                'horizon_justification','required_data','execution_constraints','rejection_criteria','evidence_refs']}
+        result={'error_type':'CallContractError','validation_diagnostic':diagnostic,
+            'raw_proposal':'{"decision":"hypothesis","diagnostic":{"hypothesis":"descriptive only"}}',
+            'promotion_authorized':False,'profitability_proven':False}
+        self.s.connection.execute("update population_research_jobs set status='suspended',result_json=? where request_id=?",
+            (json.dumps(result),self.request));self.s.connection.commit()
+        routed=route(self.s,self.request)
+        self.assertEqual(routed['state'],'suspended')
+        self.assertEqual(routed['diagnostic'],'hypothesis_fields_missing')
+        self.assertEqual(routed['validation_diagnostic'],diagnostic)
+        self.assertFalse(routed['promotion_authorized'])
+        self.assertFalse(routed['wake']['automatic_retry'])
+        self.assertEqual(route(self.s,self.request),routed)
+
     def test_routing_requires_contract_and_never_promotes(self):
         from tamtam_again.population_routing import route
         result={'proposal':{'hypothesis':{'required_data':[]}},

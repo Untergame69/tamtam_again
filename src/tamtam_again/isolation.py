@@ -48,7 +48,13 @@ def command(home: Path, *, offline: bool = False) -> list[str]:
              '--chdir', '/tmp', '--', str(RUNTIME/'venv/bin/python'), '/runner.py']
     return args
 
-def infer(request: dict[str, Any], *, timeout_seconds: int = 120) -> dict[str, Any]:
+class InferenceExecutionError(RuntimeError):
+    def __init__(self,diagnostic):
+        self.diagnostic=diagnostic
+        super().__init__(diagnostic['code'])
+
+
+def infer(request: dict[str, Any], *, timeout_seconds: int = 120, on_response=None) -> dict[str, Any]:
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='tamtam-inference-') as directory:
         home = Path(directory)
@@ -64,9 +70,14 @@ def infer(request: dict[str, Any], *, timeout_seconds: int = 120) -> dict[str, A
             response = json.loads(result.stdout)
         except ValueError:
             raise RuntimeError(f'Isolated inference failed (exit {result.returncode})') from None
-        if result.returncode or response.get('failed'):
-            raise RuntimeError(f"Isolated inference failed: {response.get('error_type', 'provider failure')}")
         response['duration_ms'] = int((time.monotonic()-started)*1000)
+        if on_response is not None:
+            on_response(response)
+        if result.returncode or response.get('failed'):
+            raise InferenceExecutionError({'stage':'provider_execution','code':'isolated_inference_failed',
+                'field':'failed','observed':{'failed':bool(response.get('failed')),
+                    'error_type':response.get('error_type'),'missing_module':response.get('missing_module'),
+                    'exit_code':result.returncode},'limit':'successful isolated provider response'})
         return response
 
 def verify(model: str = 'gpt-6.1-sol', probe_paths: list[str] | None = None) -> dict[str, Any]:

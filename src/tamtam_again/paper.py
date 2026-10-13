@@ -20,6 +20,7 @@ def timestamp(value: str) -> int:
 def archive_events(store: Store, network: str, address: str, coin: str, start_ms: int, end_ms: int,
                    *, after_observation_id: int = 0,
                    include_l2book: bool = False,
+                   include_evidence_refs: bool = False,
                    query_metrics: dict[str, Any] | None = None) -> tuple[list[dict[str,Any]], int]:
     """Only archived local receipts, live fills, and observed funding rates.
 
@@ -60,6 +61,7 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
     cursor = after_observation_id
     seen = set()
     for row in rows:
+        row_event_start=len(events)
         cursor = max(cursor,int(row["observation_id"]))
         archived_available = timestamp(row["observed_at"])
         if archived_available >= end_ms:
@@ -70,6 +72,10 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
             receipt = timestamp(row["requested_at"])
             if start_ms <= receipt < end_ms:
                 events.append({"id":f"health:{row['observation_id']}","received_ms":receipt,"event_ms":receipt,"available_ms":max(receipt,archived_available),**payload})
+                if include_evidence_refs:
+                    events[-1].update(evidence_ref=f"raw_observations:{row['observation_id']}",
+                        archive_event_index=0,archive_available_ms=archived_available,
+                        archive_response_sha256=row['response_sha256'])
             continue
         frames = payload.get("events",[]) if row["entity_type"] == "market" else [{"received_at":row["requested_at"],"message":payload}]
         for frame in frames:
@@ -139,6 +145,11 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                         events.append({"id":f"funding:{coin}:{exchange}","kind":"funding","received_ms":receipt,
                                        "available_ms":max(receipt,archived_available),"event_ms":exchange,
                                        "unit_funding_usdc":str(unit),"provenance":"settled_user_funding_usdc_divided_by_signed_szi"})
+        if include_evidence_refs:
+            for index,event in enumerate(events[row_event_start:]):
+                event.update(evidence_ref=f"raw_observations:{row['observation_id']}",
+                    archive_event_index=index,archive_available_ms=archived_available,
+                    archive_response_sha256=row['response_sha256'])
     return sorted(events,key=lambda e:(e.get("available_ms",e["received_ms"]),e["received_ms"],str(e["id"]))),cursor
 
 

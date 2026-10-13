@@ -99,9 +99,14 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(routed['state'],'needs_data')
         self.assertTrue(routed['wake']['new_input_fingerprint_required'])
         self.assertFalse(routed['promotion_authorized'])
+        self.assertEqual(route(self.s,self.request),routed)
         result['proposal']['hypothesis']['required_data']=[]
         self.s.connection.execute('update population_research_jobs set result_json=?',(json.dumps(result),));self.s.connection.commit()
-        self.assertEqual(route(self.s,self.request),routed)
+        changed=route(self.s,self.request)
+        self.assertEqual(changed['state'],'specification_required')
+        self.assertNotEqual(changed['source_result_fingerprint'],routed['source_result_fingerprint'])
+        self.assertEqual(route(self.s,self.request),changed)
+        self.assertEqual(self.s.connection.execute('select count(*) from population_hypothesis_route_history where request_id=?',(self.request,)).fetchone()[0],1)
         self.assertFalse(self.s.connection.execute("select 1 from sqlite_master where name='strategy_variants'").fetchone())
 
     def test_routing_requires_contract_and_never_promotes(self):
@@ -199,10 +204,46 @@ class RuntimeTests(unittest.TestCase):
 
     def test_isolation_and_timeout_are_fail_closed(self):
         with patch('tamtam_again.population_runtime.verify',side_effect=RuntimeError),patch('tamtam_again.population_runtime.call') as call:
-            with self.assertRaises(RuntimeError):run(self.s,self.request)
+            self.assertEqual(run(self.s,self.request)['status'],'suspended')
             call.assert_not_called()
+            self.assertEqual(run(self.s,self.request)['status'],'unchanged_no_inference')
+            call.assert_not_called()
+        row=self.s.connection.execute('select reserved_cost_usd,actual_cost_usd from population_research_jobs').fetchone()
+        self.assertEqual(row['reserved_cost_usd'],'2');self.assertIsNone(row['actual_cost_usd'])
+
+    def test_provider_timeout_consumes_job_and_never_retries(self):
         with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',side_effect=TimeoutError) as call:
             self.assertEqual(run(self.s,self.request)['status'],'suspended')
             self.assertEqual(run(self.s,self.request)['status'],'unchanged_no_inference');self.assertEqual(call.call_count,1)
         row=self.s.connection.execute('select reserved_cost_usd,actual_cost_usd from population_research_jobs').fetchone()
         self.assertEqual(row['reserved_cost_usd'],'2');self.assertIsNone(row['actual_cost_usd'])
+
+    def test_subscription_limits_calls_and_tracks_included_usage_without_usd_reservation(self):
+        from tamtam_again.population_research import validate_policy
+        from tamtam_again.engine import canonical
+        policy={**self.policy,'usage_mode':'subscription','max_model_calls':2,
+            'max_input_tokens_per_call':80000,'max_total_input_tokens':100000,
+            'max_total_output_tokens':10000,'max_total_duration_ms':240000}
+        policy.pop('call_reservation_usd')
+        validate_policy(policy)
+        self.s.connection.execute('update population_research_jobs set policy_json=? where request_id=?',
+            (canonical(policy),self.request));self.s.connection.commit()
+        hypothesis={k:'fixture' for k in ('mechanism','signal','entry','exit','sizing','risk',
+            'horizon_justification','execution_constraints','rejection_criteria')}
+        hypothesis.update(type='autonomous',markets=['BTC'],required_data=[],
+            evidence_refs=['account_scope_reports:one'])
+        proposal={'decision':'hypothesis','diagnostic':'mechanism to review','wake':{},'hypothesis':hypothesis}
+        included={'cost_usd':0,'cost_status':'included','input_tokens':30000,'output_tokens':100,
+            'duration_ms':100,'model':'fixture'}
+        with patch('tamtam_again.population_runtime.verify'),patch(
+                'tamtam_again.population_runtime.call',return_value=(json.dumps(proposal),included)) as caller:
+            result=run(self.s,self.request)
+        self.assertEqual(result['status'],'suspended')
+        caller.assert_called_once()
+        row=self.s.connection.execute('select reserved_cost_usd,actual_cost_usd,usage_json,result_json from population_research_jobs').fetchone()
+        self.assertIsNone(row['reserved_cost_usd']);self.assertIsNone(row['actual_cost_usd'])
+        self.assertEqual(json.loads(row['result_json'])['usage_accounting'],{
+            'calls':1,'included_calls':1,'included_input_tokens':30000,'included_output_tokens':100,
+            'included_duration_ms':100,'charged_cost_usd':None,'estimated_cost_usd':None,'unknown_cost_calls':0})
+        self.assertEqual(run(self.s,self.request)['status'],'unchanged_no_inference')
+        caller.assert_called_once()

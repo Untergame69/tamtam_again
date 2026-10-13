@@ -59,6 +59,7 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
     from .research_jobs import table
     registry=table(kind)
     policy=json.loads(row['policy_json'])
+    usage_mode=policy.get('usage_mode','pay_as_you_go')
     activated_ms=(row['activated_ms'] if kind=='paper' and 'activated_ms' in row.keys() and row['activated_ms'] is not None else row['created_ms'])
     if now_ms()<activated_ms:raise ValueError('Research job is not yet available')
     if now_ms()-activated_ms>policy['max_request_age_ms']:
@@ -68,8 +69,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
             finish_authorized_task(store,request_id,actual_cost_usd=None,result_status='expired')
         return {'status':'expired','request_id':request_id}
     policy={**policy,'max_prompt_chars':policy.get('max_prompt_chars',policy['max_packet_chars']+8192)}
+    reserved=(str(number(policy['call_reservation_usd'])*2) if usage_mode=='pay_as_you_go' else None)
     changed=store.connection.execute(f"update {registry} set status='running',reserved_cost_usd=?,updated_ms=? where request_id=? and status='sealed'",
-        (str(number(policy['call_reservation_usd'])*2),now_ms(),request_id)).rowcount
+        (reserved,now_ms(),request_id)).rowcount
     store.connection.commit()
     if not changed:return {'status':'leased_elsewhere','request_id':request_id}
     try:
@@ -89,6 +91,34 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
             (canonical(artifacts),canonical(usage),now_ms(),request_id));store.connection.commit()
     try:
         from .population_compilation import compiler_contract
+        def bounded_call(prompt):
+            nonlocal call_in_progress
+            max_calls=policy.get('max_model_calls',2)
+            if len(usage)>=max_calls:
+                raise ValueError('Model-call ceiling reached; no automatic retry')
+            if usage_mode=='subscription':
+                spent_input=sum(int(item.get('input_tokens') or 0) for item in usage)
+                spent_output=sum(int(item.get('output_tokens') or 0) for item in usage)
+                spent_duration=sum(int(item.get('duration_ms') or 0) for item in usage)
+                if (spent_input+policy['max_input_tokens_per_call']>policy['max_total_input_tokens']
+                        or spent_output+policy['max_output_tokens']>policy['max_total_output_tokens']):
+                    raise ValueError('Aggregate subscription token ceiling reached; no further call')
+                if spent_duration+policy['timeout_seconds']*1000>policy['max_total_duration_ms']:
+                    raise ValueError('Aggregate subscription duration ceiling would be exceeded; no further call')
+            call_in_progress=True
+            result=call(policy,prompt)
+            call_in_progress=False
+            usage.append(result[1])
+            if usage_mode=='subscription':
+                total_input=sum(int(item.get('input_tokens') or 0) for item in usage)
+                total_output=sum(int(item.get('output_tokens') or 0) for item in usage)
+                total_duration=sum(int(item.get('duration_ms') or 0) for item in usage)
+                if (result[1]['duration_ms']>policy['timeout_seconds']*1000
+                        or total_input>policy['max_total_input_tokens']
+                        or total_output>policy['max_total_output_tokens']
+                        or total_duration>policy['max_total_duration_ms']):
+                    raise ValueError('Aggregate subscription usage ceiling exceeded; no further call')
+            return result
         source=('sealed public REST description' if kind=='population' else
                 'sealed diagnosis of our own paper executions; this is not a leader trading history')
         prompt='Propose a falsifiable mechanism from this '+source+'. No tools exist.\n'+'''
@@ -114,8 +144,7 @@ Compiler contract:\n'''+canonical(compiler_contract())+'\nRequest id: '+request_
         if kind=='paper':
             from .paper_research import claim_authorized_call
             claim_authorized_call(store,request_id)
-        call_in_progress=True
-        raw,measured=call(policy,prompt);call_in_progress=False;usage.append(measured);artifacts['raw_proposal']=raw
+        raw,measured=bounded_call(prompt);artifacts['raw_proposal']=raw
         checkpoint()
         proposal=parse_response(raw);validate_response(proposal,packet,request_id=request_id);artifacts['proposal']=proposal
         state=proposal['decision']
@@ -130,8 +159,7 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
             if kind=='paper':
                 from .paper_research import claim_authorized_call
                 claim_authorized_call(store,request_id)
-            call_in_progress=True
-            raw,measured=call(policy,prompt);call_in_progress=False;usage.append(measured);artifacts['raw_critique']=raw
+            raw,measured=bounded_call(prompt);artifacts['raw_critique']=raw
             checkpoint()
             critique=parse_response(raw);artifacts['critique']=critique
             if not critique.get('diagnostic') or not isinstance(critique.get('wake'),dict) or critique.get('decision') not in STATES|{'consistent'}:
@@ -141,7 +169,9 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
         artifacts['error_type']=type(exc).__name__;state='suspended';cost_complete=not call_in_progress
     artifacts.update(profitability_proven=False,promotion_authorized=False,
         runtime_contract_version='reviewed-hypothesis-v3-population-or-paper',research_origin=kind)
-    cost=str(sum(number(u['cost_usd']) for u in usage)) if usage and cost_complete else None
+    from .research import usage_accounting
+    accounting=usage_accounting(usage);artifacts['usage_accounting']=accounting
+    cost=accounting['charged_cost_usd'] if usage and cost_complete else None
     store.connection.execute(f'update {registry} set status=?,actual_cost_usd=?,result_json=?,usage_json=?,updated_ms=? where request_id=? and status=\'running\'',
         (state,cost,canonical(artifacts),canonical(usage),now_ms(),request_id));store.connection.commit()
     if kind=='paper':

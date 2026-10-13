@@ -193,6 +193,12 @@ class PaperEngineV3Tests(unittest.TestCase):
             self.assertEqual((l2['bid'],l2['ask'],l2['bid_size'],l2['ask_size']),('100','100.1','12','9'))
             self.assertEqual(l2['received_ms'],receipt)
             self.assertEqual(l2['session'],'c1')
+            traced,_=archive_events(store,'hyperliquid-mainnet',ADDRESS,'HYPE',receipt-1_000,receipt+2_000,
+                                    include_l2book=True,include_evidence_refs=True)
+            traced_l2=next(x for x in traced if x['kind']=='l2book')
+            self.assertTrue(traced_l2['evidence_ref'].startswith('raw_observations:'))
+            self.assertEqual(traced_l2['archive_event_index'],0)
+            self.assertEqual(len(traced_l2['archive_response_sha256']),64)
             store.close()
 
     def test_actual_quote_receipt_age_is_not_rewritten_to_processing_time(self):

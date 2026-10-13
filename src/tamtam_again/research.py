@@ -300,9 +300,37 @@ def call(policy: dict[str, Any], prompt: str) -> tuple[str,dict[str, Any]]:
         raise ValueError('Prompt input budget exceeded')
     response=infer({'model':policy['model'],'max_output_tokens':policy['max_output_tokens'],'prompt':prompt},timeout_seconds=policy['timeout_seconds'])
     usage={**response['usage'],'duration_ms':response['duration_ms'],'model':policy['model']}
-    if usage['cost_status'] not in {'included','estimated','known'} or usage['cost_usd'] is None or number(usage['cost_usd']) > number(policy['call_reservation_usd']):
+    if policy.get('usage_mode','pay_as_you_go')=='subscription':
+        if usage.get('cost_status') not in {'included','estimated','known'}:
+            raise ValueError('Unknown subscription cost status; no further call')
+        if usage.get('input_tokens') is None or usage.get('output_tokens') is None:
+            raise ValueError('Subscription token usage missing; no further call')
+        if type(usage['input_tokens']) is not int or type(usage['output_tokens']) is not int \
+                or usage['input_tokens']>policy['max_input_tokens_per_call'] \
+                or usage['output_tokens']>policy['max_output_tokens']:
+            raise ValueError('Per-call subscription token ceiling exceeded; no further call')
+        if usage.get('cost_status')!='included' and usage.get('cost_usd') is None:
+            raise ValueError('Reported subscription charge is missing; no further call')
+    elif usage['cost_status'] not in {'included','estimated','known'} or usage['cost_usd'] is None or number(usage['cost_usd']) > number(policy['call_reservation_usd']):
         raise ValueError('Unknown or exceeded inference cost; no further call')
     return response['response'],usage
+
+
+def usage_accounting(usage: list[dict[str, Any]]) -> dict[str, Any]:
+    """Separate included subscription usage from declared monetary charges."""
+    included=[item for item in usage if item.get('cost_status')=='included']
+    charged=[item for item in usage if item.get('cost_status')=='known']
+    estimated=[item for item in usage if item.get('cost_status')=='estimated']
+    return {
+        'calls':len(usage),
+        'included_calls':len(included),
+        'included_input_tokens':sum(int(item.get('input_tokens') or 0) for item in included),
+        'included_output_tokens':sum(int(item.get('output_tokens') or 0) for item in included),
+        'included_duration_ms':sum(int(item.get('duration_ms') or 0) for item in included),
+        'charged_cost_usd':str(sum((number(item.get('cost_usd')) for item in charged),number('0'))) if charged else None,
+        'estimated_cost_usd':str(sum((number(item.get('cost_usd')) for item in estimated),number('0'))) if estimated else None,
+        'unknown_cost_calls':sum(item.get('cost_status') not in {'included','known','estimated'} for item in usage),
+    }
 
 def finish(store: Store, job: Any, state: str, result: dict[str, Any], usage: list[dict[str, Any]]) -> None:
     measured=sum(number(u['cost_usd']) for u in usage)

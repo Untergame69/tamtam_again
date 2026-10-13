@@ -20,8 +20,21 @@ def validate_policy(policy):
     if not isinstance(policy.get('model'),str) or not policy['model'].strip():raise ValueError('Explicit isolated model required')
     if 'max_prompt_chars' in policy and (type(policy['max_prompt_chars']) is not int or policy['max_prompt_chars']<policy['max_packet_chars']):
         raise ValueError('Prompt budget must accommodate the population packet')
-    cost=number(policy.get('call_reservation_usd'))
-    if not cost.is_finite() or cost<=0:raise ValueError('Finite positive call reservation required')
+    mode=policy.get('usage_mode','pay_as_you_go')
+    if mode=='subscription':
+        if 'call_reservation_usd' in policy:
+            raise ValueError('Subscription policies must not contain a fictive USD reservation')
+        for key in ('max_model_calls','max_input_tokens_per_call','max_total_input_tokens',
+                    'max_total_output_tokens','max_total_duration_ms'):
+            if type(policy.get(key)) is not int or policy[key]<1:
+                raise ValueError('Positive subscription usage limit required: '+key)
+        if policy['max_model_calls']>2 or policy['max_total_input_tokens']<policy['max_input_tokens_per_call']:
+            raise ValueError('Subscription usage limits exceed this runtime contract')
+    elif mode=='pay_as_you_go':
+        cost=number(policy.get('call_reservation_usd'))
+        if not cost.is_finite() or cost<=0:raise ValueError('Finite positive call reservation required')
+    else:
+        raise ValueError('Explicit supported usage mode required')
 
 
 def seal(store,network,address,policy,*,clock_ms=None):

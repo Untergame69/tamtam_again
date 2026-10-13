@@ -23,6 +23,8 @@ def route(store,request_id,*,kind='population'):
     result_fp=fingerprint({'status':row['status'],'result':result})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
     if history:return json.loads(history[0])
+    if saved and saved.get('source_result_fingerprint')==result_fp:
+        return saved
     if saved and row['status']==saved.get('source_status') and result.get('route') and not (result.get('critique') or result.get('proposal')):
         # Same deterministic preparation result: keep returning its immutable route.
         return saved

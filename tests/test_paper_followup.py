@@ -223,7 +223,7 @@ class FollowupTests(unittest.TestCase):
             self.assertEqual(request_count(store), 9)
             auth = store.connection.execute("select state,calls_started,reserved_cost_usd,actual_cost_usd,result_status "
                 "from paper_research_task_authorizations where request_id=?", (task["job_id"],)).fetchone()
-            self.assertEqual(tuple(auth), ("completed", 2, "2", "0.50", "hypothesis_recorded"))
+            self.assertEqual(tuple(auth), ("completed", 2, "2", None, "hypothesis_recorded"))
             final_route = route(store, task["job_id"], kind="paper")
             self.assertEqual(final_route["state"], "specification_required")
             self.assertEqual(final_route["supersedes_route_fingerprint"], __import__(
@@ -327,6 +327,35 @@ class FollowupTests(unittest.TestCase):
                 "select state,calls_started,result_status from paper_research_task_authorizations where request_id=?",
                 (task["job_id"],)).fetchone()
             self.assertEqual(tuple(authorization), ("completed", 0, "suspended"))
+        finally:
+            store.connection.close()
+            tmp.cleanup()
+
+    def test_subscription_authorization_uses_calls_tokens_duration_without_usd_reservation(self):
+        tmp,store=self._runtime_fixture()
+        try:
+            task=present_report(store,'s','r',clock_ms=30)
+            source=json.loads(store.connection.execute('select packet_json from paper_research_jobs where request_id=?',
+                (task['job_id'],)).fetchone()[0])
+            caps={'max_input_tokens_per_call':80000,'max_total_input_tokens':160000,
+                'max_total_output_tokens':10000,'max_total_duration_ms':240000}
+            authorized=authorize_task(store,task['job_id'],authorization_ref='subscription-task-approval',
+                authorized_ms=40,packet_fingerprint_value=source['fingerprint'],max_calls=2,
+                usage_mode='subscription',**caps)
+            self.assertEqual(authorized['max_reserved_cost_usd'],None)
+            auth=store.connection.execute('select usage_mode,max_calls,max_reserved_cost_usd,reserved_cost_usd from paper_research_task_authorizations where request_id=?',
+                (task['job_id'],)).fetchone()
+            self.assertEqual(tuple(auth),('subscription',2,'0',None))
+            policy={**self._policy(),'usage_mode':'subscription','max_model_calls':2,**caps}
+            policy.pop('call_reservation_usd')
+            result=seal(store,task['request_id'],policy,clock_ms=50)
+            self.assertEqual(result['status'],'sealed')
+            job=store.connection.execute('select status,reserved_cost_usd from paper_research_jobs where request_id=?',
+                (task['job_id'],)).fetchone()
+            auth=store.connection.execute('select state,reserved_cost_usd from paper_research_task_authorizations where request_id=?',
+                (task['job_id'],)).fetchone()
+            self.assertEqual(tuple(job),('sealed',None))
+            self.assertEqual(tuple(auth),('activated',None))
         finally:
             store.connection.close()
             tmp.cleanup()

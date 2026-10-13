@@ -14,7 +14,8 @@ def initialize(store):
     columns={r[1] for r in store.connection.execute('pragma table_info(paper_research_jobs)')}
     for name,kind in {'network':'text','address':'text','updated_ms':'integer',
             'reserved_cost_usd':'text','actual_cost_usd':'text','result_json':'text','usage_json':'text',
-            'parent_request_id':'text','activated_ms':'integer','data_available_ms':'integer'}.items():
+            'parent_request_id':'text','activated_ms':'integer','data_available_ms':'integer',
+            'local_resolution_id':'text'}.items():
         if name not in columns:store.connection.execute('alter table paper_research_jobs add column '+name+' '+kind)
 
     # Earlier schemas allowed exactly one job per diagnostic. Keep one initial
@@ -45,7 +46,9 @@ def initialize(store):
     # deterministic request id prevents duplicate presentation of each packet.
     store.connection.execute('drop index if exists paper_research_initial_diagnostic')
     store.connection.execute('create unique index if not exists paper_research_initial_packet on paper_research_jobs(adaptation_request_id,request_id) where parent_request_id is null')
-    store.connection.execute('create unique index if not exists paper_research_followup_parent on paper_research_jobs(parent_request_id) where parent_request_id is not null')
+    store.connection.execute('drop index if exists paper_research_followup_parent')
+    store.connection.execute('create index if not exists paper_research_followup_parent on paper_research_jobs(parent_request_id) where parent_request_id is not null')
+    store.connection.execute('create unique index if not exists paper_research_local_resolution on paper_research_jobs(local_resolution_id) where local_resolution_id is not null')
     store.connection.execute('create table if not exists paper_outcome_packets '
         '(adaptation_request_id text primary key,session_id text not null,report_id text not null,'
         'created_ms integer not null,source_fingerprint text not null,packet_json text not null,'
@@ -56,13 +59,25 @@ def initialize(store):
         'data_available_ms integer not null,data_age_ms integer not null,packet_json text not null)')
     store.connection.execute('create table if not exists paper_research_task_authorizations '
         '(request_id text primary key,authorization_ref text not null unique,packet_fingerprint text not null,'
-        'authorized_ms integer not null,max_calls integer not null,max_reserved_cost_usd text not null,'
+        'authorized_ms integer not null,max_calls integer not null,max_reserved_cost_usd text,'
         'state text not null,calls_started integer not null default 0,reserved_cost_usd text,'
         'actual_cost_usd text,result_status text,activated_ms integer,updated_ms integer not null)')
+    auth_columns={r[1] for r in store.connection.execute('pragma table_info(paper_research_task_authorizations)')}
+    for name,kind in {'usage_mode':'text','max_input_tokens_per_call':'integer',
+            'max_total_input_tokens':'integer','max_total_output_tokens':'integer',
+            'max_total_duration_ms':'integer'}.items():
+        if name not in auth_columns:store.connection.execute('alter table paper_research_task_authorizations add column '+name+' '+kind)
+    store.connection.execute('create table if not exists paper_local_evidence_resolutions '
+        '(resolution_id text primary key,parent_request_id text not null,source_result_fingerprint text not null,'
+        'source_packet_fingerprint text not null,evidence_fingerprint text not null,prepared_ms integer not null,'
+        'data_available_ms integer not null,child_request_id text not null unique,resolution_json text not null,'
+        'packet_json text not null)')
 
 
 def authorize_task(store,request_id,*,authorization_ref,authorized_ms,packet_fingerprint_value,
-        max_calls=2,max_reserved_cost_usd='2'):
+        max_calls=2,max_reserved_cost_usd='2',usage_mode='pay_as_you_go',
+        max_input_tokens_per_call=None,max_total_input_tokens=None,
+        max_total_output_tokens=None,max_total_duration_ms=None):
     """Persist a one-task approval without changing the shared trial ceiling."""
     initialize(store)
     row=store.connection.execute('select packet_json,status,activated_ms from paper_research_jobs where request_id=?',
@@ -74,22 +89,35 @@ def authorize_task(store,request_id,*,authorization_ref,authorized_ms,packet_fin
         raise ValueError('Authorization packet fingerprint mismatch')
     if type(authorized_ms) is not int or type(max_calls) is not int or not 1<=max_calls<=2:
         raise ValueError('One task and at most two calls are allowed')
-    reserve=number(max_reserved_cost_usd)
-    if not reserve.is_finite() or reserve<=0 or reserve>number('2'):
-        raise ValueError('Dedicated reservation must be positive and at most 2 USD')
+    if usage_mode=='subscription':
+        caps=(max_input_tokens_per_call,max_total_input_tokens,max_total_output_tokens,max_total_duration_ms)
+        if any(type(value) is not int or value<1 for value in caps):
+            raise ValueError('Subscription authorization requires explicit token and duration ceilings')
+        reserve=None
+    elif usage_mode=='pay_as_you_go':
+        reserve=number(max_reserved_cost_usd)
+        if not reserve.is_finite() or reserve<=0 or reserve>number('2'):
+            raise ValueError('Dedicated reservation must be positive and at most 2 USD')
+        max_input_tokens_per_call=max_total_input_tokens=max_total_output_tokens=max_total_duration_ms=None
+    else:
+        raise ValueError('Explicit supported authorization usage mode required')
     prior=store.connection.execute('select * from paper_research_task_authorizations where request_id=?',(request_id,)).fetchone()
     if prior:
         if (prior['authorization_ref']==authorization_ref and prior['packet_fingerprint']==packet_fingerprint_value
-                and prior['max_calls']==max_calls and number(prior['max_reserved_cost_usd'])==reserve
+                and prior['max_calls']==max_calls and prior['usage_mode']==usage_mode
+                and (prior['max_reserved_cost_usd'] is None if reserve is None else number(prior['max_reserved_cost_usd'])==reserve)
                 and prior['state']=='authorized'):
             return {'status':'already_authorized','request_id':request_id}
         raise ValueError('Task already has a different or consumed authorization')
     store.connection.execute('insert into paper_research_task_authorizations '
-        '(request_id,authorization_ref,packet_fingerprint,authorized_ms,max_calls,max_reserved_cost_usd,state,updated_ms) '
-        'values(?,?,?,?,?,?,?,?)',(request_id,authorization_ref,packet_fingerprint_value,authorized_ms,
-        max_calls,str(reserve),'authorized',authorized_ms))
+        '(request_id,authorization_ref,packet_fingerprint,authorized_ms,max_calls,max_reserved_cost_usd,state,updated_ms,'
+        'usage_mode,max_input_tokens_per_call,max_total_input_tokens,max_total_output_tokens,max_total_duration_ms) '
+        'values(?,?,?,?,?,?,?,?,?,?,?,?,?)',(request_id,authorization_ref,packet_fingerprint_value,authorized_ms,
+        max_calls,str(reserve) if reserve is not None else '0','authorized',authorized_ms,usage_mode,
+        max_input_tokens_per_call,max_total_input_tokens,max_total_output_tokens,max_total_duration_ms))
     store.connection.commit()
-    return {'status':'authorized','request_id':request_id,'max_calls':max_calls,'max_reserved_cost_usd':str(reserve)}
+    return {'status':'authorized','request_id':request_id,'max_calls':max_calls,
+        'usage_mode':usage_mode,'max_reserved_cost_usd':str(reserve) if reserve is not None else None}
 
 
 def claim_authorized_call(store,request_id):
@@ -108,6 +136,25 @@ def finish_authorized_task(store,request_id,*,actual_cost_usd,result_status):
         'result_status=?,updated_ms=? where request_id=? and state=\'activated\'',
         (actual_cost_usd,result_status,now_ms(),request_id))
     store.connection.commit()
+
+
+def _authorization_covers_policy(authorization,policy):
+    mode=policy.get('usage_mode','pay_as_you_go')
+    if authorization['max_calls']<policy.get('max_model_calls',2):return False
+    # Null mode means a preserved pre-versioned authorization. It can cover
+    # only the historical pay-as-you-go contract, never a subscription task.
+    auth_mode=authorization['usage_mode'] or 'pay_as_you_go'
+    if auth_mode!=mode:return False
+    if mode=='subscription':
+        return all(authorization[key] is not None and authorization[key]>=policy[policy_key]
+            for key,policy_key in (
+                ('max_input_tokens_per_call','max_input_tokens_per_call'),
+                ('max_total_input_tokens','max_total_input_tokens'),
+                ('max_total_output_tokens','max_total_output_tokens'),
+                ('max_total_duration_ms','max_total_duration_ms')))
+    return (authorization['max_reserved_cost_usd'] is not None
+        and number(policy['call_reservation_usd'])*authorization['max_calls']
+        <=number(authorization['max_reserved_cost_usd']))
 
 
 def adapt_outcome_packet(source,*,prepared_ms,activated_ms):
@@ -140,9 +187,12 @@ def adapt_outcome_packet(source,*,prepared_ms,activated_ms):
     return result
 
 
-def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=None,_ancestry=()):
+def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=None,_ancestry=(),local_resolution_id=None):
     if type(clock_ms) is not int or clock_ms<0 or type(max_chars) is not int or max_chars<1:
         raise ValueError('Explicit availability and packet budget required')
+    if local_resolution_id is not None:
+        from .paper_local_resolution import packet_for_resolution
+        return packet_for_resolution(store,local_resolution_id,clock_ms=clock_ms,max_chars=max_chars)
     row=store.connection.execute('select session_id,created_ms from paper_adaptation_requests where request_id=?',
                                  (adaptation_request_id,)).fetchone()
     if not row or row['created_ms']>clock_ms:raise ValueError('Available adaptation request required')
@@ -276,7 +326,7 @@ def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=No
     return {'status':'packet_ready','packet':output}
 
 
-def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=None):
+def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=None,local_resolution_id=None):
     if policy.get('version')!='paper-adaptation-research-v1' or not isinstance(policy.get('justification'),str) or not policy['justification'].strip():
         raise ValueError('Explicit justified paper research policy required')
     # Same isolated model/call/timeout/output budgets as the existing runtime.
@@ -284,10 +334,11 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
     clock=now_ms() if clock_ms is None else clock_ms
     if type(clock) is not int or clock<0:raise ValueError('Explicit research clock required')
     initialize(store);store.connection.commit()
-    result=packet(store,adaptation_request_id,clock_ms=clock,max_chars=policy['max_packet_chars'],parent_request_id=parent_request_id)
+    result=packet(store,adaptation_request_id,clock_ms=clock,max_chars=policy['max_packet_chars'],
+        parent_request_id=parent_request_id,local_resolution_id=local_resolution_id)
     if result['status']!='packet_ready':return result
     identity=fingerprint({'adaptation_request_id':adaptation_request_id,'packet':result['packet']['fingerprint']})
-    previous=store.connection.execute('select request_id,status,packet_json,created_ms from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
+    previous=store.connection.execute('select request_id,status,packet_json,created_ms,local_resolution_id from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
     prepared_handoff=store.connection.execute('select 1 from paper_outcome_packets where adaptation_request_id=?',(adaptation_request_id,)).fetchone()
     if not previous and not prepared_handoff:
         legacy=store.connection.execute('select request_id,status from paper_research_jobs where adaptation_request_id=? and parent_request_id is ? and created_ms<=? order by created_ms,request_id limit 1',(adaptation_request_id,parent_request_id,clock)).fetchone()
@@ -298,13 +349,12 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
     dedicated=bool(authorization and authorization['state']=='authorized'
         and authorization['packet_fingerprint']==result['packet']['fingerprint'])
     if authorization and not dedicated:return {'status':'authorization_unavailable','request_id':identity}
-    if dedicated and (not previous or authorization['max_calls']<1
-            or number(policy['call_reservation_usd'])*authorization['max_calls']>number(authorization['max_reserved_cost_usd'])):
+    if dedicated and (not previous or not _authorization_covers_policy(authorization,policy)):
         return {'status':'authorization_limits_do_not_cover_policy','request_id':identity}
     if not dedicated and request_count(store)>=policy['max_requests']:return {'status':'budget_exhausted'}
     store.connection.execute('begin immediate')
     try:
-        previous=store.connection.execute('select request_id,status,packet_json,created_ms from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
+        previous=store.connection.execute('select request_id,status,packet_json,created_ms,local_resolution_id from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
         if previous and previous['status']!='budget_required':
             store.connection.commit();return {'status':'unchanged_no_inference','request_id':previous['request_id']}
         # A new policy version does not reset counts or rearm failed jobs.
@@ -314,7 +364,7 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
             and authorization['packet_fingerprint']==result['packet']['fingerprint'])
         if authorization and not dedicated:
             store.connection.commit();return {'status':'authorization_unavailable','request_id':identity}
-        if dedicated and (not previous or number(policy['call_reservation_usd'])*authorization['max_calls']>number(authorization['max_reserved_cost_usd'])):
+        if dedicated and (not previous or not _authorization_covers_policy(authorization,policy)):
             store.connection.commit();return {'status':'authorization_limits_do_not_cover_policy','request_id':identity}
         if not dedicated and request_count(store)>=policy['max_requests']:
             store.connection.commit();return {'status':'budget_exhausted'}
@@ -338,18 +388,22 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
         if previous:
             if previous['request_id']!=identity or previous['packet_json']!=canonical(result['packet']):
                 raise ValueError('Budget-required task packet changed before activation')
+            if previous['local_resolution_id']!=local_resolution_id:
+                raise ValueError('Prepared local evidence resolution identity changed')
             store.connection.execute('update paper_research_jobs set policy_json=?,status=\'sealed\',reserved_cost_usd=?,activated_ms=?,data_available_ms=?,updated_ms=? where request_id=? and status=\'budget_required\'',
-                (canonical(policy),str(policy['call_reservation_usd']),clock,data_available_ms,clock,identity))
+                (canonical(policy),str(policy['call_reservation_usd']) if policy.get('usage_mode','pay_as_you_go')=='pay_as_you_go' else None,
+                 clock,data_available_ms,clock,identity))
             if dedicated:
-                reserved=str(number(policy['call_reservation_usd'])*authorization['max_calls'])
+                reserved=(str(number(policy['call_reservation_usd'])*authorization['max_calls'])
+                    if policy.get('usage_mode','pay_as_you_go')=='pay_as_you_go' else None)
                 changed=store.connection.execute('update paper_research_task_authorizations set state=\'activated\',reserved_cost_usd=?,activated_ms=?,updated_ms=? where request_id=? and state=\'authorized\' and packet_fingerprint=?',
                     (reserved,clock,clock,identity,result['packet']['fingerprint'])).rowcount
                 if changed!=1:raise ValueError('Dedicated authorization was concurrently consumed')
             store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0,'activated_existing_task':True,'activated_ms':clock,'data_available_ms':data_available_ms}
         store.connection.execute('insert into paper_research_jobs '
-            '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,updated_ms,parent_request_id,activated_ms,data_available_ms) '
-            'values(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            '(request_id,adaptation_request_id,session_id,created_ms,packet_json,policy_json,status,network,address,updated_ms,parent_request_id,activated_ms,data_available_ms,local_resolution_id) '
+            'values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
             (identity,adaptation_request_id,result['packet']['session_id'],clock,
-             canonical(result['packet']),canonical(policy),'sealed',result['packet']['network'],result['packet']['address'],clock,parent_request_id,clock,data_available_ms))
+             canonical(result['packet']),canonical(policy),'sealed',result['packet']['network'],result['packet']['address'],clock,parent_request_id,clock,data_available_ms,local_resolution_id))
         store.connection.commit();return {'status':'sealed','request_id':identity,'model_calls':0,'activated_ms':clock,'data_available_ms':data_available_ms}
     except BaseException:store.connection.rollback();raise

@@ -23,6 +23,17 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
     initialize(store)
     from .paper_followup import recover_completed_reports
     followup_tasks=recover_completed_reports(store,clock_ms=now_ms(),max_tasks=min(inspected,8))
+    local_resolutions=[]
+    local_pending=store.connection.execute("select request_id,result_json from paper_research_jobs "
+        "where status='needs_data' order by updated_ms,request_id limit ?",(inspected,)).fetchall()
+    from .paper_local_resolution import prepare_from_local_archives
+    for parent in local_pending:
+        try:
+            value=prepare_from_local_archives(store,parent['request_id'],clock_ms=now_ms())
+            local_resolutions.append(value)
+        except ValueError as exc:
+            local_resolutions.append({'request_id':parent['request_id'],'status':'waiting',
+                'reason':type(exc).__name__})
     store.connection.execute('create table if not exists paper_research_seal_attempts '
         '(adaptation_request_id text primary key,last_attempt_ms integer not null,attempts integer not null)')
     store.connection.commit()
@@ -96,5 +107,5 @@ def _tick(store,policy,*,experiment_policy,dispatch=True,max_jobs=1):
     # Prepared budget-required packets remain dormant. They are not repeatedly
     # polled or dispatched until an explicitly authorized activation is supplied.
     return {'sealed':sealed,'processed':processed,'plans':plans,'routes':routes,'memory':memory,
-        'followup_tasks':followup_tasks,
+        'followup_tasks':followup_tasks,'local_resolutions':local_resolutions,
         'interrupted_without_retry':interrupted,'promotion_authorized':False,'observation_plans':observation_plans}

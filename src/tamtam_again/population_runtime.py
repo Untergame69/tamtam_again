@@ -1,4 +1,5 @@
 """Tool-free population hypothesis and consistency review; no strategy promotion."""
+from copy import deepcopy
 import json
 from .discovery import protected_addresses
 from .engine import canonical, number
@@ -6,6 +7,24 @@ from .research import call, parse_response, scheduler_lock, verify
 from .validation import now_ms
 
 STATES={'needs_data','non_identifiable','unsupported_mechanism','reject'}
+
+
+def adapt_archived_nested_hypothesis_v1(response):
+    """Copy an archived nested hypothesis to the schema root without repairing it.
+
+    This is an execution-diagnostic adapter, not a provider retry or a research
+    promotion. The source object must remain untouched and every hypothesis
+    value must come from the exact ``diagnostic.hypothesis`` object.
+    """
+    if not isinstance(response,dict) or 'hypothesis' in response:
+        raise ValueError('Adapter v1 requires a response with no root hypothesis')
+    diagnostic=response.get('diagnostic')
+    hypothesis=diagnostic.get('hypothesis') if isinstance(diagnostic,dict) else None
+    if not isinstance(hypothesis,dict):
+        raise ValueError('Adapter v1 requires an object at diagnostic.hypothesis')
+    adapted=deepcopy(response)
+    adapted['hypothesis']=deepcopy(hypothesis)
+    return adapted
 
 
 def _initialize_call_artifacts(store):

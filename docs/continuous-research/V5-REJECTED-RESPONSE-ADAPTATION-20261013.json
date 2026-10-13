@@ -1,0 +1,272 @@
+{
+  "schema_version": "archived-ai-response-adaptation-v1",
+  "classification": "execution_diagnostic_not_research",
+  "request_id": "3104a45166193c26e56e33a55011b7de6c553807373f764dea5acb73d303533f",
+  "source_response_sha256": "a4bc436f121726cf38f0da0ea0238c5a59b91cd67ddc5dce2f16d234b09329d5",
+  "source_artifact_state": "rejected",
+  "source_pointer": "diagnostic.hypothesis",
+  "adaptation": {
+    "version": "copy-exact-object-to-root-v1",
+    "operation": "deep-copy existing diagnostic.hypothesis to top-level hypothesis; no values synthesized or rewritten"
+  },
+  "source_validation_diagnostic": {
+    "code": "hypothesis_fields_missing",
+    "field": "hypothesis",
+    "limit": [
+      "entry",
+      "evidence_refs",
+      "execution_constraints",
+      "exit",
+      "horizon_justification",
+      "markets",
+      "mechanism",
+      "rejection_criteria",
+      "required_data",
+      "risk",
+      "signal",
+      "sizing",
+      "type"
+    ],
+    "observed": [],
+    "stage": "result_validation"
+  },
+  "offline_validation": {
+    "state": "rejected",
+    "errors": [
+      {
+        "stage": "result_validation",
+        "code": "evidence_reference_invalid",
+        "field": "hypothesis.evidence_refs",
+        "observed": [
+          "paper_research:75c617af00435dab9bf1dd614aa5cbaddc26700446110affaaf7c781f0892746",
+          "paper_sessions:37116951b6654b5c9ab3f116e44b44b4",
+          "paper_experimental_sessions:37116951b6654b5c9ab3f116e44b44b4",
+          "paper_experimental_reports:bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+          "paper_snapshots:8d75eba88f28708bd05b6a25f73f62f893e6c88d5f88757c3576ef510c15c99f",
+          "raw_observations:36711853..36927113",
+          "paper_local_archive_bundle:quotes",
+          "paper_local_archive_bundle:stream_health_events"
+        ],
+        "limit": [
+          "paper_experimental_reports:bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+          "paper_local_archive_bundle:c67e918b6c78bf02fc053bab12ee57033b491eff3d2a88bd0d6e5da08f69ee5e",
+          "paper_local_archive_bundle:quotes",
+          "paper_local_archive_bundle:stream_health_events",
+          "paper_local_evidence_bundle:c67e918b6c78bf02fc053bab12ee57033b491eff3d2a88bd0d6e5da08f69ee5e",
+          "paper_local_evidence_resolutions:d61b5d26840e30e477783d18074fdd3394bdf6432cb44cb13487461677aa3aab",
+          "paper_research:75c617af00435dab9bf1dd614aa5cbaddc26700446110affaaf7c781f0892746",
+          "paper_research:9dda3827e578bd17992a67dafd9849596a4a9b3119c8f3756d3468bd665f804a",
+          "paper_sessions:37116951b6654b5c9ab3f116e44b44b4",
+          "paper_snapshots:8d75eba88f28708bd05b6a25f73f62f893e6c88d5f88757c3576ef510c15c99f"
+        ]
+      }
+    ]
+  },
+  "downstream_validation_not_reached": [
+    "nonempty hypothesis fields",
+    "required_data element types",
+    "research compilation contract"
+  ],
+  "adapted_response_sha256": "2422753efe4fc27e056b9739d528699fa77fbef2207fc42d16390bb339035770",
+  "adapted_response": {
+    "decision": "hypothesis",
+    "diagnostic": {
+      "demonstrated": {
+        "conclusion": "Les archives enrichies précisent les mécanismes d'exécution à tester, sans établir leur attribution causale historique.",
+        "observations": {
+          "tentatives": 521,
+          "resultats_enregistres": {
+            "executed": 25,
+            "partial": 4,
+            "missed": 492
+          },
+          "motifs_enregistres_par_le_moteur": {
+            "below_venue_minimum_order_value": 24,
+            "quote_stale_at_execution": 84,
+            "quote_unavailable_at_execution": 350,
+            "reduce_only_adjustment_below_venue_minimum": 9,
+            "reduce_only_adjustment_rounded_to_zero": 10,
+            "zero_adjustment_after_rounding": 15
+          },
+          "citations_avant_decision_selon_disponibilite_archivee": 521,
+          "citations_avant_decision_selon_disponibilite_enregistree_dans_la_tentative": 169,
+          "tentatives_avec_age_depuis_reception_inferieur_ou_egal_a_1000_ms": 434,
+          "correspondances_exactes_entre_disponibilite_archivee_et_horodatage_de_citation_sauvegarde": 0,
+          "tentatives_avec_un_seul_candidat_de_carnet": 323,
+          "tentatives_avec_plusieurs_candidats_de_carnet": 198
+        },
+        "interpretation": [
+          "Les 492 motifs décrivent des classifications du moteur, pas des causes indépendamment vérifiées ni la rentabilité contrefactuelle des occasions refusées.",
+          "La présence d'une citation dans l'archive avant une décision ne démontre pas sa disponibilité dans le chemin de traitement utilisé par cette décision.",
+          "Un âge de réception inférieur à 1000 ms ne suffit pas à contredire un refus de citation : sélection, disponibilité locale et état de connexion restent distincts.",
+          "Même un candidat temporel unique ne constitue pas une liaison causale persistée.",
+          "La session est suspendue avec une position virtuelle de -0.61 et une réduction en attente vers -0.32702. Son résultat terminal reste incomplet et censuré.",
+          "L'absence d'événement de financement observé ne démontre pas une couverture complète ni un coût de financement nul."
+        ],
+        "evidence_refs": [
+          "paper_local_evidence_resolutions:d61b5d26840e30e477783d18074fdd3394bdf6432cb44cb13487461677aa3aab",
+          "paper_local_archive_bundle:quotes",
+          "paper_local_archive_bundle:stream_health_events",
+          "paper_sessions:37116951b6654b5c9ab3f116e44b44b4",
+          "paper_experimental_reports:bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+          "paper_snapshots:8d75eba88f28708bd05b6a25f73f62f893e6c88d5f88757c3576ef510c15c99f"
+        ]
+      },
+      "hypothesis": {
+        "hypothesis_id": "3104a45166193c26e56e33a55011b7de6c553807373f764dea5acb73d303533f",
+        "parent_hypothesis_id": "75c617af00435dab9bf1dd614aa5cbaddc26700446110affaaf7c781f0892746",
+        "type": "follower",
+        "markets": [
+          "HYPE"
+        ],
+        "mechanism": "Les filtres d'exécution du suiveur figé peuvent induire une hystérésis d'inventaire. À l'échelle observée de 0.001, certains changements de cible peuvent être sous le minimum notionnel ou arrondis à zéro. Des changements autrement admissibles peuvent être refusés par les filtres de citation ou partiellement servis sous le plafond de taille affichée. La position réalisée dépend alors de la succession des ajustements exécutables, et pas uniquement de la dernière cible. Une réduction refusée peut prolonger l'exposition ; une sortie à horizon peut devenir une remise à niveau effective de l'inventaire, seulement si les transitions observées le confirment.",
+        "justification": "Les archives distinguent désormais les classes de refus, les résultats simulés et plusieurs horloges de citation. Elles rendent le mécanisme plus précis et réfutable prospectivement, mais restent insuffisantes pour prouver les calculs, les transitions causales ou une remise à zéro historique.",
+        "signal": {
+          "kind": "leader_delta",
+          "status": "Étiquette du signal existant figé, non proposition d'un nouveau signal. Les contenus déclencheurs, leurs liaisons exactes et les règles complètes de mise à jour de cible ne sont pas démontrés.",
+          "diagnostic_observable": "Écart signé entre cible voulue et position virtuelle, avant et après chaque tentative, avec classification par filtre d'exécution."
+        },
+        "entry": {
+          "kind": "target_position",
+          "description": "Analyser les entrées existantes vers une position cible, sans ajouter de règle d'entrée."
+        },
+        "exit": {
+          "kind": "horizon_or_target",
+          "description": "Distinguer réductions de cible, initiation de sortie à horizon, nouvelles tentatives et retour effectivement observé à la cible de sortie. Une décision de sortie ne prouve pas la clôture."
+        },
+        "sizing": {
+          "observed_scale": "0.001",
+          "description": "Comparer unités voulues, unités arrondies, notionnel admissible et unités simulées remplies selon les règles figées. Aucune autre échelle n'est proposée."
+        },
+        "horizon_justification": "L'horizon observé de 120000 ms est un paramètre de la session existante, pas une restriction universelle. Un test prospectif doit suivre les épisodes d'inventaire, y compris les réductions refusées et les résidus, jusqu'à une terminaison observée ou une censure explicitement enregistrée. Il ne doit pas prolonger artificiellement la session historique suspendue.",
+        "execution_constraints": [
+          "Les paramètres rapportés sont market IOC, minimum notionnel de 10 USDC, deux décimales de taille, fraction de taille affichée de 0.1 et filtres d'âge de citation de 1000 ms ; leurs applications restent à vérifier tentative par tentative.",
+          "Distinguer la latence configurée de 5000 ms, la disponibilité locale des événements et le délai simulé observé. Aucun délai d'exécution réel mesuré n'est établi.",
+          "Ne pas compter des références reconstruites ou des lignes répétées comme des ordres indépendants sans identifiants canoniques.",
+          "Ne pas substituer les horodatages REST à la disponibilité locale du signal, ni un temps de réponse REST à un délai d'exécution.",
+          "Aucun executable_spec ni experiment_profile n'est fourni. L'équivalence des sémantiques rapportées single_perp_v3 avec le compilateur single_perp_v2 n'est pas démontrée.",
+          "Les capacités actuelles du compilateur ne justifient pas de remplacer ce mécanisme par momentum ou par une nouvelle stratégie leader_delta."
+        ],
+        "risk": {
+          "description": "Des réductions bloquées ou sorties partielles peuvent conserver une exposition après la baisse de cible ou l'initiation de sortie. Une interruption de citations limite la reconstruction et le marquage.",
+          "policy": "Aucun nouveau budget de risque, aucune modification de session et aucune autorisation d'action ne sont proposés."
+        },
+        "rejection_criteria": [
+          "Réfuter l'explication par minimum notionnel ou arrondi pour une tentative prospectivement liée si ses calculs canoniques montrent un ajustement admissible sous les règles effectivement appliquées.",
+          "Réfuter la persistance attribuée à une réduction refusée si les transitions liées montrent qu'elle ne maintient pas d'écart supplémentaire à la cible et ne prolonge pas l'épisode.",
+          "Réfuter l'attribution au filtre de citation ou au plafond de taille si la citation sélectionnée, sa disponibilité, son état de connexion et la profondeur utilisée contredisent le refus ou le remplissage partiel.",
+          "Réfuter l'attribution d'une remise à niveau à l'horizon si l'inventaire avait déjà atteint la cible de sortie avant cette sortie.",
+          "Des observations manquantes ou ambiguës rendent l'attribution concernée non identifiable ; elles ne constituent pas une réfutation."
+        ],
+        "required_data": [
+          "Uniquement pour un éventuel test prospectif distinct : identifiants uniques de source, décision, tentative, nouvelle tentative, citation et remplissage simulé, avec liaisons causales persistées.",
+          "État initial, règles figées de mise à jour de cible, intention, cible, inventaire avant et après, ajustement brut et arrondi, prix d'admissibilité, notionnel, motif et plafond de taille affichée pour chaque tentative future.",
+          "Citation et profondeur effectivement sélectionnées, horodatages d'événement, réception, disponibilité locale, traitement et décision, ainsi que transitions de connexion et battements de vie.",
+          "Transitions futures de réduction, sortie à horizon et résolution d'attentes jusqu'à une terminaison observée ou une frontière censurée explicite ; marquage et couverture de financement de l'intervalle observé."
+        ],
+        "evidence_refs": [
+          "paper_research:75c617af00435dab9bf1dd614aa5cbaddc26700446110affaaf7c781f0892746",
+          "paper_sessions:37116951b6654b5c9ab3f116e44b44b4",
+          "paper_experimental_sessions:37116951b6654b5c9ab3f116e44b44b4",
+          "paper_experimental_reports:bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+          "paper_snapshots:8d75eba88f28708bd05b6a25f73f62f893e6c88d5f88757c3576ef510c15c99f",
+          "raw_observations:36711853..36927113",
+          "paper_local_archive_bundle:quotes",
+          "paper_local_archive_bundle:stream_health_events"
+        ]
+      },
+      "irrecoverable_retroactively": {
+        "causalite": "Les clés historiques source→décision n'ont pas été persistées et leur absence est irréversible. Elles ne sont pas redemandées. Des rapprochements temporels ne peuvent les remplacer.",
+        "attribution": "Les identifiants manquants et l'ambiguïté des citations ou remplissages empêchent une attribution exacte des événements concernés ; l'enrichissement ne supprime pas cette limite.",
+        "endpoint_v5": "La frontière virtuelle de v5 reste censurée avec position ouverte et réduction en attente. Une collecte ultérieure de citations en direct ne peut pas clôturer cette session suspendue ni fournir son résultat final."
+      },
+      "additional_observations": {
+        "scope": "Observations exclusivement prospectives d'un éventuel test distinct ; aucune collecte ou exécution n'est déclenchée ici.",
+        "could_change_decision": [
+          {
+            "observation": "Calculs canoniques et transitions causalement liées pour chaque ajustement futur.",
+            "effect": "Une contradiction des critères annoncés peut réfuter la composante correspondante ; leur concordance répétée peut renforcer l'hypothèse dans le périmètre testé."
+          },
+          {
+            "observation": "Citation réellement sélectionnée, profondeur utilisée, disponibilité locale et état de connexion associés à chaque refus ou remplissage partiel futur.",
+            "effect": "Permet de distinguer refus justifié, défaut de sélection ou défaut de journalisation, plutôt que de traiter la présence dans l'archive comme une preuve d'exécutabilité."
+          },
+          {
+            "observation": "Trajectoires liées de cible et d'inventaire autour des réductions refusées et des sorties à horizon, avec terminaison ou censure explicite.",
+            "effect": "Permet de vérifier ou réfuter la persistance d'inventaire et le rôle de l'horizon ; une nouvelle censure laisse cette partie insuffisamment documentée."
+          }
+        ]
+      },
+      "recommendation": "Retenir une hypothèse d'état d'exécution, plus précisément falsifiable grâce aux archives enrichies. Ne pas conclure à une causalité historique démontrée, à la profitabilité des occasions refusées, à un avantage économique ou à une exécution réelle validée. Le contrat diagnostique existant est conservé ; aucune stratégie prospective, spécification exécutable, clôture ou règle de promotion n'est inventée."
+    },
+    "wake": {
+      "condition": "Réexaminer seulement si des observations prospectives apportent les calculs et transitions causalement liés nécessaires à l'un des critères de réfutation.",
+      "action": "Aucune action externe, aucun ordre, aucun lancement paper et aucune promotion."
+    },
+    "hypothesis": {
+      "hypothesis_id": "3104a45166193c26e56e33a55011b7de6c553807373f764dea5acb73d303533f",
+      "parent_hypothesis_id": "75c617af00435dab9bf1dd614aa5cbaddc26700446110affaaf7c781f0892746",
+      "type": "follower",
+      "markets": [
+        "HYPE"
+      ],
+      "mechanism": "Les filtres d'exécution du suiveur figé peuvent induire une hystérésis d'inventaire. À l'échelle observée de 0.001, certains changements de cible peuvent être sous le minimum notionnel ou arrondis à zéro. Des changements autrement admissibles peuvent être refusés par les filtres de citation ou partiellement servis sous le plafond de taille affichée. La position réalisée dépend alors de la succession des ajustements exécutables, et pas uniquement de la dernière cible. Une réduction refusée peut prolonger l'exposition ; une sortie à horizon peut devenir une remise à niveau effective de l'inventaire, seulement si les transitions observées le confirment.",
+      "justification": "Les archives distinguent désormais les classes de refus, les résultats simulés et plusieurs horloges de citation. Elles rendent le mécanisme plus précis et réfutable prospectivement, mais restent insuffisantes pour prouver les calculs, les transitions causales ou une remise à zéro historique.",
+      "signal": {
+        "kind": "leader_delta",
+        "status": "Étiquette du signal existant figé, non proposition d'un nouveau signal. Les contenus déclencheurs, leurs liaisons exactes et les règles complètes de mise à jour de cible ne sont pas démontrés.",
+        "diagnostic_observable": "Écart signé entre cible voulue et position virtuelle, avant et après chaque tentative, avec classification par filtre d'exécution."
+      },
+      "entry": {
+        "kind": "target_position",
+        "description": "Analyser les entrées existantes vers une position cible, sans ajouter de règle d'entrée."
+      },
+      "exit": {
+        "kind": "horizon_or_target",
+        "description": "Distinguer réductions de cible, initiation de sortie à horizon, nouvelles tentatives et retour effectivement observé à la cible de sortie. Une décision de sortie ne prouve pas la clôture."
+      },
+      "sizing": {
+        "observed_scale": "0.001",
+        "description": "Comparer unités voulues, unités arrondies, notionnel admissible et unités simulées remplies selon les règles figées. Aucune autre échelle n'est proposée."
+      },
+      "horizon_justification": "L'horizon observé de 120000 ms est un paramètre de la session existante, pas une restriction universelle. Un test prospectif doit suivre les épisodes d'inventaire, y compris les réductions refusées et les résidus, jusqu'à une terminaison observée ou une censure explicitement enregistrée. Il ne doit pas prolonger artificiellement la session historique suspendue.",
+      "execution_constraints": [
+        "Les paramètres rapportés sont market IOC, minimum notionnel de 10 USDC, deux décimales de taille, fraction de taille affichée de 0.1 et filtres d'âge de citation de 1000 ms ; leurs applications restent à vérifier tentative par tentative.",
+        "Distinguer la latence configurée de 5000 ms, la disponibilité locale des événements et le délai simulé observé. Aucun délai d'exécution réel mesuré n'est établi.",
+        "Ne pas compter des références reconstruites ou des lignes répétées comme des ordres indépendants sans identifiants canoniques.",
+        "Ne pas substituer les horodatages REST à la disponibilité locale du signal, ni un temps de réponse REST à un délai d'exécution.",
+        "Aucun executable_spec ni experiment_profile n'est fourni. L'équivalence des sémantiques rapportées single_perp_v3 avec le compilateur single_perp_v2 n'est pas démontrée.",
+        "Les capacités actuelles du compilateur ne justifient pas de remplacer ce mécanisme par momentum ou par une nouvelle stratégie leader_delta."
+      ],
+      "risk": {
+        "description": "Des réductions bloquées ou sorties partielles peuvent conserver une exposition après la baisse de cible ou l'initiation de sortie. Une interruption de citations limite la reconstruction et le marquage.",
+        "policy": "Aucun nouveau budget de risque, aucune modification de session et aucune autorisation d'action ne sont proposés."
+      },
+      "rejection_criteria": [
+        "Réfuter l'explication par minimum notionnel ou arrondi pour une tentative prospectivement liée si ses calculs canoniques montrent un ajustement admissible sous les règles effectivement appliquées.",
+        "Réfuter la persistance attribuée à une réduction refusée si les transitions liées montrent qu'elle ne maintient pas d'écart supplémentaire à la cible et ne prolonge pas l'épisode.",
+        "Réfuter l'attribution au filtre de citation ou au plafond de taille si la citation sélectionnée, sa disponibilité, son état de connexion et la profondeur utilisée contredisent le refus ou le remplissage partiel.",
+        "Réfuter l'attribution d'une remise à niveau à l'horizon si l'inventaire avait déjà atteint la cible de sortie avant cette sortie.",
+        "Des observations manquantes ou ambiguës rendent l'attribution concernée non identifiable ; elles ne constituent pas une réfutation."
+      ],
+      "required_data": [
+        "Uniquement pour un éventuel test prospectif distinct : identifiants uniques de source, décision, tentative, nouvelle tentative, citation et remplissage simulé, avec liaisons causales persistées.",
+        "État initial, règles figées de mise à jour de cible, intention, cible, inventaire avant et après, ajustement brut et arrondi, prix d'admissibilité, notionnel, motif et plafond de taille affichée pour chaque tentative future.",
+        "Citation et profondeur effectivement sélectionnées, horodatages d'événement, réception, disponibilité locale, traitement et décision, ainsi que transitions de connexion et battements de vie.",
+        "Transitions futures de réduction, sortie à horizon et résolution d'attentes jusqu'à une terminaison observée ou une frontière censurée explicite ; marquage et couverture de financement de l'intervalle observé."
+      ],
+      "evidence_refs": [
+        "paper_research:75c617af00435dab9bf1dd614aa5cbaddc26700446110affaaf7c781f0892746",
+        "paper_sessions:37116951b6654b5c9ab3f116e44b44b4",
+        "paper_experimental_sessions:37116951b6654b5c9ab3f116e44b44b4",
+        "paper_experimental_reports:bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+        "paper_snapshots:8d75eba88f28708bd05b6a25f73f62f893e6c88d5f88757c3576ef510c15c99f",
+        "raw_observations:36711853..36927113",
+        "paper_local_archive_bundle:quotes",
+        "paper_local_archive_bundle:stream_health_events"
+      ]
+    }
+  },
+  "promotion_authorized": false,
+  "provider_calls": 0
+}

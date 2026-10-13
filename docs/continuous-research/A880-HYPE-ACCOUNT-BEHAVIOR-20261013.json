@@ -1,0 +1,550 @@
+{
+  "database": "/home/Untergame/tamtam_again/data/tamtam.sqlite3",
+  "snapshot_started_at_utc": "2026-10-13T10:02:11.701+00:00",
+  "account": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+  "coin": "HYPE",
+  "inventory": {
+    "hyperliquid-population-rest-v1:clearinghouseState:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 852,
+      "first_requested": "2026-10-08T00:29:39.394+00:00",
+      "last_requested": "2026-10-11T23:37:09.231+00:00",
+      "first_archived": "2026-10-08T00:29:40.744+00:00",
+      "last_archived": "2026-10-11T23:37:12.112+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-population-rest-v1:portfolio:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 79,
+      "first_requested": "2026-10-08T00:29:35.170+00:00",
+      "last_requested": "2026-10-11T23:36:19.221+00:00",
+      "first_archived": "2026-10-08T00:29:36.661+00:00",
+      "last_archived": "2026-10-11T23:36:21.112+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-population-rest-v1:spotClearinghouseState:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 67,
+      "first_requested": "2026-10-08T00:29:32.409+00:00",
+      "last_requested": "2026-10-11T23:36:15.160+00:00",
+      "first_archived": "2026-10-08T00:29:35.169+00:00",
+      "last_archived": "2026-10-11T23:36:19.220+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-population-rest-v1:subAccounts:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 67,
+      "first_requested": "2026-10-08T00:29:27.100+00:00",
+      "last_requested": "2026-10-11T23:36:06.762+00:00",
+      "first_archived": "2026-10-08T00:29:32.406+00:00",
+      "last_archived": "2026-10-11T23:36:15.159+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-population-rest-v1:userAbstraction:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 67,
+      "first_requested": "2026-10-08T00:29:22.874+00:00",
+      "last_requested": "2026-10-11T23:35:52.418+00:00",
+      "first_archived": "2026-10-08T00:29:24.332+00:00",
+      "last_archived": "2026-10-11T23:35:56.040+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-population-rest-v1:userFills:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 1,
+      "first_requested": "2026-10-08T11:54:34.075+00:00",
+      "last_requested": "2026-10-08T11:54:34.075+00:00",
+      "first_archived": "2026-10-08T11:54:34.875+00:00",
+      "last_archived": "2026-10-08T11:54:34.875+00:00",
+      "record_count_sum": 2000,
+      "incomplete_pages": 1
+    },
+    "hyperliquid-population-rest-v1:userFillsByTime:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 170,
+      "first_requested": "2026-10-08T00:29:43.674+00:00",
+      "last_requested": "2026-10-11T23:37:14.459+00:00",
+      "first_archived": "2026-10-08T00:29:45.062+00:00",
+      "last_archived": "2026-10-11T23:37:23.284+00:00",
+      "record_count_sum": 178589,
+      "incomplete_pages": 170
+    },
+    "hyperliquid-population-rest-v1:userFunding:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 71,
+      "first_requested": "2026-10-08T00:30:01.842+00:00",
+      "last_requested": "2026-10-11T23:37:23.294+00:00",
+      "first_archived": "2026-10-08T00:30:11.169+00:00",
+      "last_archived": "2026-10-11T23:37:34.018+00:00",
+      "record_count_sum": 2141,
+      "incomplete_pages": 71
+    },
+    "hyperliquid-population-rest-v1:userNonFundingLedgerUpdates:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 69,
+      "first_requested": "2026-10-08T00:30:11.172+00:00",
+      "last_requested": "2026-10-11T23:37:34.021+00:00",
+      "first_archived": "2026-10-08T00:30:15.143+00:00",
+      "last_archived": "2026-10-11T23:37:39.763+00:00",
+      "record_count_sum": 2,
+      "incomplete_pages": 69
+    },
+    "hyperliquid-population-rest-v1:userRole:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 67,
+      "first_requested": "2026-10-08T00:29:24.335+00:00",
+      "last_requested": "2026-10-11T23:35:56.041+00:00",
+      "first_archived": "2026-10-08T00:29:27.021+00:00",
+      "last_archived": "2026-10-11T23:36:06.761+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-websocket-v1:userFills:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 2938,
+      "first_requested": "2026-10-12T11:56:50.352+00:00",
+      "last_requested": "2026-10-13T07:44:35.321+00:00",
+      "first_archived": "2026-10-12T11:56:50.353+00:00",
+      "last_archived": "2026-10-13T07:44:35.321+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-websocket-v1:userFundings:account:0xa880d6cc607a05ea617307ab3b0d335e8d8424ee": {
+      "observations": 6,
+      "first_requested": "2026-10-12T11:56:50.309+00:00",
+      "last_requested": "2026-10-13T07:14:33.853+00:00",
+      "first_archived": "2026-10-12T11:56:50.309+00:00",
+      "last_archived": "2026-10-13T07:14:33.853+00:00",
+      "record_count_sum": 0,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-websocket-v1:bbo:market:HYPE": {
+      "observations": 688839,
+      "first_requested": "2026-10-02T07:58:07.223+00:00",
+      "last_requested": "2026-10-13T10:02:11.150+00:00",
+      "first_archived": "2026-10-02T07:58:07.224+00:00",
+      "last_archived": "2026-10-13T10:02:11.280+00:00",
+      "record_count_sum": 3468331,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-websocket-v1:l2Book:market:HYPE": {
+      "observations": 597876,
+      "first_requested": "2026-10-02T07:55:02.762+00:00",
+      "last_requested": "2026-10-13T10:02:11.066+00:00",
+      "first_archived": "2026-10-02T07:55:02.762+00:00",
+      "last_archived": "2026-10-13T10:02:11.247+00:00",
+      "record_count_sum": 1257665,
+      "incomplete_pages": 0
+    },
+    "hyperliquid-websocket-v1:trades:market:HYPE": {
+      "observations": 361292,
+      "first_requested": "2026-10-02T07:55:02.746+00:00",
+      "last_requested": "2026-10-13T10:02:10.408+00:00",
+      "first_archived": "2026-10-02T07:55:02.746+00:00",
+      "last_archived": "2026-10-13T10:02:11.382+00:00",
+      "record_count_sum": 670715,
+      "incomplete_pages": 0
+    }
+  },
+  "rest_hype_fills": {
+    "unique_tids": 32921,
+    "event_span": [
+      "2026-10-07T18:46:06.027+00:00",
+      "2026-10-11T23:36:48.842+00:00"
+    ],
+    "max_page_records": 2000,
+    "fee_field_rows": 32921,
+    "signed_fee_field_sum_usdc": -524.60745,
+    "fee_crossed": {
+      "crossed": {
+        "fills": 1538,
+        "fee_rows": 1538,
+        "negative_fee_rows_rebate_per_official_schema": 0,
+        "positive_fee_rows": 1538,
+        "signed_fee_sum": 736.137691,
+        "negative_rebate_sum_signed": 0,
+        "positive_charge_sum": 736.137691,
+        "builder_fee_rows": 0
+      },
+      "not_crossed": {
+        "fills": 31383,
+        "fee_rows": 31383,
+        "negative_fee_rows_rebate_per_official_schema": 31383,
+        "positive_fee_rows": 0,
+        "signed_fee_sum": -1260.745141,
+        "negative_rebate_sum_signed": -1260.745141,
+        "positive_charge_sum": 0,
+        "builder_fee_rows": 0
+      },
+      "unknown": {
+        "fills": 0,
+        "fee_rows": 0,
+        "negative_fee_rows_rebate_per_official_schema": 0,
+        "positive_fee_rows": 0,
+        "signed_fee_sum": 0,
+        "negative_rebate_sum_signed": 0,
+        "positive_charge_sum": 0,
+        "builder_fee_rows": 0
+      }
+    },
+    "all_rest_rows_marked_incomplete": true
+  },
+  "account_behavior": {
+    "historical_fill_source": "REST userFillsByTime/userFills, deduplicated by tid",
+    "unique_hype_fills": 32921,
+    "event_span": [
+      "2026-10-07T18:46:06.027+00:00",
+      "2026-10-11T23:36:48.842+00:00"
+    ],
+    "all_source_pages_marked_incomplete": true,
+    "buys": {
+      "fills": 13930,
+      "hype": 271498.76,
+      "notional_usdc": 23232052.71087
+    },
+    "sells": {
+      "fills": 18991,
+      "hype": 270840.76,
+      "notional_usdc": 23175080.73314
+    },
+    "recorded_signed_net_hype": 658.0,
+    "gross_notional_usdc": 46407133.44401,
+    "fill_size_hype": {
+      "n": 32921,
+      "p50": 2.16,
+      "p95": 82.49,
+      "max": 808.92
+    },
+    "inter_fill_gap_ms": {
+      "n": 32920,
+      "p50": 2012,
+      "p95": 42928,
+      "max": 58637662
+    },
+    "inter_fill_gaps_over_1h": 1,
+    "fills_per_elapsed_hour": 326.451,
+    "closedPnl_field": {
+      "rows": 32921,
+      "sum_usdc": -58.177781,
+      "positive_rows": 9070,
+      "negative_rows": 9769,
+      "interpretation": "provider closedPnl field, not account return; it includes fee under the documented per-fill convention"
+    },
+    "signed_fee_usdc": -524.60745,
+    "fee_by_token": {
+      "USDC": -524.60745
+    },
+    "builderFee_rows": 0,
+    "position_snapshots": {
+      "count": 852,
+      "nonzero_samples": 79,
+      "nonzero_sample_runs": 79,
+      "runs_with_multiple_nonzero_samples": 0,
+      "sample_spacing_ms": {
+        "n": 851,
+        "p50": 1537,
+        "p95": 3686847,
+        "max": 91210997
+      },
+      "bracket_around_isolated_nonzero_samples_ms": {
+        "n": 78,
+        "p50": 3693391,
+        "p95": 4701720,
+        "max": 91212522
+      },
+      "episode_durations_ms": null,
+      "limitation": "Snapshots establish position only at sample instants. Fill pages are incomplete; individual entry/exit times and exact holding durations are not reconstructible."
+    }
+  },
+  "session": {
+    "session_id": "37116951b6654b5c9ab3f116e44b44b4",
+    "started": "2026-10-13T07:14:06.458+00:00",
+    "last_ms": "2026-10-13T07:44:06.807+00:00",
+    "cursor_start_exclusive": 36711607,
+    "cursor_end_inclusive": 36927113,
+    "status": "suspended",
+    "live_hype_fills": 234,
+    "source_net_hype": -321.98,
+    "source_gross_hype": 3166.46,
+    "source_buy_fills": 144,
+    "source_sell_fills": 90,
+    "scale": 0.001,
+    "scaled_source_net_hype": -0.32198,
+    "paper_leader_target_hype": "-0.32702",
+    "leader_target_minus_scaled_source": -0.00504,
+    "paper_position_hype": "-0.61",
+    "position_minus_scaled_source": -0.28802,
+    "source_notional_usdc": 262365.8642,
+    "source_vwap_usdc": 82.85778573,
+    "source_signed_fee_field_sum_usdc": -6.007937,
+    "source_fee_field_rows": 234,
+    "source_fee_crossed": {
+      "crossed": {
+        "fills": 4,
+        "fee_rows": 4,
+        "negative_fee_rows_rebate_per_official_schema": 0,
+        "positive_fee_rows": 4,
+        "signed_fee_sum": 1.580665,
+        "negative_rebate_sum_signed": 0,
+        "positive_charge_sum": 1.580665,
+        "builder_fee_rows": 0
+      },
+      "not_crossed": {
+        "fills": 230,
+        "fee_rows": 230,
+        "negative_fee_rows_rebate_per_official_schema": 230,
+        "positive_fee_rows": 0,
+        "signed_fee_sum": -7.588602,
+        "negative_rebate_sum_signed": -7.588602,
+        "positive_charge_sum": 0,
+        "builder_fee_rows": 0
+      },
+      "unknown": {
+        "fills": 0,
+        "fee_rows": 0,
+        "negative_fee_rows_rebate_per_official_schema": 0,
+        "positive_fee_rows": 0,
+        "signed_fee_sum": 0,
+        "negative_rebate_sum_signed": 0,
+        "positive_charge_sum": 0,
+        "builder_fee_rows": 0
+      }
+    },
+    "paper_fill_count": 29,
+    "paper_signed_filled_hype": -0.61,
+    "paper_abs_filled_hype": 6.87,
+    "paper_fill_notional_usdc": 569.661645,
+    "paper_fill_vwap_usdc": 82.92018126,
+    "paper_fee_usdc": "0.25634774038050",
+    "paper_fills": 29,
+    "paper_position_open": "-0.61",
+    "pending_orders": [
+      {
+        "decision_ms": 1791877442319,
+        "due_ms": 1791877447319,
+        "expires_ms": 1791877457319,
+        "intent": "reduction",
+        "priority": 50,
+        "reduce_only": true,
+        "target": "-0.32702"
+      }
+    ],
+    "event_to_receipt_ms": {
+      "n": 234,
+      "p50": 367,
+      "p95": 2632,
+      "max": 7546
+    },
+    "receipt_to_archive_ms": {
+      "n": 746,
+      "p50": 0,
+      "p95": 1,
+      "max": 5
+    },
+    "execution_decision_minus_signal_ms": {
+      "n": 29,
+      "p50": 5062,
+      "p95": 5587,
+      "max": 8982
+    },
+    "execution_decision_minus_due_ms": {
+      "n": 29,
+      "p50": 62,
+      "p95": 587,
+      "max": 3982
+    },
+    "fill_quote_age_ms": {
+      "n": 29,
+      "p50": 781,
+      "p95": 953,
+      "max": 972
+    },
+    "runtime": {
+      "archive_by_kind": {
+        "account": {
+          "query_ms": 0.031,
+          "rows": 0
+        },
+        "bbo": {
+          "query_ms": 0.075,
+          "rows": 2
+        },
+        "health": {
+          "query_ms": 0.026,
+          "rows": 0
+        },
+        "l2Book": {
+          "query_ms": 0.038,
+          "rows": 1
+        }
+      },
+      "archive_query_ms": 0.17,
+      "archive_rows": 3,
+      "events_processed": 3,
+      "finished_ms": 1791877446807,
+      "interval_ms": 560,
+      "max_archive_query_ms": 0.471,
+      "max_interval_ms": 806,
+      "max_processing_ms": 637.563,
+      "max_receipt_lag_ms": 478,
+      "max_receipt_lag_ms_since_start": 567,
+      "processing_ms": 8.775,
+      "started_ms": 1791877446798,
+      "target_interval_ms": 600
+    },
+    "reports": [
+      {
+        "report_id": "2ef3c3d92c8ae78012ce9be8257303878a37dd23d4f28b85c1bc6ed4405a39a6",
+        "review_index": 1,
+        "next_action": "continue",
+        "action_detail": "At least one virtual execution occurred since the previous review; continue this frozen version and keep measuring costs.",
+        "created_at": "2026-10-13T07:19:06.699+00:00"
+      },
+      {
+        "report_id": "74c8ac2d82ac8485a5b2e44c675f0d92cb4b469254d05f9b8d761c025d5138ab",
+        "review_index": 2,
+        "next_action": "continue",
+        "action_detail": "At least one virtual execution occurred since the previous review; continue this frozen version and keep measuring costs.",
+        "created_at": "2026-10-13T07:24:07.202+00:00"
+      },
+      {
+        "report_id": "67a9cfa2585e85d05264e0345f1c7bdeb090ebbccf0af47c1750042131816f9a",
+        "review_index": 3,
+        "next_action": "continue",
+        "action_detail": "At least one virtual execution occurred since the previous review; continue this frozen version and keep measuring costs.",
+        "created_at": "2026-10-13T07:29:07.543+00:00"
+      },
+      {
+        "report_id": "d781e6315bc4fc6892bdcf3a71e7dddff96933cf3fe5fd3c7bcf893ef78df373",
+        "review_index": 4,
+        "next_action": "continue",
+        "action_detail": "At least one virtual execution occurred since the previous review; continue this frozen version and keep measuring costs.",
+        "created_at": "2026-10-13T07:34:08.057+00:00"
+      },
+      {
+        "report_id": "90639d7c30b76b76c4f0f7b820ad1cf3c891a32bb5bdef2c4d1c55a00a6101c1",
+        "review_index": 5,
+        "next_action": "continue",
+        "action_detail": "At least one virtual execution occurred since the previous review; continue this frozen version and keep measuring costs.",
+        "created_at": "2026-10-13T07:39:08.441+00:00"
+      },
+      {
+        "report_id": "bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+        "review_index": 6,
+        "next_action": "propose_new_version",
+        "action_detail": "The frozen paper duration ended; review the stored after-cost ledger before proposing a separately frozen future version.",
+        "created_at": "2026-10-13T07:44:06.960+00:00"
+      }
+    ]
+  },
+  "quotes": {
+    "bbo": {
+      "observations": 688839,
+      "nested_events": 3469680,
+      "frames_with_connection_id": 2632341,
+      "frames_without_connection_id": 837339,
+      "receipt_span_by_observation": [
+        "2026-10-02T07:58:07.223+00:00",
+        "2026-10-13T10:02:11.280+00:00"
+      ],
+      "event_to_receipt_ms": {
+        "n": 3469680,
+        "p50": 362,
+        "p95": 1786,
+        "max": 33762
+      },
+      "receipt_to_archive_ms": {
+        "n": 3469680,
+        "p50": 652,
+        "p95": 1162,
+        "max": 33933
+      },
+      "all_gaps_by_connection": {
+        "connections": 63,
+        "gt_1s": 84323,
+        "gt_5s": 2616,
+        "gt_60s": 0,
+        "max_ms": 33931
+      },
+      "v5_gaps_by_connection": {
+        "connections": 1,
+        "gt_1s": 109,
+        "gt_5s": 9,
+        "gt_60s": 0,
+        "max_ms": 9015
+      }
+    },
+    "l2Book": {
+      "observations": 597876,
+      "nested_events": 1257946,
+      "frames_with_connection_id": 1045758,
+      "frames_without_connection_id": 212188,
+      "receipt_span_by_observation": [
+        "2026-10-02T07:55:02.762+00:00",
+        "2026-10-13T10:02:11.247+00:00"
+      ],
+      "event_to_receipt_ms": {
+        "n": 1257946,
+        "p50": 389,
+        "p95": 1837,
+        "max": 33880
+      },
+      "receipt_to_archive_ms": {
+        "n": 1257946,
+        "p50": 679,
+        "p95": 1176,
+        "max": 33849
+      },
+      "all_gaps_by_connection": {
+        "connections": 63,
+        "gt_1s": 13753,
+        "gt_5s": 1617,
+        "gt_60s": 0,
+        "max_ms": 33989
+      },
+      "v5_gaps_by_connection": {
+        "connections": 1,
+        "gt_1s": 33,
+        "gt_5s": 14,
+        "gt_60s": 0,
+        "max_ms": 9169
+      }
+    },
+    "trades": {
+      "observations": 361292,
+      "nested_events": 669498,
+      "frames_with_connection_id": 495135,
+      "frames_without_connection_id": 174363,
+      "receipt_span_by_observation": [
+        "2026-10-02T07:55:02.746+00:00",
+        "2026-10-13T10:02:11.382+00:00"
+      ],
+      "event_to_receipt_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "max": null
+      },
+      "receipt_to_archive_ms": {
+        "n": 669498,
+        "p50": 797,
+        "p95": 1234,
+        "max": 23562
+      },
+      "all_gaps_by_connection": {
+        "connections": 63,
+        "gt_1s": 178961,
+        "gt_5s": 14571,
+        "gt_60s": 0,
+        "max_ms": 50046
+      },
+      "v5_gaps_by_connection": {
+        "connections": 1,
+        "gt_1s": 566,
+        "gt_5s": 23,
+        "gt_60s": 0,
+        "max_ms": 9375
+      }
+    }
+  },
+  "limitations": [
+    "REST pagination does not establish exchange retention or complete coverage.",
+    "Exchange event times and local collector wall clocks have no recorded offset/uncertainty.",
+    "Paper signal decision timestamps are causal replay/availability timestamps; per-fill CPU decision time is not persisted.",
+    "Quote silence is an inter-observation gap, not evidence that the book was unchanged or that data was lost."
+  ]
+}

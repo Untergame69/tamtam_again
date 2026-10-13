@@ -29,7 +29,11 @@
     "max_cost_usd": "0",
     "no_live_orders": true,
     "no_ai_calls": true,
-    "stops": ["existing priority-exit unresolved diagnostic", "existing 10 USDC loss/drawdown limit", "30-minute duration"]
+    "stops": [
+      "existing priority-exit unresolved diagnostic",
+      "existing 10 USDC loss/drawdown limit",
+      "30-minute duration"
+    ]
   },
   "registry": {
     "table": "execution_correction_requests",
@@ -41,5 +45,13 @@
     "v4_report": "PAPER-V4-FINAL-20261013-A880-HYPE.md",
     "v5_spec": "../../config/experiments/a880-hype-live-delta-v5.json",
     "v5_hypothesis": "../../config/experiments/a880-hype-live-delta-hypothesis-v5.json"
+  },
+  "status": "consumed_and_completed",
+  "result": {
+    "session_id": "37116951b6654b5c9ab3f116e44b44b4",
+    "final_report_id": "bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+    "final_artifact": "PAPER-V5-FINAL-20261013-A880-HYPE.md",
+    "registry_status": "complete",
+    "result": "30-minute paper window completed automatically; ending virtual position -0.61 HYPE with pending virtual reduction order; final liquidation/round trip unknown; no closure invented."
   }
 }

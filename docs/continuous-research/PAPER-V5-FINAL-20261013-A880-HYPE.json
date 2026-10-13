@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "artifact_type": "paper_experimental_final_bilan",
+  "request_id": "a880-hype-v4-closeable-reduction-20261013-v2",
+  "route": "correction d'exécution",
+  "session_id": "37116951b6654b5c9ab3f116e44b44b4",
+  "hypothesis_id": "a880-hype-live-delta-follow-v5-closeable-order-selection",
+  "variant_id": "07ec042fd7ef433cf581668557ac1d3d23238f70030ed73b27ebcf1e67390b06",
+  "code_revision": "39f67a940b4268ca070456eb22947910db64a1c1",
+  "start_ms": 1791875646458,
+  "max_duration_ms": 1800000,
+  "end_ms": 1791877446807,
+  "experiment_status": "completed",
+  "final_report_id": "bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+  "final_report_ref": "paper_experimental_reports:bbbb582df100145fb3ee58b3d336e6c2683da023594b39ed71edbb5e81a2f0a9",
+  "result": {
+    "next_action": "propose_new_version",
+    "signals": 234,
+    "fills": 29,
+    "partial_fills": 4,
+    "missed_opportunities": 97,
+    "miss_reasons": {
+      "below_venue_minimum_order_value": 24,
+      "quote_stale_at_execution": 20,
+      "quote_unavailable_at_execution": 18,
+      "reduce_only_adjustment_below_venue_minimum": 9,
+      "reduce_only_adjustment_rounded_to_zero": 10,
+      "signal_after_horizon_exit_started": 1,
+      "zero_adjustment_after_rounding": 15
+    },
+    "current_position": "-0.61",
+    "pending_virtual_orders": [
+      {
+        "decision_ms": 1791877442319,
+        "due_ms": 1791877447319,
+        "expires_ms": 1791877457319,
+        "intent": "reduction",
+        "priority": 50,
+        "reduce_only": true,
+        "target": "-0.32702"
+      }
+    ],
+    "final_round_trip_result": "unknown",
+    "policy_selections": [
+      {
+        "execution_decision_ms": 1791876703867,
+        "order_size": "-0.17",
+        "fill_size": "-0.17",
+        "outcome": "executed",
+        "position_before": "0.17",
+        "position_after": "0.00",
+        "quote_source": "bbo",
+        "quote_age_ms": 723
+      }
+    ],
+    "after_cost_metrics": {
+      "drawdown_usdc": "0.5932020011175000000000000",
+      "fees_usdc": "0.25634774038050",
+      "funding_coverage": "observed events are included; absence does not prove zero funding",
+      "funding_events_observed": 0,
+      "funding_usdc_observed": "0",
+      "net_pnl_observed_usdc": "-0.5240812203805000000000000",
+      "realized_pnl_usdc": "-0.3082943749999999999999999995",
+      "unrealized_pnl_usdc": "0.0405608950000000000000000"
+    },
+    "configured_exposure_usdc": "100",
+    "configured_loss_limit_usdc": "10"
+  },
+  "v4_links": {
+    "session_id": "4303114ebedf4d238241a605a41c591c",
+    "report_id": "217019a2b7915f7e4b34baddccb23a8159edc08e8d6fea6bd671893980c4248c",
+    "residual_position": "+0.05 HYPE",
+    "disposition_id": "c4b2d43ed8722c667d1a6414c008ec6d1d81e8c219025b0861a5679cf03ba0d0",
+    "admin_action_id": "e71782aaf2f7dfdb8d434058e3392eeef04ec258c64df62aedf573113b3ac246",
+    "rectification_id": "5c3ee0818673ff271d42d039a6c254af005a4d3938b271524e608619928fc2f7"
+  },
+  "registry_status": "complete",
+  "no_ai_calls": true,
+  "real_orders": false,
+  "recursive_restart": false
+}

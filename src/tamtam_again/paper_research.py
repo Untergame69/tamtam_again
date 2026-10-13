@@ -187,12 +187,14 @@ def adapt_outcome_packet(source,*,prepared_ms,activated_ms):
     return result
 
 
-def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=None,_ancestry=(),local_resolution_id=None):
+def packet(store,adaptation_request_id,*,clock_ms,max_chars,parent_request_id=None,_ancestry=(),
+        local_resolution_id=None,resolution_phase='prepare'):
     if type(clock_ms) is not int or clock_ms<0 or type(max_chars) is not int or max_chars<1:
         raise ValueError('Explicit availability and packet budget required')
     if local_resolution_id is not None:
         from .paper_local_resolution import packet_for_resolution
-        return packet_for_resolution(store,local_resolution_id,clock_ms=clock_ms,max_chars=max_chars)
+        return packet_for_resolution(store,local_resolution_id,clock_ms=clock_ms,max_chars=max_chars,
+            phase=resolution_phase)
     row=store.connection.execute('select session_id,created_ms from paper_adaptation_requests where request_id=?',
                                  (adaptation_request_id,)).fetchone()
     if not row or row['created_ms']>clock_ms:raise ValueError('Available adaptation request required')
@@ -337,6 +339,15 @@ def seal(store,adaptation_request_id,policy,*,clock_ms=None,parent_request_id=No
     result=packet(store,adaptation_request_id,clock_ms=clock,max_chars=policy['max_packet_chars'],
         parent_request_id=parent_request_id,local_resolution_id=local_resolution_id)
     if result['status']!='packet_ready':return result
+    if local_resolution_id is not None:
+        resolution=store.connection.execute('select parent_request_id from paper_local_evidence_resolutions where resolution_id=?',
+            (local_resolution_id,)).fetchone()
+        if not resolution:
+            raise ValueError('Prepared local evidence resolution required')
+        if parent_request_id is None:
+            parent_request_id=resolution['parent_request_id']
+        elif parent_request_id!=resolution['parent_request_id']:
+            raise ValueError('Local evidence parent identity mismatch')
     identity=fingerprint({'adaptation_request_id':adaptation_request_id,'packet':result['packet']['fingerprint']})
     previous=store.connection.execute('select request_id,status,packet_json,created_ms,local_resolution_id from paper_research_jobs where request_id=? and parent_request_id is ? and created_ms<=?',(identity,parent_request_id,clock)).fetchone()
     prepared_handoff=store.connection.execute('select 1 from paper_outcome_packets where adaptation_request_id=?',(adaptation_request_id,)).fetchone()

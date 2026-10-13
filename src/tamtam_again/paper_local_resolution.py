@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 
-from .engine import canonical, fingerprint
+from .engine import canonical, fingerprint, number
 from .paper import archive_events
 from .research_memory import authorized_period
 from .validation import now_ms
@@ -173,7 +173,11 @@ def _local_bundle(store,session,parent_packet,*,max_chars,clock_ms):
     suspension=store.connection.execute('select suspended_ms,diagnostics_json from paper_suspensions '
         'where session_id=? order by suspended_ms desc limit 1',(session['session_id'],)).fetchone()
 
-    bundle={'schema_version':'paper-local-archive-bundle-v1',
+    position=state.get('position')
+    position_open=position is not None and number(position)!=0
+    pending=state.get('pending',[])
+    censored=session['status']=='suspended' and (position_open or bool(pending))
+    bundle={'schema_version':'paper-local-archive-bundle-v2',
         'coverage':{'start_ms':start_ms,'end_ms':end_ms,'query_metrics':stable_query_metrics,
             'archive_event_counts':dict(event_counts),'book_event_counts':dict(quote_observation_rows),
             'stream_health_counts':dict(health_counts),'live_leader_fill_events':len(fills),
@@ -196,8 +200,10 @@ def _local_bundle(store,session,parent_packet,*,max_chars,clock_ms):
         'leader_fill_columns':['event_id','event_ms','received_ms','available_ms','connection_id','signed_delta','leader_start_position','manifest_index','archive_event_index'],
         'leader_fill_events':fill_rows,
         'paper_endpoint':{'session_id':session['session_id'],'status':session['status'],
-            'last_ms':end_ms,'position':state.get('position'),'fills':state.get('fills',[]),
-            'pending':state.get('pending',[]),'funding_usdc_observed':state.get('funding'),
+            'last_ms':end_ms,'position':position,'position_open':position_open,'fills':state.get('fills',[]),
+            'pending':pending,'observation_boundary':'censored_open_position' if censored else 'observed_endpoint',
+            'terminal_result':'incomplete_censored' if censored else 'observed',
+            'funding_usdc_observed':state.get('funding'),
             'funding_events_observed':state.get('funding_events'),
             'suspension':{'suspended_ms':suspension['suspended_ms'],
                 'diagnostics':json.loads(suspension['diagnostics_json'])} if suspension else None},
@@ -255,8 +261,8 @@ def prepare_from_local_archives(store,request_id,*,clock_ms=None,max_chars=MAX_P
             detail='The per-opportunity records contain decision times but no persisted source-event, decision or triggering fill key. Exact historical attribution cannot be reconstructed; temporal candidates are not exact links.'
             refs=['paper_sessions:'+session['session_id'],'paper_research:'+request_id]
         elif 'subsequent paper inventory' in text or 'pending-order resolution' in text:
-            category='future_observation_required'
-            detail='The archived endpoint retains the residual position and pending reduction at suspension. No subsequent virtual execution state proves closure; the session is not resumed in this tranche.'
+            category='censored_endpoint_incomplete'
+            detail='The available endpoint is censored with an open virtual position and pending reduction. This suspended paper session cannot spontaneously close through later Hyperliquid collection; no close or realized final result is asserted. Closure observation would require a different, separately authorized paper run.'
             refs=['paper_sessions:'+session['session_id'],'paper_snapshots:'+str(bundle.get('latest_snapshot_ref',{}).get('snapshot_id'))]
         else:
             category='unclassified_request'
@@ -269,7 +275,7 @@ def prepare_from_local_archives(store,request_id,*,clock_ms=None,max_chars=MAX_P
     available_values.extend(x[2] for x in bundle['archive_observation_manifest'])
     data_available_ms=max(available_values)
     result_fingerprint=source_result_fingerprint
-    packet_body={'schema_version':'paper-local-evidence-research-v1',
+    packet_body={'schema_version':'paper-local-evidence-research-v2',
         'network':parent['network'],'address':parent['address'],'session_id':parent['session_id'],
         'variant_id':source_packet.get('variant_id'),'available_ms':data_available_ms,
         'source_periods':source_packet['source_periods'],
@@ -282,6 +288,7 @@ def prepare_from_local_archives(store,request_id,*,clock_ms=None,max_chars=MAX_P
         'observations':{'markets':[source_packet.get('simulated_parameters',{}).get('spec',{}).get('market')],
             'missing_data_resolutions':categories,'local_archive_bundle':bundle,
             'resolution_limits':['Local quote/time matches are retrospective evidence links, not persisted decision IDs.',
+                'A suspended virtual session with residual inventory is censored and incomplete; collecting live Hyperliquid quotes cannot close its virtual position.',
                 'No paper session, live collector, market endpoint or inference was started by this resolver.']},
         'evidence_refs':['paper_research:'+request_id,
             'paper_local_archive_bundle:'+fingerprint(bundle),
@@ -347,20 +354,37 @@ def prepare_from_local_archives(store,request_id,*,clock_ms=None,max_chars=MAX_P
         'available_ms':data_available_ms,'classifications':categories}
 
 
-def packet_for_resolution(store,resolution_id,*,clock_ms,max_chars):
-    """Revalidate an immutable local packet before a later explicit activation."""
+def packet_for_resolution(store,resolution_id,*,clock_ms,max_chars,phase='prepare'):
+    """Revalidate a dormant packet before seal or an activated packet at runtime."""
+    if phase not in {'prepare','execute'}:
+        raise ValueError('Known local packet validation phase required')
     row=store.connection.execute('select * from paper_local_evidence_resolutions where resolution_id=?',
         (resolution_id,)).fetchone()
     if not row or row['prepared_ms']>clock_ms or row['data_available_ms']>clock_ms:
         raise ValueError('Available immutable local evidence resolution required')
     packet=json.loads(row['packet_json'])
-    child=store.connection.execute('select packet_json,local_resolution_id,status,activated_ms from paper_research_jobs where request_id=?',
+    child=store.connection.execute('select request_id,adaptation_request_id,packet_json,local_resolution_id,status,activated_ms,data_available_ms from paper_research_jobs where request_id=?',
         (row['child_request_id'],)).fetchone()
-    if not child or child['local_resolution_id']!=resolution_id or child['status']!='budget_required' or child['activated_ms'] is not None:
+    expected_state=(child is not None and child['status']=='budget_required' and child['activated_ms'] is None) if phase=='prepare' \
+        else (child is not None and child['status']=='sealed' and child['activated_ms']==clock_ms
+            and child['data_available_ms']==row['data_available_ms'])
+    if not child or child['request_id']!=row['child_request_id'] or child['local_resolution_id']!=resolution_id or not expected_state:
         raise ValueError('Prepared local child task identity or dormant state changed')
     if packet.get('fingerprint')!=fingerprint({k:v for k,v in packet.items() if k!='fingerprint'}) \
             or packet.get('fingerprint')!=json.loads(child['packet_json']).get('fingerprint'):
         raise ValueError('Prepared local packet fingerprint mismatch')
+    expected_request_id=fingerprint({'adaptation_request_id':child['adaptation_request_id'],'packet':packet['fingerprint']})
+    if expected_request_id!=row['child_request_id']:
+        raise ValueError('Local child request identity does not match its sealed packet')
+    if phase=='execute':
+        authorization=store.connection.execute('select state,packet_fingerprint,activated_ms from paper_research_task_authorizations where request_id=?',
+            (child['request_id'],)).fetchone()
+        # Shared-budget tasks have no dedicated row. If an explicit one-task
+        # approval exists, it must be the exact active approval for this packet.
+        if authorization and (authorization['state']!='activated'
+                or authorization['packet_fingerprint']!=packet['fingerprint']
+                or authorization['activated_ms']!=clock_ms):
+            raise ValueError('Local packet lacks its matching active task authorization')
     if packet.get('available_ms')!=row['data_available_ms'] or len(canonical(packet))>max_chars:
         raise ValueError('Prepared local packet availability or size changed')
     parent=store.connection.execute('select status,updated_ms,network,address,session_id,packet_json,result_json '

@@ -32,7 +32,8 @@ def _run(store,request_id):
     # Revalidate access at activation without changing the evidence cutoff.
     # The preparation and source-data timestamps remain immutable.
     fresh=packet(store,row['adaptation_request_id'],clock_ms=row['activated_ms'],max_chars=policy['max_packet_chars'],
-        parent_request_id=row['parent_request_id'],local_resolution_id=row['local_resolution_id'])
+        parent_request_id=row['parent_request_id'],local_resolution_id=row['local_resolution_id'],
+        resolution_phase='execute')
     if fresh['status']!='packet_ready':raise ValueError('Original paper research packet no longer eligible')
     saved=json.loads(store.connection.execute('select packet_json from paper_research_jobs where request_id=?',(request_id,)).fetchone()[0])
     expected=fresh['packet']

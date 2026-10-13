@@ -193,7 +193,9 @@ def _wait_order(state: dict[str, Any], order: dict[str, Any], reason: str, now: 
 
 def _record_v4_opportunity(state:dict[str,Any],spec:dict[str,Any],order:dict[str,Any],now:int,
                            *,eligible:bool,outcome:str,reason:str|None=None,fill_size:str|None=None,
-                           position_before:str|None=None,position_after:str|None=None)->None:
+                           order_size:str|None=None,order_notional_usdc:str|None=None,
+                           order_selection:str|None=None,position_before:str|None=None,
+                           position_after:str|None=None)->None:
     if spec.get('execution',{}).get('quote_evidence_contract')!='bbo_or_l2book_v1':return
     quote=state.get('quote') or {}
     received=quote.get('source_received_ms')
@@ -203,6 +205,8 @@ def _record_v4_opportunity(state:dict[str,Any],spec:dict[str,Any],order:dict[str
         'quote_source':quote.get('source'),'quote_received_ms':received,
         'quote_available_ms':quote.get('available_ms'),'quote_age_ms':now-int(received) if received is not None else None,
         'connection_id':quote.get('session'),
+        'order_size':order_size,'order_notional_usdc':order_notional_usdc,
+        'order_selection':order_selection,'partial_fill':outcome=='partial',
         'position_before':position_before if position_before is not None else str(state.get('position','0')),
         'position_after':position_after,'fill_size':fill_size})
 
@@ -279,59 +283,58 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         residual_policy=spec['execution'].get('small_residual_policy')
         exit_px=number(q['bid'] if pos>0 else q['ask'])
         minimum=number(rules['minimum_order_usdc']) if rules else Decimal(0)
+        order_selection=None
         if (residual_policy=='avoid_uncloseable_residual_v1' and rules
                 and order.get('reduce_only') and pos!=0 and target*pos>0
-                and abs(target)<abs(pos) and 0<abs(target)*exit_px<minimum):
-            # Never intentionally leave a subminimum perp remainder when the
-            # full close itself is above the documented order minimum.
+                and abs(target)<abs(pos) and 0<abs(target)*exit_px<minimum
+                and abs(pos)*exit_px>=minimum):
+            # Choose the admissible full-close instruction before simulating
+            # any depth-limited fill; the fill remains independent of policy.
             target=Decimal(0)
+            order_selection='full_close_selected_to_avoid_subminimum_residual'
         delta=target-pos
         if rules:delta=round_size(delta,rules['sz_decimals'])
+        order_notional=abs(delta)*number(q['ask'] if delta>0 else q['bid']) if delta else Decimal(0)
         if not delta:
             _miss_order(state,'zero_adjustment_after_rounding')
-            _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='zero_adjustment_after_rounding')
+            _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='zero_adjustment_after_rounding',
+                order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
             continue
         buy=delta>0
         if rules and abs(delta)*number(q['ask'] if buy else q['bid'])<number(rules['minimum_order_usdc']):
             if order.get('reduce_only'):
                 if mandatory_exit:
                     _wait_order(state,order,'priority_exit_below_venue_minimum',now)
-                    _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='priority_exit_below_venue_minimum')
+                    _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='priority_exit_below_venue_minimum',
+                        order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
                     remaining.append(order)
                 else:
                     _miss_order(state,'reduce_only_adjustment_below_venue_minimum')
-                    _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='reduce_only_adjustment_below_venue_minimum')
+                    _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='reduce_only_adjustment_below_venue_minimum',
+                        order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
             else:
                 _miss_order(state,'below_venue_minimum_order_value')
-                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='below_venue_minimum_order_value')
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='below_venue_minimum_order_value',
+                    order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
             continue
         if spec['execution']['kind']=='passive_conservative':
             _miss_order(state,'passive_queue_priority_unavailable')
-            _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='passive_queue_priority_unavailable')
+            _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='passive_queue_priority_unavailable',
+                order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
             continue
         available=number(q['ask_size'] if buy else q['bid_size'])*number(spec['execution']['displayed_size_fraction'])/stress
         size=min(abs(delta),max(Decimal(0),available))*(1 if buy else -1)
         if rules:size=round_size(size,rules['sz_decimals'])
-        if (size and residual_policy=='avoid_uncloseable_residual_v1' and rules
-                and order.get('reduce_only') and pos!=0):
-            remainder=abs(pos+size)
-            if 0<remainder*exit_px<minimum:
-                # A partial fill that would create dust is capped so at least
-                # one minimum-notional, lot-rounded position remains open.
-                lot=Decimal(1).scaleb(-rules['sz_decimals'])
-                minimum_position=(minimum/exit_px/lot).to_integral_value(rounding='ROUND_CEILING')*lot
-                maximum_reduction=max(Decimal(0),abs(pos)-minimum_position)
-                safe_size=min(abs(size),maximum_reduction)
-                safe_size=(safe_size/lot).to_integral_value(rounding='ROUND_DOWN')*lot
-                size=safe_size*(1 if size>0 else -1)
         if not size:
             if order.get('reduce_only'):
                 _wait_order(state,order,'priority_exit_insufficient_visible_size',now)
-                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='priority_exit_insufficient_visible_size')
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='priority_exit_insufficient_visible_size',
+                    order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
                 remaining.append(order)
             else:
                 _miss_order(state,'insufficient_visible_size_or_lot_rounding')
-                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='insufficient_visible_size_or_lot_rounding')
+                _record_v4_opportunity(state,spec,order,now,eligible=True,outcome='missed',reason='insufficient_visible_size_or_lot_rounding',
+                    order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection)
             continue
         if abs(size)<abs(delta):state['partial_orders']+=1
         price=number(q['ask'] if buy else q['bid'])
@@ -339,6 +342,7 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
         position_before=str(state['position'])
         _record_v4_opportunity(state,spec,order,now,eligible=True,
             outcome='partial' if abs(size)<abs(delta) else 'executed',reason=None,fill_size=str(size),
+            order_size=str(delta),order_notional_usdc=str(order_notional),order_selection=order_selection,
             position_before=position_before,position_after=str(number(position_before)+size))
         _fill(state,size,price,number(spec['fees']['taker_bps'])*stress,now)
         if order.get('reduce_only') and number(state['position'])!=0:

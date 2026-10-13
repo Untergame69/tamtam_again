@@ -85,13 +85,15 @@ d'exception au minimum pour fermer un petit reliquat. Le moteur reste donc
 conservateur : un reliquat dont la valeur est sous 10 USD n'est pas déclaré
 closable à partir de ces pages seules.
 
-La politique optionnelle `avoid_uncloseable_residual_v1` évite, pour les
-nouvelles variantes qui la déclarent, de produire volontairement un reliquat
-positif inférieur à 10 USD lorsqu'une fermeture complète admissible est
-possible. Si la profondeur visible ne permet qu'un fill partiel, la taille est
-plafonnée pour conserver une position arrondie dont le notionnel atteint au
-moins 10 USD. Un reliquat déjà inférieur au seuil reste inchangé et la sortie
-prioritaire conserve le diagnostic; aucun fill de convenance n'est simulé.
+La politique optionnelle `avoid_uncloseable_residual_v1`, activée pour la v5,
+choisit avant simulation une instruction de fermeture complète lorsque la
+réduction demandée produirait un ajustement sous 10 USD et que l'ordre complet
+est admissible. La taille choisie est consignée séparément du fill. Le fill
+partiel est ensuite déterminé uniquement par la profondeur visible : il n'est
+ni plafonné ni réécrit pour préserver un reliquat donné. Le reliquat réellement
+calculé est conservé; s'il reste sous le minimum, une nouvelle tentative de
+sortie peut échouer et déclencher le diagnostic prévu. Une position déjà sous
+le seuil reste inchangée lorsqu'aucun ajustement admissible n'existe.
 
 Cette politique n'est pas activée rétroactivement sur v1–v4 et ne constitue pas
 une preuve de fermeture réelle. Sa validation n'autorise pas à elle seule une

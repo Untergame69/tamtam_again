@@ -121,6 +121,17 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
                 experimental_report = report_due(store,session[0])
                 if experimental_report:
                     reports.append(experimental_report)
+                    if experimental_report.get('experiment_status') in {'completed','abandoned','suspended'}:
+                        request_row=store.connection.execute(
+                            "SELECT request_id FROM execution_correction_requests WHERE target_session_id=?",
+                            (session[0],)).fetchone() if store.connection.execute(
+                                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='execution_correction_requests'").fetchone() else None
+                        if request_row:
+                            from .execution_correction import complete_request
+                            complete_request(store,request_row['request_id'],experimental_report['report_id'],
+                                {'experiment_status':experimental_report['experiment_status'],
+                                 'next_action':experimental_report['report']['next_action'],
+                                 'report':experimental_report['report']})
             else:
                 from .paper import synthetic_recipe_tick
                 events=fixtures.get(session['variant_id'],{}).get('paper',[])

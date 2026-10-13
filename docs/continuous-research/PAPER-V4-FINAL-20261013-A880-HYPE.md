@@ -31,6 +31,10 @@ La clôture prioritaire a échoué sous la règle de minimum du simulateur : 16 
 
 Les pages officielles Hyperliquid publient une erreur `MinTradeNtl` (« Order must have minimum value of $10 »), décrivent `Reduce Only` comme une protection contre l'augmentation de position, et documentent les lots/arrondis. Elles ne déclarent pas d'exception au minimum pour une fermeture perpétuelle reduce-only. La conclusion prudente est donc : ne pas simuler une fermeture d'un ordre sous 10 USD sans preuve officielle supplémentaire.
 
+### Rectificatif de politique moteur et disposition (lié, 13 octobre 2026)
+
+Le texte de la politique précédent décrivait un plafonnement d'un fill partiel pour préserver un reliquat d'au moins 10 USD. Ce comportement après coup est supprimé. La v5 sélectionne une instruction de fermeture complète avant simulation, puis utilise le fill fourni par la profondeur visible, sans le modifier. Le reliquat v4 reste `+0,05 HYPE`; son ordre paper expiré peut faire l'objet d'une annulation administrative de file, sans fill ni clôture. La v4 demeure incomplète et son résultat aller-retour final reste inconnu. Voir le [rectificatif lié et la demande v2](PAPER-V4-CLOSEABLE-REDUCTION-REQUEST-20261013-V2.json) ainsi que le bilan v5 lorsqu'il sera produit.
+
 Une politique opt-in `avoid_uncloseable_residual_v1` est ajoutée au moteur : si une réduction planifiée laisserait moins de 10 USD et que la position complète vaut au moins le minimum, la cible est ramenée à zéro; un fill partiel est plafonné pour laisser zéro ou une position arrondie d'au moins 10 USD. Une position déjà sous 10 USD reste intacte; une sortie obligatoire échoue avec diagnostic si elle ne peut pas être exécutée. Le comportement est opt-in et n'est activé sur aucune expérience historique.
 
 Tests ciblés couvrant fermeture complète si admissible, fill partiel sans poussière, et préservation d'une position déjà sous le minimum : voir le test `test_opt_in_reduction_policy_*` dans `tests/test_paper_engine_v3.py`.

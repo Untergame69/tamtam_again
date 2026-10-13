@@ -104,19 +104,29 @@ class PaperEngineV3Tests(unittest.TestCase):
         self.assertEqual(state['fills'][0]['size'],'-0.29')
         self.assertEqual(state['pending'],[])
 
-    def test_opt_in_reduction_policy_caps_partial_fill_above_minimum_closeable_position(self):
+    def test_opt_in_policy_selects_full_close_before_partial_fill_and_preserves_actual_depth(self):
         s=spec_v3();s['execution']['small_residual_policy']='avoid_uncloseable_residual_v1'
+        s['execution']['quote_evidence_contract']='bbo_or_l2book_v1';s['execution']['max_quote_age_ms']=1000
+        s['data_sources']=list(set(s['data_sources'])|{'bbo','l2Book'})
         state=initial_state(s)
         state.update(connected=True,session='s1',healthy_at_ms=1_000,position='0.29',average_price='84',
             pending=[{'target':'0.05','due_ms':1_900,'expires_ms':5_000,'intent':'reduction',
                       'priority':50,'reduce_only':True,'decision_ms':1_800}],
-            quote={'received_ms':1_800,'event_ms':1_800,'session':'s1','bid':'84','ask':'84.01',
+            quote={'received_ms':1_800,'source_received_ms':1_800,'available_ms':1_800,'event_ms':1_800,'session':'s1','source':'l2Book','bid':'84','ask':'84.01',
                    'bid_size':'2','ask_size':'1000'})
         reduce_event(state,s,event('reduce','timer',2_000))
-        self.assertEqual(state['fills'][0]['size'],'-0.17')
-        self.assertEqual(number(state['position']),Decimal('0.12'))
-        self.assertGreaterEqual(number(state['position'])*Decimal('84'),Decimal('10'))
+        # The policy selects a full-close instruction before the simulator sees
+        # depth. Actual visible liquidity produces a real partial fill; no cap
+        # is applied afterward to force a preferred residual.
+        self.assertEqual(state['fills'][0]['size'],'-0.20')
+        self.assertEqual(number(state['position']),Decimal('0.09'))
         self.assertEqual(len(state['pending']),1)
+        self.assertEqual(state['pending'][0]['target'],'0.05')
+        opportunity=state['execution_opportunities'][-1]
+        self.assertEqual(opportunity['order_size'],'-0.29')
+        self.assertEqual(opportunity['fill_size'],'-0.20')
+        self.assertEqual(opportunity['outcome'],'partial')
+        self.assertEqual(opportunity['order_selection'],'full_close_selected_to_avoid_subminimum_residual')
 
     def test_opt_in_reduction_policy_preserves_already_subminimum_position(self):
         s=spec_v3();s['execution']['small_residual_policy']='avoid_uncloseable_residual_v1'
@@ -130,6 +140,19 @@ class PaperEngineV3Tests(unittest.TestCase):
         self.assertEqual(number(state['position']),Decimal('0.05'))
         self.assertEqual(state['fills'],[])
         self.assertEqual(state['pending'][0]['last_wait_reason'],'priority_exit_below_venue_minimum')
+
+    def test_opt_in_policy_does_not_select_nonadmissible_full_close(self):
+        s=spec_v3();s['execution']['small_residual_policy']='avoid_uncloseable_residual_v1'
+        state=initial_state(s)
+        state.update(connected=True,session='s1',healthy_at_ms=1_000,position='0.09',average_price='84',
+            pending=[{'target':'0.05','due_ms':1_900,'expires_ms':5_000,'intent':'reduction',
+                      'priority':50,'reduce_only':True,'decision_ms':1_800}],
+            quote={'received_ms':1_800,'event_ms':1_800,'session':'s1','bid':'84','ask':'84.01',
+                   'bid_size':'1000','ask_size':'1000'})
+        reduce_event(state,s,event('reduce','timer',2_000))
+        self.assertEqual(state['fills'],[])
+        self.assertEqual(number(state['position']),Decimal('0.09'))
+        self.assertEqual(state['nonexecution_reasons']['reduce_only_adjustment_below_venue_minimum'],1)
 
     def test_small_residual_policy_is_opt_in_and_does_not_rewrite_legacy_specs(self):
         s=spec_v3();state=initial_state(s)

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "request_id": "a880-hype-v4-closeable-reduction-20261013-v2",
+  "supersedes_request_artifact": "PAPER-V4-CLOSEABLE-REDUCTION-REQUEST-20261013-A880-HYPE.json",
+  "route": "correction d'exécution",
+  "source_session_id": "4303114ebedf4d238241a605a41c591c",
+  "source_final_report_id": "217019a2b7915f7e4b34baddccb23a8159edc08e8d6fea6bd671893980c4248c",
+  "diagnosis": {
+    "code": "priority_exit_unresolved_position",
+    "five_completed_cycles_net_usdc": "-0.311334140534",
+    "sixth_cycle_status": "incomplete",
+    "residual_position": "+0.05 HYPE",
+    "pending_order": "Expired priority reduce-only virtual order; administrative queue cancellation is required before recording an incomplete disposition.",
+    "final_round_trip_result": "unknown"
+  },
+  "correction": {
+    "version": "single_perp_v3:avoid_uncloseable_residual_v1-preselect-order",
+    "rule": "Choose an admissible full-close instruction before simulation if the requested reduction would leave a sub-minimum adjustment. Record selected order size separately from actual fill size. Actual partial fill is determined by visible depth and is never altered afterward.",
+    "partial_fill": "Preserve the resulting position, including a sub-minimum residual; diagnose an unresolved priority exit on expiry. Never fabricate a close.",
+    "preserves_v1_v4": true
+  },
+  "prospective_experiment": {
+    "authorized": true,
+    "version": "a880-hype-live-delta-follow-v5-closeable-order-selection",
+    "question": "Does pre-execution selection of an admissible full-close instruction make selected order size, actual partial fill and resulting residual mechanically interpretable without post-fill rewriting?",
+    "duration_ms": 1800000,
+    "max_sessions": 1,
+    "paper_only": true,
+    "max_cost_usd": "0",
+    "no_live_orders": true,
+    "no_ai_calls": true,
+    "stops": ["existing priority-exit unresolved diagnostic", "existing 10 USDC loss/drawdown limit", "30-minute duration"]
+  },
+  "registry": {
+    "table": "execution_correction_requests",
+    "consumed_by": "scripts/start_a880_hype_v5.py",
+    "deterministic_route": true,
+    "ai_scheduler_submission": false
+  },
+  "links": {
+    "v4_report": "PAPER-V4-FINAL-20261013-A880-HYPE.md",
+    "v5_spec": "../../config/experiments/a880-hype-live-delta-v5.json",
+    "v5_hypothesis": "../../config/experiments/a880-hype-live-delta-hypothesis-v5.json"
+  }
+}

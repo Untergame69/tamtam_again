@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "a880-hype-live-delta-follow-v5-closeable-order-selection",
+  "observations": [
+    "La v3 est restée non démarrée après son gate BBO-only échoué; aucune donnée ni résultat de v3 n’est transféré.",
+    "L’analyse HYPE l2Book confirme parfois le meilleur bid/ask et leurs quantités pendant un BBO ancien, mais l’âge de la réception l2Book reste soumis à la même limite d’une seconde."
+  ],
+  "interpretation": "Expérience technique paper indépendante : tester la sélection déterministe de l’instruction admissible avant simulation, puis mesurer les fills complets ou partiels réellement supportés par la profondeur visible et les reliquats qui en résultent. Aucun objectif de rentabilité.",
+  "claim": "Pour une réduction qui laisserait un ordre ajusté sous le minimum de 10 USDC, sélectionner avant simulation la fermeture complète lorsque cet ordre complet est admissible permet-il de tracer fidèlement taille d’ordre, exécution partielle et reliquat, sans réécrire le fill après observation de la profondeur ?",
+  "signal": "Only non-snapshot userFills HYPE events from the subscribed live stream; use signed fill size. REST history and the source entry price are never decision inputs.",
+  "entry": "Même signal et même échelle que la v4 : signed live userFills à 0.001, exposition brute plafonnée à 100 USDC; aucune position antérieure transférée.",
+  "exit": "Réductions et sorties prioritaires avant augmentations. La politique v5 peut choisir avant simulation une fermeture complète si la cible de réduction laisserait un ordre sous-minimum et que l’ordre complet est admissible. Le fill dépend ensuite uniquement de la profondeur visible; tout reliquat est conservé, diagnostiqué si la sortie prioritaire expire, sans clôture comptable inventée.",
+  "execution": "Use the latest causally available BBO or fast-l2Book top-of-book snapshot. Keep its source receipt time, archive availability time, source connection id, bid/ask prices and sizes. At every simulated execution require receipt age <=1000ms, availability strictly before decision, and the same currently healthy connection. Heartbeat is connection health only. Log eligible, missed and executed opportunities with source and reason. No live orders. For reduce-only orders, v5 records selected order size separately from actual partial fill size; never cap or rewrite a fill after observing depth.",
+  "risk": {
+    "starting_capital_usdc": "1000",
+    "max_exposure_usdc": "100",
+    "max_loss_usdc": "10",
+    "max_leverage": "1",
+    "no_live_orders": true,
+    "economic_validation": false
+  },
+  "decision_rules": {
+    "runtime_health": "start only while configured collector and paper engine timer are active and the current HYPE stream connection is healthy",
+    "per_execution_quote": "require BBO or l2Book receipt age <=1000ms, archived before execution, same healthy connection",
+    "quote_unavailable": "record missed opportunity and exact reason; preserve any open residual",
+    "priority_exit_unresolved": "stop session with priority_exit_unresolved_position; preserve residual and final result unknown",
+    "loss_limit": "stop when predeclared 10 USDC net loss/drawdown limit is reached",
+    "duration_end": "stop after 30 minutes and produce final automatic report",
+    "purpose": "Question mécanique pré-déclarée : la sélection pré-exécution rend-elle les fills partiels et reliquats interprétables ? Aucun critère de rentabilité."
+  },
+  "prestart_collection_gate_required": false,
+  "evidence_refs": [
+    "docs/continuous-research/PAPER-FRESHNESS-GATE-20261012-A880-HYPE.json",
+    "docs/continuous-research/BBO-SILENCE-L2-ANALYSIS-20261012-A880-HYPE.json",
+    "docs/continuous-research/PROPOSED-QUOTE-VALIDITY-V4-A880-HYPE.json",
+    "docs/continuous-research/PAPER-V4-CLOSEABLE-REDUCTION-REQUEST-20261013-V2.json"
+  ],
+  "review_interval_ms": 300000,
+  "max_duration_ms": 1800000,
+  "quote_evidence_contract": "bbo_or_l2book_v1",
+  "runtime_health_required": true
+}

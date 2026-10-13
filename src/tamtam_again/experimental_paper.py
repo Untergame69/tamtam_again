@@ -452,7 +452,8 @@ def add_rectification(store: Store, report_id: str, correction: dict[str, Any]) 
             "created_at":row["created_at"]}
 
 
-def record_incomplete_disposition(store: Store, session_id: str, *, reason: str) -> dict[str, Any]:
+def record_incomplete_disposition(store: Store, session_id: str, *, reason: str,
+                                 administrative_action_id: str | None = None) -> dict[str, Any]:
     """Record administrative incompleteness without flattening or rewriting a ledger."""
     initialize(store)
     if not reason.strip():
@@ -470,7 +471,8 @@ def record_incomplete_disposition(store: Store, session_id: str, *, reason: str)
         raise ValueError("Incomplete residual disposition requires no pending paper orders")
     disposition={"schema_version":1,"status":"administratively_incomplete",
         "paper_session_status":session["status"],"residual_position":position,
-        "closing_fill":None,"final_round_trip_result":"unknown","reason":reason.strip()}
+        "closing_fill":None,"final_round_trip_result":"unknown","reason":reason.strip(),
+        "administrative_action_id":administrative_action_id}
     disposition_id=fingerprint({"session_id":session_id,"disposition":disposition})
     store.connection.execute("BEGIN IMMEDIATE")
     try:

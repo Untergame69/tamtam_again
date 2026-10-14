@@ -231,11 +231,12 @@ class PopulationPilotTests(unittest.TestCase):
         raw_a='raw_observations:fill-a#sha256:'+'a'*64
         raw_b='raw_observations:fill-b#sha256:'+'b'*64
         raw_c='raw_observations:book-c#sha256:'+'c'*64
+        mechanism_ref='raw_observations:book-c'
         scope='account_scope_reports:scope#sha256:'+'d'*64
         packet={'evidence_refs':[scope,raw_a,raw_b,raw_c], 'observations':{
             'market_execution_detail_v1':{'ETH':{'evidence_refs':[raw_a,raw_b]}},
             'descriptive_history_v1':{'evidence_refs':[raw_b]},
-            'market_mechanisms':[{'evidence_refs':[raw_c]}]}}
+            'market_mechanisms':[{'evidence_refs':[mechanism_ref]}]}}
         response={'decision':'hypothesis','hypothesis':{'evidence_refs':[scope,
             'observations.market_execution_detail_v1.ETH.execution_activity',
             'observations.market_execution_detail_v1.ETH.position_path',
@@ -243,7 +244,7 @@ class PopulationPilotTests(unittest.TestCase):
             'observations.descriptive_history_v1.coverage','observations.market_mechanisms',
             'pilot_research','research_contract']}}
         adapted, details=adapt_eth_evidence_paths_v1(response,packet)
-        self.assertEqual(adapted['hypothesis']['evidence_refs'],[scope,raw_a,raw_b,raw_c])
+        self.assertEqual(adapted['hypothesis']['evidence_refs'],[scope,raw_a,raw_b,mechanism_ref])
         self.assertEqual(response['hypothesis']['evidence_refs'][1],
             'observations.market_execution_detail_v1.ETH.execution_activity')
         self.assertEqual(details['omitted_metadata_paths'],[

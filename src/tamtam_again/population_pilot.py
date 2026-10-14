@@ -224,6 +224,11 @@ def adapt_eth_evidence_paths_v1(response, packet):
     details = observations.get('market_execution_detail_v1', {})
     descriptive = observations.get('descriptive_history_v1', {})
     mechanisms = observations.get('market_mechanisms', [])
+    # The validator explicitly admits these references from each mechanism row,
+    # even when its source archive predates the newer sha256 suffix convention.
+    for item in mechanisms:
+        if isinstance(item, dict):
+            allowed.update(ref for ref in item.get('evidence_refs', []) if isinstance(ref, str))
     projection = {
         'observations.market_execution_detail_v1.ETH.execution_activity':
             details.get('ETH', {}).get('evidence_refs', []),

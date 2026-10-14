@@ -539,6 +539,91 @@ def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, marke
     return result
 
 
+def prepare_inventory_execution_association(store,network,address,*,cutoff_ms,market):
+    """Deterministically cross-tab executions against pre-fill inventory.
+
+    Closing/opening quantities split reversals at the recorded pre-position;
+    no order-placement inference is made.
+    """
+    detail=prepare_candidate_market_detail(store,network,address,cutoff_ms=cutoff_ms,market=market)
+    fills,coverage,refs=_load_fills(store,network,address.lower(),cutoff_ms)
+    fills=[f for f in fills if f.get('coin')==market]
+    chain=start_position_chain_summary(fills,include_fill_events=True)
+    events=chain.get('ordered_segment_fill_events',[])
+    segment_by_event={}
+    for segment in chain.get('ordered_segment_event_offsets',[]):
+        for i in range(segment['first_event'],segment['first_event']+segment['event_count']):
+            segment_by_event[i]=segment['segment']
+    nonzero=sorted(_d(e['pre_position']).copy_abs() for e in events if _d(e['pre_position'])!=0)
+    def nearest_rank(q):
+        if not nonzero:return None
+        i=max(0,(q*len(nonzero)+99)//100-1)
+        return nonzero[min(i,len(nonzero)-1)]
+    cuts={'q25':nearest_rank(25),'q50':nearest_rank(50),'q75':nearest_rank(75)}
+    def bucket(pre):
+        mag=_d(pre).copy_abs()
+        if mag==0:return 'flat'
+        if mag<=cuts['q25']:return 'inventory_q1'
+        if mag<=cuts['q50']:return 'inventory_q2'
+        if mag<=cuts['q75']:return 'inventory_q3'
+        return 'inventory_q4'
+    def empty():
+        return {'fill_count':0,'execution_quantity':'0','close_quantity':'0','open_quantity':'0',
+            'reversal_count':0,'reversal_close_quantity':'0','reversal_open_quantity':'0',
+            'signed_fees_by_token':{}}
+    matrix=defaultdict(empty);by_segment_day=defaultdict(empty)
+    for event_index,event in enumerate(events):
+        fill=event['fill'];pre=_d(event['pre_position']);post=_d(event['post_position'])
+        signed_delta=post-pre;qty=_d(fill['sz']);fee=fill.get('fee')
+        if pre==0 or pre*signed_delta>=0:
+            close_qty=Decimal(0);open_qty=qty
+        else:
+            close_qty=min(abs(pre),abs(signed_delta));open_qty=max(Decimal(0),qty-close_qty)
+        crossed=('maker_crossed_false' if fill.get('crossed') is False else
+            'taker_crossed_true' if fill.get('crossed') is True else 'crossed_unknown')
+        side='flat' if pre==0 else 'long' if pre>0 else 'short'
+        key=(side,bucket(pre),crossed)
+        day=datetime.fromtimestamp(int(fill['time'])/1000,timezone.utc).date().isoformat()
+        segment=segment_by_event[event_index]
+        for agg in (matrix[key],by_segment_day[(str(segment),day,side,bucket(pre),crossed)]):
+            agg['fill_count']+=1;agg['execution_quantity']=str(_d(agg['execution_quantity'])+qty)
+            agg['close_quantity']=str(_d(agg['close_quantity'])+close_qty)
+            agg['open_quantity']=str(_d(agg['open_quantity'])+open_qty)
+            if close_qty and open_qty:
+                agg['reversal_count']+=1
+                agg['reversal_close_quantity']=str(_d(agg['reversal_close_quantity'])+close_qty)
+                agg['reversal_open_quantity']=str(_d(agg['reversal_open_quantity'])+open_qty)
+            if fee is not None:
+                fees=defaultdict(Decimal,{k:_d(v) for k,v in agg['signed_fees_by_token'].items()})
+                fees[str(fill.get('feeToken') or 'unknown')]+=_d(fee)
+                agg['signed_fees_by_token']={k:str(v) for k,v in sorted(fees.items())}
+    def flatten(rows):
+        return [{'position_side':key[0],'inventory_bucket':key[1],'crossed_group':key[2],**value}
+            for key,value in sorted(rows.items())]
+    result={'schema_version':'population-inventory-execution-association-v1','network':network,
+        'address':address.lower(),'market':market,'cutoff_ms':cutoff_ms,
+        'source_detail_fingerprint':detail['detail_fingerprint'],
+        'coverage':{'observed_market_fills':len(fills),'position_path_events':len(events),
+            'segment_count':len(chain.get('position_chain_segments',[])),
+            'rupture_count':len(chain.get('position_chain_ruptures',[])),
+            'continuity_proven':False,'rows_missing_position_fields':chain.get('fills_skipped_missing_position_fields',0)},
+        'inventory_magnitude_quantile_cuts':{k:str(v) if v is not None else None for k,v in cuts.items()},
+        'by_position_side_inventory_bucket_and_crossed':flatten(matrix),
+        'by_segment_utc_day_inventory_side_bucket_and_crossed':[{'segment':key[0],'utc_day':key[1],
+            'position_side':key[2],'inventory_bucket':key[3],'crossed_group':key[4],**value}
+            for key,value in sorted(by_segment_day.items())],
+        'interpretation_limits':['Descriptive conditional execution frequencies are not causal effects; fills are clustered in a small number of local chains and days.',
+            'Crossed groups describe executions only. They do not reveal order placement, cancellation, queue priority or target intent.',
+            'Closing and opening quantities use recorded startPosition and executed size; a reversal is split at zero.',
+            'Historical request windows are incomplete; the segment rupture and censored endpoints remain unknown.'],
+        'evidence_refs':detail['evidence_refs']}
+    result['evidence_fingerprint']=fingerprint({'schema_version':result['schema_version'],
+        'network':network,'address':address.lower(),'market':market,'cutoff_ms':cutoff_ms,
+        'evidence_refs':result['evidence_refs']})
+    result['analysis_fingerprint']=fingerprint(result)
+    return result
+
+
 def enrich_research_packet(packet, summary, market_details=None):
     """Return a new packet; historical packets and decisions are never edited."""
     out=deepcopy(packet)

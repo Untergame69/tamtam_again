@@ -8,7 +8,7 @@ from pathlib import Path
 
 from tamtam_again.engine import canonical
 from tamtam_again.population_descriptive import (prepare_candidate_market_detail,
-    prepare_candidate_summary,prepare_pilot_packet)
+    prepare_candidate_summary,prepare_inventory_execution_association,prepare_pilot_packet)
 from tamtam_again.storage import Store
 
 
@@ -134,6 +134,26 @@ class PopulationDescriptiveTests(unittest.TestCase):
         self.assertEqual(episode['price_result_quote_units'],'2.0')
         self.assertEqual(detail['by_utc_day']['1970-01-01']['bounded_episode_results_by_segment']['1']['episode_count'],2)
         self.assertEqual(detail['fees_signed_by_token']['USDC'],'0.00')
+
+    def test_inventory_execution_association_splits_reversals_at_zero(self):
+        fills=[
+            {'coin':'COIN','tid':'open','time':100,'startPosition':'0','side':'B','sz':'1','px':'10','fee':'0.01','feeToken':'USDC','crossed':False},
+            {'coin':'COIN','tid':'reduce','time':110,'startPosition':'1','side':'A','sz':'0.5','px':'12','fee':'-0.02','feeToken':'USDC','crossed':True},
+            {'coin':'COIN','tid':'reverse','time':120,'startPosition':'0.5','side':'A','sz':'1','px':'12','fee':'-0.01','feeToken':'USDC','crossed':False},
+            {'coin':'COIN','tid':'flat','time':130,'startPosition':'-0.5','side':'B','sz':'0.5','px':'13','fee':'0.02','feeToken':'USDC','crossed':True},
+        ]
+        self._raw(21,'userFillsByTime',fills)
+        result=prepare_inventory_execution_association(self.store,self.network,self.address,
+            cutoff_ms=self.cutoff,market='COIN')
+        row=next(r for r in result['by_position_side_inventory_bucket_and_crossed']
+            if r['position_side']=='long' and r['crossed_group']=='maker_crossed_false')
+        self.assertEqual(row['reversal_count'],1)
+        self.assertEqual(row['reversal_close_quantity'],'0.5')
+        self.assertEqual(row['reversal_open_quantity'],'0.5')
+        taker=next(r for r in result['by_position_side_inventory_bucket_and_crossed']
+            if r['position_side']=='long' and r['crossed_group']=='taker_crossed_true')
+        self.assertEqual(taker['close_quantity'],'0.5')
+        self.assertEqual(taker['open_quantity'],'0')
 
 
 if __name__=='__main__':unittest.main()

@@ -206,6 +206,91 @@ def adapt_required_data_objects_v1(response):
     return adapted
 
 
+def adapt_eth_evidence_paths_v1(response, packet):
+    """Project the exact ETH packet-section paths used by the provider to source refs.
+
+    This adapter does not edit or add claims. Policy/text-only paths are recorded as
+    omitted; any other unknown path fails closed. The caller preserves source JSON.
+    """
+    if not isinstance(response, dict) or response.get('decision') != 'hypothesis':
+        raise ValueError('Evidence-path adapter applies only to a hypothesis response')
+    adapted = deepcopy(response)
+    hypothesis = adapted.get('hypothesis')
+    refs = hypothesis.get('evidence_refs') if isinstance(hypothesis, dict) else None
+    if not isinstance(refs, list) or not refs or any(not isinstance(ref, str) for ref in refs):
+        raise ValueError('Evidence refs must be a nonempty list of strings')
+    allowed = set(packet.get('evidence_refs', []))
+    observations = packet.get('observations', {})
+    details = observations.get('market_execution_detail_v1', {})
+    descriptive = observations.get('descriptive_history_v1', {})
+    mechanisms = observations.get('market_mechanisms', [])
+    projection = {
+        'observations.market_execution_detail_v1.ETH.execution_activity':
+            details.get('ETH', {}).get('evidence_refs', []),
+        'observations.market_execution_detail_v1.ETH.position_path':
+            details.get('ETH', {}).get('evidence_refs', []),
+        'observations.descriptive_history_v1.coverage': descriptive.get('evidence_refs', []),
+        'observations.market_mechanisms': [ref for item in mechanisms if isinstance(item, dict)
+            for ref in item.get('evidence_refs', [])],
+    }
+    metadata_only = {'observations.market_execution_detail_v1.ETH.interpretation_limits',
+        'pilot_research', 'research_contract'}
+    output, mapped, omitted = [], [], []
+    for ref in refs:
+        if ref in allowed:
+            candidates = [ref]
+        elif ref in projection:
+            candidates = projection[ref]
+            if not candidates:
+                raise ValueError('Known evidence path has no source references: ' + ref)
+            mapped.append({'source_path': ref, 'source_refs': candidates})
+        elif ref in metadata_only:
+            omitted.append(ref)
+            continue
+        else:
+            raise ValueError('Unrecognized evidence path; adaptation is ambiguous: ' + ref)
+        for candidate in candidates:
+            if not isinstance(candidate, str) or candidate not in allowed:
+                raise ValueError('Evidence path resolved outside the sealed packet allowlist')
+            if candidate not in output:
+                output.append(candidate)
+    if not output:
+        raise ValueError('Evidence-path projection produced no verifiable source refs')
+    hypothesis['evidence_refs'] = output
+    return adapted, {'mapped_paths': mapped, 'omitted_metadata_paths': omitted,
+        'source_ref_count': len(refs), 'adapted_ref_count': len(output)}
+
+
+def _eth_execution_local_resolution(store, packet):
+    """Resolve a deterministic-calculation request from the sealed cutoff only."""
+    from .population_descriptive import prepare_inventory_execution_association
+    source_detail = packet.get('observations', {}).get('market_execution_detail_v1', {}).get('ETH')
+    if not isinstance(source_detail, dict):
+        raise ValueError('Sealed packet does not contain ETH execution detail')
+    result = prepare_inventory_execution_association(store, packet['network'], packet['address'],
+        cutoff_ms=packet['available_ms'], market='ETH')
+    if result['source_detail_fingerprint'] != source_detail.get('detail_fingerprint'):
+        raise ValueError('Local calculation differs from the sealed ETH source detail')
+    return {'version': 'population-eth-inventory-execution-resolution-v1',
+        'state': 'partially_resolved_from_authorized_local_archives',
+        'artifact': 'docs/continuous-research/POPULATION-67F7-ETH-INVENTORY-ASSOCIATION-20261014.json',
+        'analysis_fingerprint': result['analysis_fingerprint'],
+        'source_detail_fingerprint': result['source_detail_fingerprint'],
+        'cutoff_ms': result['cutoff_ms'], 'coverage': result['coverage'],
+        'inventory_magnitude_quantile_cuts': result['inventory_magnitude_quantile_cuts'],
+        'by_position_side_inventory_bucket_and_crossed': result['by_position_side_inventory_bucket_and_crossed'],
+        'by_segment_utc_day_inventory_side_bucket_and_crossed': result['by_segment_utc_day_inventory_side_bucket_and_crossed'],
+        'interpretation_limits': result['interpretation_limits'],
+        'data_requests': [
+            {'required_data_index': 0, 'classification': 'missing_calculation',
+                'state': 'resolved_offline_without_new_links',
+                'finding': 'For long and short positions, the share of executed quantity reducing inventory is higher in Q4 than Q1 for maker and taker fills. Reversals are split at zero. This is an execution association, not evidence of order placement or causal intent.'},
+            {'required_data_index': 1, 'classification': 'future_accessible_observation',
+                'state': 'not_present_in_authorized_cutoff_archives',
+                'finding': 'Prospective receipt-time fills and independent ETH position snapshots are not established in the sealed archives. Historical fills do not prove complete continuity or availability.'}],
+        'model_calls_for_resolution': 0}
+
+
 def revalidate_and_critique(store, policy, request_id):
     """Apply only the versioned structural adapter, then use the task's remaining critique call."""
     from .population_runtime import (STATES, _initialize_call_artifacts, _advance_call,
@@ -218,7 +303,7 @@ def revalidate_and_critique(store, policy, request_id):
         return {'status': 'unchanged_no_inference', 'request_id': request_id}
     prior = json.loads(job['result_json'] or '{}')
     diagnostic = prior.get('validation_diagnostic') or {}
-    if diagnostic.get('code') != 'required_data_invalid':
+    if diagnostic.get('code') not in {'required_data_invalid', 'evidence_reference_invalid'}:
         return {'status': 'unchanged_no_inference', 'request_id': request_id,
             'reason': 'no registered deterministic adapter for the recorded rejection'}
     if auth['state'] != 'suspended':
@@ -228,29 +313,53 @@ def revalidate_and_critique(store, policy, request_id):
     if not isinstance(raw, str):
         return {'status': 'suspended', 'request_id': request_id, 'reason': 'rejected raw proposal is absent'}
     source = parse_response(raw)
-    adapted = adapt_required_data_objects_v1(source)
     packet = json.loads(job['packet_json'])
+    adapted = source
+    projection_details = None
+    if diagnostic.get('code') == 'required_data_invalid':
+        adapted = adapt_required_data_objects_v1(adapted)
+    elif diagnostic.get('code') == 'evidence_reference_invalid':
+        adapted, projection_details = adapt_eth_evidence_paths_v1(adapted, packet)
+        # This task's provider used two exact, structured missing-data records. Their
+        # narrative remains intact; the runtime receives the contract's string list.
+        if all(isinstance(item, dict) for item in adapted.get('hypothesis', {}).get('required_data', [])):
+            items = adapted['hypothesis']['required_data']
+            keys = {'required_data_index', 'classification', 'observation', 'scope',
+                'decision_use', 'acquisition'}
+            if any(set(item) != keys or type(item['required_data_index']) is not int
+                    or not all(isinstance(item[k], str) and item[k].strip()
+                        for k in keys - {'required_data_index'}) for item in items):
+                raise ValueError('Structured required-data records are not losslessly projectable')
+            if [item['required_data_index'] for item in items] != list(range(len(items))):
+                raise ValueError('Structured required-data indices are not consecutive')
+            adapted['hypothesis']['required_data'] = [item['observation'] for item in items]
+            adapted['hypothesis']['required_data_context_v1'] = deepcopy(items)
     validate_response(adapted, packet, request_id=request_id)
+    local_resolution = _eth_execution_local_resolution(store, packet) if projection_details is not None else None
     source_sha = hashlib.sha256(raw.encode()).hexdigest()
     mark_call_state(store,request_id,1,'structurally_revalidated')
     store.connection.execute('create table if not exists population_research_adaptation_artifacts '
         '(request_id text not null,adapter_version text not null,source_response_sha256 text not null,'
         'source_response_json text not null,adapted_response_json text not null,validation_state text not null,'
         'created_ms integer not null,primary key(request_id,adapter_version))')
+    adapter_version = ('eth-evidence-path-projection-v1' if projection_details is not None
+        else 'required-data-object-projection-v1')
     artifact = store.connection.execute('select source_response_sha256,adapted_response_json from '
         'population_research_adaptation_artifacts where request_id=? and adapter_version=?',
-        (request_id, 'required-data-object-projection-v1')).fetchone()
+        (request_id, adapter_version)).fetchone()
     if artifact:
         if artifact['source_response_sha256'] != source_sha or artifact['adapted_response_json'] != canonical(adapted):
             raise ValueError('Structural adaptation artifact identity changed')
         return {'status': 'already_adapted', 'request_id': request_id,
-            'adapter_version': 'required-data-object-projection-v1'}
+            'adapter_version': adapter_version}
     store.connection.execute('insert into population_research_adaptation_artifacts values(?,?,?,?,?,?,?)',
-        (request_id, 'required-data-object-projection-v1', source_sha, canonical(source),
+        (request_id, adapter_version, source_sha, canonical(source),
          canonical(adapted), 'revalidated', now_ms()))
-    prior['structural_adaptation'] = {'adapter_version': 'required-data-object-projection-v1',
+    prior['structural_adaptation'] = {'adapter_version': adapter_version,
         'source_response_sha256': source_sha, 'validation_state': 'revalidated',
-        'adapted_proposal': adapted}
+        'projection_details': projection_details, 'adapted_proposal': adapted}
+    if local_resolution is not None:
+        prior['local_resolution'] = local_resolution
     store.connection.execute('update population_research_jobs set result_json=?,updated_ms=? where request_id=? and status=\'suspended\'',
         (canonical(prior), now_ms(), request_id))
     store.connection.execute("update population_research_pilot_tasks set state='needs_critique' where request_id=? and state='suspended'",
@@ -285,7 +394,13 @@ def revalidate_and_critique(store, policy, request_id):
             'Do not claim profitability or authorize strategy promotion. Return JSON with decision '
             'consistent|needs_data|non_identifiable|unsupported_mechanism|reject, diagnostic and wake. '
             'Treat prospective lifecycle, continuous order/quote timing and fee schedule observations as required '
-            'where the packet does not contain them. Packet:\n'+canonical(packet)+'\nProposal:\n'+canonical(adapted))
+            'where the packet does not contain them. A deterministic local calculation is available as a '
+            'separate post-proposal addendum: it measures ETH pre-fill inventory side and quartile against '
+            'maker/taker executed quantities, reversal close/open splits, fees, day and segment. Treat it as '
+            'descriptive archive evidence only, with one local chain rupture and censored endpoints; it does '
+            'not establish causality or order placement. Resolve the proposal\'s missing_calculation request '
+            'from this addendum and do not request it again. Local calculation addendum:\n'+
+            canonical(local_resolution or {})+'\nPacket:\n'+canonical(packet)+'\nProposal:\n'+canonical(adapted))
         try:
             critique_raw, measured=call(policy['task_policy'], prompt, on_response=capture)
         except Exception as exc:
@@ -334,7 +449,7 @@ def revalidate_and_critique(store, policy, request_id):
             local=prior.get('local_resolution')
         else:local=None
         return {'status':state,'request_id':request_id,'route':routed,'local_resolution':local,
-            'adapter_version':'required-data-object-projection-v1','usage_accounting':accounting}
+            'adapter_version':adapter_version,'usage_accounting':accounting}
     except Exception as exc:
         diagnostic=getattr(exc,'diagnostic',{'stage':'adapted_critique','code':'deterministic_adaptation_or_critique_failed',
             'field':'adapted_response','observed':type(exc).__name__,'limit':'preserve artifacts; no retry'})

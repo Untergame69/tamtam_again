@@ -59,6 +59,26 @@ la même ligne. Une panne de calcul produit un rapport diagnostique insuffisant.
 À l'échéance finale, le worker fige le rapport puis arrête son propre timer ; le
 collecteur partagé reste actif.
 
+## Démarrage observé
+
+À 2026-10-14 15:00:00 UTC, systemd a lancé le service ; il est sorti en succès
+à 15:00:03.194 UTC. La base lie le lancement réel à `actual_started_ms=1791990000373`
+(15:00:00.373 UTC) et le run est en état `observing`. La première page
+`userFillsByTime` a répondu HTTP 200, 120 unités de poids réservées, zéro retry,
+zéro fill ETH sur les premières millisecondes, et `complete=1`; sa référence
+brute est `raw_observations:50804540` avec hash
+`4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`.
+
+Après le départ, des événements BBO et l2Book ETH sont arrivés sur la connexion
+`f7189c7d363a49f9bcb53fc388b75d7e`. Exemples vérifiés : BBO
+`raw_observations:50809535` (événement 15:00:35.032 UTC, reçu 15:00:35.588,
+archivé 15:00:35.623, hash `9c6b81adbd2a319d8a07712ded85619fed196bc90f79fd97960cdc4b77c6d03a`) ;
+l2Book `raw_observations:50809492` (événement 15:00:34.895, reçu 15:00:35.317,
+archivé 15:00:35.398, hash `420b3ae130a1cdbc84e5a21a5d162d6f8de0378e2af432b502725e75de085cc8`).
+Le deuxième tick automatique s'est terminé avec succès sans refaire la requête ;
+le prochain poll REST est prévu cinq minutes après le précédent. Aucun bilan
+6 h n'existe encore à ce contrôle.
+
 Commandes de contrôle :
 
 ```sh

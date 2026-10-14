@@ -69,6 +69,12 @@ dans `eth_observation_routes`, et les polls/pages bruts dans
 `eth_observation_polls` et `raw_observations`. Le chemin direct de consultation
 reste la base locale `data/tamtam.sqlite3`; aucune archive n'est nettoyée.
 
+```sh
+sqlite3 data/tamtam.sqlite3 "select protocol_id,status,actual_started_ms,finalised_ms,next_poll_ms,diagnostic_json from eth_observation_runs where protocol_id='67f7-eth-public-observation-24h-20261014-v1';"
+sqlite3 data/tamtam.sqlite3 "select stage,json_extract(report_json,'$.decision'),json_extract(report_json,'$.input_fingerprint') from eth_observation_reports where protocol_id='67f7-eth-public-observation-24h-20261014-v1' order by created_ms;"
+sqlite3 data/tamtam.sqlite3 "select status,count(*),sum(record_count),sum(complete=0) from eth_observation_polls where protocol_id='67f7-eth-public-observation-24h-20261014-v1' group by status;"
+```
+
 Le test d'intégration utilise un needs-data 67f7/ETH déjà présent en fixture :
 un tick de l'observation y laisse le processus en état `observing`, puis le
 scheduler local réalise la jointure et l'analyse économique sans appel IA. Cela

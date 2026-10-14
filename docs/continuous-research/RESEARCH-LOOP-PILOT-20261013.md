@@ -8,7 +8,7 @@ La politique exécutable est [`research-loop-pilot-v1.json`](../../config/resear
 
 Le cutoff d’archive est `1791789394195` (`2026-10-12T07:16:34.195Z`). Le paquet a880 est adapté par `population-descriptive-pilot-adapter-v1` : il lit le rapport de scope disponible avant ce cutoff et le rapport déterministe HYPE versionné, sans lire les pages brutes, la mémoire, les réveils ou les fenêtres prospectives de v5. La protection de v5 demeure intacte; aucune clôture ni donnée de v5 n’a été recherchée.
 
-La sélection a retenu `a880/HYPE` en premier : l’attribution déterministe disponible permet d’étudier les frais signés et le caractère crossed; l’absence d’ordres non exécutés et de priorité de file limite toutefois l’identification. `67f7/ETH` reste deuxième et `be504` troisième en raison de son périmètre multi-compte, de portefeuille et de devises. Aucun deuxième candidat n’a été activé après que la première analyse a identifié une tâche prospective précise.
+Au lancement initial, la sélection a retenu `a880/HYPE` en premier : l’attribution déterministe disponible permettait d’étudier les frais signés et le caractère crossed; l’absence d’ordres non exécutés et de priorité de file limitait toutefois l’identification. Le bilan du 14 octobre a ensuite laissé le scheduler examiner `67f7/ETH` puis `be504`, conformément à l’enveloppe et à la correction décrite ci-dessous.
 
 Les plafonds du pilote sont trois tâches, six appels, 480 000 tokens d’entrée, 30 000 de sortie et 720 secondes. Par appel, le plafond de runtime reste 80 000 tokens d’entrée, 5 000 de sortie et 120 secondes; par tâche, deux appels, 160 000 / 10 000 tokens et 240 secondes. Le registre réserve ces maxima avant l’appel et conserve toute tentative engagée ou interrompue. Aucun USD fictif, retry, réarmement historique ou renouvellement n’est utilisé.
 
@@ -33,7 +33,7 @@ La reprise automatique est conditionnée à des observations prospectives autori
 
 Le registre dédié contient une tâche, deux appels réservés et rapporte 133 028 tokens d’entrée, 2 890 de sortie et 106 730 ms au total. Les réservations de pire cas correspondantes sont 160 000 / 10 000 tokens et 240 000 ms. Il reste au maximum deux tâches et quatre appels; ces plafonds ne sont pas transférés aux jobs ordinaires. Les huit essais historiques et les jobs du quota partagé restent inchangés.
 
-Le timer existant `tamtam-again-population-research.timer` reste actif et enabled; son service charge maintenant cette politique. Au prochain réveil, l’entrée a880 inchangée est routée sans nouvel appel. Le timer paper, les collecteurs et les autres timers n’ont pas été modifiés. Aucun nouveau service ou timer n’a été créé.
+Le timer existant `tamtam-again-population-research.timer` reste actif et enabled; son service charge cette politique. Le parcours du 14 octobre et son rejeu sans entrée nouvelle sont consignés ci-dessous. Le timer paper, les collecteurs et les autres timers n’ont pas été modifiés. Aucun nouveau service ou timer n’a été créé.
 
 ## Vérification
 
@@ -57,3 +57,26 @@ La commande reproductible d’un tick borné est :
 ```
 
 Le tick n’infère pas à nouveau une entrée inchangée et ne crée pas une expérience paper.
+
+
+## Complément du 14 octobre — sélection non bloquante et décisions multi-candidats
+
+La version précédente du scheduler s’arrêtait sur le premier candidat terminal. `tick_locked` examine maintenant les candidats autorisés par rang, conserve les routes techniques/terminales au niveau du compte, et continue après une preuve absente ou un fingerprint inchangé. Une entrée inchangée retourne `unchanged_no_inference`; elle ne consomme ni tâche ni appel. Un résultat `needs_data` issu d’une critique ne crée pas un plan d’acquisition, car ce registre est réservé aux hypothèses acceptées. Les échecs d’exécution fournisseur sont routés vers un diagnostic manuel sans retry.
+
+Le test `test_technical_and_unchanged_candidates_do_not_block_later_candidates` établit le parcours : a880 demeure sur sa route technique; 67f7 reçoit le prochain paquet; une seconde présentation inchangée de 67f7 est ignorée et be504 est examiné; enfin les deux candidats sans nouvelles preuves n’engendrent aucun doublon. `test_needs_data_critique_routes_without_structured_hypothesis_registration` et `test_provider_execution_failure_route_is_consumed_without_retry` couvrent le post-traitement. Les 14 tests de `tests.test_population_pilot` passent.
+
+Deux paquets utiles existaient sous le cutoff autorisé : 67f7, 150 fills observés, fingerprint `9efafa22a979f78f07f308a663230c0c120afe7250af5cb1b07f92f46ecc2db5`; be504, 113 fills, fingerprint `e0fe0b09776b5d8210777cb089f593ffb763ff903399f4051b4bedee11476940`. Le service a exécuté chaque tâche une fois. Le premier démarrage de be504 a persisté son résultat puis échoué dans le post-traitement, car une critique `needs_data` ne contient pas l’hypothèse exigée par `research_needs.register`. Le garde a été corrigé; le service existant a ensuite terminé avec code 0, sans créer de tâche ni nouvel appel. Le résultat et sa route n’ont pas été rejoués.
+
+| Candidat | Résultat conservé | Décision persistante / suite |
+|---|---|---|
+| a880 / HYPE | Hypothèse de contribution des rétrocessions; critique `needs_data`, sans lien causal sur la politique du trader. | `technical_task_required`; attendre seulement de nouvelles observations prospectives autorisées avec fingerprint différent. |
+| 67f7 / ETH | Proposition recevable : étudier le quoting passif dépendant de l’inventaire. Elle cite 144/150 fills maker et 28/74 ordres multi-fill, mais ce sont des observations conditionnelles aux exécutions. La critique a échoué dans le runtime isolé; cette réponse fournisseur est conservée comme diagnostic, sans nouvel essai. | Route v5 `manual_runtime_diagnosis`, tentative consommée, retry automatique désactivé. L’hypothèse reste préliminaire, sans validation de rentabilité. |
+| be504 | Décision `needs_data` : différer; aucun mécanisme mono-marché suffisamment attribuable dans ce paquet. Les inconnues dominantes sont le périmètre de marge/collatéral master vs hedge, les composants spot malformés ou dupliqués, les hedges externes et la continuité des positions. | Enregistrer/résoudre le scope avec sources et preuves identifiables, puis recueillir prospectivement l’inventaire pré-ordre et le cycle d’ordre du marché retenu. Aucun mélange de sous-comptes, marchés ou devises. |
+
+La décision d’a880 reste distincte : sa tâche technique ne bloque plus l’examen des candidats suivants. Les décisions d’intérêt de recherche, observabilité et compatibilité du moteur restent séparées. L’effet causal des rétrocessions sur les motivations du trader n’est pas un préalable à une étude de reproductibilité; TAMTAM_AGAIN-14 distingue désormais observations publiques archivées, instrumentation de notre moteur et informations inobservables.
+
+### Consommation totale et preuve de rejeu
+
+Le pilote a utilisé 3/3 tâches et réservé 5/6 appels (deux sur a880, deux sur 67f7, un sur be504). Les métadonnées rapportent 143 748 tokens d’entrée, 5 079 de sortie et 197 618 ms. Quatre appels sont déclarés inclus à 0 USD. Le deuxième appel 67f7 a échoué avec statut de coût inconnu; ses tokens rapportés valent zéro, sans inventer une estimation USD. Une seule réservation d’appel reste dans la limite globale, mais aucun nouveau travail ne peut être autorisé puisque le plafond non renouvelable de trois tâches est atteint.
+
+Après les corrections, le service existant a terminé à 08:44:51 UTC avec `Result=success`, `ExecMainStatus=0`. Le registre contenait toujours exactement trois tâches et cinq appels; les entrées inchangées n’ont pas produit de nouveau job. Le timer de recherche est resté actif/enabled. Aucun paper, ordre réel, moteur maker ou changement de service n’a été effectué. Le détail structuré et les empreintes sont dans [`RESEARCH-LOOP-PILOT-20261014.json`](RESEARCH-LOOP-PILOT-20261014.json).

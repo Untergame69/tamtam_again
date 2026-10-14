@@ -23,7 +23,7 @@ def route(store,request_id,*,kind='population'):
     packet_row=store.connection.execute(f'select packet_json from {registry} where request_id=?',(request_id,)).fetchone()
     packet_body=json.loads(packet_row[0]) if packet_row else {}
     pilot_scope=packet_body.get('pilot_research')
-    route_version='prospective-execution-routing-v4' if isinstance(pilot_scope,dict) else 'population-routing-v1'
+    route_version='prospective-execution-routing-v5' if isinstance(pilot_scope,dict) else 'population-routing-v1'
     result_fp=fingerprint({'status':row['status'],'result':result,'route_version':route_version})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
     if history:return json.loads(history[0])
@@ -89,8 +89,13 @@ def route(store,request_id,*,kind='population'):
                 'reject':'archive economic or hypothesis rejection with its original diagnostic',
             }.get(row['status'],'resolve interruption or contract failure before any explicitly budgeted new attempt'))
             if row['status']=='suspended' and isinstance(validation_diagnostic,dict):
-                output['next_action']='Correct the recorded response contract before any separately authorized work; this rejected response is not promoted.'
-                output['wake']={'kind':'manual_contract_correction','automatic_retry':False}
+                if validation_diagnostic.get('stage') == 'provider_execution':
+                    output['next_action']='Inspect the isolated provider/runtime failure; this reserved attempt remains consumed and is not retried automatically.'
+                    output['wake']={'kind':'manual_runtime_diagnosis','automatic_retry':False,
+                        'attempt_consumed':True}
+                else:
+                    output['next_action']='Correct the recorded response contract before any separately authorized work; this rejected response is not promoted.'
+                    output['wake']={'kind':'manual_contract_correction','automatic_retry':False}
         if (kind=='population' and isinstance(pilot_scope,dict) and row['status']=='needs_data'
                 and isinstance(result.get('critique'),dict)
                 and result['critique'].get('decision')=='needs_data'):

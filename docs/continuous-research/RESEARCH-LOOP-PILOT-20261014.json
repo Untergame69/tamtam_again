@@ -1,0 +1,82 @@
+{
+  "version": "research-loop-pilot-completion-v1",
+  "observed_at_utc": "2026-10-14T08:44:51Z",
+  "pilot_id": "research-loop-pilot-20261013-v1",
+  "policy_version": "research-loop-pilot-v1",
+  "scheduler_change": "candidate-local-wait-and-replay-v1",
+  "route_version": "prospective-execution-routing-v5",
+  "decisions": [
+    {
+      "candidate": "a880",
+      "request_id": "b11881eee7db616f972569ef89ab0dcf6ef5b59e1f8a7d6d3db36262b20aea31",
+      "packet_fingerprint": "c2e92dc88d35641c80d85972928ad05e3ae6502d59127a4d69ee7c2d6d3c6f5a",
+      "state": "technical_task_required",
+      "summary": "Les frais signés contribuent positivement dans l’échantillon borné; le lien causal entre rétrocessions et choix du trader n’est pas démontré. Les observations prospectives nécessaires ne sont pas récupérables localement.",
+      "next_action": "Reprendre uniquement après nouvelles observations prospectives autorisées et fingerprint différent."
+    },
+    {
+      "candidate": "67f7",
+      "request_id": "6f54cef055874db260d88d96c8f7021474b65cc5ce38f1a3121ed43b6805497a",
+      "packet_fingerprint": "2399972a61cdcb6fdfc95637acd4e6c4cebc90547145c395684c583e7218c780",
+      "state": "suspended",
+      "proposal_decision": "hypothesis",
+      "proposal_summary": "Étudier si des cotations passives dépendantes de l’inventaire expliquent les exécutions ETH. Le paquet rapporte 144/150 fills maker et 28/74 ordres à plusieurs fills; cela ne démontre ni la règle ni sa rentabilité.",
+      "critique_state": "provider_execution_failed",
+      "diagnostic": {
+        "stage": "provider_execution",
+        "code": "isolated_inference_failed",
+        "field": "failed",
+        "observed": {"failed": true, "exit_code": 0, "error_type": null},
+        "limit": "successful isolated provider response"
+      },
+      "next_action": "Diagnostic manuel du runtime; aucune relance automatique."
+    },
+    {
+      "candidate": "be504",
+      "request_id": "92c7bb3cb925467177994001127b7eecc6425f3823f61fbc05f0cfc7752c9151",
+      "packet_fingerprint": "e9ed0dca49bc38253676a1b321e2ade3668a17ec7098f1794ba99a889d200551",
+      "state": "needs_data",
+      "summary": "Différer : le scope compte/collatéral reste insuffisant pour attribuer un mécanisme mono-marché. La décision demande une réconciliation de scope et, après cela, une observation prospective du cycle d’ordre et de l’inventaire pré-ordre.",
+      "next_action": "Résoudre les observations exactes listées dans la route persistante, sans agréger marchés, devises ou sous-comptes."
+    }
+  ],
+  "allowance": {
+    "tasks_used": 3,
+    "tasks_max": 3,
+    "calls_reserved": 5,
+    "calls_max": 6,
+    "input_tokens_reported": 143748,
+    "output_tokens_reported": 5079,
+    "duration_ms_reported": 197618,
+    "calls_included_zero_usd": 4,
+    "failed_call_usage": "unknown; provider metadata reports zero tokens; no USD estimate recorded",
+    "usd_reservation": null,
+    "renewal": false,
+    "remaining_call_slots_unusable_after_task_cap": 1
+  },
+  "replay_proof": {
+    "existing_service": "tamtam-again-population-research.service",
+    "result": "success",
+    "exit_status": 0,
+    "pilot_tasks_after_replay": 3,
+    "pilot_calls_after_replay": 5,
+    "new_task_or_model_call": false
+  },
+  "source_coverage_at_authorized_cutoff": {
+    "67f7": {"observed_unique_fills": 150, "content_fingerprint": "9efafa22a979f78f07c95637dbdfd5a1560b0fa08dbb7c564f0944f8b489f0c4"},
+    "be504": {"observed_unique_fills": 113, "content_fingerprint": "e0fe0b09776b5d8210777cb089f593ffb763ff903399f4051b4bedee11476940"}
+  },
+  "ticket": {
+    "updated": "TAMTAM_AGAIN-14",
+    "parent_comment_added": "TAMTAM_AGAIN-12",
+    "scope": ["public_archived_observations", "our_engine_instrumentation", "historically_unobservable_information"],
+    "causal_incentive_required_for_reproducibility": false
+  },
+  "constraints_preserved": {
+    "no_maker_engine": true,
+    "no_new_paper": true,
+    "no_real_orders": true,
+    "no_quota_increase": true,
+    "prior_decisions_and_raw_responses_preserved": true
+  }
+}

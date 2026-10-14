@@ -75,7 +75,8 @@ class PopulationPilotTests(unittest.TestCase):
             self.add_candidate('a880', active=False)
             self.store.connection.commit()
             missing = tick_locked(self.store, POLICY, dispatch=False, clock_ms=30)
-            self.assertEqual(missing['status'], 'needs_data')
+            self.assertEqual(missing['status'], 'no_admissible_candidate')
+            self.assertEqual(missing['candidate_evaluations'][0]['status'], 'needs_data')
             self.assertEqual(report(self.store, POLICY)['calls_reserved'], 0)
         finally:
             self.store.close()
@@ -221,6 +222,105 @@ class PopulationPilotTests(unittest.TestCase):
         count=self.store.connection.execute('select count(*) from population_hypothesis_routes where request_id=?',(req,)).fetchone()[0]
         self.assertEqual(count,1)
 
+    def test_technical_and_unchanged_candidates_do_not_block_later_candidates(self):
+        from tamtam_again.population_pilot import _seal_candidate
+        from tamtam_again.population_routing import route
+        # Keep the original a880 technical decision, then ensure the scheduler
+        # checks the next candidate rather than returning early.
+        self.add_candidate('67f7', active=True)
+        self.add_candidate('be504', active=True)
+        self.store.connection.commit()
+        first = _seal_candidate(self.store, POLICY, 'a880', clock_ms=30)
+        self.assertEqual(first['status'], 'sealed')
+        req = first['request_id']
+        diag = {'required_missing_observations':['Prospective order lifecycle and receipt clocks'],
+            'limitations':['The current IOC engine cannot reproduce passive fills or queue priority.'],
+            'testability':'Measure prospective execution.'}
+        result = {'critique':{'decision':'needs_data','diagnostic':diag,'wake':{
+            'kind':'prospective_observation_and_technical_task','historical_backfill_requested':False,
+            'trigger':'new prospective observations'}}, 'promotion_authorized':False,
+            'profitability_proven':False}
+        self.store.connection.execute("update population_research_jobs set status='needs_data',result_json=? where request_id=?",
+            (json.dumps(result),req)); self.store.connection.commit()
+        self.assertEqual(route(self.store,req)['state'],'technical_task_required')
+
+        # 67f7 is eligible and gets a useful sealed packet. Once it has a
+        # needs-data decision on this same fingerprint, it must not be called
+        # again and be504 must be considered next.
+        first_next = tick_locked(self.store, POLICY, dispatch=False, clock_ms=31)
+        self.assertEqual(first_next['candidate'],'67f7')
+        self.assertEqual(first_next['status'],'sealed')
+        req67 = first_next['request_id']
+        self.store.connection.execute("update population_research_jobs set status='needs_data',result_json=? where request_id=?",
+            (json.dumps({'critique':{'decision':'needs_data','diagnostic':{'required_missing_observations':['new data']},
+                'wake':{'kind':'required_observations_available'}}}),req67)); self.store.connection.commit()
+        self.assertEqual(route(self.store,req67)['state'],'needs_data')
+        second_next = tick_locked(self.store, POLICY, dispatch=False, clock_ms=32)
+        self.assertEqual(second_next['candidate'],'be504')
+        self.assertEqual(second_next['status'],'sealed')
+        self.assertEqual(second_next['prior_candidates'][0]['candidate'],'a880')
+        self.assertEqual(second_next['prior_candidates'][0]['status'],'terminal_route')
+
+        # Replaying a subsequent tick sees unchanged fingerprints for both
+        # processed accounts, records their wait locally, and creates no task.
+        reqbe = second_next['request_id']
+        self.store.connection.execute("update population_research_jobs set status='needs_data',result_json=? where request_id=?",
+            (json.dumps({'critique':{'decision':'needs_data','diagnostic':{'required_missing_observations':['new data']},
+                'wake':{'kind':'required_observations_available'}}}),reqbe)); self.store.connection.commit()
+        self.assertEqual(route(self.store,reqbe)['state'],'needs_data')
+        task_count = report(self.store,POLICY)['tasks']
+        replay = tick_locked(self.store, POLICY, dispatch=False, clock_ms=33)
+        self.assertEqual(replay['status'],'no_admissible_candidate')
+        self.assertEqual([e['status'] for e in replay['candidate_evaluations']],
+            ['terminal_route','unchanged_no_inference','unchanged_no_inference'])
+        self.assertEqual(report(self.store,POLICY)['tasks'],task_count)
+        self.assertEqual(report(self.store,POLICY)['calls_reserved'],0)
+        report_row = self.store.connection.execute("select report_id,payload_json from account_scope_reports where address=?",
+            (next(row for row in POLICY['selection'] if row['candidate']=='67f7')['address'],)).fetchone()
+        changed = json.loads(report_row['payload_json'])
+        changed['activity']['observed_fill_content_fingerprint'] = 'new-authorized-observation'
+        self.store.connection.execute('update account_scope_reports set payload_json=? where report_id=?',
+            (json.dumps(changed),report_row['report_id'])); self.store.connection.commit()
+        exhausted = tick_locked(self.store,POLICY,dispatch=False,clock_ms=34)
+        self.assertEqual(exhausted['status'],'no_admissible_candidate')
+        self.assertEqual(exhausted['candidate_evaluations'][1]['status'],'task_allowance_exhausted')
+        self.assertEqual(report(self.store,POLICY)['tasks'],task_count)
+        self.assertEqual(report(self.store,POLICY)['calls_reserved'],0)
+
+    def test_needs_data_critique_routes_without_structured_hypothesis_registration(self):
+        from unittest.mock import patch
+        request = self.sealed_task('a880','needs-data-critique')
+        response = {'critique':{'decision':'needs_data','diagnostic':'A new observation is needed.',
+            'wake':{'condition':'reassess only on changed evidence'}},'promotion_authorized':False,
+            'profitability_proven':False}
+        def finish_critique(store, request_id, job):
+            store.connection.execute("update population_research_jobs set status='needs_data',result_json=? where request_id=?",
+                (json.dumps(response),request_id)); store.connection.commit()
+            return {'status':'needs_data'}
+        with patch('tamtam_again.population_runtime.execute_job',side_effect=finish_critique):
+            result = tick_locked(self.store,POLICY,dispatch=True,clock_ms=31)
+        self.assertEqual(result['route']['state'],'needs_data')
+        self.assertIsNone(result['local_resolution'])
+        plans = self.store.connection.execute("select name from sqlite_master where type='table' and name='research_observation_plans'").fetchone()
+        self.assertIsNone(plans)
+
+    def test_provider_execution_failure_route_is_consumed_without_retry(self):
+        from tamtam_again.population_routing import route
+        request = self.sealed_task('67f7','provider-failure-route')
+        packet = json.loads(self.store.connection.execute('select packet_json from population_research_jobs where request_id=?',
+            (request,)).fetchone()[0])
+        packet['pilot_research'] = {'pilot_id':POLICY['pilot_id']}
+        diagnostic = {'stage':'provider_execution','code':'isolated_inference_failed','field':'failed',
+            'observed':{'failed':True,'exit_code':0},'limit':'successful isolated provider response'}
+        self.store.connection.execute("update population_research_jobs set packet_json=?,status='suspended',result_json=? where request_id=?",
+            (json.dumps(packet),json.dumps({'validation_diagnostic':diagnostic,'error_type':'InferenceExecutionError'}),request))
+        self.store.connection.commit()
+        result = route(self.store,request)
+        self.assertEqual(result['wake']['kind'],'manual_runtime_diagnosis')
+        self.assertTrue(result['wake']['attempt_consumed'])
+        self.assertFalse(result['wake']['automatic_retry'])
+        self.assertIn('not retried automatically',result['next_action'])
+
     def test_worker_recovery_marks_reserved_call_interrupted_and_never_retries(self):
         from unittest.mock import patch
         from tamtam_again.population_scheduler import tick
@@ -237,7 +337,7 @@ class PopulationPilotTests(unittest.TestCase):
             call.assert_not_called()
         state=self.store.connection.execute('select state from population_research_pilot_tasks where request_id=?',(request,)).fetchone()[0]
         self.assertEqual(state,'interrupted')
-        self.assertEqual(result['pilot_research']['status'],'already_processed')
+        self.assertEqual(result['pilot_research']['status'],'no_admissible_candidate')
         self.assertEqual(report(self.store,POLICY)['calls_reserved'],1)
 
     def test_exhaustion_is_separate_and_nonrenewing(self):

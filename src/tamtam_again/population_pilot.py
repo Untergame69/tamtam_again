@@ -383,6 +383,7 @@ def _a880_summary(path):
 
 def _seal_candidate(store, policy, candidate, *, clock_ms=None):
     from .population_packet import packet_for_authorized_pilot
+    initialize(store, policy)
     item = next(row for row in policy['selection'] if row['candidate'] == candidate)
     clock = now_ms() if clock_ms is None else clock_ms
     cutoff = policy['admission']['cutoff_ms']
@@ -432,6 +433,11 @@ def _seal_candidate(store, policy, candidate, *, clock_ms=None):
     if existing:
         return {'status': 'unchanged_no_inference', 'candidate': candidate,
             'request_id': existing['request_id'], 'source_status': existing['status']}
+    used_tasks = store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',
+        (policy['pilot_id'],)).fetchone()[0]
+    if used_tasks >= policy['pilot_limits']['max_tasks']:
+        return {'status': 'task_allowance_exhausted', 'candidate': candidate,
+            'reason': 'non-renewing pilot task ceiling already consumed'}
     request_id = fingerprint({'network': policy['network'], 'address': item['address'].lower(),
         'research_input_fingerprint': digest, 'pilot_id': policy['pilot_id']})
     from .population_research import initialize as init_jobs
@@ -461,68 +467,84 @@ def tick_locked(store, policy, *, dispatch=True, clock_ms=None):
     existing = store.connection.execute('select t.request_id,t.candidate,j.status from population_research_pilot_tasks t '
         'join population_research_jobs j using(request_id) where t.pilot_id=? order by t.authorized_ms,t.candidate',
         (policy['pilot_id'],)).fetchall()
-    if existing:
-        pending = next((row for row in existing if row['status'] == 'sealed'), None)
-        if pending and dispatch:
-            from .population_runtime import execute_job
-            job = store.connection.execute('select * from population_research_jobs where request_id=?',
-                (pending['request_id'],)).fetchone()
-            result = execute_job(store, pending['request_id'], job)
-            from .population_routing import route
-            routed = route(store, pending['request_id'])
-            plan = None
-            if routed.get('state') == 'needs_data':
-                from .research_needs import register
-                plan = register(store, pending['request_id'], clock_ms=clock)
-            return {'status': result['status'], 'candidate': pending['candidate'],
-                'request_id': pending['request_id'], 'route': routed, 'local_resolution': plan,
-                'allowance': report(store, policy)}
-        terminal = existing[-1]
-        if terminal['status'] not in {'sealed', 'running'}:
-            if terminal['status'] == 'suspended':
-                saved=store.connection.execute('select result_json from population_research_jobs where request_id=?',
-                    (terminal['request_id'],)).fetchone()
-                prior=json.loads(saved[0] or '{}') if saved else {}
-                if (prior.get('validation_diagnostic') or {}).get('code') == 'required_data_invalid':
-                    if not dispatch:
-                        return {'status':'structural_revalidation_ready','candidate':terminal['candidate'],
-                            'request_id':terminal['request_id'],'model_calls':0,'allowance':report(store,policy)}
-                    result=revalidate_and_critique(store,policy,terminal['request_id'])
-                    return {**result,'candidate':terminal['candidate'],'allowance':report(store,policy)}
-            from .population_routing import route
-            routed = route(store, terminal['request_id'])
-            if routed.get('state') == 'needs_data':
-                updated = _seal_candidate(store, policy, terminal['candidate'], clock_ms=clock)
-                if updated.get('status') == 'sealed' and dispatch:
-                    from .population_runtime import execute_job
-                    job = store.connection.execute('select * from population_research_jobs where request_id=?',
-                        (updated['request_id'],)).fetchone()
-                    executed = execute_job(store, updated['request_id'], job)
-                    new_route = route(store, updated['request_id'])
-                    return {**updated, 'status': executed['status'], 'route': new_route,
-                        'prior_request_id': terminal['request_id'], 'allowance': report(store, policy)}
-                return {**updated, 'prior_request_id': terminal['request_id'],
-                    'route': routed, 'allowance': report(store, policy)}
-            return {'status': 'already_processed', 'candidate': terminal['candidate'],
-                'request_id': terminal['request_id'], 'route': routed, 'allowance': report(store, policy)}
-        return {'status': 'waiting', 'candidate': terminal['candidate'],
-            'request_id': terminal['request_id'], 'allowance': report(store, policy)}
-    for item in sorted(policy['selection'], key=lambda row: row['rank']):
-        result = _seal_candidate(store, policy, item['candidate'], clock_ms=clock)
-        if result.get('status') == 'candidate_ineligible':
-            continue
-        if result.get('status') == 'sealed' and dispatch:
-            from .population_runtime import execute_job
-            job = store.connection.execute('select * from population_research_jobs where request_id=?',
+    by_candidate = {}
+    for row in existing:
+        by_candidate.setdefault(row['candidate'], []).append(row)
+
+    def execute_sealed(result, *, prior_request_id=None):
+        if result.get('status') != 'sealed' or not dispatch:
+            return result
+        from .population_runtime import execute_job
+        from .population_routing import route
+        job = store.connection.execute('select * from population_research_jobs where request_id=?',
+            (result['request_id'],)).fetchone()
+        executed = execute_job(store, result['request_id'], job)
+        routed = route(store, result['request_id'])
+        plan = None
+        if routed.get('state') == 'needs_data':
+            terminal = store.connection.execute('select status from population_research_jobs where request_id=?',
                 (result['request_id'],)).fetchone()
-            executed = execute_job(store, result['request_id'], job)
-            from .population_routing import route
-            routed = route(store, result['request_id'])
-            plan = None
-            if routed.get('state') == 'needs_data':
+            # Structured acquisition planning applies only to an accepted
+            # hypothesis. A needs_data critique is already a terminal
+            # research decision and has no hypothesis payload to register.
+            if terminal and terminal['status'] == 'hypothesis_recorded':
                 from .research_needs import register
                 plan = register(store, result['request_id'], clock_ms=clock)
-            result.update(status=executed['status'], route=routed, local_resolution=plan,
-                allowance=report(store, policy))
-        return {**result, 'allowance': report(store, policy)}
-    return {'status': 'no_admissible_candidate', 'allowance': report(store, policy)}
+        result.update(status=executed['status'], route=routed, local_resolution=plan)
+        if prior_request_id:
+            result['prior_request_id'] = prior_request_id
+        return result
+
+    evaluations = []
+    for item in sorted(policy['selection'], key=lambda row: row['rank']):
+        candidate = item['candidate']
+        rows = by_candidate.get(candidate, [])
+        latest = rows[-1] if rows else None
+        if latest and latest['status'] in {'sealed', 'running'}:
+            if latest['status'] == 'running':
+                evaluations.append({'candidate': candidate, 'status': 'waiting_runtime',
+                    'request_id': latest['request_id']})
+                continue
+            result = execute_sealed({'status': 'sealed', 'candidate': candidate,
+                'request_id': latest['request_id']})
+            result['allowance'] = report(store, policy)
+            return result
+
+        if latest and latest['status'] == 'suspended':
+            saved = store.connection.execute('select result_json from population_research_jobs where request_id=?',
+                (latest['request_id'],)).fetchone()
+            prior = json.loads(saved[0] or '{}') if saved else {}
+            if (prior.get('validation_diagnostic') or {}).get('code') == 'required_data_invalid':
+                if not dispatch:
+                    evaluations.append({'candidate': candidate, 'status': 'structural_revalidation_ready',
+                        'request_id': latest['request_id'], 'model_calls': 0})
+                    continue
+                result = revalidate_and_critique(store, policy, latest['request_id'])
+                result.update(candidate=candidate, allowance=report(store, policy))
+                return result
+
+        prior_request_id = latest['request_id'] if latest else None
+        if latest:
+            from .population_routing import route
+            routed = route(store, latest['request_id'])
+            if routed.get('state') != 'needs_data':
+                # A terminal or technical route belongs to this candidate only.
+                evaluations.append({'candidate': candidate, 'status': 'terminal_route',
+                    'request_id': latest['request_id'], 'route': routed.get('state')})
+                continue
+
+        result = _seal_candidate(store, policy, candidate, clock_ms=clock)
+        if result.get('status') in {'unchanged_no_inference', 'needs_data', 'candidate_ineligible'}:
+            evaluations.append({'candidate': candidate, 'status': result['status'],
+                'request_id': result.get('request_id'), 'reason': result.get('reason')})
+            continue
+        if result.get('status') == 'sealed':
+            result = execute_sealed(result, prior_request_id=prior_request_id)
+            result['allowance'] = report(store, policy)
+            result['prior_candidates'] = evaluations
+            return result
+        evaluations.append({'candidate': candidate, 'status': result.get('status'),
+            'reason': result.get('reason')})
+
+    return {'status': 'no_admissible_candidate', 'candidate_evaluations': evaluations,
+        'allowance': report(store, policy)}

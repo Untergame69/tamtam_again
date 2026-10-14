@@ -23,7 +23,7 @@ def route(store,request_id,*,kind='population'):
     packet_row=store.connection.execute(f'select packet_json from {registry} where request_id=?',(request_id,)).fetchone()
     packet_body=json.loads(packet_row[0]) if packet_row else {}
     pilot_scope=packet_body.get('pilot_research')
-    route_version='prospective-execution-routing-v6' if isinstance(pilot_scope,dict) else 'population-routing-v1'
+    route_version='prospective-execution-routing-v7' if isinstance(pilot_scope,dict) else 'population-routing-v1'
     result_fp=fingerprint({'status':row['status'],'result':result,'route_version':route_version})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
     if history:return json.loads(history[0])
@@ -107,6 +107,7 @@ def route(store,request_id,*,kind='population'):
                     local_resolution=local_resolution,followup_task=followup,
                     local_archive_join=joined,
                     local_inventory_market_context=result.get('local_inventory_market_context'),
+                    local_eth_execution_contribution=result.get('local_eth_execution_contribution'),
                     next_action='Review the recorded historical comparisons; no new collection or inference is scheduled.',
                     wake={'kind':'changed_authorized_evidence_only','new_input_fingerprint_required':True,
                         'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})

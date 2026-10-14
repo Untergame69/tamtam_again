@@ -102,6 +102,33 @@ def historical_research_gate(store,network,address,*,as_of_ms,max_requests,reque
             'reason':reason,'historical_decision_ref':'population_historical_decisions:'+row['decision_id']}
 
 
+def _execute_local_eth_contribution(store, request_id):
+    """Run or retrieve the deterministic ETH economics step after its sealed join."""
+    job=store.connection.execute('select result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
+    if not job:
+        return {'request_id':request_id,'status':'blocked','reason':'research request disappeared',
+            'model_calls':0,'collection_started':False}
+    join=json.loads(job['result_json'] or '{}').get('local_archive_join',{})
+    table=store.connection.execute("select 1 from sqlite_master where type='table' and name='population_local_archive_joins'").fetchone()
+    saved=(store.connection.execute('select 1 from population_local_archive_joins where request_id=? and artifact_fingerprint=?',
+        (request_id,join.get('artifact_fingerprint'))).fetchone() if table and join.get('artifact_fingerprint') else None)
+    if not saved:
+        return {'request_id':request_id,'status':'blocked','reason':'referenced local archive join artifact is not persisted',
+            'model_calls':0,'collection_started':False}
+    from .population_eth_execution_contribution import execute
+    try:
+        result=execute(store,request_id=request_id)
+    except (ValueError,PermissionError) as exc:
+        return {'request_id':request_id,'status':'blocked','reason':str(exc),
+            'model_calls':0,'collection_started':False}
+    artifact=result['artifact']
+    return {'request_id':request_id,'status':result['status'],
+        'version':artifact['schema_version'],'analysis_fingerprint':result['analysis_fingerprint'],
+        'base_join_fingerprint':artifact['base_join_fingerprint'],
+        'artifact_path':'docs/continuous-research/POPULATION-67F7-ETH-EXECUTION-CONTRIBUTION-20261014-v1.json.gz',
+        'model_calls':0,'collection_started':False}
+
+
 def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None,pilot_policy=None,resume_local_resolution=None):
     validate_policy(policy)
     if paper_policy is not None:
@@ -136,6 +163,11 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                 raise ValueError('Explicit local-resolution resume requires its persisted local route')
             outcome=execute_offline_archive_join(store,resume_local_resolution)
             after=route(store,resume_local_resolution)
+            contribution=None
+            if after.get('state')=='local_archive_analysis_complete':
+                contribution=_execute_local_eth_contribution(store,resume_local_resolution)
+                after=route(store,resume_local_resolution)
+            outcome['execution_contribution']=contribution
             return {'local_resolutions':[outcome],'routes':[after],'processed':[],'sealed':[],
                 'historical_ai_gates':[],'interrupted_without_retry':[],'plans':[],
                 'observation_plans':[],'promotion_authorized':False,'model_calls':0,
@@ -218,13 +250,18 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                     and context.get('version')==context_analysis_version and context.get('state')=='completed'):
                 # Report cached outcomes but do not use the bounded execution
                 # slot that must remain available to pending local work.
-                local_resolutions.append({'request_id':candidate['request_id'],'status':'unchanged',
+                outcome={'request_id':candidate['request_id'],'status':'unchanged',
                     'resolver_version':joined.get('version'),'artifact_fingerprint':joined.get('artifact_fingerprint'),
                     'artifact_path':joined.get('artifact_path'),'model_calls':0,'collection_started':False,
-                    'inventory_market_context':context})
+                    'inventory_market_context':context}
+                outcome['execution_contribution']=_execute_local_eth_contribution(store,candidate['request_id'])
+                local_resolutions.append(outcome)
                 continue
             try:
-                local_resolutions.append(execute_offline_archive_join(store,candidate['request_id']))
+                outcome=execute_offline_archive_join(store,candidate['request_id'])
+                if outcome.get('route',{}).get('state')=='local_archive_analysis_complete':
+                    outcome['execution_contribution']=_execute_local_eth_contribution(store,candidate['request_id'])
+                local_resolutions.append(outcome)
             except (ValueError,PermissionError) as exc:
                 local_resolutions.append({'request_id':candidate['request_id'],'status':'blocked','reason':str(exc),
                     'model_calls':0,'collection_started':False})
@@ -232,7 +269,8 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             if resume_local_resolution is not None or local_executions>=max_jobs:break
         if resume_local_resolution is not None and not resume_found:
             raise ValueError('Explicit local-resolution resume did not match a required or completed local task')
-        if local_executions:
+        if local_executions or any(x.get('execution_contribution',{}).get('status')=='prepared'
+                for x in local_resolutions):
             routes=[route(store,r[0]) for r in store.connection.execute("select request_id from population_research_jobs where network=? and status not in ('sealed','running') order by created_ms,request_id",(network,)).fetchall()]
         from .research_needs import register as register_needs
         observation_plans=[register_needs(store,r['request_id']) for r in routes if r['source_status']=='hypothesis_recorded' and r['state']=='needs_data']

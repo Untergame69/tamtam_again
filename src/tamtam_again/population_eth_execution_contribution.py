@@ -356,8 +356,9 @@ def execute(store, *, request_id, output_path=None):
         artifact=json.loads(saved["artifact_json"])
         # Version v1 was first persisted before adding an explicit selected ETH
         # count. Upgrade that metadata from the already persisted fill rows.
+        episodes=artifact["episode_economics"]["episodes"]
         if ("selected_market_fill_count" not in artifact["coverage"]["fills"] or
-                "net_observed_result_usdc" not in artifact["episode_economics"]["episodes"][0] or
+                (episodes and "net_observed_result_usdc" not in episodes[0]) or
                 not artifact["episode_economics"]["by_utc_exit_day"].get(next(iter(artifact["episode_economics"]["by_utc_exit_day"]),""),{}).get("price_result_concentration") or
                 "execution_cost_sensitivity_by_prior_age" not in artifact["fill_consequences"]["summary"].get("all",[{}])[0] or
                 "position_close_quantity" not in artifact["fill_consequences"]["summary"].get("all",[{}])[0] or

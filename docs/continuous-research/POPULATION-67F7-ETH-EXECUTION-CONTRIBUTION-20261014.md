@@ -10,6 +10,13 @@ Analyse reproductible depuis la racine du dépôt :
 PYTHONPATH=src python scripts/analyze_67f7_eth_execution_contribution.py
 ```
 
+Le scheduler de recherche exécute désormais cette résolution déterministe après
+la jointure locale scellée et son contexte. Il stocke le résultat dans
+`population_eth_execution_contributions` et rattache sa version, son empreinte
+et sa référence de fichier à la route. Un rejeu retourne `unchanged` sans
+recalculer ni créer de seconde ligne. Le passage de vérification sur la base
+locale a retrouvé l’empreinte ci-dessous, avec zéro appel IA et aucune collecte.
+
 L’artefact est [POPULATION-67F7-ETH-EXECUTION-CONTRIBUTION-20261014-v1.json.gz](POPULATION-67F7-ETH-EXECUTION-CONTRIBUTION-20261014-v1.json.gz). Empreinte d’analyse : `17f762c9ccda22abef0610c0e15114360f1553d9d9dc73336c9a7d43f24a4266`. Il est rattaché à la jointure scellée v3 `7c9127a0c44cc1bfe801cf3a5ce74949b9e96d5ef610630fbaf3f2117b744169` et au contexte inventaire/marché v2 `17fdf210f8230dd7de7eae7a3f410fa89536ea6d3cda4247216b2d105b792e79`. La source BBO utilisée est couverte par l’empreinte `07e5635631ab384d70e897742dc46c8a97e3959dcd51324b872272d10e2092fe`.
 
 Les 23 140 fills ETH sont issus de 57 pages REST toutes marquées incomplètes ; 11 pages ont épuisé leur budget de pagination. L’archive contient également 2 461 fills d’autres marchés, exclus des calculs ETH. Les 484 129 lots BBO ont fourni 3 230 899 événements admissibles au cutoff, sans rejet de format ou de marché. La période des fills va du 6 au 11 octobre 2026. La continuité de l’archive n’est pas démontrée.

@@ -215,10 +215,23 @@ class PopulationLocalJoinTests(unittest.TestCase):
         self.assertEqual(len(result['local_resolutions']), 1)
         self.assertEqual(result['local_resolutions'][0]['status'], 'prepared')
         self.assertEqual(result['local_resolutions'][0]['inventory_market_context']['status'],'prepared')
+        contribution=result['local_resolutions'][0]['execution_contribution']
+        self.assertEqual(contribution['status'],'prepared')
+        self.assertEqual(contribution['version'],'population-eth-execution-contribution-v1')
         route = next(route for route in result['routes'] if route['request_id'] == self.request_id)
         self.assertEqual(route['state'], 'local_archive_analysis_complete')
         self.assertEqual(route['local_inventory_market_context']['version'],'population-inventory-market-context-v2')
+        self.assertEqual(route['local_eth_execution_contribution']['analysis_fingerprint'],
+            contribution['analysis_fingerprint'])
         self.assertEqual(result['processed'], [])
+        replay=tick(self.store,self.network,policy,dispatch=False,max_jobs=1)
+        replay_result=next(x for x in replay['local_resolutions'] if x['request_id']==self.request_id)
+        self.assertEqual(replay_result['execution_contribution']['status'],'unchanged')
+        self.assertEqual(replay_result['execution_contribution']['analysis_fingerprint'],
+            contribution['analysis_fingerprint'])
+        self.assertEqual(self.store.connection.execute(
+            'select count(*) from population_eth_execution_contributions where request_id=?',
+            (self.request_id,)).fetchone()[0],1)
 
     def test_completed_result_does_not_consume_slot_before_waiting_task(self):
         self._seed_completed_job('first','0x'+'8'*40,created_ms=4300)

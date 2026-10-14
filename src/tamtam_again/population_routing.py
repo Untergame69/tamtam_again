@@ -101,12 +101,21 @@ def route(store,request_id,*,kind='population'):
             if isinstance(local_resolution,dict) else None)
         if (kind=='population' and isinstance(pilot_scope,dict) and row['status']=='needs_data'
                 and isinstance(followup,dict) and followup.get('kind')=='offline_archive_join'):
-            output.update(state='local_archive_analysis_required',
-                local_resolution=local_resolution,followup_task=followup,
-                next_action=followup['title'],
-                wake={'kind':'offline_archive_join_completed',
-                    'new_input_fingerprint_required':True,'model_calls_authorized':0,
-                    'collection_authorized':False,'paper_authorized':False})
+            joined=result.get('local_archive_join')
+            if isinstance(joined,dict) and joined.get('state')=='completed':
+                output.update(state='local_archive_analysis_complete',
+                    local_resolution=local_resolution,followup_task=followup,
+                    local_archive_join=joined,
+                    next_action='Review the recorded historical comparisons; no new collection or inference is scheduled.',
+                    wake={'kind':'changed_authorized_evidence_only','new_input_fingerprint_required':True,
+                        'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})
+            else:
+                output.update(state='local_archive_analysis_required',
+                    local_resolution=local_resolution,followup_task=followup,
+                    next_action=followup['title'],
+                    wake={'kind':'offline_archive_join_completed',
+                        'new_input_fingerprint_required':True,'model_calls_authorized':0,
+                        'collection_authorized':False,'paper_authorized':False})
         if (kind=='population' and isinstance(pilot_scope,dict) and row['status']=='needs_data'
                 and isinstance(result.get('critique'),dict)
                 and result['critique'].get('decision')=='needs_data'):

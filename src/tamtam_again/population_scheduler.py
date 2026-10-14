@@ -102,7 +102,7 @@ def historical_research_gate(store,network,address,*,as_of_ms,max_requests,reque
             'reason':reason,'historical_decision_ref':'population_historical_decisions:'+row['decision_id']}
 
 
-def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None,pilot_policy=None):
+def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None,pilot_policy=None,resume_local_resolution=None):
     validate_policy(policy)
     if paper_policy is not None:
         if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
@@ -121,8 +121,25 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
     if plan_policies is not None and (not isinstance(plan_policies,dict) or any(not isinstance(k,str) or not isinstance(v,dict) for k,v in plan_policies.items())):
         raise ValueError('Explicit per-request prospective policies required')
     if type(max_jobs) is not int or max_jobs<1:raise ValueError('Positive dispatch budget required')
+    if resume_local_resolution is not None and (not isinstance(resume_local_resolution,str) or dispatch):
+        raise ValueError('Explicit local-resolution resume requires an id and model dispatch disabled')
     with scheduler_lock(store):
         initialize(store);store.connection.commit()
+        if resume_local_resolution is not None:
+            if any(value is not None for value in (plan_policies,experiment_policy,reserve_policy,paper_policy,pilot_policy)):
+                raise ValueError('Explicit local-resolution resume cannot run unrelated scheduler work')
+            from .population_routing import route
+            from .population_local_join import execute_offline_archive_join
+            before=route(store,resume_local_resolution)
+            if before.get('research_origin')!='population' or before.get('state') not in {
+                    'local_archive_analysis_required','local_archive_analysis_complete'}:
+                raise ValueError('Explicit local-resolution resume requires its persisted local route')
+            outcome=execute_offline_archive_join(store,resume_local_resolution)
+            after=route(store,resume_local_resolution)
+            return {'local_resolutions':[outcome],'routes':[after],'processed':[],'sealed':[],
+                'historical_ai_gates':[],'interrupted_without_retry':[],'plans':[],
+                'observation_plans':[],'promotion_authorized':False,'model_calls':0,
+                'collection_started':False}
         if experiment_policy is not None:
             from .experiment_allocation import bind_policy
             bind_policy(store,experiment_policy)
@@ -178,6 +195,41 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             except ValueError as exc:memory.append({'request_id':request,'status':'waiting','reason':str(exc)})
         from .population_routing import route
         routes=[route(store,r[0]) for r in store.connection.execute("select request_id from population_research_jobs where network=? and status not in ('sealed','running') order by created_ms,request_id",(network,)).fetchall()]
+        # Resolve deterministic local archive work in the same locked scheduler
+        # pass. This path has no model, collection, or budget dependency.
+        local_resolutions=[]
+        local_executions=0
+        from .population_local_join import VERSION as local_resolver_version, execute_offline_archive_join
+        resume_found=False
+        for candidate in routes:
+            if candidate.get('research_origin')!='population':
+                continue
+            if resume_local_resolution is not None and candidate.get('request_id')!=resume_local_resolution:
+                continue
+            complete=candidate.get('state')=='local_archive_analysis_complete'
+            required=candidate.get('state')=='local_archive_analysis_required'
+            if not (complete or required):
+                continue
+            resume_found=True
+            joined=candidate.get('local_archive_join',{})
+            if complete and joined.get('version')==local_resolver_version:
+                # Report cached outcomes but do not use the bounded execution
+                # slot that must remain available to pending local work.
+                local_resolutions.append({'request_id':candidate['request_id'],'status':'unchanged',
+                    'resolver_version':joined.get('version'),'artifact_fingerprint':joined.get('artifact_fingerprint'),
+                    'artifact_path':joined.get('artifact_path'),'model_calls':0,'collection_started':False})
+                continue
+            try:
+                local_resolutions.append(execute_offline_archive_join(store,candidate['request_id']))
+            except (ValueError,PermissionError) as exc:
+                local_resolutions.append({'request_id':candidate['request_id'],'status':'blocked','reason':str(exc),
+                    'model_calls':0,'collection_started':False})
+            local_executions+=1
+            if resume_local_resolution is not None or local_executions>=max_jobs:break
+        if resume_local_resolution is not None and not resume_found:
+            raise ValueError('Explicit local-resolution resume did not match a required or completed local task')
+        if local_executions:
+            routes=[route(store,r[0]) for r in store.connection.execute("select request_id from population_research_jobs where network=? and status not in ('sealed','running') order by created_ms,request_id",(network,)).fetchall()]
         from .research_needs import register as register_needs
         observation_plans=[register_needs(store,r['request_id']) for r in routes if r['source_status']=='hypothesis_recorded' and r['state']=='needs_data']
         plans=[]
@@ -209,5 +261,5 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
             from .paper_scheduler import _tick as paper_tick
             paper=paper_tick(store,paper_policy,experiment_policy=experiment_policy,dispatch=dispatch and len(processed)<max_jobs,max_jobs=max_jobs)
-        return {'paper_research':paper,'pilot_research':pilot,'reserves':reserves,'plans':plans,'routes':routes,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
+        return {'paper_research':paper,'pilot_research':pilot,'reserves':reserves,'plans':plans,'routes':routes,'local_resolutions':local_resolutions,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False,'observation_plans':observation_plans}

@@ -2,7 +2,7 @@
 
 ## Décision
 
-La tâche conclut `needs_data` : les archives étayent une association descriptive entre l’inventaire avant exécution et les fills, mais elles ne déterminent ni une politique de placement d’ordres ni un effet causal. Le calcul manquant a été réalisé hors IA. Comme des cotations ETH BBO/l2Book et des instantanés d’état du compte existent déjà localement, la prochaine action persistée est une analyse hors ligne de leur alignement avec les fills. Elle ne lance aucune collecte, aucun appel IA ni paper.
+La décision IA reste `needs_data` : les archives étayent une association descriptive entre l’inventaire avant exécution et les fills, mais elles ne déterminent ni une politique de placement d’ordres ni un effet causal. La résolution locale demandée a maintenant été exécutée sans IA. La route persistée est `local_archive_analysis_complete` ; elle n’active aucune collecte, aucun appel IA ni paper.
 
 La route conserve le besoin d’observations prospectives après cette analyse locale. Pour examiner les décisions de placement, il faudrait des événements d’ordres ; ils ne sont pas archivés pour ce compte. Ce besoin ne transforme pas les motivations privées du trader en condition de recherche.
 
@@ -12,7 +12,7 @@ La route conserve le besoin d’observations prospectives après cette analyse l
 - Le premier appel a renvoyé une proposition, rejetée par le validateur car elle citait des chemins de sections JSON au lieu de références de preuves. La réponse brute et le diagnostic sont préservés. L’adaptation `eth-evidence-path-projection-v1` projette seulement les chemins explicitement reconnus vers les références présentes dans le paquet ; les chemins de politique sont écartés. Le contenu de la proposition et le paquet scellé n’ont pas été réécrits.
 - La demande de calcul des distributions conditionnelles a été résolue par le calcul déterministe versionné ci-dessous. La critique autorisée, deuxième et dernier appel, a été reçue et validée. Aucun retry n’a été effectué.
 - Usage cumulé : **2 appels**, **69 237 tokens d’entrée**, **3 063 de sortie**, **97 972 ms**. Les deux appels sont comptabilisés comme inclus en abonnement ; aucune réservation ou dépense USD n’a été déclarée. Les plafonds de la tâche (160 000 entrée, 10 000 sortie, 240 000 ms) restent respectés. L’enveloppe dédiée ne se renouvelle pas.
-- Décision persistée : `needs_data`; promotion et rentabilité non démontrées. La route initiale est conservée dans l’historique. La nouvelle route demande d’abord un rapprochement déterministe des archives locales.
+- Décision IA persistée : `needs_data`; promotion et rentabilité non démontrées. La route initiale reste conservée dans l’historique ; la route ultérieure lie la demande au résultat local v2.
 
 ## Hypothèse examinée
 
@@ -34,7 +34,7 @@ La coupe scellée retient **23 140 fills ETH** issus de 57 pages archivées en
 | Fills comparés à `startPosition` : hausse / baisse de l’exposition absolue | 11 594 / 11 546 |
 | Fills d’inversion ; quantité clôturant / ouvrant l’exposition | 1 611 ; 1 227,5229 / 1 207,3045 ETH |
 | Épisodes localement bornés entre inversions | 1 609 ; aucun retour exact à zéro |
-| Durée d’épisode p50 / p95 / maximum | 72,959 ms / 954,300 ms / 6 240,001 ms |
+| Durée d’épisode p50 / p95 / maximum | 1 min 12,959 s / 15 min 54,300 s / 1 h 44 min 0,001 s |
 | Position absolue maximale dans un épisode p50 / p95 / max | 2,3153 / 5,6071 / 10,1813 ETH |
 | Taille d’un fill p50 / p95 / max | 0,1 / 2,3787 / 2,5153 ETH |
 
@@ -64,8 +64,8 @@ Le détail complet, avec les lignes par segment, jour, côté d’inventaire, qu
 | Besoin | État dans les archives autorisées |
 |---|---|
 | Fills ETH, `startPosition`, crossed et frais réellement portés par chaque fill | Disponibles dans les pages REST archivées, avec limites de pagination et sans réception horodatée par fill. |
-| BBO ETH | 484 129 observations du 2 au 12 octobre ; médiane entre réceptions 1,176 s, trou maximal 191 987 086 ms (environ 53,3 h). Le payload porte aussi son temps d’événement. |
-| `l2Book` ETH | 484 670 observations sur la même période ; médiane entre réceptions 1,166 s, trou maximal 191 987 712 ms (environ 53,3 h). Les meilleures offres, prix et quantités sont donc localement calculables, mais le flux n’est pas continu. |
+| BBO ETH | 484 129 lots archivés du 2 au 12 octobre ; leur écart de réception médian est 1,176 s et le maximum 191 987 086 ms (environ 53,3 h). Les lots contiennent 3 230 899 événements en v3 ; le trou événementiel maximal dans les jours/segments des fills est 11 331 436 ms. |
+| `l2Book` ETH | 484 670 lots archivés sur la même période ; leur écart de réception médian est 1,166 s et le maximum 191 987 712 ms (environ 53,3 h). Les lots contiennent 1 135 567 événements en v3 ; le trou événementiel maximal dans les jours/segments des fills est 11 331 767 ms. |
 | Instantanés `clearinghouseState` du compte | 539 observations du 7 au 11 octobre ; écart médian 1,533 s, trou maximal 224 343 880 ms (environ 62,3 h). Ils peuvent servir à un rapprochement historique ponctuel ; ils ne certifient pas la continuité. |
 | Cycle des ordres de 67f7 (soumission, ack, amendement, annulation, ordres non remplis) | Aucune ligne d’ordre archivée pour ce compte dans la coupe contrôlée. Les deux observations d’inventaire d’ordres trouvées dans cette source concernent un autre compte. Les fills ne comblent pas ce manque. |
 | Heure de réception locale par fill et ordre de décision | Absents des pages REST au niveau du fill ; seule l’heure de réception de la page est conservée. Les observations WebSocket ont `observed_at` et un temps d’événement dans le payload, mais leurs grands trous doivent être rapprochés des fills avant usage. |
@@ -74,8 +74,27 @@ Le détail complet, avec les lignes par segment, jour, côté d’inventaire, qu
 
 Le paquet d’analyse IA scellé est conservé à [POPULATION-67F7-ETH-RESEARCH-PACKET-20261014.json](POPULATION-67F7-ETH-RESEARCH-PACKET-20261014.json). Il maintient ETH séparé de DRAM ; une gestion commune de l’inventaire reste possible mais n’est pas démontrée ici. La réponse brute rejetée, son diagnostic, l’adaptation, la critique validée et l’usage sont conservés dans le registre de recherche local.
 
-## Prochain travail persisté
+## Résolution locale fills → carnet et positions — rectifiée par v3
 
-**Rapprocher hors ligne les fills ETH de 67f7 avec les observations BBO/l2Book et `clearinghouseState` déjà présentes**, en gardant chaque heure d’événement et de réception, en calculant l’âge et les trous autour des fills, puis en comparant les positions snapshot à la chaîne `startPosition`. Le résultat doit distinguer lignes appariées, non appariées et inconnues, sans reconstruire un ordre ou une intention. C’est la route `local_archive_analysis_required`, enregistrée après la décision `needs_data` ; aucun nouvel appel IA ou collecte n’est autorisé par cette route.
+Les conclusions de couverture de la v1 et de la v2 sont retirées : leur lecteur ne traitait que les messages individuels. Les lots `events[]` ont été décodés en v3, sans changer le cutoff scellé (`2026-10-12T07:16:34.195Z`) ni les archives autorisées. Le détail et la portée du rectificatif sont dans [l’erratum v3](POPULATION-67F7-ETH-LOCAL-ARCHIVE-JOIN-ERRATUM-20261014.md) ; les artefacts v1/v2 sont conservés.
 
-Ce rapprochement décidera si les archives locales suffisent à une étude descriptive contextuelle. Si la question est ensuite de tester une règle de placement d’ordres plutôt qu’une association entre fills observés et inventaire, il faudra préenregistrer une collecte prospective des ordres et de leurs temps locaux ; ce besoin est distinct et n’est pas activé ici. Le mécanisme n’est pas compatible avec le moteur passif actuel (files d’attente maker non simulées) ; intérêt de recherche et compatibilité moteur restent séparés.
+Le passage réel du scheduler avec `--resume-local-resolution` a recalculé la seule résolution locale, sans IA ni collecte. L’artefact est daté du 14 octobre 2026 à 10:12:05 CEST ; le contrôle `unchanged` a suivi à 10:13:42 CEST. La version est `population-offline-archive-join-v3`. L’artefact [v3](POPULATION-67F7-ETH-LOCAL-ARCHIVE-JOIN-20261014-v3.json.gz) porte l’empreinte d’artefact `7c9127a0c44cc1bfe801cf3a5ce74949b9e96d5ef610630fbaf3f2117b744169`, l’empreinte des sources `70b2293f578f6576bd4976b19955f00dca59895cd8901f71e4612c953201d7a7` et l’empreinte d’analyse `ed93f7c2e8502ded632bea2691a02056a8b9c1e64f1e9daadc7438195d973441`.
+
+| Source | Lots lus | Lots avec `events[]` / individuels | Événements décodés et admissibles | Octets canoniques décodés | Rejets d’événements |
+|---|---:|---:|---:|---:|---:|
+| BBO ETH | 484 129 | 481 509 / 2 620 | 3 230 899 | 811 555 191 | 0 |
+| `l2Book` ETH | 484 670 | 483 837 / 833 | 1 135 567 | 660 042 138 | 0 |
+
+Les compteurs de lots et d’événements sont distincts : les sommes des `record_count` annoncés sont 3 228 279 et 1 134 734, alors que le décodage effectif compte 3 230 899 et 1 135 567 événements. Les limites appliquées par flux sont 600 000 lots, 4 000 000 événements et 1 000 000 000 octets décodés ; chaque lot est limité à 16 000 000 octets. Les horodatages source de chaque événement, sa réception locale et l’heure d’archivage du lot qui le contient restent séparés dans l’artefact. Le marché ETH, les canaux BBO/`l2Book`, le réseau, les références et le cutoff ont été validés. Aucun événement rejeté pour marché, canal, forme ou heure après cutoff n’a été trouvé dans la coupe scellée.
+
+Les 23 140 fills ont un contexte antérieur selon l’horloge d’événement pour BBO et `l2Book`, et aussi selon l’horloge de réception locale. Cela établit une couverture d’appariement, pas une fraîcheur uniforme. Pour BBO, l’âge événement→fill est p50 **0 ms**, p95 **17 865 239 ms** (4 h 57 min), maximum **22 881 565 ms** ; pour `l2Book`, p50 **278 ms**, p95 **17 865 646 ms**, maximum **22 881 972 ms**. Le 8 octobre explique le gros des prédécesseurs anciens : les âges médians ce jour-là dépassent 3 h 46 min pour les deux flux. Les 6–7 et 9–11 octobre ont généralement des prédécesseurs bien plus proches, avec des trous locaux allant jusqu’à 11 331 436 ms BBO et 11 331 767 ms `l2Book`.
+
+Selon l’horloge locale, l’âge de réception du quote sélectionné jusqu’à la réception de la page REST contenant le fill est p50 **771 ms** BBO et **919 ms** `l2Book` (p95 2 285 ms et 1 760 ms). L’âge de disponibilité de son lot archivé à cette même réception de page est p50 **612 ms** et **582 ms** (p95 2 136 ms et 1 146 ms). La page REST est une borne tardive et groupée, pas l’arrivée du fill ; ces valeurs ne démontrent donc pas que le quote était disponible avant la décision ou le fill. Les différences brutes réception locale − temps d’événement ont une médiane de 354 ms BBO et 401 ms `l2Book`, mais l’écart et la dérive des horloges ne sont pas calibrés : ce ne sont pas des mesures de transport.
+
+Les instantanés de position selon temps d’événement précèdent 17 170 fills ; 5 970 restent inconnus selon cette horloge. Aucun des 17 170 n’égale `startPosition` (écart absolu médian 2,036 ETH). En horloge de réception de page, les 23 140 comparaisons diffèrent aussi, avec écart médian 1,9892 ETH et âge médian 8,725 s. Ce sont des points espacés, pas une preuve de continuité ou d’un champ fautif. Les deux segments et la rupture antérieure restent tels que décrits dans l’analyse initiale.
+
+Cette v3 permet de comparer descriptivement les fills au contexte de marché observé, en rapportant l’âge et l’horloge de chaque appariement. Elle ne permet pas une comparaison proche du fill sur chaque journée (notamment le 8 octobre), une disponibilité avant décision, une reconstruction des ordres non remplis ni une conclusion causale. Aucune borne de fraîcheur nouvelle n’est imposée. Le moteur paper n’est pas modifié.
+
+## Prochain état persisté
+
+Le routeur conserve `local_archive_analysis_complete`, maintenant lié à l’empreinte v3 `7c9127a0c44cc1bfe801cf3a5ce74949b9e96d5ef610630fbaf3f2117b744169`. Le passage scheduler de contrôle retourne `unchanged`; il ne relance ni analyse, ni collecte, ni IA sur des données inchangées. Prochaine action : revue humaine des comparaisons historiques et de leur limite de fraîcheur. Aucun nouveau besoin de collecte n’est inscrit automatiquement. Si une recherche de décisions de placement est souhaitée ensuite, les journaux d’ordres prospectifs seraient nécessaires ; leur activation reste manuelle. Le mécanisme d’exécution passif n’est pas simulé par le moteur actuel, indépendamment de l’intérêt descriptif.

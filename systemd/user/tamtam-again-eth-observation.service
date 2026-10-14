@@ -1,0 +1,13 @@
+[Unit]
+Description=Bounded public 67f7 ETH prospective observation tick
+After=network-online.target tamtam-again-collectors.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Untergame/tamtam_again
+Environment=PYTHONPATH=/home/Untergame/tamtam_again/src
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python /home/Untergame/tamtam_again/scripts/eth-prospective-observation-tick.py --db /home/Untergame/tamtam_again/data/tamtam.sqlite3 --protocol /home/Untergame/tamtam_again/config/eth-prospective-observation-67f7-20261014-v1.json
+TimeoutStartSec=180
+KillMode=control-group
+Nice=10
+NoNewPrivileges=true

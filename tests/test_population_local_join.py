@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from tamtam_again.engine import canonical, fingerprint
 from tamtam_again.population_local_join import VERSION, _quote_values, execute_offline_archive_join
+from tamtam_again.eth_prospective_observation import VERSION as ETH_OBSERVATION_VERSION, tick as tick_eth_observation
 from tamtam_again.population_research import initialize
 from tamtam_again.population_scheduler import tick
 from tamtam_again.storage import Store, decode_observation_payload
@@ -207,6 +208,16 @@ class PopulationLocalJoinTests(unittest.TestCase):
         self.assertEqual(reopened[0],row['analysis_fingerprint'])
 
     def test_scheduler_executes_local_route_with_dispatch_disabled(self):
+        # An active observation uses its own bounded REST tick and leaves the
+        # existing local research scheduler free to finish another task.
+        observation={'protocol_id':'observer-plus-existing-task','version':ETH_OBSERVATION_VERSION,
+            'network':self.network,'address':'0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba','market':'ETH',
+            'start_ms':1000,'checkpoint_ms':1000+21_600_000,'end_ms':1000+86_400_000,
+            'poll_interval_ms':300_000,'horizon_ms':60_000,'prefill_age_ms':1000,'target_overshoot_ms':5000}
+        class EmptyInfo:
+            def post_info(self,payload):return []
+        observation_tick=tick_eth_observation(self.store,observation,info=EmptyInfo(),now=1001)
+        self.assertEqual(observation_tick['status'],'observing')
         policy = {'version': 'population-research-v1', 'max_requests': 1, 'max_packet_chars': 10000,
             'minimum_interval_ms': 1000, 'timeout_seconds': 30, 'max_output_tokens': 100,
             'max_request_age_ms': 10000, 'model': 'fixture', 'usage_mode': 'pay_as_you_go',
@@ -224,6 +235,8 @@ class PopulationLocalJoinTests(unittest.TestCase):
         self.assertEqual(route['local_eth_execution_contribution']['analysis_fingerprint'],
             contribution['analysis_fingerprint'])
         self.assertEqual(result['processed'], [])
+        self.assertEqual(self.store.connection.execute('select status from eth_observation_runs where protocol_id=?',
+            ('observer-plus-existing-task',)).fetchone()[0],'observing')
         replay=tick(self.store,self.network,policy,dispatch=False,max_jobs=1)
         replay_result=next(x for x in replay['local_resolutions'] if x['request_id']==self.request_id)
         self.assertEqual(replay_result['execution_contribution']['status'],'unchanged')

@@ -1,0 +1,12 @@
+[Unit]
+Description=24-hour 67f7 ETH public observation schedule
+
+[Timer]
+OnCalendar=2026-10-14 15:00:00 UTC
+OnUnitInactiveSec=30s
+AccuracySec=1s
+Persistent=true
+Unit=tamtam-again-eth-observation.service
+
+[Install]
+WantedBy=timers.target

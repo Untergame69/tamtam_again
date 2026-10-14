@@ -485,6 +485,20 @@ class PopulationPilotTests(unittest.TestCase):
             (POLICY['pilot_id'],)).fetchone()[0],2)
         self.assertEqual(report(self.store,POLICY)['calls_reserved'],0)
 
+    def test_new_allowance_does_not_repeat_same_question_at_same_cutoff(self):
+        from copy import deepcopy
+        from tamtam_again.population_pilot import _seal_candidate
+        self.add_candidate('a880',active=True)
+        self.store.connection.commit()
+        first=_seal_candidate(self.store,POLICY,'a880',clock_ms=30)
+        self.assertEqual(first['status'],'sealed')
+        newer=deepcopy(POLICY);newer['pilot_id']='research-loop-pilot-test-v2';newer['version']='research-loop-pilot-v2'
+        replay=_seal_candidate(self.store,newer,'a880',clock_ms=31)
+        self.assertEqual(replay['status'],'unchanged_no_inference')
+        self.assertEqual(replay['request_id'],first['request_id'])
+        self.assertIn('same question',replay['reason'])
+        self.assertEqual(self.store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',(newer['pilot_id'],)).fetchone()[0],0)
+
     def test_pilot_jobs_do_not_consume_shared_research_request_ceiling(self):
         from tamtam_again.research_jobs import request_count
         self.store.connection.execute('insert into population_research_jobs '

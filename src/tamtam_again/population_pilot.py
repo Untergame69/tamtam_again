@@ -8,7 +8,7 @@ from .validation import now_ms
 
 
 def validate_policy(policy):
-    if policy.get('version') != 'research-loop-pilot-v1' or policy.get('renewal') is not False:
+    if policy.get('version') not in {'research-loop-pilot-v1','research-loop-pilot-v2'} or policy.get('renewal') is not False:
         raise ValueError('Explicit non-renewing research pilot policy required')
     if policy.get('usage_mode') != 'subscription':
         raise ValueError('This pilot is subscription-only')
@@ -549,6 +549,23 @@ def _seal_candidate(store, policy, candidate, *, clock_ms=None):
         return {'status': 'needs_data', 'candidate': candidate,
             'reason': 'fill content fingerprint absent; equal counts do not establish unchanged input'}
     digest = packet['research_input_fingerprint']
+    # Policy/schema version changes do not constitute new evidence. When a prior
+    # task asked the same question over the same frozen cutoff and fill content,
+    # do not reseal it merely because a newer packet adapter serialized it anew.
+    prior = store.connection.execute('select j.request_id,j.status,j.packet_json from population_research_jobs j '
+        'join population_research_pilot_tasks t using(request_id) where j.network=? and j.address=? '
+        'and t.candidate=? order by t.authorized_ms desc',
+        (policy['network'],item['address'].lower(),candidate)).fetchall()
+    current_activity=activity.get('observed_fill_content_fingerprint')
+    for old in prior:
+        try: old_packet=json.loads(old['packet_json'])
+        except (TypeError,ValueError): continue
+        old_activity=old_packet.get('observations',{}).get('activity',{}).get('observed_fill_content_fingerprint')
+        old_question=old_packet.get('pilot_research',{}).get('question')
+        if (old_packet.get('available_ms')==packet.get('available_ms') and old_activity==current_activity
+                and old_question==item.get('question')):
+            return {'status':'unchanged_no_inference','candidate':candidate,'request_id':old['request_id'],
+                'source_status':old['status'],'reason':'same question, archive cutoff and fill-content fingerprint already processed'}
     existing = store.connection.execute('select request_id,status from population_research_jobs '
         'where network=? and address=? and input_fingerprint=?',
         (policy['network'], item['address'].lower(), digest)).fetchone()

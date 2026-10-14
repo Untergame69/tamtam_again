@@ -1,0 +1,78 @@
+{
+  "version": "research-loop-pilot-v2",
+  "pilot_id": "research-loop-pilot-20261014-v2",
+  "description": "Dedicated non-renewing subscription allowance for the persistent research queue; separate from the consumed 20261013 pilot and shared request ceiling.",
+  "network": "hyperliquid-mainnet",
+  "usage_mode": "subscription",
+  "admission": {
+    "source": "historical-selection-20261012-f1-f4",
+    "required_status": "credible_deep_dive_candidate",
+    "cutoff_ms": 1791789394195,
+    "owner_authorization": "This explicit pilot authorization permits descriptive AI research on the three already-prescreened accounts despite economic_validation=false. It does not grant economic approval, strategy promotion, paper admission or capital use."
+  },
+  "selection": [
+    {
+      "candidate": "a880",
+      "address": "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "rank": 1,
+      "research_interest": "High: the bounded HYPE attribution shows near-flat price flow and material signed rebates, with explicit coverage and attribution limits.",
+      "observability": "High for retrospective fee, crossed flag, fill price/size and sampled book age; incomplete history and unknown queue position remain.",
+      "paper_engine_compatibility": "incompatible_as_is: current IOC model and flat positive maker/taker fees do not reproduce passive fills or rebates.",
+      "question": "Do the authorized HYPE archives support a falsifiable rebate-capture mechanism, and what minimum prospective observations would distinguish fee income from selection, adverse price flow and incomplete attribution? Keep historical evidence, assumptions and irrecoverable causal links separate."
+    },
+    {
+      "candidate": "67f7",
+      "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "rank": 2,
+      "research_interest": "Medium: ETH fill activity and long-horizon account curves are available, while the 30-day declared PnL is near flat and fees/flows are incompletely covered.",
+      "observability": "Medium: account-scope reports and authorized fills are available; continuous exposure and complete flow coverage are not.",
+      "paper_engine_compatibility": "undetermined: requires a mechanism-specific proposal; do not infer compatibility from market name.",
+      "question": "Which mechanism-level follow-up is best supported by the authorized ETH account observations, and what exact missing observation would change that conclusion? Do not treat account-level declared PnL as strategy performance or infer profitability of rejected signals."
+    },
+    {
+      "candidate": "be504",
+      "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+      "rank": 3,
+      "research_interest": "Lower for this tranche: declared long-run gains coexist with three negative monthly buckets and large sampled losses.",
+      "observability": "Lower: portfolio margin, subaccounts, HIP-3 instruments, transfers and mixed fee currencies increase attribution uncertainty.",
+      "paper_engine_compatibility": "undetermined: multi-scope execution and collateral are not represented by the present engine.",
+      "question": "Given the authorized account observations and unresolved portfolio-margin scopes, is any single-market mechanism identifiable enough to study, or should the account be deferred pending a precise scope observation? Do not combine subaccounts, currencies or fills without evidence."
+    }
+  ],
+  "task_policy": {
+    "version": "population-research-v1",
+    "model": "gpt-6.1-sol",
+    "usage_mode": "subscription",
+    "max_requests": 8,
+    "max_packet_chars": 225000,
+    "max_prompt_chars": 260000,
+    "minimum_interval_ms": 86400000,
+    "max_request_age_ms": 3600000,
+    "timeout_seconds": 120,
+    "max_output_tokens": 5000,
+    "max_model_calls": 2,
+    "max_input_tokens_per_call": 80000,
+    "max_total_input_tokens": 160000,
+    "max_total_output_tokens": 10000,
+    "max_total_duration_ms": 240000
+  },
+  "pilot_limits": {
+    "max_tasks": 3,
+    "max_calls": 6,
+    "max_input_tokens": 480000,
+    "max_output_tokens": 30000,
+    "max_duration_ms": 720000
+  },
+  "evidence": {
+    "a880_hype_economics": "docs/continuous-research/A880-HYPE-EPISODE-ECONOMICS-20261013.json",
+    "candidate_cards": "docs/continuous-research/economic-qualification-cards-20261012-g2.md",
+    "max_archive_cutoff_ms": 1791789394195
+  },
+  "routing": {
+    "unchanged_fingerprint": "do_not_retrigger",
+    "local_resolution": "reuse authorized archived evidence only; reanalyze only after a different sealed evidence fingerprint",
+    "irrecoverable_data": "record a useful terminal conclusion; never wait for unavailable historical links",
+    "unsupported_execution_mechanism": "create a technical route; do not start paper or real orders"
+  },
+  "renewal": false
+}

@@ -276,7 +276,6 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         observation_plans=[register_needs(store,r['request_id']) for r in routes if r['source_status']=='hypothesis_recorded' and r['state']=='needs_data']
         plans=[]
         if plan_policies or experiment_policy is not None:
-            import json
             from .population_plans import _prepare_plan
             for candidate in routes:
                 request_id=candidate['request_id']
@@ -298,10 +297,41 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                         plans.append({'request_id':request_id,**_prepare_plan(store,request_id,allocated,profile)})
                     except ValueError as exc:plans.append({'request_id':request_id,'status':'waiting','reason':str(exc)})
                 if len(plans)>=max_jobs:break
+        # Persist due research work without coupling it to an IA call. The
+        # observation's dates and collection protocol remain owned by its runner.
+        from .research_work_queue import initialize as initialize_work_queue, enqueue as enqueue_work, tick as tick_work_queue
+        initialize_work_queue(store)
+        queue_route_status={
+            'needs_data':'waiting_data','local_archive_analysis_required':'ready',
+            'local_archive_analysis_complete':'completed','budget_required':'budget_exhausted',
+            'technical_required':'technical_required','prospective_plan_required':'ready',
+            'completed':'completed','abandoned':'completed','incomplete_observation':'completed',
+        }
+        for candidate in routes:
+            state=candidate.get('state','technical_required')
+            queue_status=queue_route_status.get(state,'completed' if state in {'hypothesis_recorded','needs_critique','not_promoted'} else 'technical_required')
+            stable_route={k:v for k,v in candidate.items() if k!='created_ms'}
+            enqueue_work(store,'population_route',candidate['request_id'],stable_route,
+                status=queue_status,reason='persisted population route: '+state)
+        if store.connection.execute("select 1 from sqlite_master where type='table' and name='eth_observation_runs'").fetchone():
+            for run in store.connection.execute('select protocol_id,status,protocol_json from eth_observation_runs order by protocol_id').fetchall():
+                protocol=json.loads(run['protocol_json'])
+                if run['status']=='finalised':
+                    report=store.connection.execute("select input_fingerprint from eth_observation_reports where protocol_id=? and stage='final_24h'",(run['protocol_id'],)).fetchone()
+                    if report:
+                        store.connection.execute("update research_work_queue set status='completed',reason='superseded by final report',updated_ms=? where source_kind='eth_observation_report' and source_id=? and status in ('waiting_deadline','waiting_data')",(now_ms(),run['protocol_id']))
+                        payload={'protocol_id':run['protocol_id'],'stage':'final_24h','report_fingerprint':report['input_fingerprint']}
+                        enqueue_work(store,'eth_observation_report',run['protocol_id'],payload,status='ready',reason='final report available')
+                    else:
+                        enqueue_work(store,'eth_observation_report',run['protocol_id'],{'protocol_id':run['protocol_id'],'stage':'final_24h'},status='waiting_data',reason='final report not persisted')
+                else:
+                    enqueue_work(store,'eth_observation_report',run['protocol_id'],{'protocol_id':run['protocol_id'],'stage':'final_24h'},status='waiting_deadline',reason='frozen observation is still running',wake_at_ms=protocol.get('end_ms'))
+        work_queue=tick_work_queue(store,max_jobs=max_jobs)
+        store.connection.commit()
         paper=None
         if paper_policy is not None:
             if experiment_policy is None:raise ValueError('External experiment allocation required for paper research')
             from .paper_scheduler import _tick as paper_tick
             paper=paper_tick(store,paper_policy,experiment_policy=experiment_policy,dispatch=dispatch and len(processed)<max_jobs,max_jobs=max_jobs)
-        return {'paper_research':paper,'pilot_research':pilot,'reserves':reserves,'plans':plans,'routes':routes,'local_resolutions':local_resolutions,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
+        return {'paper_research':paper,'pilot_research':pilot,'reserves':reserves,'plans':plans,'routes':routes,'local_resolutions':local_resolutions,'work_queue':work_queue,'sealed':sealed,'processed':processed,'historical_ai_gates':historical_gates,'interrupted_without_retry':recovered,'memory':memory,
                 'promotion_authorized':False,'observation_plans':observation_plans}

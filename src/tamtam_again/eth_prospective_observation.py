@@ -291,7 +291,12 @@ def _measure(fills, quotes, cutoff_ms):
             base_i=bisect.bisect_right(receive_times,page_ms)-1
             base=by_receive[base_i] if base_i>=0 else None
             later_i=bisect.bisect_left(receive_times,page_ms+PRIMARY_HORIZON_MS)
-            later=by_receive[later_i] if later_i<len(by_receive) and by_receive[later_i]["received_ms"]<=page_ms+PRIMARY_HORIZON_MS+MAX_TARGET_OVERSHOOT_MS else None
+            later=None
+            while later_i<len(by_receive) and by_receive[later_i]["received_ms"]<=page_ms+PRIMARY_HORIZON_MS+MAX_TARGET_OVERSHOOT_MS:
+                candidate=by_receive[later_i]
+                if base and candidate["event_ms"]>base["event_ms"]:
+                    later=candidate;break
+                later_i+=1
             if base and later and side:
                 base_mid=_mid(base)
                 item["post_receipt_markout_60s_bps"]=(_mid(later)-base_mid)/base_mid*10000*side

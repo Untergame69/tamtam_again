@@ -23,7 +23,8 @@ pas au markout principal ; les couvertures sont aussi décrites à 100 ms, 5 s e
 Le complément post-réception prend comme origine l'arrivée locale de la page
 REST qui rend le fill visible à notre collecteur. Il mesure ensuite le mouvement
 à 60 secondes à partir du dernier quote localement reçu avant cette page, avec
-un dépassement maximal de 5 secondes. Ce n'est pas l'heure de réception de
+un dépassement maximal de 5 secondes et un temps source strictement ultérieur
+au quote de base. Ce n'est pas l'heure de réception de
 l'exécution chez le trader. Les résultats distinguent quatre états : signal
 exploratoire favorable, défavorable, indéterminé ou données insuffisantes. Une
 médiane descriptive ne constitue pas une preuve statistique : les fills sont

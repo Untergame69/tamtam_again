@@ -54,6 +54,9 @@ class EthProspectiveObservationTests(unittest.TestCase):
         self.assertIsNotNone(r["event_time_markout_60s_bps"])
         self.assertIsNotNone(r["post_receipt_markout_60s_bps"])
         self.assertNotEqual(r["future_quote"]["ref"],r["receipt_future_quote_ref"])
+        late={**prior,"event_ms":850,"received_ms":62_000,"archived_ms":62_050,"observation_id":5,"sha256":"late"}
+        delayed=_measure([fill],[prior,late],70_000)[0]
+        self.assertIsNone(delayed["post_receipt_markout_60s_bps"])
 
     def test_polls_are_bounded_durable_and_replay_does_not_call_again(self):
         client=FakeInfo([])

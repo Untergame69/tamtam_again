@@ -197,14 +197,17 @@ class PopulationPilotTests(unittest.TestCase):
         usage={'cost_status':'included','cost_usd':0,'input_tokens':1000,'output_tokens':100,
             'duration_ms':50,'model':POLICY['task_policy']['model']}
         self.store.connection.execute("update population_research_jobs set status='suspended',result_json=?,usage_json=?,updated_ms=30 where request_id=?",
-            (json.dumps({'raw_proposal':json.dumps(rejected),'validation_diagnostic':{'code':'required_data_invalid',
+            (json.dumps({'raw_proposal':json.dumps(rejected),'local_resolution':{'version':'fixture-local-v1',
+                'state':'partially_resolved','analysis_fingerprint':'a'*64},'validation_diagnostic':{'code':'required_data_invalid',
                 'stage':'result_validation','field':'hypothesis.required_data','observed':'list',
                 'limit':'list of nonempty strings'}},),json.dumps([usage]),request))
         self.store.connection.commit()
         reserve_call(self.store,request,1,POLICY);record_provider_response(self.store,request,1,{'response':json.dumps(rejected),'usage':usage,'duration_ms':50})
         self.store.connection.execute("update population_research_pilot_tasks set state='suspended' where request_id=?",(request,))
         self.store.connection.commit()
-        critique={'decision':'consistent','diagnostic':'Structural projection retained all source fields; missing events are prospective.',
+        critique={'decision':'needs_data','diagnostic':{'testability':{
+                'required_observations':['Prospective order lifecycle events']},
+                'summary':'Structural projection retained all source fields; missing events are prospective.'},
             'wake':{'condition':'reassess only after new authorized evidence'}}
         next_usage={**usage,'input_tokens':1200,'output_tokens':80,'duration_ms':60}
         with patch('tamtam_again.population_runtime.now_ms',return_value=31),patch(
@@ -212,13 +215,17 @@ class PopulationPilotTests(unittest.TestCase):
                 return_value=(json.dumps(critique),next_usage)) as call:
             result=revalidate_and_critique(self.store,POLICY,request)
             call.assert_called_once()
-        self.assertEqual(result['status'],'hypothesis_recorded')
+        self.assertEqual(result['status'],'needs_data')
         self.assertEqual(result['adapter_version'],'required-data-object-projection-v1')
         self.assertEqual(result['route']['state'],'needs_data')
-        self.assertEqual(result['local_resolution']['state'],'structured_request_required')
+        self.assertEqual(result['local_resolution']['state'],'partially_resolved')
         saved=json.loads(self.store.connection.execute('select result_json from population_research_jobs where request_id=?',(request,)).fetchone()[0])
         self.assertEqual(saved['validation_diagnostic']['code'],'required_data_invalid')
         self.assertEqual(saved['proposal']['hypothesis']['required_data'],['Prospective order lifecycle events'])
+        self.assertEqual(saved['structural_adaptation']['adapter_version'],'required-data-object-projection-v1')
+        self.assertEqual(saved['local_resolution']['state'],'partially_resolved')
+        self.assertEqual(saved['local_resolution']['analysis_fingerprint'],'a'*64)
+        self.assertEqual(saved['local_resolution']['provider_decision'],'needs_data')
         artifact=self.store.connection.execute('select validation_state,source_response_sha256 from population_research_adaptation_artifacts where request_id=?',(request,)).fetchone()
         self.assertEqual(artifact['validation_state'],'revalidated')
         self.assertEqual(len(artifact['source_response_sha256']),64)
@@ -279,6 +286,30 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertEqual(first,again)
         count=self.store.connection.execute('select count(*) from population_hypothesis_routes where request_id=?',(req,)).fetchone()[0]
         self.assertEqual(count,1)
+
+    def test_local_archive_followup_precedes_collection_and_replays_as_route_history(self):
+        from tamtam_again.population_routing import route
+        item=ETH_TASK_POLICY['selection'][0]
+        request='local-archive-followup'
+        packet={'pilot_research':{'pilot_id':ETH_TASK_POLICY['pilot_id']}}
+        followup={'kind':'offline_archive_join','title':
+            'Align archived ETH fills with BBO/l2Book and account-state snapshots; report timing and coverage gaps.'}
+        result={'critique':{'decision':'needs_data','diagnostic':{'testability':{'required_observations':['new order lifecycle data']}}},
+            'local_resolution':{'version':'population-eth-research-resolution-v2',
+                'state':'partially_resolved_from_local_archives','followup_task':followup},
+            'promotion_authorized':False,'profitability_proven':False}
+        self.store.connection.execute('insert into population_research_jobs '
+            '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,result_json,updated_ms) '
+            'values(?,?,?,?,?,?,?,\'needs_data\',?,?)',
+            (request,ETH_TASK_POLICY['network'],item['address'],'changed-local-input',json.dumps(packet),
+                json.dumps(ETH_TASK_POLICY['task_policy']),30,json.dumps(result),31))
+        self.store.connection.commit()
+        first=route(self.store,request);again=route(self.store,request)
+        self.assertEqual(first['state'],'local_archive_analysis_required')
+        self.assertEqual(first['followup_task'],followup)
+        self.assertEqual(first,again)
+        self.assertEqual(first['wake']['model_calls_authorized'],0)
+        self.assertFalse(first['wake']['collection_authorized'])
 
     def test_technical_and_unchanged_candidates_do_not_block_later_candidates(self):
         from tamtam_again.population_pilot import _seal_candidate

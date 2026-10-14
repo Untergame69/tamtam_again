@@ -299,6 +299,21 @@ def _eth_execution_local_resolution(store, packet):
         'model_calls_for_resolution': 0}
 
 
+def _attach_critique_to_local_resolution(local_resolution, critique):
+    """Retain resolved local work while appending the persisted provider decision."""
+    result = deepcopy(local_resolution) if isinstance(local_resolution, dict) else {
+        'version': 'population-pilot-local-resolution-v1',
+        'state': 'no_local_calculation_attached', 'model_calls': 0}
+    diagnostic = critique.get('diagnostic', {}) if isinstance(critique, dict) else {}
+    testability = diagnostic.get('testability', {}) if isinstance(diagnostic, dict) else {}
+    requirements = testability.get('required_observations', []) if isinstance(testability, dict) else []
+    result['provider_decision'] = critique.get('decision')
+    result['provider_diagnostic'] = diagnostic
+    result['prospective_observations_requested'] = requirements
+    result['provider_wake'] = deepcopy(critique.get('wake', {}))
+    return result
+
+
 def revalidate_and_critique(store, policy, request_id):
     """Apply only the versioned structural adapter, then use the task's remaining critique call."""
     from .population_runtime import (STATES, _initialize_call_artifacts, _advance_call,
@@ -430,19 +445,15 @@ def revalidate_and_critique(store, policy, request_id):
             raise ValueError('Critique response did not satisfy the existing decision contract')
         mark_call_state(store,request_id,call_index,'result_validated')
         _advance_call(store,'population',request_id,call_index,'result_validated',time_field='result_validated_ms')
-        prior.update(proposal=adapted,critique=critique,structural_adaptation={
-            'adapter_version':'required-data-object-projection-v1','source_response_sha256':source_sha,
-            'validation_state':'revalidated','original_rejection_preserved':True},
+        adaptation = deepcopy(prior.get('structural_adaptation', {}))
+        adaptation.update({'critique_call_index': call_index,
+            'original_rejection_preserved': True, 'critique_source_response_sha256': source_sha})
+        prior.update(proposal=adapted,critique=critique,structural_adaptation=adaptation,
             promotion_authorized=False,profitability_proven=False)
         state='hypothesis_recorded' if critique['decision']=='consistent' else critique['decision']
         if state=='needs_data' and isinstance(critique.get('diagnostic'),dict):
-            prior['local_resolution']={'version':'population-pilot-local-resolution-v1',
-                'state':'not_locally_resolvable',
-                'checked_sources':['the sealed cutoff-only account scope report',
-                    'the versioned a880/HYPE deterministic episode economics report'],
-                'unavailable_observations':critique['diagnostic'].get('required_missing_observations',[]),
-                'reason':'the decision requires prospective order lifecycle, local clock, fee schedule and reconciliation evidence absent from the sealed cutoff; historical backfill is explicitly not requested',
-                'new_input_fingerprint_required':True,'model_calls':0}
+            prior['local_resolution'] = _attach_critique_to_local_resolution(
+                local_resolution or prior.get('local_resolution'), critique)
         from .research import usage_accounting
         accounting=usage_accounting(usage);prior['usage_accounting']=accounting
         store.connection.execute('update population_research_jobs set status=?,result_json=?,usage_json=?,actual_cost_usd=NULL,updated_ms=? where request_id=? and status=\'running\'',

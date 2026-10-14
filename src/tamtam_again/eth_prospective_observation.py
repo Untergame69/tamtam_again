@@ -256,10 +256,13 @@ def _measure(fills, quotes, cutoff_ms):
         t=int(fill["time"]); action,close_qty,open_qty=_action(fill)
         side=1 if fill.get("side")=="B" else -1 if fill.get("side")=="A" else 0
         item={"tid":str(fill["tid"]),"event_ms":t,"side":fill.get("side"),"crossed":fill.get("crossed"),
-            "action":action,"close_quantity":close_qty,"open_quantity":open_qty,"size":fill.get("sz"),
+            "start_position":fill.get("startPosition"),"action":action,"close_quantity":close_qty,
+            "open_quantity":open_qty,"size":fill.get("sz"),
             "price":fill.get("px"),"fee":fill.get("fee"),"fee_token":fill.get("feeToken"),
             "fill_page_observation_id":fill["fill_page_observation_id"],"fill_page_sha256":fill["fill_page_sha256"],
             "fill_page_received_at":fill["fill_page_received_at"],"fill_page_archived_at":fill["fill_page_archived_at"]}
+        if fill.get("fill_page_received_at"):
+            item["event_to_fill_page_receipt_ms"]=_to_ms(fill["fill_page_received_at"])-t
         prior_i=bisect.bisect_left(times,t)-1
         prior=quotes[prior_i] if prior_i>=0 else None
         if prior and t-prior["event_ms"] <= 30_000:
@@ -425,6 +428,7 @@ def _report(store: Store, protocol: dict, stage: str, cutoff_ms: int):
         "polls":poll_rows,"stream_health":health,"collector_telemetry":telemetry,"quote_latency_ms":quote_latency,
         "observation_start_ms":protocol["start_ms"],"observation_end_ms":protocol["end_ms"],
         "limits":["REST userFillsByTime pages are delayed account history, not live userFills WebSocket events.",
+            "The account-level REST page can include other coins; only ETH fills enter this analysis and no other-market conclusion is drawn.",
             "Event, local receive, REST response receipt and SQLite archive clocks are retained separately and are not assumed synchronized.",
             "Event-time midpoint outcomes use a strict prior quote and future price only as an outcome; they do not define a historical signal.",
             "Post-page-receipt markout starts when our REST page arrived, not when the trader or venue first generated the fill.",

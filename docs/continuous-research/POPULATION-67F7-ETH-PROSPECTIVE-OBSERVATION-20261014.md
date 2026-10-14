@@ -37,7 +37,8 @@ sont lues par une page REST `userFillsByTime` toutes les cinq minutes, avec une
 minute de recouvrement et déduplication par `tid`. Les pages saturées, échecs,
 réponses, hashes, identifiants, demandes et réceptions restent persistés. La
 requête utilise le `Telemetry` partagé (`INFO_WEIGHT_LIMIT_PER_MINUTE=900`) ;
-le plafond global n'est pas modifié.
+le plafond global n'est pas modifié. L'endpoint REST est au niveau du compte et
+peut renvoyer d'autres coins ; l'analyse ne retient que les fills ETH.
 
 Pour chaque quote, l'artefact conserve l'heure d'événement, l'heure locale de
 réception de frame, l'heure d'archivage, le canal, la connexion, les meilleurs

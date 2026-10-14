@@ -272,8 +272,11 @@ def _eth_execution_local_resolution(store, packet):
     source_detail = packet.get('observations', {}).get('market_execution_detail_v1', {}).get('ETH')
     if not isinstance(source_detail, dict):
         raise ValueError('Sealed packet does not contain ETH execution detail')
+    cutoff_ms = source_detail.get('cutoff_ms')
+    if type(cutoff_ms) is not int:
+        raise ValueError('Sealed ETH detail lacks its integer archive cutoff')
     result = prepare_inventory_execution_association(store, packet['network'], packet['address'],
-        cutoff_ms=packet['available_ms'], market='ETH')
+        cutoff_ms=cutoff_ms, market='ETH')
     if result['source_detail_fingerprint'] != source_detail.get('detail_fingerprint'):
         raise ValueError('Local calculation differs from the sealed ETH source detail')
     return {'version': 'population-eth-inventory-execution-resolution-v1',

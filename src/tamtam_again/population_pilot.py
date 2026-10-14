@@ -1,6 +1,5 @@
 """Dedicated, non-renewing research allowance scoped to the three reviewed candidates."""
 import json
-from pathlib import Path
 import hashlib
 from copy import deepcopy
 
@@ -371,18 +370,9 @@ def _historically_qualified(store, network, address, cutoff):
     return True, 'authorized historical prescreen verified; economic validation remains false'
 
 
-def _a880_summary(path):
-    raw = Path(path).read_bytes()
-    source = json.loads(raw)
-    keep = ('version', 'cutoff_utc', 'source_fill_count', 'source_fill_page_count',
-        'source_fill_page_incomplete_count', 'position_chain', 'episode_summary', 'by_segment',
-        'by_utc_exit_day', 'duration_groups', 'maker_taker_groups', 'inversion_count',
-        'inversion_split_by_crossed', 'funding', 'closedPnl_raw_control', 'order_book', 'limitations')
-    return {k: source[k] for k in keep if k in source}, hashlib.sha256(raw).hexdigest()
-
-
 def _seal_candidate(store, policy, candidate, *, clock_ms=None):
     from .population_packet import packet_for_authorized_pilot
+    from .population_descriptive import prepare_pilot_packet
     initialize(store, policy)
     item = next(row for row in policy['selection'] if row['candidate'] == candidate)
     clock = now_ms() if clock_ms is None else clock_ms
@@ -398,6 +388,13 @@ def _seal_candidate(store, policy, candidate, *, clock_ms=None):
         return {'status': base.get('status', 'needs_data'), 'candidate': candidate,
             'reason': base.get('reason', 'authorized descriptive packet not ready')}
     packet = base['packet']
+    packet = prepare_pilot_packet(store, packet, candidate=candidate, item=item,
+        pilot_id=policy['pilot_id'], policy_version=policy['version'], cutoff_ms=cutoff)
+    packet_chars = len(canonical(packet))
+    if packet_chars > task_policy['max_packet_chars']:
+        return {'status': 'packet_too_large', 'candidate': candidate,
+            'reason': 'versioned descriptive evidence exceeds the existing packet character limit',
+            'required_chars': packet_chars, 'max_chars': task_policy['max_packet_chars']}
     activity = packet.get('observations', {}).get('activity', {})
     if not activity.get('observed_unique_fills'):
         return {'status': 'needs_data', 'candidate': candidate,
@@ -405,27 +402,6 @@ def _seal_candidate(store, policy, candidate, *, clock_ms=None):
     if not activity.get('observed_fill_content_fingerprint'):
         return {'status': 'needs_data', 'candidate': candidate,
             'reason': 'fill content fingerprint absent; equal counts do not establish unchanged input'}
-    source_refs = []
-    if candidate == 'a880':
-        summary, digest = _a880_summary(Path(__file__).parents[2] / policy['evidence']['a880_hype_economics'])
-        if summary.get('cutoff_utc') != '2026-10-12T07:16:34.195+00:00':
-            raise ValueError('a880 deterministic source report differs from its versioned cutoff')
-        packet['observations']['a880_hype_episode_economics'] = summary
-        source_refs.append('docs/continuous-research/A880-HYPE-EPISODE-ECONOMICS-20261013.json#sha256:' + digest)
-    packet['pilot_research'] = {k: item[k] for k in ('candidate', 'rank', 'research_interest',
-        'observability', 'paper_engine_compatibility') if k in item}
-    if item.get('question'):
-        packet['pilot_research']['question'] = item['question']
-    packet['pilot_research'].update({'pilot_id': policy['pilot_id'], 'policy_version': policy['version'],
-        'economic_validation': 'false; this is owner-authorized descriptive research only',
-        'execution_compatibility_is_separate': True, 'promotion_authorized': False,
-        'admission_cutoff_ms': cutoff})
-    packet['evidence_refs'].extend(source_refs)
-    packet['research_input_fingerprint'] = fingerprint({'base': packet['research_input_fingerprint'],
-        'pilot_id': policy['pilot_id'], 'candidate': candidate, 'question': item.get('question'),
-        'deterministic_source_hashes': [ref.rsplit(':', 1)[-1] for ref in source_refs]})
-    packet.pop('fingerprint', None)
-    packet['fingerprint'] = fingerprint(packet)
     digest = packet['research_input_fingerprint']
     existing = store.connection.execute('select request_id,status from population_research_jobs '
         'where network=? and address=? and input_fingerprint=?',

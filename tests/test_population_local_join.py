@@ -99,7 +99,10 @@ class PopulationLocalJoinTests(unittest.TestCase):
                 'kind':'offline_archive_join','title':'join fixture'}},
             'local_archive_join':{'version':VERSION,'state':'completed','artifact_fingerprint':'cached',
                 'artifact_path':'cached.json.gz','source_fingerprint':'cached','model_calls':0,
-                'collection_started':False,'matched_fills':0}}
+                'collection_started':False,'matched_fills':0},
+            'local_inventory_market_context':{'version':'population-inventory-market-context-v2','state':'completed',
+                'analysis_fingerprint':'cached-context','base_join_fingerprint':'cached','artifact_path':'cached-context.json.gz',
+                'model_calls':0,'collection_started':False}}
         self.store.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?,?,?,?,?,?,?)',
             ('completed-'+request_id,self.network,address,'complete-'+request_id,canonical(packet),'{}',
              created_ms,'needs_data',None,None,canonical(result),None,created_ms))
@@ -153,6 +156,56 @@ class PopulationLocalJoinTests(unittest.TestCase):
         saved = self.store.connection.execute('select artifact_fingerprint from population_local_archive_joins').fetchone()
         self.assertEqual(saved[0], result['artifact_fingerprint'])
 
+
+    def test_inventory_market_context_strict_predecessor_ties_three_clocks_and_replay(self):
+        from tamtam_again.population_inventory_market_context import VERSION as CONTEXT_VERSION
+        bbo_equal={'channel':'bbo','data':{'coin':'ETH','time':1000,'bbo':[{'px':'10','sz':'3'},{'px':'11','sz':'4'}]}}
+        l2_equal={'channel':'l2Book','data':{'coin':'ETH','time':1000,'levels':[[{'px':'10','sz':'7'}],[{'px':'11','sz':'8'}]]}}
+        self._raw(40,'hyperliquid-websocket-v1','market','ETH','bbo',
+            {'events':[{'received_at':self._stamp(4210),'message':bbo_equal}]},received=4210)
+        self._raw(41,'hyperliquid-websocket-v1','market','ETH','l2Book',
+            {'events':[{'received_at':self._stamp(4211),'message':l2_equal}]},received=4211)
+        self.store.connection.commit()
+        joined=execute_offline_archive_join(self.store,self.request_id)
+        self.assertEqual(joined['inventory_market_context']['version'],CONTEXT_VERSION)
+        row=self.store.connection.execute('select artifact_json,analysis_fingerprint from population_inventory_market_contexts').fetchone()
+        artifact=json.loads(row['artifact_json']);by_id={x['fill_id']:x for x in artifact['fills']}
+        matched=by_id['matched']
+        self.assertEqual(matched['bbo']['event_ms'],950)
+        self.assertEqual(matched['bbo_same_event_time']['count'],1)
+        self.assertEqual(matched['bbo_same_event_time']['relative_order_to_fill'],'unknown')
+        self.assertEqual(matched['l2book_same_event_time']['count'],1)
+        self.assertEqual(matched['bbo']['age_to_fill_event_ms'],50)
+        self.assertEqual(matched['bbo']['observation_ref']['event_index'],1)
+        self.assertEqual(matched['bbo']['received_at_ms'],4202)
+        self.assertEqual(matched['bbo']['lot_archived_at_ms'],4202)
+        self.assertEqual(matched['fill_page_ref']['observation_id'],1)
+        self.assertIn('received_at_minus_fill_page_received_ms',matched['bbo'])
+        self.assertIn('lot_archived_minus_fill_page_received_ms',matched['bbo'])
+        self.assertEqual(artifact['question_and_thresholds']['primary_age_ms'],30000)
+        self.assertEqual(artifact['sensitivity_by_age']['1000']['all_fill_count'],3)
+        self.assertTrue(any(x['position_side']=='long' and x['inventory_bucket'].startswith('inventory_')
+            for x in artifact['coverage_by_day_segment_position']))
+        self.assertEqual(artifact['primary_context_usable_count'],0)
+        self.assertIsNone(matched['movement']['30s'])
+        before=self.store.connection.execute('select count(*) from population_inventory_market_contexts').fetchone()[0]
+        before_routes=self.store.connection.execute('select count(*) from population_hypothesis_route_history where request_id=?',(self.request_id,)).fetchone()[0]
+        result_before=self.store.connection.execute('select result_json from population_research_jobs where request_id=?',(self.request_id,)).fetchone()[0]
+        with patch('tamtam_again.population_local_join._decode_verified',side_effect=AssertionError('context replay must not decode archives')):
+            replay=execute_offline_archive_join(self.store,self.request_id)
+        after=self.store.connection.execute('select count(*) from population_inventory_market_contexts').fetchone()[0]
+        result_after=self.store.connection.execute('select result_json from population_research_jobs where request_id=?',(self.request_id,)).fetchone()[0]
+        after_routes=self.store.connection.execute('select count(*) from population_hypothesis_route_history where request_id=?',(self.request_id,)).fetchone()[0]
+        self.assertEqual(replay['inventory_market_context']['status'],'unchanged')
+        self.assertEqual(before,after)
+        self.assertEqual(result_before,result_after)
+        self.assertEqual(before_routes,after_routes)
+        self.assertEqual(row['analysis_fingerprint'],replay['inventory_market_context']['analysis_fingerprint'])
+        self.store.close()
+        self.store=Store(Path(self.tmp.name)/'join.sqlite3')
+        reopened=self.store.connection.execute('select analysis_fingerprint from population_inventory_market_contexts').fetchone()
+        self.assertEqual(reopened[0],row['analysis_fingerprint'])
+
     def test_scheduler_executes_local_route_with_dispatch_disabled(self):
         policy = {'version': 'population-research-v1', 'max_requests': 1, 'max_packet_chars': 10000,
             'minimum_interval_ms': 1000, 'timeout_seconds': 30, 'max_output_tokens': 100,
@@ -161,8 +214,10 @@ class PopulationLocalJoinTests(unittest.TestCase):
         result = tick(self.store, self.network, policy, dispatch=False, max_jobs=1)
         self.assertEqual(len(result['local_resolutions']), 1)
         self.assertEqual(result['local_resolutions'][0]['status'], 'prepared')
+        self.assertEqual(result['local_resolutions'][0]['inventory_market_context']['status'],'prepared')
         route = next(route for route in result['routes'] if route['request_id'] == self.request_id)
         self.assertEqual(route['state'], 'local_archive_analysis_complete')
+        self.assertEqual(route['local_inventory_market_context']['version'],'population-inventory-market-context-v2')
         self.assertEqual(result['processed'], [])
 
     def test_completed_result_does_not_consume_slot_before_waiting_task(self):

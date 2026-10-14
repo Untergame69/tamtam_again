@@ -200,6 +200,7 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         local_resolutions=[]
         local_executions=0
         from .population_local_join import VERSION as local_resolver_version, execute_offline_archive_join
+        from .population_inventory_market_context import VERSION as context_analysis_version
         resume_found=False
         for candidate in routes:
             if candidate.get('research_origin')!='population':
@@ -212,12 +213,15 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                 continue
             resume_found=True
             joined=candidate.get('local_archive_join',{})
-            if complete and joined.get('version')==local_resolver_version:
+            context=candidate.get('local_inventory_market_context') or {}
+            if (complete and joined.get('version')==local_resolver_version
+                    and context.get('version')==context_analysis_version and context.get('state')=='completed'):
                 # Report cached outcomes but do not use the bounded execution
                 # slot that must remain available to pending local work.
                 local_resolutions.append({'request_id':candidate['request_id'],'status':'unchanged',
                     'resolver_version':joined.get('version'),'artifact_fingerprint':joined.get('artifact_fingerprint'),
-                    'artifact_path':joined.get('artifact_path'),'model_calls':0,'collection_started':False})
+                    'artifact_path':joined.get('artifact_path'),'model_calls':0,'collection_started':False,
+                    'inventory_market_context':context})
                 continue
             try:
                 local_resolutions.append(execute_offline_archive_join(store,candidate['request_id']))

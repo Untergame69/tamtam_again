@@ -649,7 +649,10 @@ def execute_offline_archive_join(store, request_id, *, max_fill_rows=MAX_FILLS):
         (request_id,VERSION,source_fp)).fetchone()
     if existing:
         value = json.loads(existing['artifact_json'])
-        return _persist_route_result(store, job, value, existing['artifact_fingerprint'], reused=True)
+        joined_result=_persist_route_result(store, job, value, existing['artifact_fingerprint'], reused=True)
+        from .population_inventory_market_context import execute_inventory_market_context
+        joined_result['inventory_market_context']=execute_inventory_market_context(store,request_id)
+        return joined_result
 
     # Authorization is checked before any payload decode; manifests contain metadata only.
     artifact = _build_artifact(store,job,packet,source_fp,manifest,row_limit=max_fill_rows)
@@ -659,7 +662,10 @@ def execute_offline_archive_join(store, request_id, *, max_fill_rows=MAX_FILLS):
     store.connection.execute('insert into population_local_archive_joins values(?,?,?,?,?,?)',
         (request_id,VERSION,source_fp,artifact_fp,encoded,created))
     store.connection.commit()
-    return _persist_route_result(store, job, artifact, artifact_fp, reused=False)
+    joined_result=_persist_route_result(store, job, artifact, artifact_fp, reused=False)
+    from .population_inventory_market_context import execute_inventory_market_context
+    joined_result['inventory_market_context']=execute_inventory_market_context(store,request_id)
+    return joined_result
 
 
 def _persist_route_result(store, job, artifact, artifact_fp, *, reused):

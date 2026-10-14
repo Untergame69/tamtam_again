@@ -106,6 +106,7 @@ def route(store,request_id,*,kind='population'):
                 output.update(state='local_archive_analysis_complete',
                     local_resolution=local_resolution,followup_task=followup,
                     local_archive_join=joined,
+                    local_inventory_market_context=result.get('local_inventory_market_context'),
                     next_action='Review the recorded historical comparisons; no new collection or inference is scheduled.',
                     wake={'kind':'changed_authorized_evidence_only','new_input_fingerprint_required':True,
                         'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})

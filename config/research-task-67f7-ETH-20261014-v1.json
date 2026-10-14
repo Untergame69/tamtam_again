@@ -1,0 +1,62 @@
+{
+  "version": "research-loop-pilot-v1",
+  "authorization_scope": "single_task",
+  "pilot_id": "eth-mechanism-followup-20261014-v1",
+  "description": "One owner-authorized descriptive task linked to the expanded 67f7/ETH archive packet. No renewal, no shared quota change, and no authority for paper or orders.",
+  "network": "hyperliquid-mainnet",
+  "usage_mode": "subscription",
+  "admission": {
+    "source": "historical-selection-20261012-f1-f4",
+    "required_status": "credible_deep_dive_candidate",
+    "cutoff_ms": 1791789394195,
+    "owner_authorization": "Owner explicitly authorizes one dedicated task for 67f7/ETH tied to its new sealed packet; maximum two subscription calls; no USD reservation, no retry, no paper, no real order. This does not grant strategy promotion, paper admission or capital use."
+  },
+  "selection": [
+    {
+      "candidate": "67f7",
+      "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "rank": 1,
+      "research_interest": "ETH execution and locally reconstructible inventory behavior are descriptively observable in expanded authorized archives; not a performance validation.",
+      "observability": "Expanded account fills, crossed flags, signed fees and startPosition are available through the fixed cutoff; order placement, unfilled quotes, queue priority and complete continuity are not established by fills.",
+      "paper_engine_compatibility": "undetermined and evaluated separately; no paper launch is authorized.",
+      "descriptive_markets": ["ETH"],
+      "question": "For 67f7/ETH only, propose one primary falsifiable hypothesis about an observable execution/inventory mechanism and one competing explanation. State measurable predictions and results that would contradict the primary hypothesis. Separate what the archived fills can examine retrospectively from the minimum additional observation needed for prospective verification; first classify requested evidence as locally available, a missing calculation, a future accessible observation, or private/unobservable information. Do not infer order placement or motives from fills, do not require private trader motivation, and do not combine DRAM into ETH; acknowledge that account-wide inventory management could still connect the markets. Assess compatibility with our current engine separately from research interest."
+    }
+  ],
+  "task_policy": {
+    "version": "population-research-v1",
+    "model": "gpt-6.1-sol",
+    "usage_mode": "subscription",
+    "max_requests": 8,
+    "max_packet_chars": 225000,
+    "max_prompt_chars": 260000,
+    "minimum_interval_ms": 86400000,
+    "max_request_age_ms": 3600000,
+    "timeout_seconds": 120,
+    "max_output_tokens": 5000,
+    "max_model_calls": 2,
+    "max_input_tokens_per_call": 80000,
+    "max_total_input_tokens": 160000,
+    "max_total_output_tokens": 10000,
+    "max_total_duration_ms": 240000
+  },
+  "pilot_limits": {
+    "max_tasks": 1,
+    "max_calls": 2,
+    "max_input_tokens": 160000,
+    "max_output_tokens": 10000,
+    "max_duration_ms": 240000
+  },
+  "evidence": {
+    "base_packet": "docs/continuous-research/POPULATION-DESCRIPTIVE-PACKETS-20261014.json",
+    "base_set_fingerprint": "103a463bf858dce65ff7e49fa81e382d704ef3e42b5efbcdba09dc0c1b3fb3a0",
+    "base_packet_fingerprint": "0a8670daf0a2f0765be7cb2a0ebdf77b1dffa624f0e7f0984344630d5d5035f5",
+    "max_archive_cutoff_ms": 1791789394195
+  },
+  "routing": {
+    "unchanged_fingerprint": "do_not_retrigger",
+    "failure": "consume attempt, preserve response and diagnostic, no automatic retry",
+    "irrecoverable_data": "persist an actionable terminal conclusion; do not wait for private historical links"
+  },
+  "renewal": false
+}

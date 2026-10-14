@@ -7,13 +7,14 @@ from tamtam_again.engine import fingerprint
 from tamtam_again.engine import canonical
 from tamtam_again.population_research import initialize as initialize_jobs
 from tamtam_again.population_pilot import (authorize_task, initialize, record_provider_response,
-    report, reserve_call, tick_locked)
+    report, reserve_call, tick_locked, validate_policy)
 from tamtam_again.population_runtime import execute_job, run
 from tamtam_again.storage import Store
 
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = json.loads((ROOT / 'config/research-loop-pilot-v1.json').read_text())
+ETH_TASK_POLICY = json.loads((ROOT / 'config/research-task-67f7-ETH-20261014-v1.json').read_text())
 
 
 class PopulationPilotTests(unittest.TestCase):
@@ -97,6 +98,34 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertEqual(row['state'], 'response_received')
         self.assertIsNone(row['actual_input_tokens'])
         self.assertEqual(report(self.store, POLICY)['calls_reserved'], 1)
+
+    def test_dedicated_eth_task_has_its_own_two_call_nonrenewing_allowance(self):
+        from copy import deepcopy
+        validate_policy(ETH_TASK_POLICY)
+        invalid=deepcopy(ETH_TASK_POLICY);invalid['pilot_limits']['max_calls']=3
+        with self.assertRaisesRegex(ValueError,'ceilings'):
+            validate_policy(invalid)
+        invalid=deepcopy(ETH_TASK_POLICY);invalid['selection'][0]['descriptive_markets']=['xyz:DRAM']
+        with self.assertRaisesRegex(ValueError,'67f7 and its ETH evidence'):
+            validate_policy(invalid)
+        initialize(self.store,POLICY)
+        item=ETH_TASK_POLICY['selection'][0]
+        packet={'fingerprint':fingerprint({'new-packet':'67f7-ETH'})}
+        self.store.connection.execute('insert into population_research_jobs '
+            '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+            'values(?,?,?,?,?,?,?,\'sealed\',?)',('eth-task',ETH_TASK_POLICY['network'],item['address'],
+                'new-input',json.dumps(packet),json.dumps(ETH_TASK_POLICY['task_policy']),30,30))
+        self.store.connection.commit()
+        self.assertEqual(authorize_task(self.store,ETH_TASK_POLICY,request_id='eth-task',
+            candidate='67f7',address=item['address'],packet_fingerprint_value=packet['fingerprint'],
+            authorized_ms=30)['status'],'authorized')
+        reserve_call(self.store,'eth-task',1,ETH_TASK_POLICY)
+        reserve_call(self.store,'eth-task',2,ETH_TASK_POLICY)
+        with self.assertRaisesRegex(ValueError,'ceiling exhausted'):
+            reserve_call(self.store,'eth-task',3,ETH_TASK_POLICY)
+        self.assertEqual(report(self.store,ETH_TASK_POLICY)['calls_reserved'],2)
+        self.assertEqual(report(self.store,POLICY)['calls_reserved'],0)
+        self.assertNotIn('call_reservation_usd',ETH_TASK_POLICY['task_policy'])
 
     def test_real_runtime_contract_mocked_once_routes_persistently_and_replays_without_call(self):
         from unittest.mock import patch

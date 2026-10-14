@@ -1,0 +1,1756 @@
+{
+  "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+  "authorization_id": "eth-mechanism-followup-20261014-v1",
+  "authorization_state": "authorized",
+  "candidate": "67f7",
+  "packet": {
+    "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+    "available_ms": 1791761384403,
+    "evidence_refs": [
+      "account_scope_reports:5d932f97d1d34d4da2a1d023796fcbe9",
+      "account_scope_reports:5d932f97d1d34d4da2a1d023796fcbe9#sha256:83d0dc8f58cc6c7f00028ea7d6ebaac52750e4bb9c88d39270f92c4a6cbf4c30",
+      "raw_observations:7196410#sha256:1066634f67b01d67783a86303a24d725c929028d72d138356c066c1b1042e102",
+      "raw_observations:7196993#sha256:1e3fc0e196f96f8b5257c80bf69b06a6da4955e2193ad82a470daf652d979b9e",
+      "raw_observations:7197684#sha256:f94a32b4e7d65db1ba4bc05e47cf806b4664d22897b28b58f1dcfb92a21538a9",
+      "raw_observations:7309960#sha256:5d42729d958d9d8d09a0982c31300575a60ed60a665a75a37cc01ccd5fda744b",
+      "raw_observations:18202777#sha256:9715adf792e88be930479bb13ab51b2d35ba12ac6198eecb91c46d690b89e750",
+      "raw_observations:18203203#sha256:3a3710874e25a589e0993d46cea91289f40c208669bc2532377124e6a81ed0b1",
+      "raw_observations:18203571#sha256:8696141d5e06e2db09db69d2cff0bf39933a7c19b234f24418d7878d9574f215",
+      "raw_observations:18323996#sha256:eb59f5cc9dfec64258ddf11053f27da325ff56c16937d96522091a5c3659c8bb",
+      "raw_observations:18324315#sha256:7e135d591dc01aa3e6647e499b51bb0343f9acdfaabc0d6e2ba3f47c53829864",
+      "raw_observations:18324810#sha256:cfdbe127ec12279079bea933f973466c03cbe94ea0b552b43ead9e83306479e7",
+      "raw_observations:18375266#sha256:611cbdd09eb5ec08fe0970cf65943e37eb2bbcd7529a50785d907bb063ad486a",
+      "raw_observations:18375604#sha256:7bef5d2ca2209bba8a0510b2ecc65eb0f115834ca7b005079706513f0a21c710",
+      "raw_observations:18545441#sha256:f99480a8ed8f0406f06503f9712f734f7db5c42c738b48fa13d8b0613a6849d2",
+      "raw_observations:18707779#sha256:724c116054a36b28cc44c76c39093e02132bedd4525476bffd8a4518b166732e",
+      "raw_observations:18865530#sha256:b02e545804619ab47e38eba3aaf20290035db1de7fb92563659756808cc1a322",
+      "raw_observations:19027285#sha256:21f77980667ce4957c4c1a6e6c98d04a0d99dd75fcbd70ce5c811e90f29fa7d6",
+      "raw_observations:19191298#sha256:e69bafd4b1a2cd18d0560f83f2ac0f8e754511a142a59be1b4ede43b32712cc1",
+      "raw_observations:19355796#sha256:a815d916140be58b6b62fbca7cb810bad2134e30dae56fcd44c81ea8ca9461d8",
+      "raw_observations:19525774#sha256:815d78a3764711c5dc7b9bfd1ff2856f18224e48d73d99cc70c28e4f9f5f93b4",
+      "raw_observations:19686025#sha256:73d7d74cc210288f7ce6c089fb23fc6e726960a8413c944121f0991fdb6793c2",
+      "raw_observations:19845722#sha256:63a6250c521c5541351b81b4e6d3b9988b77ecaaaa7c6e1e68ac58a6f292a68b",
+      "raw_observations:20001117#sha256:edd9602bb86ed00470cfffb5382fa2ce68f2ab909f9437bcd810474f380cd1c3",
+      "raw_observations:20161615#sha256:1c433196de9f9b48ae2f9be9125d19720affe93ff41882b9818145037bba9da9",
+      "raw_observations:20323244#sha256:27f822e99f6e4ca133a2a5ccec9274a3f3d7a58b4e5d0ac299fd51c9417a6db3",
+      "raw_observations:20500165#sha256:e3818e0648d3b73bf4731210256bfd4a377691f70d72cfc7b381325fba037241",
+      "raw_observations:20676252#sha256:4603d87f55c09910edd84299ef1d9af5375c107695cb723e1dfffa5bd527969b",
+      "raw_observations:20845018#sha256:87755b85d25e9685ed48c651991fe5e936b04c634b90cfc3a98b4c6546ab64e7",
+      "raw_observations:21008328#sha256:27f5824e098189251d47e5cf1c04d7564bf6d5cf0689b7c43fba967ab40b2346",
+      "raw_observations:21174177#sha256:b0ea1359f73ca0e005b82513f53daccc7073e343e239bdd2b9e2230d8a63a93d",
+      "raw_observations:21339236#sha256:6e9835490805738a544093179f199763be32d2c5b1fcf8968dfab5f32e02b43e",
+      "raw_observations:21501686#sha256:bbe7a31d35d3519d4455079b4c715baa1f2d81bb437659d127c91989a5d293f3",
+      "raw_observations:21665142#sha256:3e83349b1883984a52a034d5961b6c2d3cac9da83e26a1a692f3b937eda16cc2",
+      "raw_observations:21828129#sha256:991692eac79649917533ffa73f1e8d32b95ea12969f4d3fabe6dff97a094b980",
+      "raw_observations:22075635#sha256:43a9f38c62828500842b9abc5e2e3648b6a9e731266e11bf40d24a9cfcdc6107",
+      "raw_observations:22237819#sha256:7f3e87f69529fd727b62e629e93317c243e9c1b593f6edd9a2c984a3e0281f28",
+      "raw_observations:22398806#sha256:7662fb9df72a8cc97aa5adb4719fa584158a6f757786fde46bb27db9ed07d50c",
+      "raw_observations:22567295#sha256:289660c9419978ee98f62a2d1d7a94529592d6c9398b5cb97b57a12a5a76f4f4",
+      "raw_observations:22737214#sha256:7194215f7980294f357226feb2c32b24e65c0fda6a0ebcf37ae2dd598561c569",
+      "raw_observations:22900960#sha256:ba5b4380a2210bbf8c22d133645b70c3879e7b6c5d9254d3113d1a27b5b4ff2c",
+      "raw_observations:23064293#sha256:0f5889eab6f336309e515002227d0c3fd56f064ed2e9422f8dca356ca13f3890",
+      "raw_observations:23227895#sha256:554e7dfa43e146bb5dcaa6a7681ee71b2edfec76b136a8be3d39652e2839231c",
+      "raw_observations:23396551#sha256:daa909e91e9940ce3c6d851ffff4b997705333c4dc2df9c839f5407a73f7f929",
+      "raw_observations:23562268#sha256:926f40770f799c9a98b8274ffa695157141ad02ce484ba0bf17e9a0a71ece671",
+      "raw_observations:23725944#sha256:611e38964d7e6ec5838e570d179e75d417b02abadc0431ee364bfbdb2dddaa8b",
+      "raw_observations:23891286#sha256:d861b6ee5b8a9e4ea67574c8966eab61c9046d368c49653d1cfb42ecded1ee78",
+      "raw_observations:24072362#sha256:ebef42b3c47b9fbf78e53027e2048c05c16bee494372e91624ee1939de3a4ec2",
+      "raw_observations:24247134#sha256:02d697243c0e1337983f663f06ae843aaff3d0566ee0032d2c6cdc2a4b7aa83a",
+      "raw_observations:24421868#sha256:647a856620f2f4c6f7cf63c3f9cc612662f59d0071ec07732d96afaee9791f9f",
+      "raw_observations:24620042#sha256:aa1d398d1240369eafd534f2bee3216bb03fb65142e3e88211ad83ecd8a857b2",
+      "raw_observations:24835819#sha256:d11de8172f0dca20280ac1379d9cbf010aed8cb086c6cd8087b7100d228d8f99",
+      "raw_observations:24836314#sha256:4b7a7b0891545bab1bcf82c0dd91284c2ba957e739f5d3f93012201afa217e5e",
+      "raw_observations:25038231#sha256:ca79361d5d1a83fce1493a1c395c646b4a460386ccb039f6ab1c0294d90d35ed",
+      "raw_observations:25228502#sha256:f173d5791d68f7756fff6ae4fc1b98497ff78f4210199da5c2c1a33f36fc0b33",
+      "raw_observations:25416847#sha256:54ce7b90f1c1f44fae6ccc985b56b68142728067acf42e2ab31c7c868d8c6dff",
+      "raw_observations:25603126#sha256:2d04d95976a7e98dc6e06cbf769d114d49e2c634e7efeb4a9fd89df137de0175",
+      "raw_observations:25792335#sha256:82998ae9055f5f229acbaf0bc0086575feb927dbafc78889f9d083965e6df116",
+      "raw_observations:25977411#sha256:89d3941e4881a46f1fba9975a0ca657289d4b8df230f72a0c2af66b62950971e",
+      "raw_observations:7198173#sha256:6fde961aff41686c7412a8aed838ca27435d6a223eb05c78e2191dc3d5e8feba",
+      "raw_observations:7310344#sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "raw_observations:18204049#sha256:fa0329ab6adb5b121206d8b7474e0f6ac5e4263a201d87b71e42a242bf2e5452",
+      "raw_observations:18325275#sha256:15dcae9ad85d0011a46c388152ae995642c27e6b36270fbd45435aa832df681a",
+      "raw_observations:18376110#sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "raw_observations:18545903#sha256:0028f419d4ea3edfb50da890230de108009ad290c076b39258e3b90a44a39bcc",
+      "raw_observations:18708212#sha256:c7f9d71e339f23922c538bc6e7645716490f07968363c1d5d7e5ab82761497b6",
+      "raw_observations:18865938#sha256:6f424e67297dffe934af3eebdee237a32e463cf7c9c22dd39549efbc5f596863",
+      "raw_observations:19027647#sha256:e0f27ad2912d2cb23e6c45ce5ae7a49f149e0e1fa4b4ecd5aeb6369c71ab4cdf",
+      "raw_observations:19191673#sha256:5b2e9ef02c7e125f3a9cb83a998f1eb02e7151c18011d05d56cab98ca71ca597",
+      "raw_observations:19356160#sha256:6a555cfb3ee698de4c0aadcd37f69995ef5d4702a2d7a143cb7d5e9d7a9a0380",
+      "raw_observations:19526087#sha256:3029c159df543d172b80d03fd6eb2d806d732ef2e71f80f7ca5964f7679b37c6",
+      "raw_observations:19686388#sha256:77f1b4ff56daf6aa5cebebf7c6e5f7085be2a97cc8998f3127f7fc29d51190cb",
+      "raw_observations:19846163#sha256:9b16f2135b377f56ae1bcf64b6a33af134ee54f2213cb3a7c1e1036957c86f6a",
+      "raw_observations:20001477#sha256:13c8f6ad13771b00818a2de01c349304eacec28aa9911f3a2e74c57b7e620dc4",
+      "raw_observations:20161872#sha256:962c98c9d77f8e0d7ed2bf8805eefa78a28b93f5ab2b10b00560c73bc2468c01",
+      "raw_observations:20323607#sha256:1537c5a856895928bfb2ad613675fe06966c43e83e3d530b5d80e5d186994f4b",
+      "raw_observations:20500809#sha256:e860a58b3df71bebbec4fa5fa724d4e33db6c5ef063b99f18866221b77a6fe2e",
+      "raw_observations:20676723#sha256:3cc467231a70004becfc066b493d844fee04686dd0253b0b839908a3982b3eb4",
+      "raw_observations:20845467#sha256:5064fb746a86520c35736d98e9f513bd26a4b8a7207b6ad1cff707912e645836",
+      "raw_observations:21008675#sha256:46a6fb58b1a80cd6fc48c8fc9cc23db5073dc2252df4c07dbc325c41e67a0b02",
+      "raw_observations:21174530#sha256:2edc6dddb8a4c802f675d1a7e4474b6e1093801352d831ad72fd88e6b43466f8",
+      "raw_observations:21339612#sha256:3ef8e68d35caa5efa0d373cba033f4de50452217330f84fa962e9de154313d13",
+      "raw_observations:21502075#sha256:c11d5ba7a5f1dc93b1a600f27efe76ec68fa85b24d7dc00a220bd336c3e51384",
+      "raw_observations:21665600#sha256:4a6ef0e1e0a247da66a211db7c0a51851f1a5ab0550564fef35395b6e8be835c",
+      "raw_observations:21828500#sha256:915d457364600424b43f6b7a88656b30bfdb0e2281ba7ede242de35c290daafb",
+      "raw_observations:22076095#sha256:3c573b3db38dadb1b916b8752083b4262c4d8bdc30687528de55c317b52b2c20",
+      "raw_observations:22238285#sha256:ffa4077976248c862522aec655cffa2148487fd1b25b158bdfe07b3a90aff82d",
+      "raw_observations:22399203#sha256:11572147e95469cacef618741a8d8282db437bb59ebf9272cbec2e0e889cd65b",
+      "raw_observations:22567802#sha256:a9e18b149f76f697708583469daa08b17fea8fe1e221e8a6c1c9ff07c8550b24",
+      "raw_observations:22737368#sha256:eeb59d16985eecb604257e748d8d9fa40e74b216427cf7aa37f4b87d15fc4a5b",
+      "raw_observations:22901437#sha256:a2db57aceebd56be7d045ef23098c384ee17401fa3b9de1112116c82937dffda",
+      "raw_observations:23064697#sha256:af2438067896629be3653585e5a72e6dabc073f428870a33ed7875c150dadd73",
+      "raw_observations:23228194#sha256:e24da876c2c084c7c5ffa2f54407afbb0cdd172f70271ac988e9178af6b2fdc2",
+      "raw_observations:23397016#sha256:7eed1e4ea8913002486a0a31e308368240484dfe75c7072dc43fc948c9c57300",
+      "raw_observations:23562644#sha256:a0c3a64a55e0c9c8ad9c9cd553ea245c091eacc101014e71b2b35297cfacb68f",
+      "raw_observations:23726320#sha256:4262b7cdecb4a45ba4d10368d93d4d10a24f501fd03e23932b48f3cb0ea7f677",
+      "raw_observations:23891517#sha256:9de7856d2ec453a3f4db195c652dc67559a65cb7868d9cc1db2db90cabec8829",
+      "raw_observations:24072865#sha256:b852a887c56194648c60eb6e27e45474681cb7844ff3441ca39d4a673ebac24d",
+      "raw_observations:24247610#sha256:da61a2ae9f269e5d1b4313b543afe1ce38a907da224d3e2615a87984da2b4750",
+      "raw_observations:24422209#sha256:1f61ce89b8061d8769ae3ff0f8f0f56f5ed32f1fbfbcd93810f4ec0911366078",
+      "raw_observations:24620530#sha256:05146badb93ce3947a371ede2c3e71d2eef55c1932431cacc50fe2ad5ae1644f",
+      "raw_observations:24836833#sha256:0e46b8313e020f8366ce416fbfc2284721a3d0ac14164a2aa2adb68344513382",
+      "raw_observations:25038723#sha256:c2434647a80841133948524e5c39991a51fb1c072fa62b761e86df97f95a4c98",
+      "raw_observations:25228962#sha256:585b516149ec814a40043ba7a2ebf5b597257a08a51c52d24154f0175aa38f85",
+      "raw_observations:25417362#sha256:2a5b41e4bc1052fcb193744ad64531f52f34c284a0b971110504717677859250",
+      "raw_observations:25603557#sha256:41c636d4988cfb7c90961869d57605049d5086a88ed1c68f44ec61d1749ea218",
+      "raw_observations:25792714#sha256:b6767809ec0f8ec8f53f57d046d2ea2a95703bc33f531f693b5e0b872e773688",
+      "raw_observations:25977798#sha256:b7a81b29c7738d1bc5b25649409b9e234f47b8470fc05044d24bae0c72695f90"
+    ],
+    "fingerprint": "0adfcd71fcadeb56955b4daf232a7f0b64dc38bdbbe750f8105d69c9a70e4700",
+    "limits": [
+      "only the archived scope report available by the explicit pilot cutoff is included",
+      "no raw account pages, released prospective outcomes, memory or observation wakes are read",
+      "the historic prescreen does not constitute economic validation or an execution qualification"
+    ],
+    "network": "hyperliquid-mainnet",
+    "observations": {
+      "activity": {
+        "fills_per_second": 0.04084403378945227,
+        "needs_faster_than_minimum": false,
+        "observed_fill_content_fingerprint": "9efafa22a979f78f07f308a663230c0c120afe7250af5cb1b07f92f46ecc2db5",
+        "observed_unique_fills": 150,
+        "risk": "unknown retention/history completeness; rate may be underestimated if API response saturated",
+        "window_seconds": 3672.507
+      },
+      "capital_aggregation": "unknown: do not sum dex equities; account mode and shared collateral need reconciliation",
+      "current_pass_behavior_profile": {
+        "evidence_refs": [
+          "population_attempts:0059f6445ca44f15abe093468e1a682b"
+        ],
+        "fills_observed": 150,
+        "fingerprint": "1cfe601b0c0a78aacff96ddda5d00de385dcff8ac43d2e984e20b7d9f4208994",
+        "full_profile_reference": "account_scope_reports:5d932f97d1d34d4da2a1d023796fcbe9#sha256:83d0dc8f58cc6c7f00028ea7d6ebaac52750e4bb9c88d39270f92c4a6cbf4c30",
+        "grouping_ms": 1000,
+        "limits": [
+          "unknown history coverage; counts are observed, not activity estimates",
+          "temporal grouping is not evidence of arbitrage or coordination",
+          "no summed multi-market notionals or consolidated exposure",
+          "execution-price exposure samples do not establish a continuous risk trajectory",
+          "maker fills do not reveal unfilled orders or queue priority",
+          "candidate excursions are distinct from portfolio PnL and risk"
+        ],
+        "market_count": 1,
+        "markets": [
+          {
+            "candidate_episode_duration_ms": {
+              "flat_to_flat": {
+                "max": "849993",
+                "median": "254462",
+                "min": "21936"
+              }
+            },
+            "fill_count": 150,
+            "history_coverage": "unknown",
+            "maker_fills": 144,
+            "market": "ETH",
+            "observed_orders": 74,
+            "orders_with_multiple_fills": 28,
+            "taker_fills": 6
+          }
+        ],
+        "note": "Per-episode examples omitted from this packet; source report remains verifiable by reference.",
+        "projection_version": "population-profile-summary-projection-v1"
+      },
+      "descriptive_history_v1": {
+        "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+        "candidate": "67f7",
+        "coverage": {
+          "account_history_authorized_at_cutoff": true,
+          "fill_archive": {
+            "conflicting_fill_id_examples": [],
+            "conflicting_fill_identity_count": 0,
+            "continuity_proven": false,
+            "decoded_record_count": 25614,
+            "duplicate_fill_instances": 13,
+            "first_fill_event_ms": 1791278662655,
+            "first_fill_event_utc": "2026-10-06T09:24:22.655+00:00",
+            "first_observed_at": "2026-10-07T09:24:32.102+00:00",
+            "last_fill_event_ms": 1791761360968,
+            "last_fill_event_utc": "2026-10-11T23:29:20.968+00:00",
+            "last_observed_at": "2026-10-11T23:29:32.433+00:00",
+            "note": "Counts are deduplicated observations within archived request windows, not an exhaustive account history. REST recorder marks source pages incomplete; page exhaustion is not retention proof.",
+            "pagination_status_counts": {
+              "page_budget_exhausted": 11,
+              "pagination_exhausted": 46
+            },
+            "raw_observation_complete_false_count": 57,
+            "raw_observation_complete_true_count": 0,
+            "raw_observation_count": 57,
+            "records_after_cutoff_excluded": 0,
+            "retention_proven": false,
+            "rows_missing_identity_or_time": 0,
+            "unbounded_request_window_count": 0,
+            "unique_fill_id_count": 25601,
+            "usable_unique_fill_count": 25601
+          },
+          "funding_archive": {
+            "continuity_proven": false,
+            "decoded_record_count": 152,
+            "deduplicated_event_count": 152,
+            "duplicate_event_instances": 0,
+            "first_observed_at": "2026-10-07T09:25:04.498+00:00",
+            "last_observed_at": "2026-10-11T23:29:40.040+00:00",
+            "pagination_status_counts": {
+              "pagination_exhausted": 49
+            },
+            "raw_observation_complete_false_count": 49,
+            "raw_observation_complete_true_count": 0,
+            "raw_observation_count": 49,
+            "records_after_cutoff_excluded": 0,
+            "retention_proven": false
+          }
+        },
+        "cutoff_ms": 1791789394195,
+        "evidence_fingerprint": "fca560504be482be3a01b0413fe36cde37adac4e770210af43b2893df59b4b0f",
+        "evidence_refs": [
+          "account_scope_reports:5d932f97d1d34d4da2a1d023796fcbe9#sha256:83d0dc8f58cc6c7f00028ea7d6ebaac52750e4bb9c88d39270f92c4a6cbf4c30",
+          "raw_observations:7196410#sha256:1066634f67b01d67783a86303a24d725c929028d72d138356c066c1b1042e102",
+          "raw_observations:7196993#sha256:1e3fc0e196f96f8b5257c80bf69b06a6da4955e2193ad82a470daf652d979b9e",
+          "raw_observations:7197684#sha256:f94a32b4e7d65db1ba4bc05e47cf806b4664d22897b28b58f1dcfb92a21538a9",
+          "raw_observations:7309960#sha256:5d42729d958d9d8d09a0982c31300575a60ed60a665a75a37cc01ccd5fda744b",
+          "raw_observations:18202777#sha256:9715adf792e88be930479bb13ab51b2d35ba12ac6198eecb91c46d690b89e750",
+          "raw_observations:18203203#sha256:3a3710874e25a589e0993d46cea91289f40c208669bc2532377124e6a81ed0b1",
+          "raw_observations:18203571#sha256:8696141d5e06e2db09db69d2cff0bf39933a7c19b234f24418d7878d9574f215",
+          "raw_observations:18323996#sha256:eb59f5cc9dfec64258ddf11053f27da325ff56c16937d96522091a5c3659c8bb",
+          "raw_observations:18324315#sha256:7e135d591dc01aa3e6647e499b51bb0343f9acdfaabc0d6e2ba3f47c53829864",
+          "raw_observations:18324810#sha256:cfdbe127ec12279079bea933f973466c03cbe94ea0b552b43ead9e83306479e7",
+          "raw_observations:18375266#sha256:611cbdd09eb5ec08fe0970cf65943e37eb2bbcd7529a50785d907bb063ad486a",
+          "raw_observations:18375604#sha256:7bef5d2ca2209bba8a0510b2ecc65eb0f115834ca7b005079706513f0a21c710",
+          "raw_observations:18545441#sha256:f99480a8ed8f0406f06503f9712f734f7db5c42c738b48fa13d8b0613a6849d2",
+          "raw_observations:18707779#sha256:724c116054a36b28cc44c76c39093e02132bedd4525476bffd8a4518b166732e",
+          "raw_observations:18865530#sha256:b02e545804619ab47e38eba3aaf20290035db1de7fb92563659756808cc1a322",
+          "raw_observations:19027285#sha256:21f77980667ce4957c4c1a6e6c98d04a0d99dd75fcbd70ce5c811e90f29fa7d6",
+          "raw_observations:19191298#sha256:e69bafd4b1a2cd18d0560f83f2ac0f8e754511a142a59be1b4ede43b32712cc1",
+          "raw_observations:19355796#sha256:a815d916140be58b6b62fbca7cb810bad2134e30dae56fcd44c81ea8ca9461d8",
+          "raw_observations:19525774#sha256:815d78a3764711c5dc7b9bfd1ff2856f18224e48d73d99cc70c28e4f9f5f93b4",
+          "raw_observations:19686025#sha256:73d7d74cc210288f7ce6c089fb23fc6e726960a8413c944121f0991fdb6793c2",
+          "raw_observations:19845722#sha256:63a6250c521c5541351b81b4e6d3b9988b77ecaaaa7c6e1e68ac58a6f292a68b",
+          "raw_observations:20001117#sha256:edd9602bb86ed00470cfffb5382fa2ce68f2ab909f9437bcd810474f380cd1c3",
+          "raw_observations:20161615#sha256:1c433196de9f9b48ae2f9be9125d19720affe93ff41882b9818145037bba9da9",
+          "raw_observations:20323244#sha256:27f822e99f6e4ca133a2a5ccec9274a3f3d7a58b4e5d0ac299fd51c9417a6db3",
+          "raw_observations:20500165#sha256:e3818e0648d3b73bf4731210256bfd4a377691f70d72cfc7b381325fba037241",
+          "raw_observations:20676252#sha256:4603d87f55c09910edd84299ef1d9af5375c107695cb723e1dfffa5bd527969b",
+          "raw_observations:20845018#sha256:87755b85d25e9685ed48c651991fe5e936b04c634b90cfc3a98b4c6546ab64e7",
+          "raw_observations:21008328#sha256:27f5824e098189251d47e5cf1c04d7564bf6d5cf0689b7c43fba967ab40b2346",
+          "raw_observations:21174177#sha256:b0ea1359f73ca0e005b82513f53daccc7073e343e239bdd2b9e2230d8a63a93d",
+          "raw_observations:21339236#sha256:6e9835490805738a544093179f199763be32d2c5b1fcf8968dfab5f32e02b43e",
+          "raw_observations:21501686#sha256:bbe7a31d35d3519d4455079b4c715baa1f2d81bb437659d127c91989a5d293f3",
+          "raw_observations:21665142#sha256:3e83349b1883984a52a034d5961b6c2d3cac9da83e26a1a692f3b937eda16cc2",
+          "raw_observations:21828129#sha256:991692eac79649917533ffa73f1e8d32b95ea12969f4d3fabe6dff97a094b980",
+          "raw_observations:22075635#sha256:43a9f38c62828500842b9abc5e2e3648b6a9e731266e11bf40d24a9cfcdc6107",
+          "raw_observations:22237819#sha256:7f3e87f69529fd727b62e629e93317c243e9c1b593f6edd9a2c984a3e0281f28",
+          "raw_observations:22398806#sha256:7662fb9df72a8cc97aa5adb4719fa584158a6f757786fde46bb27db9ed07d50c",
+          "raw_observations:22567295#sha256:289660c9419978ee98f62a2d1d7a94529592d6c9398b5cb97b57a12a5a76f4f4",
+          "raw_observations:22737214#sha256:7194215f7980294f357226feb2c32b24e65c0fda6a0ebcf37ae2dd598561c569",
+          "raw_observations:22900960#sha256:ba5b4380a2210bbf8c22d133645b70c3879e7b6c5d9254d3113d1a27b5b4ff2c",
+          "raw_observations:23064293#sha256:0f5889eab6f336309e515002227d0c3fd56f064ed2e9422f8dca356ca13f3890",
+          "raw_observations:23227895#sha256:554e7dfa43e146bb5dcaa6a7681ee71b2edfec76b136a8be3d39652e2839231c",
+          "raw_observations:23396551#sha256:daa909e91e9940ce3c6d851ffff4b997705333c4dc2df9c839f5407a73f7f929",
+          "raw_observations:23562268#sha256:926f40770f799c9a98b8274ffa695157141ad02ce484ba0bf17e9a0a71ece671",
+          "raw_observations:23725944#sha256:611e38964d7e6ec5838e570d179e75d417b02abadc0431ee364bfbdb2dddaa8b",
+          "raw_observations:23891286#sha256:d861b6ee5b8a9e4ea67574c8966eab61c9046d368c49653d1cfb42ecded1ee78",
+          "raw_observations:24072362#sha256:ebef42b3c47b9fbf78e53027e2048c05c16bee494372e91624ee1939de3a4ec2",
+          "raw_observations:24247134#sha256:02d697243c0e1337983f663f06ae843aaff3d0566ee0032d2c6cdc2a4b7aa83a",
+          "raw_observations:24421868#sha256:647a856620f2f4c6f7cf63c3f9cc612662f59d0071ec07732d96afaee9791f9f",
+          "raw_observations:24620042#sha256:aa1d398d1240369eafd534f2bee3216bb03fb65142e3e88211ad83ecd8a857b2",
+          "raw_observations:24835819#sha256:d11de8172f0dca20280ac1379d9cbf010aed8cb086c6cd8087b7100d228d8f99",
+          "raw_observations:24836314#sha256:4b7a7b0891545bab1bcf82c0dd91284c2ba957e739f5d3f93012201afa217e5e",
+          "raw_observations:25038231#sha256:ca79361d5d1a83fce1493a1c395c646b4a460386ccb039f6ab1c0294d90d35ed",
+          "raw_observations:25228502#sha256:f173d5791d68f7756fff6ae4fc1b98497ff78f4210199da5c2c1a33f36fc0b33",
+          "raw_observations:25416847#sha256:54ce7b90f1c1f44fae6ccc985b56b68142728067acf42e2ab31c7c868d8c6dff",
+          "raw_observations:25603126#sha256:2d04d95976a7e98dc6e06cbf769d114d49e2c634e7efeb4a9fd89df137de0175",
+          "raw_observations:25792335#sha256:82998ae9055f5f229acbaf0bc0086575feb927dbafc78889f9d083965e6df116",
+          "raw_observations:25977411#sha256:89d3941e4881a46f1fba9975a0ca657289d4b8df230f72a0c2af66b62950971e",
+          "raw_observations:7198173#sha256:6fde961aff41686c7412a8aed838ca27435d6a223eb05c78e2191dc3d5e8feba",
+          "raw_observations:7310344#sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "raw_observations:18204049#sha256:fa0329ab6adb5b121206d8b7474e0f6ac5e4263a201d87b71e42a242bf2e5452",
+          "raw_observations:18325275#sha256:15dcae9ad85d0011a46c388152ae995642c27e6b36270fbd45435aa832df681a",
+          "raw_observations:18376110#sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "raw_observations:18545903#sha256:0028f419d4ea3edfb50da890230de108009ad290c076b39258e3b90a44a39bcc",
+          "raw_observations:18708212#sha256:c7f9d71e339f23922c538bc6e7645716490f07968363c1d5d7e5ab82761497b6",
+          "raw_observations:18865938#sha256:6f424e67297dffe934af3eebdee237a32e463cf7c9c22dd39549efbc5f596863",
+          "raw_observations:19027647#sha256:e0f27ad2912d2cb23e6c45ce5ae7a49f149e0e1fa4b4ecd5aeb6369c71ab4cdf",
+          "raw_observations:19191673#sha256:5b2e9ef02c7e125f3a9cb83a998f1eb02e7151c18011d05d56cab98ca71ca597",
+          "raw_observations:19356160#sha256:6a555cfb3ee698de4c0aadcd37f69995ef5d4702a2d7a143cb7d5e9d7a9a0380",
+          "raw_observations:19526087#sha256:3029c159df543d172b80d03fd6eb2d806d732ef2e71f80f7ca5964f7679b37c6",
+          "raw_observations:19686388#sha256:77f1b4ff56daf6aa5cebebf7c6e5f7085be2a97cc8998f3127f7fc29d51190cb",
+          "raw_observations:19846163#sha256:9b16f2135b377f56ae1bcf64b6a33af134ee54f2213cb3a7c1e1036957c86f6a",
+          "raw_observations:20001477#sha256:13c8f6ad13771b00818a2de01c349304eacec28aa9911f3a2e74c57b7e620dc4",
+          "raw_observations:20161872#sha256:962c98c9d77f8e0d7ed2bf8805eefa78a28b93f5ab2b10b00560c73bc2468c01",
+          "raw_observations:20323607#sha256:1537c5a856895928bfb2ad613675fe06966c43e83e3d530b5d80e5d186994f4b",
+          "raw_observations:20500809#sha256:e860a58b3df71bebbec4fa5fa724d4e33db6c5ef063b99f18866221b77a6fe2e",
+          "raw_observations:20676723#sha256:3cc467231a70004becfc066b493d844fee04686dd0253b0b839908a3982b3eb4",
+          "raw_observations:20845467#sha256:5064fb746a86520c35736d98e9f513bd26a4b8a7207b6ad1cff707912e645836",
+          "raw_observations:21008675#sha256:46a6fb58b1a80cd6fc48c8fc9cc23db5073dc2252df4c07dbc325c41e67a0b02",
+          "raw_observations:21174530#sha256:2edc6dddb8a4c802f675d1a7e4474b6e1093801352d831ad72fd88e6b43466f8",
+          "raw_observations:21339612#sha256:3ef8e68d35caa5efa0d373cba033f4de50452217330f84fa962e9de154313d13",
+          "raw_observations:21502075#sha256:c11d5ba7a5f1dc93b1a600f27efe76ec68fa85b24d7dc00a220bd336c3e51384",
+          "raw_observations:21665600#sha256:4a6ef0e1e0a247da66a211db7c0a51851f1a5ab0550564fef35395b6e8be835c",
+          "raw_observations:21828500#sha256:915d457364600424b43f6b7a88656b30bfdb0e2281ba7ede242de35c290daafb",
+          "raw_observations:22076095#sha256:3c573b3db38dadb1b916b8752083b4262c4d8bdc30687528de55c317b52b2c20",
+          "raw_observations:22238285#sha256:ffa4077976248c862522aec655cffa2148487fd1b25b158bdfe07b3a90aff82d",
+          "raw_observations:22399203#sha256:11572147e95469cacef618741a8d8282db437bb59ebf9272cbec2e0e889cd65b",
+          "raw_observations:22567802#sha256:a9e18b149f76f697708583469daa08b17fea8fe1e221e8a6c1c9ff07c8550b24",
+          "raw_observations:22737368#sha256:eeb59d16985eecb604257e748d8d9fa40e74b216427cf7aa37f4b87d15fc4a5b",
+          "raw_observations:22901437#sha256:a2db57aceebd56be7d045ef23098c384ee17401fa3b9de1112116c82937dffda",
+          "raw_observations:23064697#sha256:af2438067896629be3653585e5a72e6dabc073f428870a33ed7875c150dadd73",
+          "raw_observations:23228194#sha256:e24da876c2c084c7c5ffa2f54407afbb0cdd172f70271ac988e9178af6b2fdc2",
+          "raw_observations:23397016#sha256:7eed1e4ea8913002486a0a31e308368240484dfe75c7072dc43fc948c9c57300",
+          "raw_observations:23562644#sha256:a0c3a64a55e0c9c8ad9c9cd553ea245c091eacc101014e71b2b35297cfacb68f",
+          "raw_observations:23726320#sha256:4262b7cdecb4a45ba4d10368d93d4d10a24f501fd03e23932b48f3cb0ea7f677",
+          "raw_observations:23891517#sha256:9de7856d2ec453a3f4db195c652dc67559a65cb7868d9cc1db2db90cabec8829",
+          "raw_observations:24072865#sha256:b852a887c56194648c60eb6e27e45474681cb7844ff3441ca39d4a673ebac24d",
+          "raw_observations:24247610#sha256:da61a2ae9f269e5d1b4313b543afe1ce38a907da224d3e2615a87984da2b4750",
+          "raw_observations:24422209#sha256:1f61ce89b8061d8769ae3ff0f8f0f56f5ed32f1fbfbcd93810f4ec0911366078",
+          "raw_observations:24620530#sha256:05146badb93ce3947a371ede2c3e71d2eef55c1932431cacc50fe2ad5ae1644f",
+          "raw_observations:24836833#sha256:0e46b8313e020f8366ce416fbfc2284721a3d0ac14164a2aa2adb68344513382",
+          "raw_observations:25038723#sha256:c2434647a80841133948524e5c39991a51fb1c072fa62b761e86df97f95a4c98",
+          "raw_observations:25228962#sha256:585b516149ec814a40043ba7a2ebf5b597257a08a51c52d24154f0175aa38f85",
+          "raw_observations:25417362#sha256:2a5b41e4bc1052fcb193744ad64531f52f34c284a0b971110504717677859250",
+          "raw_observations:25603557#sha256:41c636d4988cfb7c90961869d57605049d5086a88ed1c68f44ec61d1749ea218",
+          "raw_observations:25792714#sha256:b6767809ec0f8ec8f53f57d046d2ea2a95703bc33f531f693b5e0b872e773688",
+          "raw_observations:25977798#sha256:b7a81b29c7738d1bc5b25649409b9e234f47b8470fc05044d24bae0c72695f90"
+        ],
+        "limits": [
+          "Archive coverage is bounded by the recorded REST requests; no retention prefix or continuous-history claim.",
+          "Position chains are local arithmetic reconstructions only; listed ruptures are not bridged.",
+          "Price results include only locally bounded flat-to-flat or reversal episodes, in each market quote unit.",
+          "Signed fees remain in their archived fee token and are not merged with price result.",
+          "Funding remains separate in the archived USDC field; only exact strict-interior position matches are attributed.",
+          "No trader intent, unfilled orders, queue priority or external hedge is inferred."
+        ],
+        "markets": {
+          "ETH": {
+            "activity": {
+              "crossed_unknown_count": 0,
+              "first_fill_event_ms": 1791278662655,
+              "last_fill_event_ms": 1791761360968,
+              "maker_fill_count": 19279,
+              "taker_fill_count": 3861,
+              "unique_fill_count": 23140
+            },
+            "funding": {
+              "continuity_unknown": true,
+              "currency": "USDC field as archived",
+              "observed_amount_usdc": "1.110173",
+              "observed_event_count": 134,
+              "strictly_position_attributed_amount_usdc": "0.298373",
+              "strictly_position_attributed_event_count": 102,
+              "unattributed_amount_usdc_by_reason": {
+                "no_strict_prior_position_observation": "0.063408",
+                "outside_or_multiple_bounded_episodes": "0.748392"
+              },
+              "unattributed_event_count": 32
+            },
+            "positions": {
+              "ambiguous_timestamp_groups": 0,
+              "fills_skipped_missing_position_fields": 0,
+              "invalid_timestamp_group_count": 0,
+              "invalid_timestamp_group_examples": [],
+              "invalid_timestamp_groups_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "left_censored_close_count": 2,
+              "locally_reconstructible_flat_to_flat_episode_count": 1609,
+              "position_chain_rupture_count": 1,
+              "position_chain_rupture_examples": [
+                {
+                  "after_tid": "443630614956557",
+                  "after_time_ms": 1791364948722,
+                  "before_tid": "1004806171705617",
+                  "before_time_ms": 1791471388546,
+                  "elapsed_ms": 106439824,
+                  "next_start_position": "-3.1339",
+                  "position_discontinuity": "-5.6982",
+                  "previous_end_position": "2.5643"
+                }
+              ],
+              "position_chain_ruptures_fingerprint": "5c1402b73dc997731fd58247cfed75b3811a9c5e43821591f9ac7f414e6821de",
+              "position_chain_segments": [
+                {
+                  "end_ms": 1791364948722,
+                  "end_position": "2.5643",
+                  "fill_count": 5970,
+                  "left_censored": true,
+                  "right_censored": true,
+                  "segment": 1,
+                  "start_ms": 1791278662655,
+                  "start_position": "-0.6094"
+                },
+                {
+                  "end_ms": 1791761360968,
+                  "end_position": "-2.7433",
+                  "fill_count": 17170,
+                  "left_censored": true,
+                  "right_censored": true,
+                  "segment": 2,
+                  "start_ms": 1791471388546,
+                  "start_position": "-3.1339"
+                }
+              ],
+              "right_censored_open_episode_count": 2,
+              "timestamp_groups": 20180,
+              "unique_fills_with_start_position": 23140,
+              "unknown_completeness": true
+            },
+            "price_result": {
+              "bounded_episode_count": 1609,
+              "buy_notional_quote_units": "16157183.70813",
+              "buy_quantity": "6406.4698",
+              "currency": "market quote units; not converted or summed across markets",
+              "episode_examples_first_2": [
+                {
+                  "buy_notional_quote_units": "40237.84774",
+                  "buy_quantity": "14.8843",
+                  "close_type": "position_reversal",
+                  "end_ms": 1791278949540,
+                  "entry_tid": "278635054558372",
+                  "exit_tid": "307060263495506",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 38,
+                  "price_result_quote_units": "-45.68999",
+                  "sell_notional_quote_units": "40192.15775",
+                  "sell_quantity": "14.8843",
+                  "signed_fees_by_token": {
+                    "USDC": "0.1646280410177069802366835005"
+                  },
+                  "start_ms": 1791278772407
+                },
+                {
+                  "buy_notional_quote_units": "32792.65406",
+                  "buy_quantity": "12.1573",
+                  "close_type": "position_reversal",
+                  "end_ms": 1791279056774,
+                  "entry_tid": "307060263495506",
+                  "exit_tid": "248166085079357",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 38,
+                  "price_result_quote_units": "-15.84035",
+                  "sell_notional_quote_units": "32776.81371",
+                  "sell_quantity": "12.1573",
+                  "signed_fees_by_token": {
+                    "USDC": "2.931377853819904895300411747"
+                  },
+                  "start_ms": 1791278949540
+                }
+              ],
+              "episode_examples_last_2": [
+                {
+                  "buy_notional_quote_units": "7606.50302",
+                  "buy_quantity": "3.0029",
+                  "close_type": "position_reversal",
+                  "end_ms": 1791760847910,
+                  "entry_tid": "259786579374275",
+                  "exit_tid": "84777151624614",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 7,
+                  "price_result_quote_units": "5.57217",
+                  "sell_notional_quote_units": "7612.07519",
+                  "sell_quantity": "3.0029",
+                  "signed_fees_by_token": {
+                    "USDC": "0.2998087513707208307745810800"
+                  },
+                  "start_ms": 1791760669245
+                },
+                {
+                  "buy_notional_quote_units": "7969.21640",
+                  "buy_quantity": "3.1461",
+                  "close_type": "position_reversal",
+                  "end_ms": 1791761233476,
+                  "entry_tid": "84777151624614",
+                  "exit_tid": "1093186678563022",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 14,
+                  "price_result_quote_units": "3.99244",
+                  "sell_notional_quote_units": "7973.20884",
+                  "sell_quantity": "3.1461",
+                  "signed_fees_by_token": {
+                    "USDC": "0.9991375977436907431448916165"
+                  },
+                  "start_ms": 1791760847910
+                }
+              ],
+              "episodes_fingerprint": "172d767de0ca6e56019e854207de27fbd83313e68530488f456177facf8b5e54",
+              "position_reversal_count": 1609,
+              "price_result_quote_units": "1666.92573",
+              "return_to_zero_count": 0,
+              "sell_notional_quote_units": "16158850.63386",
+              "sell_quantity": "6406.4698"
+            },
+            "scope_membership": "listed_by_available_scope_report",
+            "signed_fees": {
+              "archive_fill_signed_fee_by_token": {
+                "USDC": "517.031372"
+              },
+              "basis": "archived signed fee field; reported separately from price result",
+              "bounded_episode_part_signed_fee_by_token": {
+                "USDC": "515.7141009502495024959373817"
+              },
+              "fill_count_missing_fee": 0,
+              "fill_count_with_fee": 23140,
+              "observed_fee_outside_bounded_episode_parts_by_token": {
+                "USDC": "1.3172710497504975040626183"
+              }
+            }
+          },
+          "xyz:DRAM": {
+            "activity": {
+              "crossed_unknown_count": 0,
+              "first_fill_event_ms": 1791291124563,
+              "last_fill_event_ms": 1791576748569,
+              "maker_fill_count": 2461,
+              "taker_fill_count": 0,
+              "unique_fill_count": 2461
+            },
+            "funding": {
+              "continuity_unknown": true,
+              "currency": "USDC field as archived",
+              "observed_amount_usdc": "-0.426683",
+              "observed_event_count": 18,
+              "strictly_position_attributed_amount_usdc": "-0.246499",
+              "strictly_position_attributed_event_count": 10,
+              "unattributed_amount_usdc_by_reason": {
+                "outside_or_multiple_bounded_episodes": "-0.180184"
+              },
+              "unattributed_event_count": 8
+            },
+            "positions": {
+              "ambiguous_timestamp_groups": 0,
+              "fills_skipped_missing_position_fields": 0,
+              "invalid_timestamp_group_count": 0,
+              "invalid_timestamp_group_examples": [],
+              "invalid_timestamp_groups_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "left_censored_close_count": 0,
+              "locally_reconstructible_flat_to_flat_episode_count": 181,
+              "position_chain_rupture_count": 0,
+              "position_chain_rupture_examples": [],
+              "position_chain_ruptures_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+              "position_chain_segments": [
+                {
+                  "end_ms": 1791576748569,
+                  "end_position": "0.0",
+                  "fill_count": 2461,
+                  "left_censored": false,
+                  "right_censored": false,
+                  "segment": 1,
+                  "start_ms": 1791291124563,
+                  "start_position": "0.0"
+                }
+              ],
+              "right_censored_open_episode_count": 0,
+              "timestamp_groups": 1783,
+              "unique_fills_with_start_position": 2461,
+              "unknown_completeness": true
+            },
+            "price_result": {
+              "bounded_episode_count": 181,
+              "buy_notional_quote_units": "2832239.4986",
+              "buy_quantity": "49020.6",
+              "currency": "market quote units; not converted or summed across markets",
+              "episode_examples_first_2": [
+                {
+                  "buy_notional_quote_units": "1257.1625",
+                  "buy_quantity": "20.5",
+                  "close_type": "returned_to_zero",
+                  "end_ms": 1791291136398,
+                  "entry_tid": "522940031741574",
+                  "exit_tid": "926334705641072",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 4,
+                  "price_result_quote_units": "0.0000",
+                  "sell_notional_quote_units": "1257.1625",
+                  "sell_quantity": "20.5",
+                  "signed_fees_by_token": {
+                    "USDC": "-0.007541"
+                  },
+                  "start_ms": 1791291124563
+                },
+                {
+                  "buy_notional_quote_units": "18897.0283",
+                  "buy_quantity": "308.3",
+                  "close_type": "returned_to_zero",
+                  "end_ms": 1791291275856,
+                  "entry_tid": "257902282771481",
+                  "exit_tid": "275415515616144",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 12,
+                  "price_result_quote_units": "-7.8315",
+                  "sell_notional_quote_units": "18889.1968",
+                  "sell_quantity": "308.3",
+                  "signed_fees_by_token": {
+                    "USDC": "-0.113353"
+                  },
+                  "start_ms": 1791291167887
+                }
+              ],
+              "episode_examples_last_2": [
+                {
+                  "buy_notional_quote_units": "36309.0077",
+                  "buy_quantity": "634.8",
+                  "close_type": "position_reversal",
+                  "end_ms": 1791576313497,
+                  "entry_tid": "1007949132420613",
+                  "exit_tid": "669624286316767",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 23,
+                  "price_result_quote_units": "-24.1575",
+                  "sell_notional_quote_units": "36284.8502",
+                  "sell_quantity": "634.8",
+                  "signed_fees_by_token": {
+                    "USDC": "-0.2177708196363636363636363636"
+                  },
+                  "start_ms": 1791576009297
+                },
+                {
+                  "buy_notional_quote_units": "10942.3694",
+                  "buy_quantity": "191.2",
+                  "close_type": "returned_to_zero",
+                  "end_ms": 1791576748569,
+                  "entry_tid": "669624286316767",
+                  "exit_tid": "297692343149433",
+                  "fee_part_missing_count": 0,
+                  "fill_part_count": 19,
+                  "price_result_quote_units": "-5.7161",
+                  "sell_notional_quote_units": "10936.6533",
+                  "sell_quantity": "191.2",
+                  "signed_fees_by_token": {
+                    "USDC": "-0.06562618036363636363636363636"
+                  },
+                  "start_ms": 1791576313497
+                }
+              ],
+              "episodes_fingerprint": "f5717a3435abbfa6c0825a08c87961ce0808453e9af693c203cadbfe8b94d267",
+              "position_reversal_count": 140,
+              "price_result_quote_units": "-628.8184",
+              "return_to_zero_count": 41,
+              "sell_notional_quote_units": "2831610.6802",
+              "sell_quantity": "49020.6"
+            },
+            "scope_membership": "observed_in_fill_archive_but_not_listed_by_available_scope_report",
+            "signed_fees": {
+              "archive_fill_signed_fee_by_token": {
+                "USDC": "-16.990350"
+              },
+              "basis": "archived signed fee field; reported separately from price result",
+              "bounded_episode_part_signed_fee_by_token": {
+                "USDC": "-16.99035000000000000000000001"
+              },
+              "fill_count_missing_fee": 0,
+              "fill_count_with_fee": 2461,
+              "observed_fee_outside_bounded_episode_parts_by_token": {
+                "USDC": "1E-26"
+              }
+            }
+          }
+        },
+        "network": "hyperliquid-mainnet",
+        "schema_version": "population-descriptive-summary-v1",
+        "scope_report": {
+          "available_ms": 1791761384403,
+          "declared_markets": [
+            "ETH"
+          ],
+          "profile_evidence_refs": [
+            "population_attempts:0059f6445ca44f15abe093468e1a682b"
+          ],
+          "profile_fills_observed": 150,
+          "report_id": "5d932f97d1d34d4da2a1d023796fcbe9",
+          "sha256": "83d0dc8f58cc6c7f00028ea7d6ebaac52750e4bb9c88d39270f92c4a6cbf4c30",
+          "single_report_fill_request_end_ms": 1791761371744,
+          "single_report_fill_request_start_ms": 1791757699237,
+          "single_report_observed_unique_fills": 150,
+          "single_report_window_seconds": 3672.507
+        },
+        "summary_fingerprint": "268a7df0e6360057ea6d3652db79981d1ba75880f1f6e1e82cceba6e1bc935d7"
+      },
+      "external_hedges": "unknown",
+      "fill_coverage": "unknown: bounded pagination, API retention cap, no continuity proof",
+      "market_execution_detail_v1": {
+        "ETH": {
+          "address": "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+          "by_utc_day": {
+            "2026-10-06": {
+              "bounded_episode_results_by_segment": {
+                "1": {
+                  "buy_notional_quote_units": "1838109.37331",
+                  "buy_quantity": "679.3770",
+                  "episode_count": 205,
+                  "position_reversal_count": 205,
+                  "price_result_quote_units": "138.37895",
+                  "return_to_zero_count": 0,
+                  "sell_notional_quote_units": "1838247.75226",
+                  "sell_quantity": "679.3770",
+                  "signed_fees_by_token": {
+                    "USDC": "25.79543582271542683651164995"
+                  }
+                }
+              },
+              "crossed_fee_groups": {
+                "crossed_unknown": {
+                  "fill_count": 0,
+                  "signed_fees_by_token": {},
+                  "size": "0"
+                },
+                "maker_crossed_false": {
+                  "fill_count": 2792,
+                  "signed_fees_by_token": {
+                    "USDC": "-90.431673"
+                  },
+                  "size": "1114.0669"
+                },
+                "taker_crossed_true": {
+                  "fill_count": 444,
+                  "signed_fees_by_token": {
+                    "USDC": "115.465811"
+                  },
+                  "size": "254.0787"
+                }
+              },
+              "crossed_unknown_count": 0,
+              "fill_count": 3236,
+              "maker_fill_count": 2792,
+              "notional_quote_units": "3701734.22967",
+              "position_increase_fill_count": 1633,
+              "position_neutral_fill_count": 0,
+              "position_reduction_fill_count": 1603,
+              "reversal_close_quantity": "121.8899",
+              "reversal_fill_count": 206,
+              "reversal_open_quantity": "110.2631",
+              "signed_fees_by_token": {
+                "USDC": "25.034138"
+              },
+              "size": "1368.1456",
+              "taker_fill_count": 444
+            },
+            "2026-10-07": {
+              "bounded_episode_results_by_segment": {
+                "1": {
+                  "buy_notional_quote_units": "1940638.33642",
+                  "buy_quantity": "740.1333",
+                  "episode_count": 183,
+                  "position_reversal_count": 183,
+                  "price_result_quote_units": "352.46197",
+                  "return_to_zero_count": 0,
+                  "sell_notional_quote_units": "1940990.79839",
+                  "sell_quantity": "740.1333",
+                  "signed_fees_by_token": {
+                    "USDC": "64.15871032605344849613776607"
+                  }
+                }
+              },
+              "crossed_fee_groups": {
+                "crossed_unknown": {
+                  "fill_count": 0,
+                  "signed_fees_by_token": {},
+                  "size": "0"
+                },
+                "maker_crossed_false": {
+                  "fill_count": 2249,
+                  "signed_fees_by_token": {
+                    "USDC": "-89.419367"
+                  },
+                  "size": "1137.1785"
+                },
+                "taker_crossed_true": {
+                  "fill_count": 485,
+                  "signed_fees_by_token": {
+                    "USDC": "154.374909"
+                  },
+                  "size": "350.1196"
+                }
+              },
+              "crossed_unknown_count": 0,
+              "fill_count": 2734,
+              "maker_fill_count": 2249,
+              "notional_quote_units": "3899582.47811",
+              "position_increase_fill_count": 1380,
+              "position_neutral_fill_count": 0,
+              "position_reduction_fill_count": 1354,
+              "reversal_close_quantity": "139.1231",
+              "reversal_fill_count": 183,
+              "reversal_open_quantity": "142.2619",
+              "signed_fees_by_token": {
+                "USDC": "64.955542"
+              },
+              "size": "1487.2981",
+              "taker_fill_count": 485
+            },
+            "2026-10-08": {
+              "bounded_episode_results_by_segment": {
+                "2": {
+                  "buy_notional_quote_units": "4909474.48350",
+                  "buy_quantity": "2008.1335",
+                  "episode_count": 365,
+                  "position_reversal_count": 365,
+                  "price_result_quote_units": "668.21723",
+                  "return_to_zero_count": 0,
+                  "sell_notional_quote_units": "4910142.70073",
+                  "sell_quantity": "2008.1335",
+                  "signed_fees_by_token": {
+                    "USDC": "344.7385185366413061960212306"
+                  }
+                }
+              },
+              "crossed_fee_groups": {
+                "crossed_unknown": {
+                  "fill_count": 0,
+                  "signed_fees_by_token": {},
+                  "size": "0"
+                },
+                "maker_crossed_false": {
+                  "fill_count": 4123,
+                  "signed_fees_by_token": {
+                    "USDC": "-198.326907"
+                  },
+                  "size": "2702.8194"
+                },
+                "taker_crossed_true": {
+                  "fill_count": 1237,
+                  "signed_fees_by_token": {
+                    "USDC": "544.509632"
+                  },
+                  "size": "1326.2852"
+                }
+              },
+              "crossed_unknown_count": 0,
+              "fill_count": 5360,
+              "maker_fill_count": 4123,
+              "notional_quote_units": "9852098.43357",
+              "position_increase_fill_count": 2624,
+              "position_neutral_fill_count": 0,
+              "position_reduction_fill_count": 2736,
+              "reversal_close_quantity": "351.2536",
+              "reversal_fill_count": 366,
+              "reversal_open_quantity": "339.5708",
+              "signed_fees_by_token": {
+                "USDC": "346.182725"
+              },
+              "size": "4029.1046",
+              "taker_fill_count": 1237
+            },
+            "2026-10-09": {
+              "bounded_episode_results_by_segment": {
+                "2": {
+                  "buy_notional_quote_units": "2610066.81972",
+                  "buy_quantity": "1047.8750",
+                  "episode_count": 318,
+                  "position_reversal_count": 318,
+                  "price_result_quote_units": "379.21067",
+                  "return_to_zero_count": 0,
+                  "sell_notional_quote_units": "2610446.03039",
+                  "sell_quantity": "1047.8750",
+                  "signed_fees_by_token": {
+                    "USDC": "123.3948996868827729129937610"
+                  }
+                }
+              },
+              "crossed_fee_groups": {
+                "crossed_unknown": {
+                  "fill_count": 0,
+                  "signed_fees_by_token": {},
+                  "size": "0"
+                },
+                "maker_crossed_false": {
+                  "fill_count": 4200,
+                  "signed_fees_by_token": {
+                    "USDC": "-114.249124"
+                  },
+                  "size": "1529.0610"
+                },
+                "taker_crossed_true": {
+                  "fill_count": 1002,
+                  "signed_fees_by_token": {
+                    "USDC": "237.582610"
+                  },
+                  "size": "567.5113"
+                }
+              },
+              "crossed_unknown_count": 0,
+              "fill_count": 5202,
+              "maker_fill_count": 4200,
+              "notional_quote_units": "5222559.97943",
+              "position_increase_fill_count": 2577,
+              "position_neutral_fill_count": 0,
+              "position_reduction_fill_count": 2625,
+              "reversal_close_quantity": "210.6009",
+              "reversal_fill_count": 318,
+              "reversal_open_quantity": "194.7400",
+              "signed_fees_by_token": {
+                "USDC": "123.333486"
+              },
+              "size": "2096.5723",
+              "taker_fill_count": 1002
+            },
+            "2026-10-10": {
+              "bounded_episode_results_by_segment": {
+                "2": {
+                  "buy_notional_quote_units": "2064555.70291",
+                  "buy_quantity": "823.9945",
+                  "episode_count": 226,
+                  "position_reversal_count": 226,
+                  "price_result_quote_units": "-70.14370",
+                  "return_to_zero_count": 0,
+                  "sell_notional_quote_units": "2064485.55921",
+                  "sell_quantity": "823.9945",
+                  "signed_fees_by_token": {
+                    "USDC": "-65.21273731396107847806289405"
+                  }
+                }
+              },
+              "crossed_fee_groups": {
+                "crossed_unknown": {
+                  "fill_count": 0,
+                  "signed_fees_by_token": {},
+                  "size": "0"
+                },
+                "maker_crossed_false": {
+                  "fill_count": 2722,
+                  "signed_fees_by_token": {
+                    "USDC": "-115.469053"
+                  },
+                  "size": "1536.1540"
+                },
+                "taker_crossed_true": {
+                  "fill_count": 212,
+                  "signed_fees_by_token": {
+                    "USDC": "49.769723"
+                  },
+                  "size": "118.2974"
+                }
+              },
+              "crossed_unknown_count": 0,
+              "fill_count": 2934,
+              "maker_fill_count": 2722,
+              "notional_quote_units": "4145261.18834",
+              "position_increase_fill_count": 1572,
+              "position_neutral_fill_count": 0,
+              "position_reduction_fill_count": 1362,
+              "reversal_close_quantity": "160.6817",
+              "reversal_fill_count": 226,
+              "reversal_open_quantity": "182.1868",
+              "signed_fees_by_token": {
+                "USDC": "-65.699330"
+              },
+              "size": "1654.4514",
+              "taker_fill_count": 212
+            },
+            "2026-10-11": {
+              "bounded_episode_results_by_segment": {
+                "2": {
+                  "buy_notional_quote_units": "2794338.99227",
+                  "buy_quantity": "1106.9565",
+                  "episode_count": 312,
+                  "position_reversal_count": 312,
+                  "price_result_quote_units": "198.80061",
+                  "return_to_zero_count": 0,
+                  "sell_notional_quote_units": "2794537.79288",
+                  "sell_quantity": "1106.9565",
+                  "signed_fees_by_token": {
+                    "USDC": "22.83927389191762653233586876"
+                  }
+                }
+              },
+              "crossed_fee_groups": {
+                "crossed_unknown": {
+                  "fill_count": 0,
+                  "signed_fees_by_token": {},
+                  "size": "0"
+                },
+                "maker_crossed_false": {
+                  "fill_count": 3193,
+                  "signed_fees_by_token": {
+                    "USDC": "-138.446358"
+                  },
+                  "size": "1828.7497"
+                },
+                "taker_crossed_true": {
+                  "fill_count": 481,
+                  "signed_fees_by_token": {
+                    "USDC": "161.671169"
+                  },
+                  "size": "380.4998"
+                }
+              },
+              "crossed_unknown_count": 0,
+              "fill_count": 3674,
+              "maker_fill_count": 3193,
+              "notional_quote_units": "5577261.79679",
+              "position_increase_fill_count": 1808,
+              "position_neutral_fill_count": 0,
+              "position_reduction_fill_count": 1866,
+              "reversal_close_quantity": "243.9737",
+              "reversal_fill_count": 312,
+              "reversal_open_quantity": "238.2819",
+              "signed_fees_by_token": {
+                "USDC": "23.224811"
+              },
+              "size": "2209.2495",
+              "taker_fill_count": 481
+            }
+          },
+          "coverage": {
+            "ambiguous_timestamp_groups": 0,
+            "continuity_proven": false,
+            "fill_archive": {
+              "conflicting_fill_id_examples": [],
+              "conflicting_fill_identity_count": 0,
+              "continuity_proven": false,
+              "decoded_record_count": 25614,
+              "duplicate_fill_instances": 13,
+              "first_fill_event_ms": 1791278662655,
+              "first_fill_event_utc": "2026-10-06T09:24:22.655+00:00",
+              "first_observed_at": "2026-10-07T09:24:32.102+00:00",
+              "last_fill_event_ms": 1791761360968,
+              "last_fill_event_utc": "2026-10-11T23:29:20.968+00:00",
+              "last_observed_at": "2026-10-11T23:29:32.433+00:00",
+              "note": "Counts are deduplicated observations within archived request windows, not an exhaustive account history. REST recorder marks source pages incomplete; page exhaustion is not retention proof.",
+              "pagination_status_counts": {
+                "page_budget_exhausted": 11,
+                "pagination_exhausted": 46
+              },
+              "raw_observation_complete_false_count": 57,
+              "raw_observation_complete_true_count": 0,
+              "raw_observation_count": 57,
+              "records_after_cutoff_excluded": 0,
+              "retention_proven": false,
+              "rows_missing_identity_or_time": 0,
+              "unbounded_request_window_count": 0,
+              "unique_fill_id_count": 25601,
+              "usable_unique_fill_count": 25601
+            },
+            "invalid_timestamp_groups": 0,
+            "position_chain_segment_count": 2,
+            "rupture_count": 1,
+            "ruptures_fingerprint": "5c1402b73dc997731fd58247cfed75b3811a9c5e43821591f9ac7f414e6821de",
+            "selected_market_fill_count": 23140
+          },
+          "cutoff_ms": 1791789394195,
+          "detail_fingerprint": "7b3137cdf04d0fe72f01b7010924b0ad9965c5e18d3e97466f6aee5b5b5ae511",
+          "evidence_fingerprint": "893e1a68bc1227147d4cb9ed0b33638c0daea59da447ec64e9df5e293c33ccfd",
+          "evidence_refs": [
+            "raw_observations:7196410#sha256:1066634f67b01d67783a86303a24d725c929028d72d138356c066c1b1042e102",
+            "raw_observations:7196993#sha256:1e3fc0e196f96f8b5257c80bf69b06a6da4955e2193ad82a470daf652d979b9e",
+            "raw_observations:7197684#sha256:f94a32b4e7d65db1ba4bc05e47cf806b4664d22897b28b58f1dcfb92a21538a9",
+            "raw_observations:7309960#sha256:5d42729d958d9d8d09a0982c31300575a60ed60a665a75a37cc01ccd5fda744b",
+            "raw_observations:18202777#sha256:9715adf792e88be930479bb13ab51b2d35ba12ac6198eecb91c46d690b89e750",
+            "raw_observations:18203203#sha256:3a3710874e25a589e0993d46cea91289f40c208669bc2532377124e6a81ed0b1",
+            "raw_observations:18203571#sha256:8696141d5e06e2db09db69d2cff0bf39933a7c19b234f24418d7878d9574f215",
+            "raw_observations:18323996#sha256:eb59f5cc9dfec64258ddf11053f27da325ff56c16937d96522091a5c3659c8bb",
+            "raw_observations:18324315#sha256:7e135d591dc01aa3e6647e499b51bb0343f9acdfaabc0d6e2ba3f47c53829864",
+            "raw_observations:18324810#sha256:cfdbe127ec12279079bea933f973466c03cbe94ea0b552b43ead9e83306479e7",
+            "raw_observations:18375266#sha256:611cbdd09eb5ec08fe0970cf65943e37eb2bbcd7529a50785d907bb063ad486a",
+            "raw_observations:18375604#sha256:7bef5d2ca2209bba8a0510b2ecc65eb0f115834ca7b005079706513f0a21c710",
+            "raw_observations:18545441#sha256:f99480a8ed8f0406f06503f9712f734f7db5c42c738b48fa13d8b0613a6849d2",
+            "raw_observations:18707779#sha256:724c116054a36b28cc44c76c39093e02132bedd4525476bffd8a4518b166732e",
+            "raw_observations:18865530#sha256:b02e545804619ab47e38eba3aaf20290035db1de7fb92563659756808cc1a322",
+            "raw_observations:19027285#sha256:21f77980667ce4957c4c1a6e6c98d04a0d99dd75fcbd70ce5c811e90f29fa7d6",
+            "raw_observations:19191298#sha256:e69bafd4b1a2cd18d0560f83f2ac0f8e754511a142a59be1b4ede43b32712cc1",
+            "raw_observations:19355796#sha256:a815d916140be58b6b62fbca7cb810bad2134e30dae56fcd44c81ea8ca9461d8",
+            "raw_observations:19525774#sha256:815d78a3764711c5dc7b9bfd1ff2856f18224e48d73d99cc70c28e4f9f5f93b4",
+            "raw_observations:19686025#sha256:73d7d74cc210288f7ce6c089fb23fc6e726960a8413c944121f0991fdb6793c2",
+            "raw_observations:19845722#sha256:63a6250c521c5541351b81b4e6d3b9988b77ecaaaa7c6e1e68ac58a6f292a68b",
+            "raw_observations:20001117#sha256:edd9602bb86ed00470cfffb5382fa2ce68f2ab909f9437bcd810474f380cd1c3",
+            "raw_observations:20161615#sha256:1c433196de9f9b48ae2f9be9125d19720affe93ff41882b9818145037bba9da9",
+            "raw_observations:20323244#sha256:27f822e99f6e4ca133a2a5ccec9274a3f3d7a58b4e5d0ac299fd51c9417a6db3",
+            "raw_observations:20500165#sha256:e3818e0648d3b73bf4731210256bfd4a377691f70d72cfc7b381325fba037241",
+            "raw_observations:20676252#sha256:4603d87f55c09910edd84299ef1d9af5375c107695cb723e1dfffa5bd527969b",
+            "raw_observations:20845018#sha256:87755b85d25e9685ed48c651991fe5e936b04c634b90cfc3a98b4c6546ab64e7",
+            "raw_observations:21008328#sha256:27f5824e098189251d47e5cf1c04d7564bf6d5cf0689b7c43fba967ab40b2346",
+            "raw_observations:21174177#sha256:b0ea1359f73ca0e005b82513f53daccc7073e343e239bdd2b9e2230d8a63a93d",
+            "raw_observations:21339236#sha256:6e9835490805738a544093179f199763be32d2c5b1fcf8968dfab5f32e02b43e",
+            "raw_observations:21501686#sha256:bbe7a31d35d3519d4455079b4c715baa1f2d81bb437659d127c91989a5d293f3",
+            "raw_observations:21665142#sha256:3e83349b1883984a52a034d5961b6c2d3cac9da83e26a1a692f3b937eda16cc2",
+            "raw_observations:21828129#sha256:991692eac79649917533ffa73f1e8d32b95ea12969f4d3fabe6dff97a094b980",
+            "raw_observations:22075635#sha256:43a9f38c62828500842b9abc5e2e3648b6a9e731266e11bf40d24a9cfcdc6107",
+            "raw_observations:22237819#sha256:7f3e87f69529fd727b62e629e93317c243e9c1b593f6edd9a2c984a3e0281f28",
+            "raw_observations:22398806#sha256:7662fb9df72a8cc97aa5adb4719fa584158a6f757786fde46bb27db9ed07d50c",
+            "raw_observations:22567295#sha256:289660c9419978ee98f62a2d1d7a94529592d6c9398b5cb97b57a12a5a76f4f4",
+            "raw_observations:22737214#sha256:7194215f7980294f357226feb2c32b24e65c0fda6a0ebcf37ae2dd598561c569",
+            "raw_observations:22900960#sha256:ba5b4380a2210bbf8c22d133645b70c3879e7b6c5d9254d3113d1a27b5b4ff2c",
+            "raw_observations:23064293#sha256:0f5889eab6f336309e515002227d0c3fd56f064ed2e9422f8dca356ca13f3890",
+            "raw_observations:23227895#sha256:554e7dfa43e146bb5dcaa6a7681ee71b2edfec76b136a8be3d39652e2839231c",
+            "raw_observations:23396551#sha256:daa909e91e9940ce3c6d851ffff4b997705333c4dc2df9c839f5407a73f7f929",
+            "raw_observations:23562268#sha256:926f40770f799c9a98b8274ffa695157141ad02ce484ba0bf17e9a0a71ece671",
+            "raw_observations:23725944#sha256:611e38964d7e6ec5838e570d179e75d417b02abadc0431ee364bfbdb2dddaa8b",
+            "raw_observations:23891286#sha256:d861b6ee5b8a9e4ea67574c8966eab61c9046d368c49653d1cfb42ecded1ee78",
+            "raw_observations:24072362#sha256:ebef42b3c47b9fbf78e53027e2048c05c16bee494372e91624ee1939de3a4ec2",
+            "raw_observations:24247134#sha256:02d697243c0e1337983f663f06ae843aaff3d0566ee0032d2c6cdc2a4b7aa83a",
+            "raw_observations:24421868#sha256:647a856620f2f4c6f7cf63c3f9cc612662f59d0071ec07732d96afaee9791f9f",
+            "raw_observations:24620042#sha256:aa1d398d1240369eafd534f2bee3216bb03fb65142e3e88211ad83ecd8a857b2",
+            "raw_observations:24835819#sha256:d11de8172f0dca20280ac1379d9cbf010aed8cb086c6cd8087b7100d228d8f99",
+            "raw_observations:24836314#sha256:4b7a7b0891545bab1bcf82c0dd91284c2ba957e739f5d3f93012201afa217e5e",
+            "raw_observations:25038231#sha256:ca79361d5d1a83fce1493a1c395c646b4a460386ccb039f6ab1c0294d90d35ed",
+            "raw_observations:25228502#sha256:f173d5791d68f7756fff6ae4fc1b98497ff78f4210199da5c2c1a33f36fc0b33",
+            "raw_observations:25416847#sha256:54ce7b90f1c1f44fae6ccc985b56b68142728067acf42e2ab31c7c868d8c6dff",
+            "raw_observations:25603126#sha256:2d04d95976a7e98dc6e06cbf769d114d49e2c634e7efeb4a9fd89df137de0175",
+            "raw_observations:25792335#sha256:82998ae9055f5f229acbaf0bc0086575feb927dbafc78889f9d083965e6df116",
+            "raw_observations:25977411#sha256:89d3941e4881a46f1fba9975a0ca657289d4b8df230f72a0c2af66b62950971e"
+          ],
+          "execution_activity": {
+            "crossed_fee_groups": {
+              "crossed_unknown": {
+                "fill_count": 0,
+                "signed_fees_by_token": {},
+                "size": "0"
+              },
+              "maker_crossed_false": {
+                "fill_count": 19279,
+                "signed_fees_by_token": {
+                  "USDC": "-746.342482"
+                },
+                "size": "9848.0295"
+              },
+              "taker_crossed_true": {
+                "fill_count": 3861,
+                "signed_fees_by_token": {
+                  "USDC": "1263.373854"
+                },
+                "size": "2996.7920"
+              }
+            },
+            "crossed_unknown_count": 0,
+            "fill_count": 23140,
+            "maker_fill_count": 19279,
+            "notional_quote_units": "32398498.10591",
+            "position_increase_fill_count": 11594,
+            "position_neutral_fill_count": 0,
+            "position_reduction_fill_count": 11546,
+            "reversal_close_quantity": "1227.5229",
+            "reversal_fill_count": 1611,
+            "reversal_open_quantity": "1207.3045",
+            "signed_fees_by_token": {
+              "USDC": "517.031372"
+            },
+            "size": "12844.8215",
+            "taker_fill_count": 3861
+          },
+          "fees_signed_by_token": {
+            "USDC": "517.031372"
+          },
+          "interpretation_limits": [
+            "Fills establish executions, not placement, amendment, cancellation, queue position or unfilled target orders.",
+            "Position increase/reduction counts compare abs(startPosition) with the post-fill position; reversals are separately split into closed and opened quantities.",
+            "Segments and episodes are local arithmetic reconstructions from incomplete archived request windows; gaps and censored endpoints remain.",
+            "Maker/taker grouping uses the archived crossed flag; it does not reveal why or where an order was placed."
+          ],
+          "market": "ETH",
+          "network": "hyperliquid-mainnet",
+          "position_path": {
+            "episodes": {
+              "count": 1609,
+              "duration_ms": {
+                "max": "6240001",
+                "min": "0",
+                "p50": "72959",
+                "p95": "954300"
+              },
+              "episodes_fingerprint": "d3163a7453eeeb82c58c4382b330f2c4cb63429c51e08344d00a9eb35239b73b",
+              "fill_size": {
+                "count": 23140,
+                "max": "2.5153",
+                "min": "0.0001",
+                "p50": "0.1",
+                "p95": "2.3787"
+              },
+              "peak_abs_position": {
+                "max": "10.1813",
+                "min": "0.0168",
+                "p50": "2.3153",
+                "p95": "5.6071"
+              },
+              "position_reversal_count": 1609,
+              "return_to_zero_count": 0
+            },
+            "ruptures": [
+              {
+                "after_tid": "443630614956557",
+                "after_time_ms": 1791364948722,
+                "before_tid": "1004806171705617",
+                "before_time_ms": 1791471388546,
+                "elapsed_ms": 106439824,
+                "next_start_position": "-3.1339",
+                "position_discontinuity": "-5.6982",
+                "previous_end_position": "2.5643"
+              }
+            ],
+            "segments": {
+              "1": {
+                "activity": {
+                  "crossed_fee_groups": {
+                    "crossed_unknown": {
+                      "fill_count": 0,
+                      "signed_fees_by_token": {},
+                      "size": "0"
+                    },
+                    "maker_crossed_false": {
+                      "fill_count": 5041,
+                      "signed_fees_by_token": {
+                        "USDC": "-179.851040"
+                      },
+                      "size": "2251.2454"
+                    },
+                    "taker_crossed_true": {
+                      "fill_count": 929,
+                      "signed_fees_by_token": {
+                        "USDC": "269.840720"
+                      },
+                      "size": "604.1983"
+                    }
+                  },
+                  "crossed_unknown_count": 0,
+                  "fill_count": 5970,
+                  "maker_fill_count": 5041,
+                  "notional_quote_units": "7601316.70778",
+                  "position_increase_fill_count": 3013,
+                  "position_neutral_fill_count": 0,
+                  "position_reduction_fill_count": 2957,
+                  "reversal_close_quantity": "261.0130",
+                  "reversal_fill_count": 389,
+                  "reversal_open_quantity": "252.5250",
+                  "signed_fees_by_token": {
+                    "USDC": "89.989680"
+                  },
+                  "size": "2855.4437",
+                  "taker_fill_count": 929
+                },
+                "bounded_episode_count": 388,
+                "bounded_episode_examples_first_2": [
+                  {
+                    "buy_notional_quote_units": "40237.84774",
+                    "buy_quantity": "14.8843",
+                    "close_type": "position_reversal",
+                    "duration_ms": 177133,
+                    "end_ms": 1791278949540,
+                    "entry_tid": "278635054558372",
+                    "exit_tid": "307060263495506",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 38,
+                    "peak_abs_position": "5.0286",
+                    "price_result_quote_units": "-45.68999",
+                    "segment": 1,
+                    "sell_notional_quote_units": "40192.15775",
+                    "sell_quantity": "14.8843",
+                    "signed_fees_by_token": {
+                      "USDC": "0.1646280410177069802366835005"
+                    },
+                    "start_ms": 1791278772407
+                  },
+                  {
+                    "buy_notional_quote_units": "32792.65406",
+                    "buy_quantity": "12.1573",
+                    "close_type": "position_reversal",
+                    "duration_ms": 107234,
+                    "end_ms": 1791279056774,
+                    "entry_tid": "307060263495506",
+                    "exit_tid": "248166085079357",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 38,
+                    "peak_abs_position": "4.8265",
+                    "price_result_quote_units": "-15.84035",
+                    "segment": 1,
+                    "sell_notional_quote_units": "32776.81371",
+                    "sell_quantity": "12.1573",
+                    "signed_fees_by_token": {
+                      "USDC": "2.931377853819904895300411747"
+                    },
+                    "start_ms": 1791278949540
+                  }
+                ],
+                "bounded_episode_examples_last_2": [
+                  {
+                    "buy_notional_quote_units": "5728.10523",
+                    "buy_quantity": "2.1983",
+                    "close_type": "position_reversal",
+                    "duration_ms": 64643,
+                    "end_ms": 1791364787587,
+                    "entry_tid": "664858563295020",
+                    "exit_tid": "297985720567326",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 5,
+                    "peak_abs_position": "2.1983",
+                    "price_result_quote_units": "-0.12991",
+                    "segment": 1,
+                    "sell_notional_quote_units": "5727.97532",
+                    "sell_quantity": "2.1983",
+                    "signed_fees_by_token": {
+                      "USDC": "-0.3436803020855185552481484924"
+                    },
+                    "start_ms": 1791364722944
+                  },
+                  {
+                    "buy_notional_quote_units": "491.74848",
+                    "buy_quantity": "0.1888",
+                    "close_type": "position_reversal",
+                    "duration_ms": 6994,
+                    "end_ms": 1791364794581,
+                    "entry_tid": "297985720567326",
+                    "exit_tid": "960894753931889",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 2,
+                    "peak_abs_position": "0.9931",
+                    "price_result_quote_units": "0.11328",
+                    "segment": 1,
+                    "sell_notional_quote_units": "491.86176",
+                    "sell_quantity": "0.1888",
+                    "signed_fees_by_token": {
+                      "USDC": "-0.02950812376680159953092798180"
+                    },
+                    "start_ms": 1791364787587
+                  }
+                ],
+                "bounded_episode_fingerprint": "1688ca4cf9846b3afdc2983328b51485556016feabe156c99439567e27bd652f",
+                "bounded_episode_price_result_quote_units": "490.84092",
+                "bounded_episode_return_to_zero_count": 0,
+                "bounded_episode_reversal_count": 388,
+                "bounded_episode_signed_fees_by_token": {
+                  "USDC": "89.95414614876887533264941601"
+                },
+                "end_ms": 1791364948722,
+                "fill_count": 5970,
+                "start_ms": 1791278662655
+              },
+              "2": {
+                "activity": {
+                  "crossed_fee_groups": {
+                    "crossed_unknown": {
+                      "fill_count": 0,
+                      "signed_fees_by_token": {},
+                      "size": "0"
+                    },
+                    "maker_crossed_false": {
+                      "fill_count": 14238,
+                      "signed_fees_by_token": {
+                        "USDC": "-566.491442"
+                      },
+                      "size": "7596.7841"
+                    },
+                    "taker_crossed_true": {
+                      "fill_count": 2932,
+                      "signed_fees_by_token": {
+                        "USDC": "993.533134"
+                      },
+                      "size": "2392.5937"
+                    }
+                  },
+                  "crossed_unknown_count": 0,
+                  "fill_count": 17170,
+                  "maker_fill_count": 14238,
+                  "notional_quote_units": "24797181.39813",
+                  "position_increase_fill_count": 8581,
+                  "position_neutral_fill_count": 0,
+                  "position_reduction_fill_count": 8589,
+                  "reversal_close_quantity": "966.5099",
+                  "reversal_fill_count": 1222,
+                  "reversal_open_quantity": "954.7795",
+                  "signed_fees_by_token": {
+                    "USDC": "427.041692"
+                  },
+                  "size": "9989.3778",
+                  "taker_fill_count": 2932
+                },
+                "bounded_episode_count": 1221,
+                "bounded_episode_examples_first_2": [
+                  {
+                    "buy_notional_quote_units": "11074.79477",
+                    "buy_quantity": "4.3814",
+                    "close_type": "position_reversal",
+                    "duration_ms": 112495,
+                    "end_ms": 1791471798566,
+                    "entry_tid": "409640885454570",
+                    "exit_tid": "1097237132355409",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 11,
+                    "peak_abs_position": "1.5353",
+                    "price_result_quote_units": "-2.25524",
+                    "segment": 2,
+                    "sell_notional_quote_units": "11072.53953",
+                    "sell_quantity": "4.3814",
+                    "signed_fees_by_token": {
+                      "USDC": "0.6974018962163963201408716891"
+                    },
+                    "start_ms": 1791471686071
+                  },
+                  {
+                    "buy_notional_quote_units": "5028.83501",
+                    "buy_quantity": "1.9910",
+                    "close_type": "position_reversal",
+                    "duration_ms": 57766,
+                    "end_ms": 1791471856332,
+                    "entry_tid": "1097237132355409",
+                    "exit_tid": "464366782754428",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 7,
+                    "peak_abs_position": "1.9591",
+                    "price_result_quote_units": "-0.78608",
+                    "segment": 2,
+                    "sell_notional_quote_units": "5028.04893",
+                    "sell_quantity": "1.9910",
+                    "signed_fees_by_token": {
+                      "USDC": "-0.3017039296753171745952293860"
+                    },
+                    "start_ms": 1791471798566
+                  }
+                ],
+                "bounded_episode_examples_last_2": [
+                  {
+                    "buy_notional_quote_units": "7606.50302",
+                    "buy_quantity": "3.0029",
+                    "close_type": "position_reversal",
+                    "duration_ms": 178665,
+                    "end_ms": 1791760847910,
+                    "entry_tid": "259786579374275",
+                    "exit_tid": "84777151624614",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 7,
+                    "peak_abs_position": "2.9983",
+                    "price_result_quote_units": "5.57217",
+                    "segment": 2,
+                    "sell_notional_quote_units": "7612.07519",
+                    "sell_quantity": "3.0029",
+                    "signed_fees_by_token": {
+                      "USDC": "0.2998087513707208307745810800"
+                    },
+                    "start_ms": 1791760669245
+                  },
+                  {
+                    "buy_notional_quote_units": "7969.21640",
+                    "buy_quantity": "3.1461",
+                    "close_type": "position_reversal",
+                    "duration_ms": 385566,
+                    "end_ms": 1791761233476,
+                    "entry_tid": "84777151624614",
+                    "exit_tid": "1093186678563022",
+                    "fee_part_missing_count": 0,
+                    "fill_part_count": 14,
+                    "peak_abs_position": "2.9719",
+                    "price_result_quote_units": "3.99244",
+                    "segment": 2,
+                    "sell_notional_quote_units": "7973.20884",
+                    "sell_quantity": "3.1461",
+                    "signed_fees_by_token": {
+                      "USDC": "0.9991375977436907431448916165"
+                    },
+                    "start_ms": 1791760847910
+                  }
+                ],
+                "bounded_episode_fingerprint": "6fe24c5f3abafeafda43e6cec2ed2513104108b6ebb3ba09a26ce710a7e5447d",
+                "bounded_episode_price_result_quote_units": "1176.08481",
+                "bounded_episode_return_to_zero_count": 0,
+                "bounded_episode_reversal_count": 1221,
+                "bounded_episode_signed_fees_by_token": {
+                  "USDC": "425.7599548014806271632879657"
+                },
+                "end_ms": 1791761360968,
+                "fill_count": 17170,
+                "start_ms": 1791471388546
+              }
+            }
+          },
+          "schema_version": "population-market-execution-detail-v1"
+        }
+      },
+      "market_mechanisms": [
+        {
+          "available_ms": 1791758348995,
+          "collateral": {
+            "currency": "USDC",
+            "token_id": "0x6d1e7cde53ba9467b783cb7c530ce054"
+          },
+          "engine_capabilities": {
+            "isolated_margin_tiers": "unsupported",
+            "multi_instrument": "extension required",
+            "non_usdc_accounting": "unsupported in legacy strategy engine",
+            "passive_queue": "unsupported; zero simulated fills",
+            "single_instrument_ioc": "implemented conservative visible-liquidity model"
+          },
+          "evidence_refs": [
+            "raw_observations:25824413",
+            "raw_observations:25824605"
+          ],
+          "funding": {
+            "hip3_parameters": "deployer-specific; multiplier/interest not inferred",
+            "interval_ms": 3600000,
+            "notional_reference": "oracle price",
+            "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding"
+          },
+          "instrument": "ETH",
+          "is_delisted": false,
+          "limits": [
+            "profile is not permission to promote a strategy",
+            "venue rules, measured capacity and chosen risk budgets are separate"
+          ],
+          "liquidation": {
+            "model_status": "not implemented; risk limits do not reproduce venue liquidation"
+          },
+          "margin": {
+            "max_leverage": 25,
+            "mode": null,
+            "only_isolated": null,
+            "tiers": [
+              [
+                50,
+                {
+                  "description": "",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 50
+                    }
+                  ]
+                }
+              ],
+              [
+                51,
+                {
+                  "description": "tiered 10x",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 10
+                    },
+                    {
+                      "lowerBound": "3000000.0",
+                      "maxLeverage": 5
+                    }
+                  ]
+                }
+              ],
+              [
+                52,
+                {
+                  "description": "tiered 10x (2)",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 10
+                    },
+                    {
+                      "lowerBound": "20000000.0",
+                      "maxLeverage": 5
+                    }
+                  ]
+                }
+              ],
+              [
+                53,
+                {
+                  "description": "tiered 20x",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 20
+                    },
+                    {
+                      "lowerBound": "40000000.0",
+                      "maxLeverage": 10
+                    }
+                  ]
+                }
+              ],
+              [
+                54,
+                {
+                  "description": "tiered 20x (2)",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 20
+                    },
+                    {
+                      "lowerBound": "70000000.0",
+                      "maxLeverage": 10
+                    }
+                  ]
+                }
+              ],
+              [
+                55,
+                {
+                  "description": "tiered 25x",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 25
+                    },
+                    {
+                      "lowerBound": "100000000.0",
+                      "maxLeverage": 15
+                    }
+                  ]
+                }
+              ],
+              [
+                56,
+                {
+                  "description": "tiered 40x",
+                  "marginTiers": [
+                    {
+                      "lowerBound": "0.0",
+                      "maxLeverage": 40
+                    },
+                    {
+                      "lowerBound": "150000000.0",
+                      "maxLeverage": 20
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "minimum_order": {
+            "denomination": "USD for perps; collateral FX not assumed",
+            "documented_value": "10",
+            "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/error-responses"
+          },
+          "precision": {
+            "integer_price_exception": true,
+            "max_price_decimals": 2,
+            "price_significant_figures": 5,
+            "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size",
+            "sz_decimals": 4
+          },
+          "prices": {
+            "execution": "received bid/ask and available depth",
+            "mark": "valuation reference; not executable bid/ask",
+            "oracle_definition": "requires market-specific reference documentation"
+          },
+          "schema_version": 1,
+          "status": "descriptive"
+        }
+      ],
+      "markets": [
+        "ETH"
+      ],
+      "mode": "disabled",
+      "perp_dexes_observed": [
+        "",
+        "xyz",
+        "flx",
+        "vntl",
+        "hyna",
+        "km",
+        "abcd",
+        "cash",
+        "para",
+        "mkts",
+        "io"
+      ],
+      "role": {
+        "data": {
+          "master": "0x399965e15d4e61ec3529cc98b7f7ebb93b733336"
+        },
+        "role": "subAccount"
+      },
+      "simultaneous_position_snapshot": [
+        {
+          "dex": "",
+          "position": {
+            "coin": "ETH",
+            "cumFunding": {
+              "allTime": "-36.765976",
+              "sinceChange": "0.0",
+              "sinceOpen": "0.0"
+            },
+            "entryPx": "2534.84",
+            "leverage": {
+              "type": "cross",
+              "value": 4
+            },
+            "liquidationPx": "4122.1284619998",
+            "marginUsed": "1738.292045",
+            "maxLeverage": 25,
+            "positionValue": "6953.16818",
+            "returnOnEquity": "0.0003919326",
+            "szi": "-2.7433",
+            "unrealizedPnl": "0.68136"
+          }
+        }
+      ],
+      "spot_inventory": {
+        "balances": [
+          {
+            "coin": "USDC",
+            "entryNtl": "0",
+            "hold": "0",
+            "token": 0,
+            "total": "0"
+          }
+        ],
+        "economic_qualification": false,
+        "equity": null,
+        "limits": [
+          "token-native total, hold, borrowed and supplied are reported components, not additive independent assets",
+          "negative totals and holds retained; hold never added to total",
+          "reported ratio is liquidation-risk telemetry, not return or independently reconstructed risk",
+          "no spot prices, economic alignment or debt/spot overlap inferred"
+        ],
+        "reported_portfolio_margin_enabled": null,
+        "reported_portfolio_margin_ratio": null,
+        "status": "observed_components",
+        "unknown_reasons": [],
+        "version": "public-spot-inventory-v1"
+      },
+      "spot_observed": true,
+      "subaccounts": null
+    },
+    "pilot_packet_adapter": "population-descriptive-pilot-adapter-v1",
+    "pilot_research": {
+      "admission_cutoff_ms": 1791789394195,
+      "candidate": "67f7",
+      "economic_validation": "false; this is owner-authorized descriptive research only",
+      "execution_compatibility_is_separate": true,
+      "observability": "Expanded account fills, crossed flags, signed fees and startPosition are available through the fixed cutoff; order placement, unfilled quotes, queue priority and complete continuity are not established by fills.",
+      "paper_engine_compatibility": "undetermined and evaluated separately; no paper launch is authorized.",
+      "pilot_id": "eth-mechanism-followup-20261014-v1",
+      "policy_version": "research-loop-pilot-v1",
+      "promotion_authorized": false,
+      "question": "For 67f7/ETH only, propose one primary falsifiable hypothesis about an observable execution/inventory mechanism and one competing explanation. State measurable predictions and results that would contradict the primary hypothesis. Separate what the archived fills can examine retrospectively from the minimum additional observation needed for prospective verification; first classify requested evidence as locally available, a missing calculation, a future accessible observation, or private/unobservable information. Do not infer order placement or motives from fills, do not require private trader motivation, and do not combine DRAM into ETH; acknowledge that account-wide inventory management could still connect the markets. Assess compatibility with our current engine separately from research interest.",
+      "rank": 1,
+      "research_interest": "ETH execution and locally reconstructible inventory behavior are descriptively observable in expanded authorized archives; not a performance validation."
+    },
+    "qualification": {
+      "observability": "partial_public_inventory",
+      "performance": "unproven",
+      "reproducibility": "unproven"
+    },
+    "research_contract": {
+      "live_follower_signal": false,
+      "profitability_claim_authorized": false,
+      "purpose": "owner-authorized descriptive research; no strategy or execution approval",
+      "strategy_promotion_authorized": false,
+      "supported_decisions": [
+        "hypothesis",
+        "needs_data",
+        "non_identifiable",
+        "unsupported_mechanism",
+        "reject"
+      ]
+    },
+    "research_input_fingerprint": "10896aa41deffbadc8677018530623fe5f9f9e7dde70004cf6160762e0cf1264",
+    "schema_version": "population-descriptive-pilot-adapter-v1"
+  },
+  "packet_fingerprint": "0adfcd71fcadeb56955b4daf232a7f0b64dc38bdbbe750f8105d69c9a70e4700",
+  "policy_fingerprint": "54839c34f37b8052d21d317bbfb1d3bc95def23f2a1878574b8a96a9dc4b7e22",
+  "request_id": "2b7bf5b9d35a8059bba6d0af645000f357d6494577ec99a8377fbff8f1a3c6f6",
+  "research_input_fingerprint": "10896aa41deffbadc8677018530623fe5f9f9e7dde70004cf6160762e0cf1264",
+  "schema_version": "population-research-task-evidence-v1",
+  "status_at_capture": "sealed"
+}

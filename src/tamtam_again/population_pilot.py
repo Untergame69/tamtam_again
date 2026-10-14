@@ -19,8 +19,19 @@ def validate_policy(policy):
             or not admission.get('owner_authorization') or 'does not grant' not in admission['owner_authorization']):
         raise ValueError('Explicit research-only admission authorization and cutoff required')
     limits = policy.get('pilot_limits', {})
-    expected = {'max_tasks': 3, 'max_calls': 6, 'max_input_tokens': 480000,
-                'max_output_tokens': 30000, 'max_duration_ms': 720000}
+    if policy.get('authorization_scope') == 'single_task':
+        expected = {'max_tasks': 1, 'max_calls': 2, 'max_input_tokens': 160000,
+                    'max_output_tokens': 10000, 'max_duration_ms': 240000}
+        if policy.get('pilot_id') != 'eth-mechanism-followup-20261014-v1':
+            raise ValueError('Single-task authorization must use its dedicated immutable allowance id')
+        candidates = policy.get('selection', [])
+        if (len(candidates) != 1 or candidates[0].get('candidate') != '67f7'
+                or candidates[0].get('address','').lower() != '0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba'
+                or candidates[0].get('descriptive_markets') != ['ETH']):
+            raise ValueError('Single-task authorization is bound to 67f7 and its ETH evidence only')
+    else:
+        expected = {'max_tasks': 3, 'max_calls': 6, 'max_input_tokens': 480000,
+                    'max_output_tokens': 30000, 'max_duration_ms': 720000}
     if limits != expected:
         raise ValueError('Pilot allowance differs from the specifically authorized ceilings')
     task = policy.get('task_policy', {})
@@ -32,10 +43,11 @@ def validate_policy(policy):
             or task.get('max_total_duration_ms') != 240000):
         raise ValueError('Per-call and per-task research limits must remain bounded')
     candidates = policy.get('selection', [])
-    if len(candidates) != 3 or {c.get('candidate') for c in candidates} != {'a880', '67f7', 'be504'}:
-        raise ValueError('Pilot scope must remain the three preselected candidates')
-    if len({c.get('address', '').lower() for c in candidates}) != 3:
-        raise ValueError('Distinct candidate addresses required')
+    if policy.get('authorization_scope') != 'single_task':
+        if len(candidates) != 3 or {c.get('candidate') for c in candidates} != {'a880', '67f7', 'be504'}:
+            raise ValueError('Pilot scope must remain the three preselected candidates')
+        if len({c.get('address', '').lower() for c in candidates}) != 3:
+            raise ValueError('Distinct candidate addresses required')
 
 
 def initialize(store, policy):

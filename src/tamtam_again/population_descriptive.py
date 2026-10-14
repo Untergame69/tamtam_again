@@ -389,7 +389,157 @@ def prepare_candidate_summary(store, network, address, *, cutoff_ms, candidate=N
     return summary
 
 
-def enrich_research_packet(packet, summary):
+def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, market):
+    """Prepare a reusable, cutoff-bound detail for one declared market.
+
+    This describes observed executions and locally coherent position paths; it
+    cannot reconstruct quote placement or unfilled/cancelled orders.
+    """
+    if not isinstance(market,str) or not market:
+        raise ValueError('An exact market symbol is required')
+    if not authorized_account_history(store,network,address.lower(),cutoff_ms):
+        raise PermissionError('Account history intersects an unreleased reserved period at cutoff')
+    fills,coverage,refs=_load_fills(store,network,address.lower(),cutoff_ms)
+    fills=[f for f in fills if f.get('coin')==market]
+    chain=start_position_chain_summary(fills,include_fill_events=True)
+    ordered=chain.get('ordered_segment_fill_events',[])
+    offsets=chain.get('ordered_segment_event_offsets',[])
+    segment_events=[];cursor=0;episode_rows=[]
+    for segment in offsets:
+        events=ordered[cursor:cursor+segment['event_count']];cursor+=segment['event_count']
+        segment_events.append((segment['segment'],events))
+
+    def blank():
+        return {'fill_count':0,'size':'0','notional_quote_units':'0','signed_fees_by_token':{},
+            'maker_fill_count':0,'taker_fill_count':0,'crossed_unknown_count':0,
+            'position_increase_fill_count':0,'position_reduction_fill_count':0,
+            'position_neutral_fill_count':0,'reversal_fill_count':0,
+            'reversal_close_quantity':'0','reversal_open_quantity':'0',
+            'crossed_fee_groups':{key:{'fill_count':0,'size':'0','signed_fees_by_token':{}}
+                for key in ('maker_crossed_false','taker_crossed_true','crossed_unknown')}}
+    all_effects=blank();by_day=defaultdict(blank);by_segment={}
+    fee_acc=defaultdict(Decimal);size_values=[]
+    for segment_no,events in segment_events:
+        seg=blank();seg_fills=[e['fill'] for e in events]
+        _,episodes,_=_position_flows(seg_fills)
+        for ep in episodes:
+            ep['segment']=segment_no
+            ep['duration_ms']=int(ep['end_ms'])-int(ep['start_ms'])
+            tids=[str(e['fill']['tid']) for e in events]
+            try:
+                first=tids.index(ep['entry_tid']);last=tids.index(ep['exit_tid'],first)
+                path_events=events[first:last+1]
+                ep['peak_abs_position']=str(max((_d(e['pre_position']).copy_abs() for e in path_events),
+                    default=Decimal(0)))
+                ep['peak_abs_position']=str(max(_d(ep['peak_abs_position']),max((_d(e['post_position']).copy_abs()
+                    for e in path_events),default=Decimal(0))))
+            except ValueError:ep['peak_abs_position']=None
+        episode_rows.extend(episodes)
+        ep_fees=defaultdict(Decimal)
+        for ep in episodes:
+            for token,value in ep['signed_fees_by_token'].items():ep_fees[token]+=_d(value)
+        by_segment[str(segment_no)]={'start_ms':min((int(e['fill']['time']) for e in events),default=None),
+            'end_ms':max((int(e['fill']['time']) for e in events),default=None),
+            'fill_count':len(events),'bounded_episode_count':len(episodes),
+            'bounded_episode_return_to_zero_count':sum(ep['close_type']=='returned_to_zero' for ep in episodes),
+            'bounded_episode_reversal_count':sum(ep['close_type']=='position_reversal' for ep in episodes),
+            'bounded_episode_price_result_quote_units':str(sum((_d(ep['price_result_quote_units'])
+                for ep in episodes),Decimal(0))),
+            'bounded_episode_signed_fees_by_token':{k:str(v) for k,v in sorted(ep_fees.items())},
+            'bounded_episode_fingerprint':fingerprint(episodes),
+            'bounded_episode_examples_first_2':episodes[:2],
+            'bounded_episode_examples_last_2':episodes[-2:] if len(episodes)>2 else []}
+        for event in events:
+            fill=event['fill'];pre=_d(event['pre_position']);post=_d(event['post_position'])
+            qty=_d(fill['sz']);px=_d(fill['px']);fee=fill.get('fee');token=str(fill.get('feeToken') or 'unknown')
+            day=datetime.fromtimestamp(int(fill['time'])/1000,timezone.utc).date().isoformat()
+            same=[all_effects,seg,by_day[day]]
+            signed_delta=abs(post)-abs(pre)
+            fee_group=('maker_crossed_false' if fill.get('crossed') is False else
+                'taker_crossed_true' if fill.get('crossed') is True else 'crossed_unknown')
+            for agg in same:
+                agg['fill_count']+=1;agg['size']=str(_d(agg['size'])+qty)
+                agg['notional_quote_units']=str(_d(agg['notional_quote_units'])+qty*px)
+                if fill.get('crossed') is False:agg['maker_fill_count']+=1
+                elif fill.get('crossed') is True:agg['taker_fill_count']+=1
+                else:agg['crossed_unknown_count']+=1
+                if signed_delta>0:agg['position_increase_fill_count']+=1
+                elif signed_delta<0:agg['position_reduction_fill_count']+=1
+                else:agg['position_neutral_fill_count']+=1
+                if pre*post<0:
+                    agg['reversal_fill_count']+=1
+                    agg['reversal_close_quantity']=str(_d(agg['reversal_close_quantity'])+abs(pre))
+                    agg['reversal_open_quantity']=str(_d(agg['reversal_open_quantity'])+abs(post))
+                if fee is not None:
+                    fees=defaultdict(Decimal,{k:_d(v) for k,v in agg['signed_fees_by_token'].items()})
+                    fees[token]+=_d(fee);agg['signed_fees_by_token']={k:str(v) for k,v in sorted(fees.items())}
+                group=agg['crossed_fee_groups'][fee_group]
+                group['fill_count']+=1;group['size']=str(_d(group['size'])+qty)
+                if fee is not None:
+                    group_fees=defaultdict(Decimal,{k:_d(v) for k,v in group['signed_fees_by_token'].items()})
+                    group_fees[token]+=_d(fee)
+                    group['signed_fees_by_token']={k:str(v) for k,v in sorted(group_fees.items())}
+            if fee is not None:fee_acc[token]+=_d(fee)
+            size_values.append(qty)
+        by_segment[str(segment_no)]['activity']=seg
+
+    by_segment_day=defaultdict(lambda:{'episode_count':0,'return_to_zero_count':0,'position_reversal_count':0,
+        'buy_quantity':'0','sell_quantity':'0','buy_notional_quote_units':'0',
+        'sell_notional_quote_units':'0','price_result_quote_units':'0','signed_fees_by_token':{}})
+    for ep in episode_rows:
+        day=datetime.fromtimestamp(ep['end_ms']/1000,timezone.utc).date().isoformat()
+        row=by_segment_day[(str(ep['segment']),day)];row['episode_count']+=1
+        if ep['close_type']=='returned_to_zero':row['return_to_zero_count']+=1
+        else:row['position_reversal_count']+=1
+        for field in ('buy_quantity','sell_quantity','buy_notional_quote_units','sell_notional_quote_units','price_result_quote_units'):
+            row[field]=str(_d(row[field])+_d(ep[field]))
+        fees=defaultdict(Decimal,{k:_d(v) for k,v in row['signed_fees_by_token'].items()})
+        for token,value in ep['signed_fees_by_token'].items():fees[token]+=_d(value)
+        row['signed_fees_by_token']={k:str(v) for k,v in sorted(fees.items())}
+    # Include zero-episode days for activity and preserve segment boundaries.
+    daily={day:{**values,'bounded_episode_results_by_segment':{}}
+        for day,values in sorted(by_day.items())}
+    for (segment,day),values in sorted(by_segment_day.items()):
+        if day in daily:daily[day]['bounded_episode_results_by_segment'][segment]=values
+    durations=[int(ep['end_ms'])-int(ep['start_ms']) for ep in episode_rows]
+    sizes=sorted(size_values)
+    peak_sizes=sorted(_d(e['peak_abs_position']) for e in episode_rows if e.get('peak_abs_position') is not None)
+    def quantile(values,q):
+        return None if not values else str(values[max(0,(q*len(values)+99)//100-1)])
+    result={'schema_version':'population-market-execution-detail-v1','network':network,
+        'address':address.lower(),'market':market,'cutoff_ms':cutoff_ms,
+        'coverage':{'fill_archive':coverage,'selected_market_fill_count':len(fills),
+            'position_chain_segment_count':len(segment_events),'rupture_count':len(chain.get('position_chain_ruptures',[])),
+            'ruptures_fingerprint':fingerprint(chain.get('position_chain_ruptures',[])),
+            'invalid_timestamp_groups':len(chain.get('invalid_timestamp_groups',[])),
+            'ambiguous_timestamp_groups':chain.get('ambiguous_timestamp_groups',0),
+            'continuity_proven':False},
+        'execution_activity':all_effects,
+        'position_path':{'segments':by_segment,'ruptures':chain.get('position_chain_ruptures',[]),
+            'episodes':{'count':len(episode_rows),'return_to_zero_count':sum(e['close_type']=='returned_to_zero' for e in episode_rows),
+                'position_reversal_count':sum(e['close_type']=='position_reversal' for e in episode_rows),
+                'duration_ms':{'min':str(min(durations)) if durations else None,'p50':quantile(sorted(durations),50),
+                    'p95':quantile(sorted(durations),95),'max':str(max(durations)) if durations else None},
+                'peak_abs_position':{'min':str(peak_sizes[0]) if peak_sizes else None,
+                    'p50':quantile(peak_sizes,50),'p95':quantile(peak_sizes,95),
+                    'max':str(peak_sizes[-1]) if peak_sizes else None},
+                'fill_size':{'count':len(sizes),'min':str(min(sizes)) if sizes else None,'p50':quantile(sizes,50),
+                    'p95':quantile(sizes,95),'max':str(max(sizes)) if sizes else None},
+                'episodes_fingerprint':fingerprint(episode_rows)}},
+        'by_utc_day':daily,'fees_signed_by_token':{k:str(v) for k,v in sorted(fee_acc.items())},
+        'evidence_refs':[f"raw_observations:{row['id']}#sha256:{row['sha256']}" for row in refs],
+        'interpretation_limits':['Fills establish executions, not placement, amendment, cancellation, queue position or unfilled target orders.',
+            'Position increase/reduction counts compare abs(startPosition) with the post-fill position; reversals are separately split into closed and opened quantities.',
+            'Segments and episodes are local arithmetic reconstructions from incomplete archived request windows; gaps and censored endpoints remain.',
+            'Maker/taker grouping uses the archived crossed flag; it does not reveal why or where an order was placed.']}
+    result['evidence_fingerprint']=fingerprint({'schema_version':result['schema_version'],
+        'network':network,'address':address.lower(),'market':market,'cutoff_ms':cutoff_ms,
+        'evidence_refs':result['evidence_refs']})
+    result['detail_fingerprint']=fingerprint(result)
+    return result
+
+
+def enrich_research_packet(packet, summary, market_details=None):
     """Return a new packet; historical packets and decisions are never edited."""
     out=deepcopy(packet)
     if out.get('network')!=summary.get('network') or out.get('address','').lower()!=summary.get('address'):
@@ -400,8 +550,19 @@ def enrich_research_packet(packet, summary):
     refs=out.setdefault('evidence_refs',[])
     for ref in summary['evidence_refs']:
         if ref not in refs:refs.append(ref)
+    detail_fingerprints=[]
+    for detail in market_details or []:
+        if detail.get('network')!=summary.get('network') or detail.get('address')!=summary.get('address'):
+            raise ValueError('Market detail origin differs from packet identity')
+        if detail.get('cutoff_ms')!=summary.get('cutoff_ms'):
+            raise ValueError('Market detail cutoff differs from descriptive evidence cutoff')
+        out.setdefault('observations',{}).setdefault('market_execution_detail_v1',{})[detail['market']]=detail
+        for ref in detail['evidence_refs']:
+            if ref not in refs:refs.append(ref)
+        detail_fingerprints.append(detail['detail_fingerprint'])
     out['research_input_fingerprint']=fingerprint({'base':out.get('research_input_fingerprint'),
-        'descriptive_summary_version':VERSION,'summary_fingerprint':summary['summary_fingerprint']})
+        'descriptive_summary_version':VERSION,'summary_fingerprint':summary['summary_fingerprint'],
+        'market_execution_detail_fingerprints':detail_fingerprints})
     out.pop('fingerprint',None)
     out['fingerprint']=fingerprint(out)
     return out
@@ -410,7 +571,9 @@ def enrich_research_packet(packet, summary):
 def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, policy_version, cutoff_ms):
     summary=prepare_candidate_summary(store,base_packet['network'],base_packet['address'],
         cutoff_ms=cutoff_ms,candidate=candidate)
-    packet=enrich_research_packet(base_packet,summary)
+    details=[prepare_candidate_market_detail(store,base_packet['network'],base_packet['address'],
+        cutoff_ms=cutoff_ms,market=market) for market in item.get('descriptive_markets',[])]
+    packet=enrich_research_packet(base_packet,summary,details)
     profile=packet.get('observations',{}).get('current_pass_behavior_profile')
     if isinstance(profile,dict):
         # The unprojected profile can contain a large list of every candidate

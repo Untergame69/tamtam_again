@@ -7,7 +7,8 @@ from datetime import datetime,timezone
 from pathlib import Path
 
 from tamtam_again.engine import canonical
-from tamtam_again.population_descriptive import prepare_candidate_summary,prepare_pilot_packet
+from tamtam_again.population_descriptive import (prepare_candidate_market_detail,
+    prepare_candidate_summary,prepare_pilot_packet)
 from tamtam_again.storage import Store
 
 
@@ -75,7 +76,8 @@ class PopulationDescriptiveTests(unittest.TestCase):
         base={'schema_version':'fixture','network':self.network,'address':self.address,'available_ms':190,
             'research_input_fingerprint':'base','evidence_refs':['scope-test'],'observations':{}}
         item={'candidate':'fixture','rank':1,'research_interest':'fixture','observability':'partial',
-            'paper_engine_compatibility':'unknown','question':'No inference in this test.'}
+            'paper_engine_compatibility':'unknown','question':'No inference in this test.',
+            'descriptive_markets':['COIN']}
         packet=prepare_pilot_packet(self.store,base,candidate='fixture',item=item,pilot_id='p',
             policy_version='v',cutoff_ms=self.cutoff)
         packet2=prepare_pilot_packet(self.store,base,candidate='fixture',item=item,pilot_id='p',
@@ -84,6 +86,8 @@ class PopulationDescriptiveTests(unittest.TestCase):
         self.assertEqual(base['evidence_refs'],['scope-test'])
         self.assertEqual(len(packet['evidence_refs']),len(set(packet['evidence_refs'])))
         self.assertTrue(any(ref.startswith('raw_observations:1#sha256:') for ref in packet['evidence_refs']))
+        self.assertEqual(packet['observations']['market_execution_detail_v1']['COIN']['execution_activity']['fill_count'],2)
+        self.assertTrue(packet['observations']['market_execution_detail_v1']['COIN']['detail_fingerprint'])
 
     def test_unreleased_reserved_window_is_rejected_before_observation_decode(self):
         self.store.connection.execute('create table validation_plans '
@@ -100,6 +104,36 @@ class PopulationDescriptiveTests(unittest.TestCase):
         self.store.connection.commit()
         with self.assertRaisesRegex(PermissionError,'unreleased reserved period'):
             prepare_candidate_summary(self.store,self.network,self.address,cutoff_ms=self.cutoff)
+
+    def test_market_detail_separates_execution_effect_and_bounded_results(self):
+        fills=[
+            {'coin':'COIN','tid':'open','time':100,'startPosition':'0','side':'B','sz':'1','px':'10','fee':'0.01','feeToken':'USDC','crossed':False},
+            {'coin':'COIN','tid':'reduce','time':110,'startPosition':'1','side':'A','sz':'0.5','px':'12','fee':'-0.02','feeToken':'USDC','crossed':True},
+            {'coin':'COIN','tid':'reverse','time':120,'startPosition':'0.5','side':'A','sz':'1','px':'12','fee':'-0.01','feeToken':'USDC','crossed':False},
+            {'coin':'COIN','tid':'flat','time':130,'startPosition':'-0.5','side':'B','sz':'0.5','px':'13','fee':'0.02','feeToken':'USDC','crossed':True},
+        ]
+        self._raw(20,'userFillsByTime',fills)
+        detail=prepare_candidate_market_detail(self.store,self.network,self.address,
+            cutoff_ms=self.cutoff,market='COIN')
+        replay=prepare_candidate_market_detail(self.store,self.network,self.address,
+            cutoff_ms=self.cutoff,market='COIN')
+        self.assertEqual(detail['detail_fingerprint'],replay['detail_fingerprint'])
+        activity=detail['execution_activity']
+        self.assertEqual(activity['position_increase_fill_count'],1)
+        self.assertEqual(activity['position_reduction_fill_count'],2)
+        self.assertEqual(activity['position_neutral_fill_count'],1)
+        self.assertEqual(activity['reversal_fill_count'],1)
+        self.assertEqual(activity['reversal_close_quantity'],'0.5')
+        self.assertEqual(activity['reversal_open_quantity'],'0.5')
+        self.assertEqual(activity['maker_fill_count'],2)
+        self.assertEqual(activity['taker_fill_count'],2)
+        self.assertEqual(activity['crossed_fee_groups']['maker_crossed_false']['fill_count'],2)
+        self.assertEqual(activity['crossed_fee_groups']['maker_crossed_false']['signed_fees_by_token']['USDC'],'0.00')
+        self.assertEqual(activity['crossed_fee_groups']['taker_crossed_true']['fill_count'],2)
+        episode=detail['position_path']['segments']['1']['bounded_episode_examples_first_2'][0]
+        self.assertEqual(episode['price_result_quote_units'],'2.0')
+        self.assertEqual(detail['by_utc_day']['1970-01-01']['bounded_episode_results_by_segment']['1']['episode_count'],2)
+        self.assertEqual(detail['fees_signed_by_token']['USDC'],'0.00')
 
 
 if __name__=='__main__':unittest.main()

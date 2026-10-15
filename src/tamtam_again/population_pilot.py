@@ -631,7 +631,6 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
     if report.get('decision') not in allowed_decisions:
         return {'status':'analysis_skipped','reason':'no recognized new prospective question is justified by the report decision',
             'next_action':report.get('route',{}).get('next_action')}
-    protocol_report_fp=report_row['input_fingerprint']
     if semantic_fingerprint != eth_report_semantic_fingerprint(report):
         raise ValueError('Final report evidence fingerprint mismatch')
     cutoff=policy['admission']['cutoff_ms'];task_policy=policy['task_policy']
@@ -647,22 +646,28 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
         pilot_id=policy['pilot_id'],policy_version=policy['version'],cutoff_ms=cutoff)
     semantic=eth_report_semantic_fingerprint(report)
     reference=f"eth_observation_reports:{protocol_id}:final_24h#sha256:{semantic}"
-    packet['observations']['prospective_eth_observation_v1']={
-        'decision':report['decision'],'coverage':report.get('coverage'),'summary':report.get('summary'),
-        'execution_samples':report.get('fills',[]),'quote_latency_ms':report.get('quote_latency_ms'),
-        'limits':report.get('limits',[]),'report_input_fingerprint':protocol_report_fp,
-        'semantic_fingerprint':semantic,'evidence_ref':reference}
-    packet['evidence_refs'].append(reference)
+    from .eth_report_projection import project as project_eth_report
+    packet['observations']['prospective_eth_observation_v1']=project_eth_report(report)
+    if reference not in packet['evidence_refs']:
+        packet['evidence_refs'].append(reference)
     packet['available_ms']=max(packet.get('available_ms',0),report.get('generated_at_ms',0))
     packet['research_contract']['purpose']='compare the authorized historical description with a completed prospective observation; no paper, order, profitability or strategy approval'
     packet['research_input_fingerprint']=fingerprint({'base':packet['research_input_fingerprint'],
         'question':question,'prospective_eth_report':semantic})
     packet.pop('fingerprint',None);packet['fingerprint']=fingerprint(packet)
-    if len(canonical(packet))>task_policy['max_packet_chars']:
-        return {'status':'technical_required','reason':'prospective report packet exceeds the existing character limit'}
+    packet_chars=len(canonical(packet))
+    if packet_chars>task_policy['max_packet_chars']:
+        return {'status':'technical_required','reason':'prospective report packet exceeds the existing character limit',
+            'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars']}
     digest=packet['research_input_fingerprint']
     request_id=fingerprint({'pilot_id':policy['pilot_id'],'protocol_id':protocol_id,
         'semantic_report_fingerprint':semantic,'research_input_fingerprint':digest})
+    from .population_runtime import build_proposal_prompt
+    prompt_chars=len(build_proposal_prompt(packet,request_id))
+    if prompt_chars>task_policy['max_prompt_chars']:
+        return {'status':'technical_required','reason':'prospective report prompt exceeds the existing character limit',
+            'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
+            'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars']}
     old=store.connection.execute('select request_id,status,packet_json from population_research_jobs where network=? and address=? and input_fingerprint=?',
         (policy['network'],item['address'].lower(),digest)).fetchone()
     if old:
@@ -674,11 +679,15 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
             auth_result=authorize_task(store,policy,request_id=request_id,candidate='67f7',address=item['address'],
                 packet_fingerprint_value=packet['fingerprint'],authorized_ms=clock_ms)
             return {'status':'analysis_ready','request_id':request_id,'packet_fingerprint':packet['fingerprint'],
-                'authorization':auth_result,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic}
+                'authorization':auth_result,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic,
+                'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
+                'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars']}
         if auth and auth['pilot_id']==policy['pilot_id'] and auth['packet_fingerprint']==json.loads(old['packet_json']).get('fingerprint'):
             return {'status':'analysis_ready','request_id':old['request_id'],'packet_fingerprint':auth['packet_fingerprint'],
                 'authorization':{'status':'already_authorized','request_id':old['request_id']},'model_calls':0,
-                'evidence_ref':reference,'semantic_fingerprint':semantic}
+                'evidence_ref':reference,'semantic_fingerprint':semantic,'packet_chars':packet_chars,
+                'packet_char_limit':task_policy['max_packet_chars'],'proposal_prompt_chars':prompt_chars,
+                'prompt_char_limit':task_policy['max_prompt_chars']}
         return {'status':'unchanged_no_inference','request_id':old['request_id'],'source_status':old['status']}
     count=store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',(policy['pilot_id'],)).fetchone()[0]
     if count>=policy['pilot_limits']['max_tasks']:
@@ -697,13 +706,15 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
     auth=authorize_task(store,policy,request_id=request_id,candidate='67f7',address=item['address'],
         packet_fingerprint_value=packet['fingerprint'],authorized_ms=clock)
     return {'status':'analysis_ready','request_id':request_id,'packet_fingerprint':packet['fingerprint'],
-        'authorization':auth,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic}
+        'authorization':auth,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic,
+        'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
+        'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars']}
 
 
 def eth_report_semantic_fingerprint(report):
     """Fingerprint only decision-relevant report content, excluding serialization metadata."""
-    return fingerprint({k:report.get(k) for k in ('protocol_id','protocol_fingerprint','stage','input_fingerprint',
-        'decision','coverage','summary','fills','quote_latency_ms','limits')})
+    from .eth_report_projection import semantic_fingerprint
+    return semantic_fingerprint(report)
 
 
 def tick_locked(store, policy, *, dispatch=True, clock_ms=None):

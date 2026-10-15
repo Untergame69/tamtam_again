@@ -61,8 +61,8 @@ def set_status(store, work_id, status, reason='', *, wake_at_ms=None, outcome=No
 
 
 def eth_report_semantic_fingerprint(report):
-    return fingerprint({k:report.get(k) for k in ('protocol_id','protocol_fingerprint','stage','input_fingerprint',
-        'decision','coverage','summary','fills','quote_latency_ms','limits')})
+    from .eth_report_projection import semantic_fingerprint
+    return semantic_fingerprint(report)
 
 
 def eth_report_work_payload(protocol_id, stage, report):
@@ -83,15 +83,16 @@ def tick(store, *, clock_ms=None, max_jobs=1, pilot_policy=None):
         if not report_row:
             set_status(store,row['work_id'],'waiting_data','final report is not durably persisted',clock_ms=clock); advanced.append({'work_id':row['work_id'],'status':'waiting_data'}); continue
         value=json.loads(report_row['report_json']); semantic=eth_report_semantic_fingerprint(value)
+        if report_row['input_fingerprint']!=value.get('input_fingerprint'):
+            set_status(store,row['work_id'],'technical_required','persisted report fingerprint does not match its payload',clock_ms=clock)
+            advanced.append({'work_id':row['work_id'],'status':'technical_required'}); continue
         if payload.get('semantic_fingerprint') and payload['semantic_fingerprint']!=semantic:
             set_status(store,row['work_id'],'technical_required','queued report fingerprint no longer matches persisted evidence',clock_ms=clock); advanced.append({'work_id':row['work_id'],'status':'technical_required'}); continue
         decision=value.get('decision')
-        compact={'version':'eth-observation-review-packet-v2','protocol_id':payload['protocol_id'],'stage':payload['stage'],
-            'report_input_fingerprint':report_row['input_fingerprint'],'semantic_fingerprint':semantic,
-            'decision':decision,'coverage':value.get('coverage'),'summary':value.get('summary'),
-            'execution_samples':value.get('fills',[]),'quote_latency_ms':value.get('quote_latency_ms'),
-            'limits':value.get('limits',[]),'next_action':value.get('route',{}).get('next_action'),
-            'evidence_ref':f"eth_observation_reports:{payload['protocol_id']}:{payload['stage']}#sha256:{semantic}"}
+        from .eth_report_projection import project as project_eth_report
+        projection=project_eth_report(value)
+        compact={'version':'eth-observation-review-packet-v3','evidence_projection':projection,
+            'next_action':value.get('route',{}).get('next_action')}
         if decision=='data_insufficient':
             outcome={**compact,'analysis':'skipped','reason':'deterministic report says data_insufficient',
                 'next_action':'retain the result as insufficient; do not call IA or extend the observation'}
@@ -110,7 +111,9 @@ def tick(store, *, clock_ms=None, max_jobs=1, pilot_policy=None):
         if state=='analysis_ready':
             payload.update(request_id=sealed['request_id'],semantic_fingerprint=semantic)
             outcome={**compact,'analysis':'authorized_task_sealed','request_id':sealed['request_id'],
-                'packet_fingerprint':sealed['packet_fingerprint'],'model_calls':0}
+                'packet_fingerprint':sealed['packet_fingerprint'],'model_calls':0,
+                'packet_chars':sealed.get('packet_chars'),'packet_char_limit':sealed.get('packet_char_limit'),
+                'proposal_prompt_chars':sealed.get('proposal_prompt_chars'),'prompt_char_limit':sealed.get('prompt_char_limit')}
             set_status(store,row['work_id'],'packet_prepared','evidence packet sealed and linked to the v2 allowance',payload=payload,outcome=outcome,clock_ms=clock)
             set_status(store,row['work_id'],'analysis_ready','new prospective evidence sealed for v2 runtime',payload=payload,outcome=outcome,clock_ms=clock)
         elif state=='budget_exhausted':

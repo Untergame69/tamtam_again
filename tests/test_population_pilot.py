@@ -512,21 +512,71 @@ class PopulationPilotTests(unittest.TestCase):
         protocol={'protocol_id':protocol_id,'network':policy['network'],'address':item['address'],'market':'ETH','start_ms':1,'end_ms':50}
         self.store.connection.execute('create table eth_observation_runs(protocol_id text,status text,protocol_json text)')
         self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
+        from datetime import datetime, timezone
+        day_start=int(datetime(2026,10,14,tzinfo=timezone.utc).timestamp()*1000)
+        large_fills=[]
+        for index in range(4000):
+            action=('opens','reduces','inverts','unknown')[index%4]
+            crossed=(index%2==0)
+            large_fills.append({'tid':f'fill-{index:06d}','event_ms':day_start+index*18000,
+                'action':action,'crossed':crossed,'side':'A' if index%2==0 else 'B',
+                'start_position':str((index%11)-5),'size':'0.125','price':'2500.1',
+                'close_quantity':'0.025' if action in {'reduces','inverts'} else '0',
+                'open_quantity':'0.1' if action in {'opens','inverts'} else '0',
+                'fee':'-0.0001' if crossed is False else '0.0002','fee_token':'USDC',
+                'event_to_fill_page_receipt_ms':1200,
+                'fill_page_observation_id':50000+index//100,'fill_page_sha256':f'{index%16:x}'*64,
+                'prefill_quote':{'event_ms':day_start+index*18000-100,'age_ms':100,'bid':'2500.0',
+                    'bid_size':'1.0','ask':'2500.2','ask_size':'1.1','channel':'bbo',
+                    'received_at':'2026-10-14T00:00:00.000+00:00','archived_at':'2026-10-14T00:00:00.010+00:00',
+                    'ref':f'raw_observations:{60000+index}#sha256:{index%16:x}#0'},
+                'future_quote':{'ref':f'raw_observations:{70000+index}#sha256:{index%16:x}#0'},
+                'event_time_markout_60s_bps':float((index%17)-8),
+                'post_receipt_markout_60s_bps':float((index%13)-6)})
+        large_source_refs=[{'observation_id':80000+i,'endpoint':'bbo','sha256':f'{i%16:x}'*64,
+            'archived_at':'2026-10-14T00:00:00.000+00:00','frame_count':2} for i in range(12000)]
         report={'protocol_id':protocol_id,'protocol_fingerprint':'protocol-fp','stage':'final_24h','input_fingerprint':'report-source-fp',
-            'decision':'signal_exploratory_favorable','coverage':{'fills':{'included':8},'market':{'matched':8}},
+            'decision':'signal_exploratory_favorable','coverage':{'fills':{'page_count':40,'complete_page_count':40,
+                'incomplete_page_count':0,'duplicate_fill_instances':0,'conflicting_fill_ids':[],
+                'unique_eth_fills':4000,'source_fingerprint':'fill-source-fp','pages':[]},
+                'market':{'quotes':{'bbo':{'event_count':90000,'max_received_gap_ms':1200},
+                    'l2Book':{'event_count':20000,'max_received_gap_ms':5000}},'rejected_events':{},
+                    'source_fingerprint':'quote-source-fp','source_refs':large_source_refs}},
             'summary':{'taker':{'reduces':{'markout_60s_count':4},'opens':{'markout_60s_count':2}}},
-            'fills':[{'fill_id':'f1','position_action':'reduces','directional_markout_60s_bps':'1.2'}],
+            'fills':large_fills,
             'quote_latency_ms':{},'limits':['outcomes only'],'generated_at_ms':40,'route':{'next_action':'human review'}}
+        report_json=json.dumps(report)
+        self.assertGreater(len(report_json),policy['task_policy']['max_packet_chars'])
         self.store.connection.execute('insert into eth_observation_runs values(?,?,?)',(protocol_id,'finalised',json.dumps(protocol)))
-        self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',(protocol_id,'final_24h','report-source-fp',json.dumps(report),40));self.store.connection.commit()
+        self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',(protocol_id,'final_24h','report-source-fp',report_json,40));self.store.connection.commit()
         semantic=eth_report_semantic_fingerprint(report)
         work,_=enqueue(self.store,'eth_observation_report',protocol_id,{'protocol_id':protocol_id,'stage':'final_24h','semantic_fingerprint':semantic},clock_ms=40)
         prepared=tick_queue(self.store,clock_ms=41,pilot_policy=policy)
         self.assertEqual(prepared['advanced'][0]['status'],'analysis_ready')
+        queue_row=self.store.connection.execute('select outcome_json from research_work_queue where work_id=?',
+            (work['work_id'],)).fetchone()
+        queue_packet=json.loads(queue_row['outcome_json'])
+        self.assertLessEqual(len(canonical(queue_packet)),policy['task_policy']['max_packet_chars'])
+        self.assertEqual(queue_packet['evidence_projection']['population_statistics']['fill_count'],4000)
         linked=json.loads(self.store.connection.execute('select payload_json from research_work_queue where work_id=?',(work['work_id'],)).fetchone()[0])
         request_id=linked['request_id']
         job=self.store.connection.execute('select * from population_research_jobs where request_id=?',(request_id,)).fetchone()
-        packet=json.loads(job['packet_json']); evidence_ref=packet['observations']['prospective_eth_observation_v1']['evidence_ref']
+        packet=json.loads(job['packet_json']); projection=packet['observations']['prospective_eth_observation_v1']
+        evidence_ref=projection['source']['full_report_ref']
+        self.assertEqual(projection['population_statistics']['fill_count'],4000)
+        self.assertEqual(len(projection['population_statistics']['by_utc_day']),1)
+        self.assertEqual(projection['examples']['population_count'],4000)
+        self.assertLess(projection['examples']['selected_count'],4000)
+        self.assertLessEqual(len(canonical(packet)),policy['task_policy']['max_packet_chars'])
+        from tamtam_again.population_runtime import build_proposal_prompt
+        prompt=build_proposal_prompt(packet,request_id)
+        self.assertLessEqual(len(canonical(packet)),policy['task_policy']['max_packet_chars'])
+        self.assertLessEqual(len(prompt),policy['task_policy']['max_prompt_chars'])
+        prepared_event=self.store.connection.execute("select details_json from research_work_queue_events where work_id=? and status='packet_prepared'",
+            (work['work_id'],)).fetchone()
+        size_proof=json.loads(prepared_event['details_json'])['outcome']
+        self.assertEqual(size_proof['packet_chars'],len(canonical(packet)))
+        self.assertEqual(size_proof['proposal_prompt_chars'],len(prompt))
         proposal={'decision':'hypothesis','diagnostic':'Comparaison descriptive seulement.','wake':{},'hypothesis':{
             'mechanism':'Observed taker inventory reductions may differ in subsequent price movement.',
             'type':'autonomous','markets':['ETH'],'signal':'Classify observed fills by inventory effect.',
@@ -542,6 +592,8 @@ class PopulationPilotTests(unittest.TestCase):
                 'tamtam_again.population_runtime.call',side_effect=[(json.dumps(proposal),usage),(json.dumps(critique),usage)]) as call:
             run_result=tick_locked(self.store,policy,dispatch=True,clock_ms=42)
             self.assertEqual(call.call_count,2,(run_result,dict(self.store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone())))
+            self.assertTrue(all(len(args.args[1])<=policy['task_policy']['max_prompt_chars'] for args in call.call_args_list))
+            self.assertEqual(size_proof['proposal_prompt_chars'],len(call.call_args_list[0].args[1]))
             replay=tick_locked(self.store,policy,dispatch=True,clock_ms=43)
             self.assertEqual(replay['status'],'no_admissible_candidate')
             self.assertEqual(call.call_count,2)

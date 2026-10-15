@@ -38,7 +38,7 @@ class WorkQueueTest(unittest.TestCase):
         self.assertEqual(states[budget['work_id']],'budget_exhausted');self.assertEqual(states[waiting['work_id']],'waiting_data')
 
     def test_deadline_and_report_packet_persist_across_reopen(self):
-        report={'decision':'data_insufficient','coverage':{'fills':4},'summary':{'ok':True},
+        report={'input_fingerprint':'fp','decision':'data_insufficient','coverage':{'fills':4},'summary':{'ok':True},
             'route':{'next_action':'human review'}}
         self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
         self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',('eth-v1','final_24h','fp',json.dumps(report),1));self.store.connection.commit()
@@ -89,6 +89,20 @@ class WorkQueueTest(unittest.TestCase):
         self.assertEqual(result['advanced'][0]['status'],'budget_exhausted');seal.assert_called_once()
         saved=self.store.connection.execute('select status,reason from research_work_queue where work_id=?',(row['work_id'],)).fetchone()
         self.assertEqual(tuple(saved),('budget_exhausted','v2 task allowance exhausted'))
+
+    def test_report_row_fingerprint_must_match_persisted_payload(self):
+        report={'protocol_id':'eth-v1','protocol_fingerprint':'p','stage':'final_24h','input_fingerprint':'payload-fp',
+            'decision':'data_insufficient','coverage':{},'summary':{},'fills':[],'quote_latency_ms':{},'limits':[]}
+        self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
+        self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',
+            ('eth-v1','final_24h','different-row-fp',json.dumps(report),1));self.store.connection.commit()
+        row,_=enqueue(self.store,'eth_observation_report','eth-v1',
+            {'protocol_id':'eth-v1','stage':'final_24h'},clock_ms=1)
+        out=tick(self.store,clock_ms=2)
+        self.assertEqual(out['advanced'][0]['status'],'technical_required')
+        saved=self.store.connection.execute('select status,reason from research_work_queue where work_id=?',(row['work_id'],)).fetchone()
+        self.assertEqual(saved['status'],'technical_required')
+        self.assertIn('fingerprint',saved['reason'])
 
     def test_semantic_dedup_ignores_serialization_time_but_sees_new_context(self):
         from tamtam_again.research_work_queue import eth_report_semantic_fingerprint, eth_report_work_payload

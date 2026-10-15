@@ -499,6 +499,62 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertIn('same question',replay['reason'])
         self.assertEqual(self.store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',(newer['pilot_id'],)).fetchone()[0],0)
 
+    def test_final_eth_report_drives_v2_proposal_critique_and_persistent_decision(self):
+        from unittest.mock import patch
+        from tamtam_again.research_work_queue import enqueue, tick as tick_queue, eth_report_semantic_fingerprint
+        policy=json.loads((ROOT/'config/research-loop-pilot-v2.json').read_text())
+        item=next(row for row in policy['selection'] if row['candidate']=='67f7')
+        self.add_candidate('67f7',active=True);self.store.connection.commit()
+        from tamtam_again.population_pilot import _seal_candidate
+        prior_a880=_seal_candidate(self.store,POLICY,'a880',clock_ms=39)
+        self.assertEqual(prior_a880['status'],'sealed')
+        protocol_id='67f7-eth-public-observation-24h-20261014-v1'
+        protocol={'protocol_id':protocol_id,'network':policy['network'],'address':item['address'],'market':'ETH','start_ms':1,'end_ms':50}
+        self.store.connection.execute('create table eth_observation_runs(protocol_id text,status text,protocol_json text)')
+        self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
+        report={'protocol_id':protocol_id,'protocol_fingerprint':'protocol-fp','stage':'final_24h','input_fingerprint':'report-source-fp',
+            'decision':'signal_exploratory_favorable','coverage':{'fills':{'included':8},'market':{'matched':8}},
+            'summary':{'taker':{'reduces':{'markout_60s_count':4},'opens':{'markout_60s_count':2}}},
+            'fills':[{'fill_id':'f1','position_action':'reduces','directional_markout_60s_bps':'1.2'}],
+            'quote_latency_ms':{},'limits':['outcomes only'],'generated_at_ms':40,'route':{'next_action':'human review'}}
+        self.store.connection.execute('insert into eth_observation_runs values(?,?,?)',(protocol_id,'finalised',json.dumps(protocol)))
+        self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',(protocol_id,'final_24h','report-source-fp',json.dumps(report),40));self.store.connection.commit()
+        semantic=eth_report_semantic_fingerprint(report)
+        work,_=enqueue(self.store,'eth_observation_report',protocol_id,{'protocol_id':protocol_id,'stage':'final_24h','semantic_fingerprint':semantic},clock_ms=40)
+        prepared=tick_queue(self.store,clock_ms=41,pilot_policy=policy)
+        self.assertEqual(prepared['advanced'][0]['status'],'analysis_ready')
+        linked=json.loads(self.store.connection.execute('select payload_json from research_work_queue where work_id=?',(work['work_id'],)).fetchone()[0])
+        request_id=linked['request_id']
+        job=self.store.connection.execute('select * from population_research_jobs where request_id=?',(request_id,)).fetchone()
+        packet=json.loads(job['packet_json']); evidence_ref=packet['observations']['prospective_eth_observation_v1']['evidence_ref']
+        proposal={'decision':'hypothesis','diagnostic':'Comparaison descriptive seulement.','wake':{},'hypothesis':{
+            'mechanism':'Observed taker inventory reductions may differ in subsequent price movement.',
+            'type':'autonomous','markets':['ETH'],'signal':'Classify observed fills by inventory effect.',
+            'entry':'Observed execution only; no order instruction.','exit':'Measure the 60 second outcome markout.',
+            'sizing':'Not applicable to observed fills.','risk':'No profitability inference from this sample.',
+            'horizon_justification':'The report already records 60 second markouts.', 'required_data':[],
+            'execution_constraints':'No paper or live execution.','rejection_criteria':'No persistent difference or inadequate coverage.',
+            'evidence_refs':[evidence_ref]}}
+        critique={'decision':'consistent','diagnostic':'The question is falsifiable but remains exploratory.','wake':{}}
+        usage={'cost_usd':0,'cost_status':'included','input_tokens':900,'output_tokens':80,'duration_ms':12,
+            'model':policy['task_policy']['model']}
+        with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.now_ms',return_value=42),patch(
+                'tamtam_again.population_runtime.call',side_effect=[(json.dumps(proposal),usage),(json.dumps(critique),usage)]) as call:
+            run_result=tick_locked(self.store,policy,dispatch=True,clock_ms=42)
+            self.assertEqual(call.call_count,2,(run_result,dict(self.store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone())))
+            replay=tick_locked(self.store,policy,dispatch=True,clock_ms=43)
+            self.assertEqual(replay['status'],'no_admissible_candidate')
+            self.assertEqual(call.call_count,2)
+        saved=self.store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
+        self.assertEqual(saved['status'],'hypothesis_recorded')
+        self.assertEqual(json.loads(saved['result_json'])['critique']['decision'],'consistent')
+        self.assertEqual(tick_queue(self.store,clock_ms=43,pilot_policy=policy)['advanced'],[])
+        queue=self.store.connection.execute('select status,outcome_json from research_work_queue where work_id=?',(work['work_id'],)).fetchone()
+        self.assertEqual(queue['status'],'analysis_completed')
+        self.assertEqual(json.loads(queue['outcome_json'])['promotion_authorized'],False)
+        self.assertEqual(self.store.connection.execute('select count(*) from population_research_pilot_calls where pilot_id=?',(policy['pilot_id'],)).fetchone()[0],2)
+        self.assertEqual(self.store.connection.execute("select count(*) from population_research_pilot_tasks where pilot_id=? and candidate='67f7'",(policy['pilot_id'],)).fetchone()[0],1)
+
     def test_pilot_jobs_do_not_consume_shared_research_request_ceiling(self):
         from tamtam_again.research_jobs import request_count
         self.store.connection.execute('insert into population_research_jobs '

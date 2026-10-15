@@ -265,7 +265,10 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             except (ValueError,PermissionError) as exc:
                 local_resolutions.append({'request_id':candidate['request_id'],'status':'blocked','reason':str(exc),
                     'model_calls':0,'collection_started':False})
-            local_executions+=1
+                continue
+            # A failed/technical route is recorded, but it does not consume the
+            # bounded slot needed by another independently resolvable task.
+            if outcome.get('status') in {'prepared','unchanged'}:local_executions+=1
             if resume_local_resolution is not None or local_executions>=max_jobs:break
         if resume_local_resolution is not None and not resume_found:
             raise ValueError('Explicit local-resolution resume did not match a required or completed local task')
@@ -299,7 +302,8 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                 if len(plans)>=max_jobs:break
         # Persist due research work without coupling it to an IA call. The
         # observation's dates and collection protocol remain owned by its runner.
-        from .research_work_queue import initialize as initialize_work_queue, enqueue as enqueue_work, tick as tick_work_queue
+        from .research_work_queue import (initialize as initialize_work_queue, enqueue as enqueue_work,
+            tick as tick_work_queue, eth_report_work_payload)
         initialize_work_queue(store)
         queue_route_status={
             'needs_data':'waiting_data','local_archive_analysis_required':'ready',
@@ -317,16 +321,17 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             for run in store.connection.execute('select protocol_id,status,protocol_json from eth_observation_runs order by protocol_id').fetchall():
                 protocol=json.loads(run['protocol_json'])
                 if run['status']=='finalised':
-                    report=store.connection.execute("select input_fingerprint from eth_observation_reports where protocol_id=? and stage='final_24h'",(run['protocol_id'],)).fetchone()
+                    report=store.connection.execute("select input_fingerprint,report_json from eth_observation_reports where protocol_id=? and stage='final_24h'",(run['protocol_id'],)).fetchone()
                     if report:
                         store.connection.execute("update research_work_queue set status='completed',reason='superseded by final report',updated_ms=? where source_kind='eth_observation_report' and source_id=? and status in ('waiting_deadline','waiting_data')",(now_ms(),run['protocol_id']))
-                        payload={'protocol_id':run['protocol_id'],'stage':'final_24h','report_fingerprint':report['input_fingerprint']}
+                        report_value=json.loads(report['report_json'])
+                        payload=eth_report_work_payload(run['protocol_id'],'final_24h',report_value)
                         enqueue_work(store,'eth_observation_report',run['protocol_id'],payload,status='ready',reason='final report available')
                     else:
                         enqueue_work(store,'eth_observation_report',run['protocol_id'],{'protocol_id':run['protocol_id'],'stage':'final_24h'},status='waiting_data',reason='final report not persisted')
                 else:
                     enqueue_work(store,'eth_observation_report',run['protocol_id'],{'protocol_id':run['protocol_id'],'stage':'final_24h'},status='waiting_deadline',reason='frozen observation is still running',wake_at_ms=protocol.get('end_ms'))
-        work_queue=tick_work_queue(store,max_jobs=max_jobs)
+        work_queue=tick_work_queue(store,max_jobs=max_jobs,pilot_policy=pilot_policy)
         store.connection.commit()
         paper=None
         if paper_policy is not None:

@@ -598,6 +598,114 @@ def _seal_candidate(store, policy, candidate, *, clock_ms=None):
         'packet_fingerprint': packet['fingerprint'], 'authorization': auth, 'model_calls': 0}
 
 
+def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, clock_ms=None):
+    """Seal a v2 task only from the persisted final 67f7/ETH report and its evidence."""
+    from copy import deepcopy
+    from .population_packet import packet_for_authorized_pilot
+    from .population_descriptive import prepare_pilot_packet
+    from .population_research import initialize as initialize_jobs
+    validate_policy(policy); initialize(store, policy)
+    if policy['pilot_id'] != 'research-loop-pilot-20261014-v2':
+        raise ValueError('Final ETH follow-up must use its dedicated v2 allowance')
+    protocol_id='67f7-eth-public-observation-24h-20261014-v1'
+    report_row=store.connection.execute("select input_fingerprint,report_json from eth_observation_reports where protocol_id=? and stage='final_24h'",(protocol_id,)).fetchone()
+    run=store.connection.execute('select status,protocol_json from eth_observation_runs where protocol_id=?',(protocol_id,)).fetchone()
+    if not report_row or not run or run['status']!='finalised':
+        return {'status':'waiting_deadline','reason':'final report is not durably published'}
+    persisted=json.loads(report_row['report_json'])
+    if persisted != report or persisted.get('stage')!='final_24h':
+        raise ValueError('Supplied report differs from the persisted final report')
+    if report_row['input_fingerprint']!=report.get('input_fingerprint'):
+        raise ValueError('Persisted report input fingerprint differs from its payload')
+    protocol=json.loads(run['protocol_json'])
+    item=next(x for x in policy['selection'] if x['candidate']=='67f7')
+    if (protocol.get('network')!=policy['network'] or protocol.get('address','').lower()!=item['address'].lower()
+            or protocol.get('market')!='ETH'):
+        raise ValueError('Final report protocol identity is outside the v2 67f7 authorization')
+    admitted,reason=_historically_qualified(store,policy['network'],item['address'],policy['admission']['cutoff_ms'])
+    if not admitted: return {'status':'technical_required','reason':reason}
+    allowed_decisions={'signal_exploratory_favorable','signal_exploratory_unfavorable','indeterminate'}
+    if report.get('decision')=='data_insufficient':
+        return {'status':'analysis_skipped','reason':'deterministic report classifies the observation as data_insufficient',
+            'next_action':report.get('route',{}).get('next_action')}
+    if report.get('decision') not in allowed_decisions:
+        return {'status':'analysis_skipped','reason':'no recognized new prospective question is justified by the report decision',
+            'next_action':report.get('route',{}).get('next_action')}
+    protocol_report_fp=report_row['input_fingerprint']
+    if semantic_fingerprint != eth_report_semantic_fingerprint(report):
+        raise ValueError('Final report evidence fingerprint mismatch')
+    cutoff=policy['admission']['cutoff_ms'];task_policy=policy['task_policy']
+    base=packet_for_authorized_pilot(store,policy['network'],item['address'],as_of_ms=cutoff,
+        max_chars=task_policy['max_packet_chars'],allowed_addresses=[x['address'] for x in policy['selection']])
+    if base.get('status')!='packet_ready': return {'status':'waiting_data','reason':base.get('reason','historical packet unavailable')}
+    question=('Does the prospective ETH window for 67f7 show a different 60-second directional markout '
+        'for observed taker executions reducing inventory versus opening or inverting it, and do coverage '
+        'and market context support or contradict the historical association? Treat future prices only as '
+        'outcome measurements, not as historical signals; do not infer unobserved order-placement decisions.')
+    research_item=deepcopy(item);research_item['question']=question
+    packet=prepare_pilot_packet(store,base['packet'],candidate='67f7',item=research_item,
+        pilot_id=policy['pilot_id'],policy_version=policy['version'],cutoff_ms=cutoff)
+    semantic=eth_report_semantic_fingerprint(report)
+    reference=f"eth_observation_reports:{protocol_id}:final_24h#sha256:{semantic}"
+    packet['observations']['prospective_eth_observation_v1']={
+        'decision':report['decision'],'coverage':report.get('coverage'),'summary':report.get('summary'),
+        'execution_samples':report.get('fills',[]),'quote_latency_ms':report.get('quote_latency_ms'),
+        'limits':report.get('limits',[]),'report_input_fingerprint':protocol_report_fp,
+        'semantic_fingerprint':semantic,'evidence_ref':reference}
+    packet['evidence_refs'].append(reference)
+    packet['available_ms']=max(packet.get('available_ms',0),report.get('generated_at_ms',0))
+    packet['research_contract']['purpose']='compare the authorized historical description with a completed prospective observation; no paper, order, profitability or strategy approval'
+    packet['research_input_fingerprint']=fingerprint({'base':packet['research_input_fingerprint'],
+        'question':question,'prospective_eth_report':semantic})
+    packet.pop('fingerprint',None);packet['fingerprint']=fingerprint(packet)
+    if len(canonical(packet))>task_policy['max_packet_chars']:
+        return {'status':'technical_required','reason':'prospective report packet exceeds the existing character limit'}
+    digest=packet['research_input_fingerprint']
+    request_id=fingerprint({'pilot_id':policy['pilot_id'],'protocol_id':protocol_id,
+        'semantic_report_fingerprint':semantic,'research_input_fingerprint':digest})
+    old=store.connection.execute('select request_id,status,packet_json from population_research_jobs where network=? and address=? and input_fingerprint=?',
+        (policy['network'],item['address'].lower(),digest)).fetchone()
+    if old:
+        auth=store.connection.execute('select pilot_id,packet_fingerprint,state from population_research_pilot_tasks where request_id=?',(old['request_id'],)).fetchone()
+        if old['status']=='sealed' and not auth and old['request_id']==request_id and json.loads(old['packet_json']).get('fingerprint')==packet['fingerprint']:
+            count=store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',(policy['pilot_id'],)).fetchone()[0]
+            if count>=policy['pilot_limits']['max_tasks']:
+                return {'status':'budget_exhausted','reason':'v2 task allowance exhausted before authorization recovery'}
+            auth_result=authorize_task(store,policy,request_id=request_id,candidate='67f7',address=item['address'],
+                packet_fingerprint_value=packet['fingerprint'],authorized_ms=clock_ms)
+            return {'status':'analysis_ready','request_id':request_id,'packet_fingerprint':packet['fingerprint'],
+                'authorization':auth_result,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic}
+        if auth and auth['pilot_id']==policy['pilot_id'] and auth['packet_fingerprint']==json.loads(old['packet_json']).get('fingerprint'):
+            return {'status':'analysis_ready','request_id':old['request_id'],'packet_fingerprint':auth['packet_fingerprint'],
+                'authorization':{'status':'already_authorized','request_id':old['request_id']},'model_calls':0,
+                'evidence_ref':reference,'semantic_fingerprint':semantic}
+        return {'status':'unchanged_no_inference','request_id':old['request_id'],'source_status':old['status']}
+    count=store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',(policy['pilot_id'],)).fetchone()[0]
+    if count>=policy['pilot_limits']['max_tasks']:
+        return {'status':'budget_exhausted','reason':'v2 task allowance exhausted'}
+    clock=now_ms() if clock_ms is None else clock_ms
+    initialize_jobs(store)
+    store.connection.execute('begin immediate')
+    try:
+        store.connection.execute('insert into population_research_jobs '
+            '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+            'values(?,?,?,?,?,?,?,\'sealed\',?)',
+            (request_id,policy['network'],item['address'].lower(),digest,canonical(packet),canonical(task_policy),clock,clock))
+        store.connection.commit()
+    except BaseException:
+        store.connection.rollback();raise
+    auth=authorize_task(store,policy,request_id=request_id,candidate='67f7',address=item['address'],
+        packet_fingerprint_value=packet['fingerprint'],authorized_ms=clock)
+    return {'status':'analysis_ready','request_id':request_id,'packet_fingerprint':packet['fingerprint'],
+        'authorization':auth,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic}
+
+
+def eth_report_semantic_fingerprint(report):
+    """Fingerprint only decision-relevant report content, excluding serialization metadata."""
+    return fingerprint({k:report.get(k) for k in ('protocol_id','protocol_fingerprint','stage','input_fingerprint',
+        'decision','coverage','summary','fills','quote_latency_ms','limits')})
+
+
 def tick_locked(store, policy, *, dispatch=True, clock_ms=None):
     """One bounded pilot transition, called under the existing research scheduler lock."""
     validate_policy(policy)

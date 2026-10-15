@@ -259,6 +259,28 @@ class PopulationLocalJoinTests(unittest.TestCase):
         self.assertEqual(sum(status=='prepared' for _,status in statuses),1)
         self.assertEqual(result['processed'],[])
 
+    def test_technical_local_failure_does_not_block_next_resolution(self):
+        from unittest.mock import patch
+        second='later-local-task'
+        packet={'schema_version':'fixture','network':self.network,'address':self.address,
+            'available_ms':4500,'research_input_fingerprint':'later-input',
+            'pilot_research':{'candidate':'67f7','admission_cutoff_ms':self.cutoff},
+            'observations':{'markets':['ETH'],'market_execution_detail_v1':{'ETH':{'cutoff_ms':self.cutoff,'detail_fingerprint':'later'}}}}
+        result={'local_resolution':{'version':'fixture','followup_task':{'kind':'offline_archive_join','title':'join later task'}}}
+        self.store.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            (second,self.network,self.address,'later-input',canonical(packet),'{}',4500,'needs_data',None,None,canonical(result),None,4500))
+        self.store.connection.commit()
+        policy={'version':'population-research-v1','max_requests':1,'max_packet_chars':10000,
+            'minimum_interval_ms':1000,'timeout_seconds':30,'max_output_tokens':100,'max_request_age_ms':10000,
+            'model':'fixture','usage_mode':'pay_as_you_go','call_reservation_usd':'0.01'}
+        with patch('tamtam_again.population_local_join.execute_offline_archive_join',side_effect=[
+                ValueError('missing optional source'),
+                {'request_id':second,'status':'prepared','route':{'state':'local_archive_analysis_required'}}]) as execute:
+            result=tick(self.store,self.network,policy,dispatch=False,max_jobs=1)
+        self.assertEqual(execute.call_count,2)
+        self.assertEqual([(r['request_id'],r['status']) for r in result['local_resolutions']],
+            [(self.request_id,'blocked'),(second,'prepared')])
+
     def test_explicit_resume_rebuilds_stale_version_without_model_dispatch(self):
         # Complete v2-shaped output is eligible for the current v3 resolver.
         result_job=json.loads(self.store.connection.execute(

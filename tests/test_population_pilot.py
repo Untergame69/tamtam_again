@@ -510,7 +510,7 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertEqual(prior_a880['status'],'sealed')
         protocol_id='67f7-eth-public-observation-24h-20261014-v1'
         protocol={'protocol_id':protocol_id,'network':policy['network'],'address':item['address'],'market':'ETH','start_ms':1,'end_ms':50}
-        self.store.connection.execute('create table eth_observation_runs(protocol_id text,status text,protocol_json text)')
+        self.store.connection.execute('create table eth_observation_runs(protocol_id text,status text,protocol_fingerprint text,protocol_json text,finalised_ms integer)')
         self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
         from datetime import datetime, timezone
         day_start=int(datetime(2026,10,14,tzinfo=timezone.utc).timestamp()*1000)
@@ -537,7 +537,8 @@ class PopulationPilotTests(unittest.TestCase):
                 'post_receipt_markout_60s_bps':float((index%13)-6)})
         large_source_refs=[{'observation_id':80000+i,'endpoint':'bbo','sha256':f'{i%16:x}'*64,
             'archived_at':'2026-10-14T00:00:00.000+00:00','frame_count':2} for i in range(12000)]
-        report={'protocol_id':protocol_id,'protocol_fingerprint':'protocol-fp','stage':'final_24h','input_fingerprint':'report-source-fp',
+        report={'protocol_id':protocol_id,'protocol_fingerprint':fingerprint(protocol),'stage':'final_24h',
+            'input_fingerprint':fingerprint({'report-source':'final-eth'}),
             'decision':'signal_exploratory_favorable','coverage':{'fills':{'page_count':40,'complete_page_count':40,
                 'incomplete_page_count':0,'duplicate_fill_instances':0,'conflicting_fill_ids':[],
                 'unique_eth_fills':volume_fills,'source_fingerprint':'fill-source-fp','pages':[]},
@@ -546,11 +547,15 @@ class PopulationPilotTests(unittest.TestCase):
                     'source_fingerprint':'quote-source-fp','source_refs':large_source_refs}},
             'summary':{'taker':{'reduces':{'markout_60s_count':4},'opens':{'markout_60s_count':2}}},
             'fills':large_fills,
-            'quote_latency_ms':{},'limits':['outcomes only'],'generated_at_ms':40,'route':{'next_action':'human review'}}
+            'quote_latency_ms':{},'limits':['outcomes only'],'generated_at_ms':40,
+            'window':{'start_ms':1,'end_ms':50,'interval':'[start_ms,end_ms)'},
+            'route':{'next_action':'human review'}}
         report_json=json.dumps(report)
         self.assertGreater(len(report_json),policy['task_policy']['max_packet_chars'])
-        self.store.connection.execute('insert into eth_observation_runs values(?,?,?)',(protocol_id,'finalised',json.dumps(protocol)))
-        self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',(protocol_id,'final_24h','report-source-fp',report_json,40));self.store.connection.commit()
+        self.store.connection.execute('insert into eth_observation_runs values(?,?,?,?,?)',
+            (protocol_id,'finalised',fingerprint(protocol),json.dumps(protocol),55))
+        self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',
+            (protocol_id,'final_24h',report['input_fingerprint'],report_json,40));self.store.connection.commit()
         semantic=eth_report_semantic_fingerprint(report)
         work,_=enqueue(self.store,'eth_observation_report',protocol_id,{'protocol_id':protocol_id,'stage':'final_24h','semantic_fingerprint':semantic},clock_ms=40)
         prepared=tick_queue(self.store,clock_ms=41,pilot_policy=policy)
@@ -567,6 +572,12 @@ class PopulationPilotTests(unittest.TestCase):
         request_id=linked['request_id']
         job=self.store.connection.execute('select * from population_research_jobs where request_id=?',(request_id,)).fetchone()
         packet=json.loads(job['packet_json']); projection=packet['observations']['prospective_eth_observation_v1']
+        self.assertIn('local_analysis_contract_v1',packet)
+        from tamtam_again.population_local_analysis_contract import validate_contract
+        contract_validation=validate_contract(packet,packet['local_analysis_contract_v1'])
+        self.assertEqual(packet['local_analysis_contract_v1']['source']['semantic_fingerprint'],semantic)
+        self.assertIn(packet['local_analysis_contract_v1']['source']['report_ref'],packet['evidence_refs'])
+        sealed_packet_json=job['packet_json']
         self.assertEqual(queue_packet['evidence_projection'],projection)
         self.assertEqual(queue_packet['projection_size_proof']['projected_evidence_chars'],len(canonical(projection)))
         evidence_ref=projection['source']['full_report_ref']
@@ -578,6 +589,8 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertLessEqual(len(canonical(packet)),policy['task_policy']['max_packet_chars'])
         from tamtam_again.population_runtime import build_proposal_prompt
         prompt=build_proposal_prompt(packet,request_id)
+        self.assertIn('local_analysis_contract_v1',prompt)
+        self.assertIn(packet['local_analysis_contract_v1']['source']['report_ref'],prompt)
         self.assertLessEqual(len(canonical(packet)),policy['task_policy']['max_packet_chars'])
         self.assertLessEqual(len(prompt),policy['task_policy']['max_prompt_chars'])
         prepared_event=self.store.connection.execute("select details_json from research_work_queue_events where work_id=? and status='packet_prepared'",
@@ -611,6 +624,12 @@ class PopulationPilotTests(unittest.TestCase):
         saved=self.store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
         self.assertEqual(saved['status'],'hypothesis_recorded')
         self.assertEqual(json.loads(saved['result_json'])['critique']['decision'],'consistent')
+        after_runtime=self.store.connection.execute('select packet_json from population_research_jobs where request_id=?',
+            (request_id,)).fetchone()[0]
+        self.assertEqual(after_runtime,sealed_packet_json)
+        self.assertEqual(validate_contract(json.loads(after_runtime),
+            json.loads(after_runtime)['local_analysis_contract_v1'])['contract_fingerprint'],
+            contract_validation['contract_fingerprint'])
         self.assertEqual(tick_queue(self.store,clock_ms=43,pilot_policy=policy)['advanced'],[])
         queue=self.store.connection.execute('select status,outcome_json from research_work_queue where work_id=?',(work['work_id'],)).fetchone()
         self.assertEqual(queue['status'],'analysis_completed')

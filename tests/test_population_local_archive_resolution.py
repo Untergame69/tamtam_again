@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from tamtam_again.engine import canonical, fingerprint
 from tamtam_again.eth_report_projection import semantic_fingerprint
-from tamtam_again.population_local_analysis_contract import contract_for_report
 from tamtam_again.population_local_archive_resolution import execute
 from tamtam_again.population_research import initialize as initialize_population
 from tamtam_again.population_routing import route
@@ -78,18 +77,32 @@ def add_task(store, *, suffix, address, market, offset=0, missing_source=False, 
         'interval': '[start_ms,end_ms)'}
     semantic = semantic_fingerprint(report)
     ref = f'eth_observation_reports:{protocol_id}:final_24h#sha256:{semantic}'
-    contract_packet = {'network': 'hyperliquid-mainnet', 'address': address.lower(),
-        'evidence_refs': [ref], 'observations': {'markets': [market]}}
-    contract = contract_for_report(packet=contract_packet, report=report, network='hyperliquid-mainnet',
-        address=address, market=market, start_ms=start_ms, end_ms=end_ms)
+    from tamtam_again.population_descriptive import prepare_pilot_packet
+    base_packet = {'schema_version': 'population-descriptive-pilot-adapter-v1',
+        'network': 'hyperliquid-mainnet', 'address': address.lower(), 'available_ms': start_ms - 1,
+        'research_input_fingerprint': fingerprint({'research-input': suffix}), 'evidence_refs': [],
+        'observations': {'markets': [market]}, 'qualification': {}, 'limits': [],
+        'research_contract': {'purpose': 'test preparation path'}}
+    candidate = 'test-' + suffix
+    question = 'Compare the recorded fill and strict-prior quote observations.'
+    item = {'candidate': candidate, 'question': question, 'descriptive_markets': []}
+    summary = {'network': 'hyperliquid-mainnet', 'address': address.lower(),
+        'cutoff_ms': end_ms + 10_000, 'summary_fingerprint': fingerprint({'summary': suffix}),
+        'evidence_refs': [], 'scope_report': {'report_id': 'scope-' + suffix, 'sha256': 'scope-fp'}}
+    protocol_metadata = {'protocol_id': protocol_id, 'network': 'hyperliquid-mainnet',
+        'address': address.lower(), 'market': market, 'start_ms': start_ms,
+        'end_ms': end_ms, 'finalised_ms': end_ms + 5_000}
+    with patch('tamtam_again.population_descriptive.prepare_candidate_summary', return_value=summary), \
+            patch('tamtam_again.population_descriptive.prepare_candidate_market_detail', return_value={}):
+        packet = prepare_pilot_packet(store, base_packet, candidate=candidate, item=item,
+            pilot_id=None, policy_version=None,
+            cutoff_ms=end_ms + 10_000, local_analysis_report=report,
+            local_analysis_protocol=protocol_metadata)
+    contract = packet['local_analysis_contract_v1']
     if unsupported:
-        contract['operations'][-1] = 'infer_private_trader_intent'
-    packet = {'schema_version': 'population-descriptive-v1', 'network': 'hyperliquid-mainnet',
-        'address': address.lower(), 'available_ms': start_ms - 1,
-        'research_input_fingerprint': fingerprint({'research-input': suffix}), 'evidence_refs': [ref],
-        'observations': {'markets': [market]}, 'local_analysis_contract_v1': contract,
-        'qualification': {}, 'limits': []}
-    packet['fingerprint'] = fingerprint(packet)
+        packet['local_analysis_contract_v1']['operations'][-1] = 'infer_private_trader_intent'
+        packet.pop('fingerprint', None)
+        packet['fingerprint'] = fingerprint(packet)
     result = {'proposal': {'decision': 'hypothesis', 'hypothesis': {
             'mechanism': 'a descriptive comparison only', 'required_data': [
                 'untrusted prose does not define operations for this test'], 'markets': [market],
@@ -114,6 +127,9 @@ def add_task(store, *, suffix, address, market, offset=0, missing_source=False, 
     return {'request_id': request_id, 'protocol_id': protocol_id, 'market': market,
         'start_ms': start_ms, 'end_ms': end_ms, 'fills': fills, 'rows': rows, 'quotes': quotes,
         'fill_cov': fill_cov, 'quote_cov': quote_cov, 'contract': contract,
+        'prepared_packet': packet, 'base_packet': base_packet, 'report': report,
+        'protocol_metadata': protocol_metadata, 'candidate': candidate, 'item': item,
+        'summary': summary,
         'report_refs': {'fills': report['coverage']['fills']['pages'],
             'quotes': report['coverage']['market']['source_refs']},
         'unsupported': unsupported, 'missing_source': missing_source, 'semantic': semantic}
@@ -236,6 +252,20 @@ class PopulationLocalArchiveResolutionTests(unittest.TestCase):
         self.assertEqual(route_value['state'], 'technical_required')
         self.assertEqual(route_value['validation_diagnostic']['code'], 'calculation_set_unsupported')
         self.assertEqual(route_value['validation_diagnostic']['field'], 'operations')
+
+    def test_normal_packet_preparation_rejects_out_of_scope_market(self):
+        task = add_task(self.store, suffix='scope-refusal', address='0x' + '8' * 40, market='ETH')
+        from tamtam_again.population_descriptive import prepare_pilot_packet
+        from tamtam_again.population_local_analysis_contract import LocalAnalysisContractError
+        bad_protocol = {**task['protocol_metadata'], 'market': 'BTC'}
+        with patch('tamtam_again.population_descriptive.prepare_candidate_summary',
+                return_value=task['summary']):
+            with self.assertRaises(LocalAnalysisContractError) as raised:
+                prepare_pilot_packet(self.store, task['base_packet'], candidate=task['candidate'],
+                    item=task['item'], pilot_id=None, policy_version=None,
+                    cutoff_ms=task['end_ms'] + 10_000, local_analysis_report=task['report'],
+                    local_analysis_protocol=bad_protocol)
+        self.assertEqual(raised.exception.diagnostic['code'], 'scope_market_mismatch')
 
     def test_reference_fingerprint_mismatch_is_technical_and_pilot_scope_needs_authorization(self):
         bad_refs = add_task(self.store, suffix='bad-refs', address='0x' + 'f' * 40, market='ETH')

@@ -653,12 +653,54 @@ def enrich_research_packet(packet, summary, market_details=None):
     return out
 
 
-def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, policy_version, cutoff_ms):
+def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, policy_version, cutoff_ms,
+        local_analysis_report=None, local_analysis_protocol=None):
+    """Build the ordinary pilot packet, optionally binding an authorized immutable report.
+
+    The report-derived projection and finite local-analysis contract are added
+    before either packet fingerprint is finalized. Callers remain responsible
+    for validating the persisted report and its existing authorization first.
+    """
     summary=prepare_candidate_summary(store,base_packet['network'],base_packet['address'],
         cutoff_ms=cutoff_ms,candidate=candidate)
     details=[prepare_candidate_market_detail(store,base_packet['network'],base_packet['address'],
         cutoff_ms=cutoff_ms,market=market) for market in item.get('descriptive_markets',[])]
     packet=enrich_research_packet(base_packet,summary,details)
+    if (local_analysis_report is None) != (local_analysis_protocol is None):
+        raise ValueError('Local-analysis report and protocol metadata must be supplied together')
+    local_analysis_contract=None
+    if local_analysis_report is not None:
+        from .eth_report_projection import project as project_eth_report, semantic_fingerprint
+        from .population_local_analysis_contract import contract_for_report, report_reference
+        protocol=local_analysis_protocol
+        report=local_analysis_report
+        required_protocol=('protocol_id','network','address','market','start_ms','end_ms','finalised_ms')
+        if not isinstance(protocol,dict) or any(key not in protocol for key in required_protocol):
+            raise ValueError('Finalised local-analysis protocol metadata is incomplete')
+        if (protocol['network']!=packet.get('network')
+                or str(protocol['address']).lower()!=str(packet.get('address','')).lower()
+                or protocol['protocol_id']!=report.get('protocol_id')
+                or report.get('stage')!='final_24h'):
+            raise ValueError('Local-analysis report identity differs from the prepared packet')
+        window=report.get('window')
+        if window is not None and (not isinstance(window,dict) or
+                (window.get('start_ms'),window.get('end_ms')) != (protocol['start_ms'],protocol['end_ms'])):
+            raise ValueError('Local-analysis report window differs from its finalised protocol')
+        if type(protocol['finalised_ms']) is not int or protocol['finalised_ms'] < protocol['end_ms']:
+            raise ValueError('Local-analysis finalisation cutoff is invalid')
+        report_ref=report_reference({'protocol_id':protocol['protocol_id'],'stage':report['stage'],
+            'semantic_fingerprint':semantic_fingerprint(report)})
+        if report_ref not in packet.setdefault('evidence_refs',[]):
+            packet['evidence_refs'].append(report_ref)
+        local_analysis_contract=contract_for_report(packet=packet,report=report,
+            network=protocol['network'],address=protocol['address'],market=protocol['market'],
+            start_ms=protocol['start_ms'],end_ms=protocol['end_ms'])
+        packet.setdefault('observations',{})['prospective_eth_observation_v1']=project_eth_report(report)
+        packet['local_analysis_contract_v1']=local_analysis_contract
+        packet['available_ms']=max(packet.get('available_ms',0),protocol['finalised_ms'])
+        packet.setdefault('research_contract',{})['purpose']=(
+            'compare authorized descriptive history with a completed prospective observation; '
+            'archive-only deterministic analysis, no paper, orders, profitability or strategy approval')
     profile=packet.get('observations',{}).get('current_pass_behavior_profile')
     if isinstance(profile,dict):
         # The unprojected profile can contain a large list of every candidate
@@ -678,17 +720,21 @@ def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, polic
             'full_profile_reference':'account_scope_reports:'+summary['scope_report']['report_id']+
                 '#sha256:'+summary['scope_report']['sha256'],
             'note':'Per-episode examples omitted from this packet; source report remains verifiable by reference.'}
-    packet['pilot_research']={k:item[k] for k in ('candidate','rank','research_interest',
-        'observability','paper_engine_compatibility') if k in item}
-    if item.get('question'):
-        packet['pilot_research']['question']=item['question']
-    packet['pilot_research'].update({'pilot_id':pilot_id,'policy_version':policy_version,
-        'economic_validation':'false; this is owner-authorized descriptive research only',
-        'execution_compatibility_is_separate':True,'promotion_authorized':False,
-        'admission_cutoff_ms':cutoff_ms})
+    if pilot_id is not None:
+        packet['pilot_research']={k:item[k] for k in ('candidate','rank','research_interest',
+            'observability','paper_engine_compatibility') if k in item}
+        if item.get('question'):
+            packet['pilot_research']['question']=item['question']
+        packet['pilot_research'].update({'pilot_id':pilot_id,'policy_version':policy_version,
+            'economic_validation':'false; this is owner-authorized descriptive research only',
+            'execution_compatibility_is_separate':True,'promotion_authorized':False,
+            'admission_cutoff_ms':cutoff_ms})
     packet['research_input_fingerprint']=fingerprint({'base':packet['research_input_fingerprint'],
         'pilot_id':pilot_id,'candidate':candidate,'question':item.get('question'),
-        'descriptive_summary_fingerprint':summary['summary_fingerprint']})
+        'descriptive_summary_fingerprint':summary['summary_fingerprint'],
+        'local_analysis_contract_fingerprint':fingerprint(local_analysis_contract) if local_analysis_contract else None,
+        'prospective_report_fingerprint':semantic_fingerprint(local_analysis_report)
+            if local_analysis_report is not None else None})
     packet.pop('fingerprint',None)
     packet['fingerprint']=fingerprint(packet)
     return packet

@@ -609,7 +609,7 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
         raise ValueError('Final ETH follow-up must use its dedicated v2 allowance')
     protocol_id='67f7-eth-public-observation-24h-20261014-v1'
     report_row=store.connection.execute("select input_fingerprint,report_json from eth_observation_reports where protocol_id=? and stage='final_24h'",(protocol_id,)).fetchone()
-    run=store.connection.execute('select status,protocol_json from eth_observation_runs where protocol_id=?',(protocol_id,)).fetchone()
+    run=store.connection.execute('select status,protocol_json,finalised_ms from eth_observation_runs where protocol_id=?',(protocol_id,)).fetchone()
     if not report_row or not run or run['status']!='finalised':
         return {'status':'waiting_deadline','reason':'final report is not durably published'}
     persisted=json.loads(report_row['report_json'])
@@ -643,21 +643,15 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
         'outcome measurements, not as historical signals; do not infer unobserved order-placement decisions.')
     research_item=deepcopy(item);research_item['question']=question
     packet=prepare_pilot_packet(store,base['packet'],candidate='67f7',item=research_item,
-        pilot_id=policy['pilot_id'],policy_version=policy['version'],cutoff_ms=cutoff)
+        pilot_id=policy['pilot_id'],policy_version=policy['version'],cutoff_ms=cutoff,
+        local_analysis_report=report,
+        local_analysis_protocol={**protocol,'finalised_ms':run['finalised_ms']})
     semantic=eth_report_semantic_fingerprint(report)
-    reference=f"eth_observation_reports:{protocol_id}:final_24h#sha256:{semantic}"
-    from .eth_report_projection import project as project_eth_report, size_proof as report_size_proof
-    eth_projection=project_eth_report(report)
-    packet['observations']['prospective_eth_observation_v1']=eth_projection
-    if reference not in packet['evidence_refs']:
-        packet['evidence_refs'].append(reference)
-    packet['available_ms']=max(packet.get('available_ms',0),report.get('generated_at_ms',0))
-    packet['research_contract']['purpose']='compare the authorized historical description with a completed prospective observation; no paper, order, profitability or strategy approval'
-    packet['research_input_fingerprint']=fingerprint({'base':packet['research_input_fingerprint'],
-        'question':question,'prospective_eth_report':semantic})
-    packet.pop('fingerprint',None);packet['fingerprint']=fingerprint(packet)
-    packet_chars=len(canonical(packet))
+    reference=packet['local_analysis_contract_v1']['source']['report_ref']
+    eth_projection=packet['observations']['prospective_eth_observation_v1']
+    from .eth_report_projection import size_proof as report_size_proof
     source_size=report_size_proof(report,eth_projection,serialized_report_chars=len(report_row['report_json']))
+    packet_chars=len(canonical(packet))
     if packet_chars>task_policy['max_packet_chars']:
         return {'status':'technical_required','reason':'prospective report packet exceeds the existing character limit',
             'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],

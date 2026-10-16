@@ -156,17 +156,33 @@ def _poll_fills(store: Store, protocol: dict, now: int, info=None) -> dict | Non
         return {"status": "error", "poll_id": poll_id, "code": type(exc).__name__, "message": str(exc)[:500]}
 
 
-def _quotes(store: Store, protocol: dict, cutoff_ms: int):
+def _quotes(store: Store, protocol: dict, cutoff_ms: int, *, allowed_source_refs=None):
+    market = protocol.get("market", "ETH")
+    source = protocol.get("quote_source", "hyperliquid-websocket-v1")
     start_iso, end_iso = _iso(protocol["start_ms"]), _iso(cutoff_ms)
-    rows = store.connection.execute("select * from raw_observations where network=? and source='hyperliquid-websocket-v1' "
-        "and entity_type='market' and entity_id='ETH' and endpoint in ('bbo','l2Book') and observed_at>=? and observed_at<=? "
-        "order by observed_at,observation_id", (protocol["network"], start_iso, end_iso))
+    rows = store.connection.execute("select * from raw_observations where network=? and source=? "
+        "and entity_type='market' and entity_id=? and endpoint in ('bbo','l2Book') and observed_at>=? and observed_at<=? "
+        "order by observed_at,observation_id", (protocol["network"], source, market, start_iso, end_iso))
     values, refs, rejects, events_by_channel = [], [], defaultdict(int), defaultdict(list)
+    allowed = ({int(item['observation_id']): str(item['sha256']) for item in allowed_source_refs
+        if isinstance(item, dict) and type(item.get('observation_id')) is int and isinstance(item.get('sha256'), str)}
+        if allowed_source_refs is not None else None)
+    seen_allowed = set(); unexpected_count = 0; reference_mismatches = 0
     for row in rows:
+        if allowed is not None:
+            expected_sha = allowed.get(row['observation_id'])
+            if expected_sha is None:
+                unexpected_count += 1
+                continue
+            if expected_sha != row['response_sha256']:
+                reference_mismatches += 1
+                seen_allowed.add(row['observation_id'])
+                continue
+            seen_allowed.add(row['observation_id'])
         payload = decode_observation_payload(row)
         kind = row["endpoint"]
         received_lot = _to_ms(row["observed_at"])
-        accepted, bad, count, batched = _quote_values(kind, payload, "ETH", lot_received_ms=received_lot, cutoff_ms=cutoff_ms)
+        accepted, bad, count, batched = _quote_values(kind, payload, market, lot_received_ms=received_lot, cutoff_ms=cutoff_ms)
         refs.append({"observation_id": row["observation_id"], "sha256": row["response_sha256"],
             "endpoint": kind, "archived_at": row["observed_at"], "frame_count": count, "batched": batched})
         for key, amount in bad.items(): rejects[key] += amount
@@ -177,7 +193,11 @@ def _quotes(store: Store, protocol: dict, cutoff_ms: int):
             item = {**q, "channel": kind, "received_ms": q["event_received_ms"], "archived_ms": received_lot,
                 "connection_id": stream.get("connection_id"), "observation_id": row["observation_id"],
                 "sha256": row["response_sha256"], "event_index": q["event_index"]}
-            if item["event_ms"] < protocol["end_ms"]:
+            if item["event_ms"] < protocol["start_ms"]:
+                rejects['event_time_before_window'] += 1
+            elif item["event_ms"] >= protocol["end_ms"]:
+                rejects['event_time_at_or_after_window_end'] += 1
+            else:
                 values.append(item); events_by_channel[kind].append(item["received_ms"])
             if len(values) > MAX_DECODED_QUOTES:
                 raise ValueError("decoded quote event bound exceeded")
@@ -187,18 +207,41 @@ def _quotes(store: Store, protocol: dict, cutoff_ms: int):
         "max_received_gap_ms": max((b-a for a,b in zip(sorted(events_by_channel[kind]), sorted(events_by_channel[kind])[1:])), default=None),
         "received_first_ms": min(events_by_channel[kind], default=None), "received_last_ms": max(events_by_channel[kind], default=None)}
         for kind in ("bbo", "l2Book")}
+    reference_coverage = None if allowed is None else {'expected_ref_count': len(allowed),
+        'matched_ref_count': len(seen_allowed) - reference_mismatches,
+        'missing_ref_count': len(set(allowed) - seen_allowed),
+        'sha256_mismatch_count': reference_mismatches, 'unreferenced_archive_lot_count': unexpected_count}
     return values, {"quotes": manifest, "rejected_events": dict(sorted(rejects.items())),
-        "source_refs": refs, "source_fingerprint": fingerprint(refs)}
+        "source_refs": refs, "source_fingerprint": fingerprint(refs),
+        'reference_coverage': reference_coverage}
 
 
-def _fills(store: Store, protocol: dict, cutoff_ms: int):
+def _fills(store: Store, protocol: dict, cutoff_ms: int, *, allowed_source_refs=None):
+    market = protocol.get("market", "ETH")
+    source = protocol.get("fill_source", SOURCE)
     rows = store.connection.execute("select observation_id,observed_at,requested_at,request_json,record_count,complete,response_sha256,response_json,response_encoding "
         "from raw_observations where network=? and source=? and entity_type='account' and entity_id=? and endpoint='userFillsByTime' "
         "and observed_at>=? and observed_at<=? order by observed_at,observation_id",
-        (protocol["network"], SOURCE, protocol["address"].lower(), _iso(protocol["start_ms"]), _iso(cutoff_ms))).fetchall()
-    polls = {r["poll_id"]: r for r in store.connection.execute("select * from eth_observation_polls where protocol_id=?", (protocol["protocol_id"],))}
+        (protocol["network"], source, protocol["address"].lower(), _iso(protocol["start_ms"]), _iso(cutoff_ms))).fetchall()
+    poll_table = store.connection.execute("select 1 from sqlite_master where type='table' and name='eth_observation_polls'").fetchone()
+    polls = ({r["poll_id"]: r for r in store.connection.execute("select * from eth_observation_polls where protocol_id=?", (protocol["protocol_id"],))}
+        if poll_table else {})
     by_tid, conflicts, page_refs = defaultdict(list), [], []
+    allowed = ({int(item['observation_id']): str(item['sha256']) for item in allowed_source_refs
+        if isinstance(item, dict) and type(item.get('observation_id')) is int and isinstance(item.get('sha256'), str)}
+        if allowed_source_refs is not None else None)
+    seen_allowed = set(); unexpected_count = 0; reference_mismatches = 0
     for row in rows:
+        if allowed is not None:
+            expected_sha = allowed.get(row['observation_id'])
+            if expected_sha is None:
+                unexpected_count += 1
+                continue
+            if expected_sha != row['response_sha256']:
+                reference_mismatches += 1
+                seen_allowed.add(row['observation_id'])
+                continue
+            seen_allowed.add(row['observation_id'])
         request=json.loads(row["request_json"])
         page_refs.append({"observation_id": row["observation_id"], "sha256": row["response_sha256"],
             "requested_at": row["requested_at"], "archived_at": row["observed_at"],
@@ -207,7 +250,7 @@ def _fills(store: Store, protocol: dict, cutoff_ms: int):
         poll = polls.get(request.get("poll_id"))
         payload = decode_observation_payload(row)
         for fill in payload if isinstance(payload, list) else []:
-            if not isinstance(fill, dict) or fill.get("coin") != "ETH" or not fill.get("tid"):
+            if not isinstance(fill, dict) or fill.get("coin") != market or not fill.get("tid"):
                 continue
             if not protocol["start_ms"] <= int(fill.get("time", -1)) < min(cutoff_ms, protocol["end_ms"]):
                 continue
@@ -224,11 +267,16 @@ def _fills(store: Store, protocol: dict, cutoff_ms: int):
             continue
         fills.append(min(variants, key=lambda x: (x["fill_page_received_at"] or x["fill_page_archived_at"], x["fill_page_observation_id"])))
     fills.sort(key=lambda f: (int(f["time"]), str(f["tid"])))
+    reference_coverage = None if allowed is None else {'expected_ref_count': len(allowed),
+        'matched_ref_count': len(seen_allowed) - reference_mismatches,
+        'missing_ref_count': len(set(allowed) - seen_allowed),
+        'sha256_mismatch_count': reference_mismatches, 'unreferenced_archive_page_count': unexpected_count}
     return fills, {"pages": page_refs, "page_count": len(page_refs),
         "complete_page_count": sum(bool(r["complete"]) for r in page_refs),
         "incomplete_page_count": sum(not bool(r["complete"]) for r in page_refs),
         "unique_eth_fills": len(fills), "duplicate_fill_instances": sum(len(v)-1 for v in by_tid.values()),
-        "conflicting_fill_ids": conflicts, "source_fingerprint": fingerprint(page_refs)}
+        "conflicting_fill_ids": conflicts, "source_fingerprint": fingerprint(page_refs),
+        'reference_coverage': reference_coverage}
 
 
 def _action(fill):

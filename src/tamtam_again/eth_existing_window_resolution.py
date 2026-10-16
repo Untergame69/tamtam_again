@@ -461,21 +461,25 @@ def _freshness(rows):
         'sensitivity': result}
 
 
-def _data_inventory(report, report_rows, raw_fills, fill_coverage, quote_events, quote_coverage):
+def _data_inventory(report, report_rows, raw_fills, fill_coverage, quote_events, quote_coverage, scope=None):
+    scope = scope or {'start_ms': START_MS, 'end_ms': END_MS}
+    period = [scope['start_ms'], scope['end_ms']]
+    stage_label = str(report.get('stage') or 'sealed report')
+    window_label = 'sealed window' if scope.get('generic_contract') else 'fixed window'
     market = report.get('coverage', {}).get('market', {})
     fills = report.get('coverage', {}).get('fills', {})
-    return [
-        {'request': 'Fill/order identity, side, crossed, start position, signed size and position effect for the fixed window',
-            'classification': 'available_and_joined', 'source': 'final_24h report plus archived prospective REST pages',
-            'period_ms': [START_MS, END_MS], 'report_fills': len(report_rows), 'raw_unique_fills': len(raw_fills),
+    items = [
+        {'request': 'Fill/order identity, side, crossed, start position, signed size and position effect for the ' + window_label,
+            'classification': 'available_and_joined', 'source': stage_label + ' report plus archived prospective REST pages',
+            'period_ms': period, 'report_fills': len(report_rows), 'raw_unique_fills': len(raw_fills),
             'pages': fill_coverage.get('page_count'), 'complete_pages': fill_coverage.get('complete_page_count'),
             'duplicate_instances': fill_coverage.get('duplicate_fill_instances'),
             'conflicts': len(fill_coverage.get('conflicting_fill_ids', [])),
             'fields_used': ['tid','oid','time','side','crossed','startPosition','sz','px','fee','feeToken'],
             'usage': 'all unique fills joined by tid; oid added from raw pages; effects recalculated from startPosition and signed size'},
         {'request': 'Strict-prior quotes, outcomes, local REST/page receipt and reference joins',
-            'classification': 'available_and_joined', 'source': 'final_24h report plus archived BBO/l2Book event lots',
-            'period_ms': [START_MS, END_MS], 'event_count': len(quote_events),
+            'classification': 'available_and_joined', 'source': stage_label + ' report plus archived BBO/l2Book event lots',
+            'period_ms': period, 'event_count': len(quote_events),
             'bbo_events': quote_coverage.get('quotes', {}).get('bbo', {}).get('event_count'),
             'l2book_events': quote_coverage.get('quotes', {}).get('l2Book', {}).get('event_count'),
             'market_lots': len(quote_coverage.get('source_refs', [])),
@@ -484,7 +488,7 @@ def _data_inventory(report, report_rows, raw_fills, fill_coverage, quote_events,
             'usage': 'all decoded event lots searched for per-fill context; strict predecessors, local receipt and archive time kept separate'},
         {'request': 'Matched pre-event spread, displayed depth, recent price changes, connection and gap context',
             'classification': 'available_but_calculation_was_missing', 'source': 'BBO and l2Book raw event snapshots',
-            'period_ms': [START_MS, END_MS],
+            'period_ms': period,
             'depth_scope': 'best displayed bid and ask level only; deeper L2 levels are not inferred from top-level projection',
             'usage': 'strict event-time predecessors and preceding BBO returns; equal timestamps excluded and counted as ambiguous'},
         {'request': 'A local market quote known at the actual execution-decision instant',
@@ -499,14 +503,35 @@ def _data_inventory(report, report_rows, raw_fills, fill_coverage, quote_events,
             'classification': 'not_in_this_archive_and_not_authorized_for_collection_here',
             'usage': 'remains the single next research stage; no request or collection initiated'},
     ]
+    if scope.get('generic_contract'):
+        source_coverage = scope.get('source_coverage', {})
+        fills_state = source_coverage.get('fills', {}).get('classification', 'absent')
+        quotes_state = source_coverage.get('quotes', {}).get('classification', 'absent')
+        items[0]['classification'] = fills_state
+        items[1]['classification'] = quotes_state
+        items[2]['classification'] = ('available_and_joined' if quotes_state == 'available_and_joined'
+            else 'partially_covered_exploitable' if quotes_state == 'partially_covered_exploitable'
+            else 'absent')
+        items[0]['usage'] = ('Use every sealed report fill; attach raw order/page metadata only on an exact tid and field join. '
+            'Report-only fills remain in calculations with unknown order id.')
+        items[2]['request'] = 'Matched pre-event spread, displayed depth, recent price changes, connection and gap context'
+        items[2]['source'] = 'Deterministic local calculation over referenced BBO/l2Book snapshots'
+        items[2]['usage'] = 'Strict event-time predecessors and prior BBO returns; same-time ties stay unknown.'
+        items[5]['classification'] = 'requires_new_prospective_evidence_not_in_this_archive'
+        items[5]['usage'] = 'Not provided by this local archive task; no prospective data request is initiated.'
+    return items
 
 
 def _build_artifact(request_id, report, report_input_fp, report_rows, raw_fills, fill_coverage,
-        quote_events, quote_coverage, report_row_chars):
-    pairs = _validate_fill_join(report_rows, raw_fills)
-    raw_by_tid = {tid: pair[0] for tid, pair in pairs.items()}
-    chain = start_position_chain_summary(raw_fills)
-    rows = _join_contexts(report_rows, raw_fills, quote_events)
+        quote_events, quote_coverage, report_row_chars, scope=None, *,
+        analysis_fills=None, validated_pairs=None, field_mismatches=None):
+    scope = scope or {'protocol_id': PROTOCOL_ID, 'network': NETWORK, 'address': ADDRESS,
+        'market': MARKET, 'start_ms': START_MS, 'end_ms': END_MS,
+        'finalised_ms': report.get('finalised_ms')}
+    pairs = validated_pairs if validated_pairs is not None else _validate_fill_join(report_rows, raw_fills)
+    calc_fills = raw_fills if analysis_fills is None else analysis_fills
+    chain = start_position_chain_summary(calc_fills)
+    rows = _join_contexts(report_rows, calc_fills, quote_events)
     usable, cuts = _add_condition_bins(rows)
     by_behavior_action = _summaries(rows, ('execution_type', 'action'))
     by_day_side_behavior_action = _summaries(rows, ('utc_day', 'side', 'execution_type', 'action'))
@@ -528,7 +553,28 @@ def _build_artifact(request_id, report, report_input_fp, report_rows, raw_fills,
     source_fingerprint = fingerprint({'report_input_fingerprint': report_input_fp,
         'fill_source_fingerprint': fill_coverage['source_fingerprint'],
         'quote_source_fingerprint': quote_coverage['source_fingerprint'],
-        'protocol_id': PROTOCOL_ID, 'window_ms': [START_MS, END_MS]})
+        'protocol_id': scope['protocol_id'], 'window_ms': [scope['start_ms'], scope['end_ms']]})
+    next_action = {'state': 'local_analysis_complete',
+        'decision': 'The two IA data requests are answered to the extent the fixed archive allows; no further historical collection or inference is justified.',
+        'remaining_question': 'A separate prospectively specified evaluation is needed to test conditional repeatability; current fills cannot establish placement decisions, real-time quote availability at execution, or causal trader policy.',
+        'automatic_action': 'Persist this exploratory result and its route; stop this existing-window task without collection or another IA call.',
+        'model_calls_authorized_or_used_by_resolution': 0, 'collection_started': False, 'paper_or_order_authorized': False}
+    limits = ['This is an exploratory description of executed fills, not the trader’s decision policy or unfilled opportunities.',
+        'The 24 packet examples were not used in any calculation; all 9,874 joined fills inform population summaries.',
+        'Event-time association does not prove local quote availability or causality because decision timestamps and clock calibration are absent.',
+        'Fills within the same order, 5-minute block and overlapping 60-second outcome windows are dependent; cluster summaries are descriptive and no iid confidence claims are made.',
+        'Market-context coverage is selected by quote availability; covered-subset summaries are shown beside all-fill baselines.',
+        'The fixed 30-second context age is a descriptive analysis cut, accompanied by sensitivity at 100 ms, 1 s, 5 s, 60 s and 5 min; it is not the paper engine’s admission rule.',
+        'No prospective window, new collection, IA call, paper run or order was initiated.']
+    if scope.get('generic_contract'):
+        next_action = {'state': 'local_analysis_complete',
+            'decision': 'The sealed calculation profile was evaluated over the available referenced archive; coverage and any missing source records are reported separately.',
+            'remaining_question': 'No trader placement intent or quote availability at an unobserved decision instant can be recovered from fills and snapshots alone.',
+            'automatic_action': 'Persist this result and route; do not collect or infer again unless authorized source evidence changes.',
+            'model_calls_authorized_or_used_by_resolution': 0, 'collection_started': False, 'paper_or_order_authorized': False}
+        limits[1] = (f"The {scope.get('packet_example_count', 0)} selected packet examples were excluded from calculations; "
+            f"all {len(rows)} sealed report fills inform the descriptive summaries, including rows without raw-page joins.")
+    schema_version = 'population-local-archive-resolution-v1' if scope.get('generic_contract') else VERSION
     markout_comparison = []
     for label, selected in (
         ('taker_reductions', [r for r in rows if r['execution_type'] == 'taker' and r['action'] == 'reduces']),
@@ -546,15 +592,15 @@ def _build_artifact(request_id, report, report_input_fp, report_rows, raw_fills,
         'reference_examples': quote_refs[:2] + quote_refs[-2:] if len(quote_refs) > 4 else quote_refs,
         'by_channel': quote_coverage.get('quotes', {}),
         'rejects': quote_coverage.get('rejected_events', {})}
-    artifact = {'schema_version': VERSION, 'request_id': request_id,
+    artifact = {'schema_version': schema_version, 'request_id': request_id,
         'source_fingerprint': source_fingerprint,
-        'protocol_id': PROTOCOL_ID, 'network': NETWORK, 'address': ADDRESS, 'market': MARKET,
-        'window': {'start_ms': START_MS, 'end_ms': END_MS, 'event_interval': '[start_ms, end_ms)',
-            'archive_receipt_cutoff_ms': report.get('finalised_ms'),
+        'protocol_id': scope['protocol_id'], 'network': scope['network'], 'address': scope['address'], 'market': scope['market'],
+        'window': {'start_ms': scope['start_ms'], 'end_ms': scope['end_ms'], 'event_interval': '[start_ms, end_ms)',
+            'archive_receipt_cutoff_ms': scope.get('finalised_ms', report.get('finalised_ms')),
             'archive_receipt_cutoff_note': 'The last REST page was received after the event window ended; include receipts through run finalised_ms while still excluding fill/quote event times outside the frozen window.'},
         'evidence': {'report_input_fingerprint': report_input_fp,
             'report_semantic_fingerprint': report.get('semantic_fingerprint'),
-            'report_ref': f'eth_observation_reports:{PROTOCOL_ID}:final_24h#sha256:{report.get("semantic_fingerprint")}',
+            'report_ref': f'eth_observation_reports:{scope["protocol_id"]}:{report.get("stage")}#sha256:{report.get("semantic_fingerprint")}',
             'report_archived_json_chars': report_row_chars,
             'fill_source_fingerprint': fill_coverage['source_fingerprint'],
             'fill_pages': {'count': fill_coverage['page_count'], 'complete': fill_coverage['complete_page_count'],
@@ -571,10 +617,10 @@ def _build_artifact(request_id, report, report_input_fp, report_rows, raw_fills,
                 'rest_page_receipt_60s_count': len(receipt_outcomes),
                 'event_time_60s_missing': len(rows)-len(event_outcomes),
                 'rest_page_receipt_60s_missing': len(rows)-len(receipt_outcomes)}},
-        'inventory_matrix': _data_inventory(report, report_rows, raw_fills, fill_coverage, quote_events, quote_coverage),
+        'inventory_matrix': _data_inventory(report, report_rows, raw_fills, fill_coverage, quote_events, quote_coverage, scope),
         'reconciliation': {'report_fill_count': len(report_rows), 'raw_fill_count': len(raw_fills),
-            'exact_tid_join_count': len(pairs), 'field_mismatches': {}, 'statistics_include_all_fills': True,
-            'statistics_exclude_packet_examples': True, 'packet_example_count': 24,
+            'exact_tid_join_count': len(pairs), 'field_mismatches': field_mismatches or {}, 'statistics_include_all_fills': True,
+            'statistics_exclude_packet_examples': True, 'packet_example_count': scope.get('packet_example_count', 24),
             'fills_used_for_calculations': len(rows), 'source_quote_events_searched': len(quote_events),
             'outcome_60s_event_time_count': len(event_outcomes),
             'outcome_60s_rest_page_receipt_count': len(receipt_outcomes)},
@@ -604,18 +650,10 @@ def _build_artifact(request_id, report, report_input_fp, report_rows, raw_fills,
             'order_cluster_summary': order_summary,
             'overlapping_outcome_windows': overlap},
         'fills': rows, 'orders': order_details,
-        'next_action': {'state': 'local_analysis_complete',
-            'decision': 'The two IA data requests are answered to the extent the fixed archive allows; no further historical collection or inference is justified.',
-            'remaining_question': 'A separate prospectively specified evaluation is needed to test conditional repeatability; current fills cannot establish placement decisions, real-time quote availability at execution, or causal trader policy.',
-            'automatic_action': 'Persist this exploratory result and its route; stop this existing-window task without collection or another IA call.',
-            'model_calls_authorized_or_used_by_resolution': 0, 'collection_started': False, 'paper_or_order_authorized': False},
-        'limits': ['This is an exploratory description of executed fills, not the trader’s decision policy or unfilled opportunities.',
-            'The 24 packet examples were not used in any calculation; all 9,874 joined fills inform population summaries.',
-            'Event-time association does not prove local quote availability or causality because decision timestamps and clock calibration are absent.',
-            'Fills within the same order, 5-minute block and overlapping 60-second outcome windows are dependent; cluster summaries are descriptive and no iid confidence claims are made.',
-            'Market-context coverage is selected by quote availability; covered-subset summaries are shown beside all-fill baselines.',
-            'The fixed 30-second context age is a descriptive analysis cut, accompanied by sensitivity at 100 ms, 1 s, 5 s, 60 s and 5 min; it is not the paper engine’s admission rule.',
-            'No prospective window, new collection, IA call, paper run or order was initiated.']}
+        'next_action': next_action, 'limits': limits}
+    if scope.get('generic_contract'):
+        artifact['source_coverage'] = scope['source_coverage']
+        artifact['calculation_contract'] = scope['contract']
     return artifact
 
 

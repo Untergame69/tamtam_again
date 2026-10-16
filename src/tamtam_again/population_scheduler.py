@@ -132,15 +132,18 @@ def _execute_local_eth_contribution(store, request_id):
 
 def _reconcile_final_eth_report_queue(store, route_value):
     followup=route_value.get('followup_task',{})
-    if followup.get('kind')!='eth_existing_window_analysis' or route_value.get('state') not in {
+    if followup.get('kind') not in {'eth_existing_window_analysis','population_local_archive_analysis'} or route_value.get('state') not in {
             'local_archive_analysis_required','local_archive_analysis_complete'}:
         return None
     from .research_work_queue import eth_report_work_payload,set_status
-    protocol_id=followup['protocol_id']
-    row=store.connection.execute("select report_json from eth_observation_reports where protocol_id=? and stage='final_24h'",
-        (protocol_id,)).fetchone()
+    source=followup.get('source',{})
+    protocol_id=followup.get('protocol_id') or source.get('protocol_id')
+    stage=followup.get('stage') or source.get('stage')
+    if not protocol_id or not stage:return None
+    row=store.connection.execute("select report_json from eth_observation_reports where protocol_id=? and stage=?",
+        (protocol_id,stage)).fetchone()
     if not row:return None
-    report=json.loads(row['report_json']);payload=eth_report_work_payload(protocol_id,'final_24h',report)
+    report=json.loads(row['report_json']);payload=eth_report_work_payload(protocol_id,stage,report)
     work=store.connection.execute("select work_id from research_work_queue where source_kind='eth_observation_report' and source_id=? and input_fingerprint=?",
         (protocol_id,fingerprint(payload))).fetchone()
     if not work:return None
@@ -188,13 +191,17 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             if followup.get('kind')=='eth_existing_window_analysis':
                 from .eth_existing_window_resolution import execute as execute_eth_window
                 outcome=execute_eth_window(store,resume_local_resolution)
+            elif followup.get('kind')=='population_local_archive_analysis':
+                from .population_local_archive_resolution import execute as execute_local_archive
+                outcome=execute_local_archive(store,resume_local_resolution)
             else:
                 outcome=execute_offline_archive_join(store,resume_local_resolution)
             after=route(store,resume_local_resolution)
             _reconcile_final_eth_report_queue(store,after)
             contribution=None
             if (after.get('state')=='local_archive_analysis_complete'
-                    and after.get('followup_task',{}).get('kind')!='eth_existing_window_analysis'):
+                    and after.get('followup_task',{}).get('kind') not in {
+                        'eth_existing_window_analysis','population_local_archive_analysis'}):
                 contribution=_execute_local_eth_contribution(store,resume_local_resolution)
                 after=route(store,resume_local_resolution)
             outcome['execution_contribution']=contribution
@@ -289,6 +296,18 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                 if outcome.get('status')=='prepared':local_executions+=1
                 if resume_local_resolution is not None or local_executions>=max_jobs:break
                 continue
+            if followup.get('kind')=='population_local_archive_analysis':
+                from .population_local_archive_resolution import execute as execute_local_archive
+                try:
+                    outcome=execute_local_archive(store,candidate['request_id'])
+                    local_resolutions.append(outcome)
+                except (ValueError,PermissionError) as exc:
+                    local_resolutions.append({'request_id':candidate['request_id'],'status':'blocked','reason':str(exc),
+                        'diagnostic':getattr(exc,'diagnostic',None),'model_calls':0,'collection_started':False})
+                    continue
+                if outcome.get('status')=='prepared':local_executions+=1
+                if resume_local_resolution is not None or local_executions>=max_jobs:break
+                continue
             if (complete and joined.get('version')==local_resolver_version
                     and context.get('version')==context_analysis_version and context.get('state')=='completed'):
                 # Report cached outcomes but do not use the bounded execution
@@ -350,6 +369,7 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         initialize_work_queue(store)
         queue_route_status={
             'needs_data':'waiting_data','local_archive_analysis_required':'ready',
+            'local_archive_data_required':'waiting_data',
             'local_archive_analysis_complete':'completed','budget_required':'budget_exhausted',
             'technical_required':'technical_required','prospective_plan_required':'ready',
             'completed':'completed','abandoned':'completed','incomplete_observation':'completed',

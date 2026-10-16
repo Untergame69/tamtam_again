@@ -23,12 +23,14 @@ def route(store,request_id,*,kind='population'):
     packet_row=store.connection.execute(f'select packet_json from {registry} where request_id=?',(request_id,)).fetchone()
     packet_body=json.loads(packet_row[0]) if packet_row else {}
     pilot_scope=packet_body.get('pilot_research')
+    local_contract=packet_body.get('local_analysis_contract_v1')
     eth_window_projection=packet_body.get('observations',{}).get('prospective_eth_observation_v1',{})
     is_existing_eth_window=(kind=='population' and isinstance(pilot_scope,dict)
         and pilot_scope.get('candidate')=='67f7'
         and eth_window_projection.get('source',{}).get('protocol_id')=='67f7-eth-public-observation-24h-20261014-v1'
         and eth_window_projection.get('source',{}).get('stage')=='final_24h')
-    route_version=('population-eth-existing-window-routing-v1' if is_existing_eth_window
+    route_version=('population-local-analysis-routing-v1' if isinstance(local_contract,dict)
+        else 'population-eth-existing-window-routing-v1' if is_existing_eth_window
         else 'prospective-execution-routing-v7' if isinstance(pilot_scope,dict) else 'population-routing-v1')
     result_fp=fingerprint({'status':row['status'],'result':result,'route_version':route_version})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
@@ -141,6 +143,41 @@ def route(store,request_id,*,kind='population'):
                         next_action=followup['title'],
                         wake={'kind':'local_existing_window_analysis_ready','new_input_fingerprint_required':False,
                             'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})
+        if (isinstance(local_contract,dict) and kind=='population'
+                and row['status'] in {'hypothesis_recorded','needs_data'} and output.get('state')=='needs_data'):
+            from .population_local_analysis_contract import LocalAnalysisContractError, validate_contract
+            try:
+                validated=validate_contract(packet_body,local_contract)
+            except LocalAnalysisContractError as exc:
+                output.update(state='technical_required',validation_diagnostic=exc.diagnostic,
+                    next_action='Correct the unsupported or unsealed local-analysis contract; do not translate required-data prose.')
+            else:
+                contract_fp=validated['contract_fingerprint'];source=local_contract['source'];scope=local_contract['scope']
+                from .population_local_archive_resolution import _source_rows
+                _,diagnostic=_source_rows(store,local_contract)
+                if diagnostic:
+                    waiting_codes={'source_registry_absent','source_report_unavailable','source_not_finalised'}
+                    waiting=diagnostic['code'] in waiting_codes
+                    output.update(state='local_archive_data_required' if waiting else 'technical_required',
+                        validation_diagnostic=diagnostic,
+                        next_action=('Wait for the exact named source report to become available; no collection is scheduled.'
+                            if waiting else 'Resolve the sealed source, scope or reference mismatch; do not infer a different dataset.'))
+                else:
+                    followup={'kind':'population_local_archive_analysis','version':'population-local-archive-resolution-v1',
+                        'contract_fingerprint':contract_fp,'source':source,'scope':scope,
+                        'model_calls_authorized':0,'collection_authorized':False}
+                    saved_resolution=result.get('local_archive_resolutions_v1',{}).get(contract_fp,{})
+                    if saved_resolution.get('state') in {'complete','partial'}:
+                        output.update(state='local_archive_analysis_complete',
+                            local_archive_resolution=saved_resolution,followup_task={**followup,'state':'completed'},
+                            next_action=saved_resolution.get('next_action','Local archive calculation is persisted; no automatic collection or inference.'),
+                            wake={'kind':'changed_authorized_evidence_only','new_input_fingerprint_required':True,
+                                'model_calls_authorized':0,'collection_authorized':False})
+                    else:
+                        output.update(state='local_archive_analysis_required',followup_task=followup,
+                            next_action='Run the sealed local fill/market-context calculation profile.',
+                            wake={'kind':'local_contract_ready','new_input_fingerprint_required':False,
+                                'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})
         local_resolution=result.get('local_resolution')
         followup=(local_resolution.get('followup_task')
             if isinstance(local_resolution,dict) else None)

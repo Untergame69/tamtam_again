@@ -23,7 +23,13 @@ def route(store,request_id,*,kind='population'):
     packet_row=store.connection.execute(f'select packet_json from {registry} where request_id=?',(request_id,)).fetchone()
     packet_body=json.loads(packet_row[0]) if packet_row else {}
     pilot_scope=packet_body.get('pilot_research')
-    route_version='prospective-execution-routing-v7' if isinstance(pilot_scope,dict) else 'population-routing-v1'
+    eth_window_projection=packet_body.get('observations',{}).get('prospective_eth_observation_v1',{})
+    is_existing_eth_window=(kind=='population' and isinstance(pilot_scope,dict)
+        and pilot_scope.get('candidate')=='67f7'
+        and eth_window_projection.get('source',{}).get('protocol_id')=='67f7-eth-public-observation-24h-20261014-v1'
+        and eth_window_projection.get('source',{}).get('stage')=='final_24h')
+    route_version=('population-eth-existing-window-routing-v1' if is_existing_eth_window
+        else 'prospective-execution-routing-v7' if isinstance(pilot_scope,dict) else 'population-routing-v1')
     result_fp=fingerprint({'status':row['status'],'result':result,'route_version':route_version})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
     if history:return json.loads(history[0])
@@ -96,6 +102,45 @@ def route(store,request_id,*,kind='population'):
                 else:
                     output['next_action']='Correct the recorded response contract before any separately authorized work; this rejected response is not promoted.'
                     output['wake']={'kind':'manual_contract_correction','automatic_retry':False}
+        if is_existing_eth_window and row['status']=='hypothesis_recorded' and output.get('state')=='needs_data':
+            requested=result.get('proposal',{}).get('hypothesis',{}).get('required_data',[])
+            exact_window=bool(requested) and any(
+                '1791990000000' in str(item) and '1792076400000' in str(item) for item in requested)
+            report_source=eth_window_projection.get('source',{})
+            report_available=store.connection.execute("select input_fingerprint from eth_observation_reports where protocol_id=? and stage='final_24h'",
+                (report_source.get('protocol_id'),)).fetchone()
+            run=store.connection.execute('select status,protocol_json,finalised_ms from eth_observation_runs where protocol_id=?',
+                (report_source.get('protocol_id'),)).fetchone() if store.connection.execute(
+                    "select 1 from sqlite_master where type='table' and name='eth_observation_runs'").fetchone() else None
+            protocol_body=json.loads(run['protocol_json']) if run else {}
+            authorized_report=bool(report_available and run and run['status']=='finalised'
+                and run['finalised_ms'] is not None
+                and report_available['input_fingerprint']==report_source.get('input_fingerprint')
+                and protocol_body.get('network')=='hyperliquid-mainnet'
+                and protocol_body.get('address','').lower()=='0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba'
+                and protocol_body.get('market')=='ETH'
+                and protocol_body.get('start_ms')==1791990000000
+                and protocol_body.get('end_ms')==1792076400000)
+            if exact_window and authorized_report:
+                local=result.get('local_eth_existing_window_resolution',{})
+                followup={'kind':'eth_existing_window_analysis','version':'population-eth-existing-window-resolution-v1',
+                    'title':'Join every final-window fill to archived ETH pre-event context and persist order/time-aware comparisons',
+                    'protocol_id':report_source['protocol_id'],'stage':'final_24h',
+                    'report_input_fingerprint':report_source['input_fingerprint'],
+                    'report_semantic_fingerprint':report_source.get('semantic_fingerprint'),
+                    'window_ms':[1791990000000,1792076400000],
+                    'requested_data_count':len(requested),'model_calls_authorized':0,'collection_authorized':False}
+                if local.get('state')=='completed' and local.get('version')==followup['version']:
+                    output.update(state='local_archive_analysis_complete',local_resolution=result.get('local_resolution'),
+                        local_eth_existing_window_resolution=local,followup_task=followup,
+                        next_action='No additional historical collection is needed. Keep the result exploratory; any repeatability test requires a separately authorized prospective evaluation.',
+                        wake={'kind':'new_prospectively_authorized_evidence_only','new_input_fingerprint_required':True,
+                            'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})
+                else:
+                    output.update(state='local_archive_analysis_required',followup_task=followup,
+                        next_action=followup['title'],
+                        wake={'kind':'local_existing_window_analysis_ready','new_input_fingerprint_required':False,
+                            'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})
         local_resolution=result.get('local_resolution')
         followup=(local_resolution.get('followup_task')
             if isinstance(local_resolution,dict) else None)

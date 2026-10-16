@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timezone
 
 from .discovery import protected_addresses
+from .engine import fingerprint
 from .population_research import initialize, seal, validate_policy
 from .population_runtime import _run
 from .research import scheduler_lock
@@ -129,6 +130,28 @@ def _execute_local_eth_contribution(store, request_id):
         'model_calls':0,'collection_started':False}
 
 
+def _reconcile_final_eth_report_queue(store, route_value):
+    followup=route_value.get('followup_task',{})
+    if followup.get('kind')!='eth_existing_window_analysis' or route_value.get('state') not in {
+            'local_archive_analysis_required','local_archive_analysis_complete'}:
+        return None
+    from .research_work_queue import eth_report_work_payload,set_status
+    protocol_id=followup['protocol_id']
+    row=store.connection.execute("select report_json from eth_observation_reports where protocol_id=? and stage='final_24h'",
+        (protocol_id,)).fetchone()
+    if not row:return None
+    report=json.loads(row['report_json']);payload=eth_report_work_payload(protocol_id,'final_24h',report)
+    work=store.connection.execute("select work_id from research_work_queue where source_kind='eth_observation_report' and source_id=? and input_fingerprint=?",
+        (protocol_id,fingerprint(payload))).fetchone()
+    if not work:return None
+    complete=route_value['state']=='local_archive_analysis_complete'
+    set_status(store,work['work_id'],'completed' if complete else 'resolution_ready',
+        'final report local analysis completed' if complete else 'final report local archive analysis required',
+        outcome={'request_id':route_value['request_id'],'report_semantic_fingerprint':payload['semantic_fingerprint'],
+            'route':route_value,'model_calls':0,'collection_started':False},clock_ms=now_ms())
+    return work['work_id']
+
+
 def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,experiment_policy=None,reserve_policy=None,paper_policy=None,pilot_policy=None,resume_local_resolution=None):
     validate_policy(policy)
     if paper_policy is not None:
@@ -161,10 +184,17 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             if before.get('research_origin')!='population' or before.get('state') not in {
                     'local_archive_analysis_required','local_archive_analysis_complete'}:
                 raise ValueError('Explicit local-resolution resume requires its persisted local route')
-            outcome=execute_offline_archive_join(store,resume_local_resolution)
+            followup=before.get('followup_task',{})
+            if followup.get('kind')=='eth_existing_window_analysis':
+                from .eth_existing_window_resolution import execute as execute_eth_window
+                outcome=execute_eth_window(store,resume_local_resolution)
+            else:
+                outcome=execute_offline_archive_join(store,resume_local_resolution)
             after=route(store,resume_local_resolution)
+            _reconcile_final_eth_report_queue(store,after)
             contribution=None
-            if after.get('state')=='local_archive_analysis_complete':
+            if (after.get('state')=='local_archive_analysis_complete'
+                    and after.get('followup_task',{}).get('kind')!='eth_existing_window_analysis'):
                 contribution=_execute_local_eth_contribution(store,resume_local_resolution)
                 after=route(store,resume_local_resolution)
             outcome['execution_contribution']=contribution
@@ -233,6 +263,7 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
         local_executions=0
         from .population_local_join import VERSION as local_resolver_version, execute_offline_archive_join
         from .population_inventory_market_context import VERSION as context_analysis_version
+        from .eth_existing_window_resolution import execute as execute_eth_window
         resume_found=False
         for candidate in routes:
             if candidate.get('research_origin')!='population':
@@ -246,6 +277,18 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             resume_found=True
             joined=candidate.get('local_archive_join',{})
             context=candidate.get('local_inventory_market_context') or {}
+            followup=candidate.get('followup_task') or {}
+            if followup.get('kind')=='eth_existing_window_analysis':
+                try:
+                    outcome=execute_eth_window(store,candidate['request_id'])
+                    local_resolutions.append(outcome)
+                except (ValueError,PermissionError) as exc:
+                    local_resolutions.append({'request_id':candidate['request_id'],'status':'blocked','reason':str(exc),
+                        'model_calls':0,'collection_started':False})
+                    continue
+                if outcome.get('status')=='prepared':local_executions+=1
+                if resume_local_resolution is not None or local_executions>=max_jobs:break
+                continue
             if (complete and joined.get('version')==local_resolver_version
                     and context.get('version')==context_analysis_version and context.get('state')=='completed'):
                 # Report cached outcomes but do not use the bounded execution
@@ -323,7 +366,11 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                 if run['status']=='finalised':
                     report=store.connection.execute("select input_fingerprint,report_json from eth_observation_reports where protocol_id=? and stage='final_24h'",(run['protocol_id'],)).fetchone()
                     if report:
-                        store.connection.execute("update research_work_queue set status='completed',reason='superseded by final report',updated_ms=? where source_kind='eth_observation_report' and source_id=? and status in ('waiting_deadline','waiting_data')",(now_ms(),run['protocol_id']))
+                        from .research_work_queue import set_status as set_work_status
+                        old_work=store.connection.execute("select work_id,payload_json from research_work_queue where source_kind='eth_observation_report' and source_id=? and status in ('waiting_deadline','waiting_data')",(run['protocol_id'],)).fetchall()
+                        for old_row in old_work:
+                            if json.loads(old_row['payload_json']).get('stage')!='final_24h':
+                                set_work_status(store,old_row['work_id'],'completed','superseded by final report',clock_ms=now_ms())
                         report_value=json.loads(report['report_json'])
                         payload=eth_report_work_payload(run['protocol_id'],'final_24h',report_value)
                         enqueue_work(store,'eth_observation_report',run['protocol_id'],payload,status='ready',reason='final report available')
@@ -332,6 +379,11 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                 else:
                     enqueue_work(store,'eth_observation_report',run['protocol_id'],{'protocol_id':run['protocol_id'],'stage':'final_24h'},status='waiting_deadline',reason='frozen observation is still running',wake_at_ms=protocol.get('end_ms'))
         work_queue=tick_work_queue(store,max_jobs=max_jobs,pilot_policy=pilot_policy)
+        # Reconcile the final-report queue row to the actual local-resolution route.
+        # Older versions incorrectly marked this row superseded when finalization
+        # arrived, hiding its later analysis state.
+        for candidate in routes:
+            _reconcile_final_eth_report_queue(store,candidate)
         store.connection.commit()
         paper=None
         if paper_policy is not None:

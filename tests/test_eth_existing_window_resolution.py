@@ -161,6 +161,9 @@ class EthExistingWindowResolutionTests(unittest.TestCase):
                 queue_payload = eth_report_work_payload(PROTOCOL_ID, 'final_24h', report)
                 queue_row, _ = enqueue(store, 'eth_observation_report', PROTOCOL_ID, queue_payload,
                     status='completed', reason='superseded by final report', clock_ms=END_MS + 6_000)
+                unrelated, _ = enqueue(store, 'eth_observation_report', 'unrelated-final-report',
+                    {'protocol_id': 'unrelated-final-report', 'stage': 'final_24h'},
+                    status='ready', reason='independent ready work', clock_ms=END_MS + 6_001)
                 store.connection.commit()
                 policy = json.loads((ROOT / 'config/population-research-policy.json').read_text())
                 with patch('tamtam_again.eth_prospective_observation._fills', return_value=(fills, fill_coverage)) as fills_mock, \
@@ -195,6 +198,10 @@ class EthExistingWindowResolutionTests(unittest.TestCase):
                     (queue_row['work_id'],)).fetchone()
                 self.assertEqual(queue_state['status'], 'completed')
                 self.assertEqual(queue_state['reason'], 'final report local analysis completed')
+                unrelated_state = store.connection.execute('select status,reason from research_work_queue where work_id=?',
+                    (unrelated['work_id'],)).fetchone()
+                self.assertEqual(unrelated_state['status'], 'waiting_data')
+                self.assertEqual(unrelated_state['reason'], 'final report is not durably persisted')
 
                 with patch('tamtam_again.eth_prospective_observation._fills', side_effect=AssertionError('recalculated')), \
                         patch('tamtam_again.eth_prospective_observation._quotes', side_effect=AssertionError('recalculated')), \

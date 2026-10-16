@@ -47,6 +47,21 @@ fills multiples (4 936 fills, jusqu’à 61 par ordre). Les fenêtres de résult
 à 60 secondes se chevauchent : 109 268 paires, jusqu’à 93 fenêtres
 simultanées. Les fills ne sont donc pas des essais indépendants.
 
+### Couverture et usage des données
+
+| Données | Déjà dans le paquet IA | Utilisées par le calcul local | Écart ou exclusion |
+|---|---|---|---|
+| Fills du bilan | Statistiques complètes par maker/taker et effet de position, agrégats journaliers, frais signés, couverture et sensibilité des markouts ; 24 exemples distincts | 9 874 lignes rapprochées par `tid`; `oid` et les pages sources ajoutés depuis l’archive; regroupements par ordre, tranche de 5 minutes, jour, segment, sens et effet | Les 24 exemples ne sont jamais l’échantillon statistique. Tous les 9 874 fills alimentent les comparaisons locales. |
+| BBO/l2Book | Comptes, lacunes, latences et références résumés; quelques cotations associées aux exemples | 844 306 événements / 437 338 lots recherchés; prédécesseur strict par événement et canal, spread, tailles des meilleurs niveaux, mouvements précédents et sensibilités d’âge | Aucun ordre relatif n’est supposé à timestamp égal. Les niveaux plus profonds ne sont pas déduits du résumé des meilleurs niveaux. |
+| Résultats à 60 s | Agrégats complets du rapport et exemples bornés | Markout événementiel et markout après réception de la page REST gardés séparés pour les 9 874 fills | Les cotations futures servent uniquement aux résultats, jamais au contexte avant fill. |
+| Disponibilité locale / décision | Réception, archivage, pages, connexions et gaps résumés, avec quelques détails d’exemples | Horloges source, frame reçue, lot archivé et requête/réponse REST conservés séparément; diagnostics de concordance locale | Pas d’horodatage de décision ni de calibration des horloges venue/local : l’accessibilité au moteur à l’instant réel de décision reste partiellement couverte et irrécupérable historiquement. |
+| Placements et files | Absents | Non calculés à partir des exécutions | Ordres non exécutés, queue position et motivation privée ne figurent pas dans ces archives et ne sont pas inférés. |
+
+Les comparaisons par spread, profondeur, mouvement récent, côté et effet de
+position sont nouvelles sorties déterministes. Elles sont conservées dans
+l’artefact local et le résultat persistant ; elles n’ont pas été renvoyées à
+l’IA, puisqu’aucun nouvel appel n’était requis ni autorisé par cette tranche.
+
 ## Comparaison descriptive
 
 Sur tous les fills, la médiane du markout directionnel événement→60 s est de
@@ -93,3 +108,5 @@ ordre ou tâche IA.
 - Passage scheduler réel : résultat `prepared`, 0 appel modèle, aucune collecte.
 - Rejeu scheduler réel : `unchanged`, même empreinte, 0 appel modèle ; la ligne
   de file du bilan final reste `completed` après résolution.
+- Le test d’intégration normal confirme aussi qu’un autre rapport prêt avance
+  vers son état `waiting_data` pendant que cette résolution locale aboutit.

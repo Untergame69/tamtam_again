@@ -515,10 +515,12 @@ class PopulationPilotTests(unittest.TestCase):
         from datetime import datetime, timezone
         day_start=int(datetime(2026,10,14,tzinfo=timezone.utc).timestamp()*1000)
         large_fills=[]
-        for index in range(4000):
+        volume_fills=12000
+        fill_step_ms=7200  # 12,000 records spanning just under one UTC day.
+        for index in range(volume_fills):
             action=('opens','reduces','inverts','unknown')[index%4]
             crossed=(index%2==0)
-            large_fills.append({'tid':f'fill-{index:06d}','event_ms':day_start+index*18000,
+            large_fills.append({'tid':f'fill-{index:06d}','event_ms':day_start+index*fill_step_ms,
                 'action':action,'crossed':crossed,'side':'A' if index%2==0 else 'B',
                 'start_position':str((index%11)-5),'size':'0.125','price':'2500.1',
                 'close_quantity':'0.025' if action in {'reduces','inverts'} else '0',
@@ -526,7 +528,7 @@ class PopulationPilotTests(unittest.TestCase):
                 'fee':'-0.0001' if crossed is False else '0.0002','fee_token':'USDC',
                 'event_to_fill_page_receipt_ms':1200,
                 'fill_page_observation_id':50000+index//100,'fill_page_sha256':f'{index%16:x}'*64,
-                'prefill_quote':{'event_ms':day_start+index*18000-100,'age_ms':100,'bid':'2500.0',
+                'prefill_quote':{'event_ms':day_start+index*fill_step_ms-100,'age_ms':100,'bid':'2500.0',
                     'bid_size':'1.0','ask':'2500.2','ask_size':'1.1','channel':'bbo',
                     'received_at':'2026-10-14T00:00:00.000+00:00','archived_at':'2026-10-14T00:00:00.010+00:00',
                     'ref':f'raw_observations:{60000+index}#sha256:{index%16:x}#0'},
@@ -538,7 +540,7 @@ class PopulationPilotTests(unittest.TestCase):
         report={'protocol_id':protocol_id,'protocol_fingerprint':'protocol-fp','stage':'final_24h','input_fingerprint':'report-source-fp',
             'decision':'signal_exploratory_favorable','coverage':{'fills':{'page_count':40,'complete_page_count':40,
                 'incomplete_page_count':0,'duplicate_fill_instances':0,'conflicting_fill_ids':[],
-                'unique_eth_fills':4000,'source_fingerprint':'fill-source-fp','pages':[]},
+                'unique_eth_fills':volume_fills,'source_fingerprint':'fill-source-fp','pages':[]},
                 'market':{'quotes':{'bbo':{'event_count':90000,'max_received_gap_ms':1200},
                     'l2Book':{'event_count':20000,'max_received_gap_ms':5000}},'rejected_events':{},
                     'source_fingerprint':'quote-source-fp','source_refs':large_source_refs}},
@@ -557,16 +559,22 @@ class PopulationPilotTests(unittest.TestCase):
             (work['work_id'],)).fetchone()
         queue_packet=json.loads(queue_row['outcome_json'])
         self.assertLessEqual(len(canonical(queue_packet)),policy['task_policy']['max_packet_chars'])
-        self.assertEqual(queue_packet['evidence_projection']['population_statistics']['fill_count'],4000)
+        self.assertEqual(queue_packet['evidence_projection']['population_statistics']['fill_count'],volume_fills)
+        self.assertEqual(queue_packet['projection_size_proof']['fill_count'],volume_fills)
+        self.assertEqual(queue_packet['projection_size_proof']['serialized_report_chars'],len(report_json))
+        self.assertEqual(queue_packet['queue_outcome_chars'],len(canonical(queue_packet)))
         linked=json.loads(self.store.connection.execute('select payload_json from research_work_queue where work_id=?',(work['work_id'],)).fetchone()[0])
         request_id=linked['request_id']
         job=self.store.connection.execute('select * from population_research_jobs where request_id=?',(request_id,)).fetchone()
         packet=json.loads(job['packet_json']); projection=packet['observations']['prospective_eth_observation_v1']
+        self.assertEqual(queue_packet['evidence_projection'],projection)
+        self.assertEqual(queue_packet['projection_size_proof']['projected_evidence_chars'],len(canonical(projection)))
         evidence_ref=projection['source']['full_report_ref']
-        self.assertEqual(projection['population_statistics']['fill_count'],4000)
+        self.assertEqual(projection['population_statistics']['fill_count'],volume_fills)
         self.assertEqual(len(projection['population_statistics']['by_utc_day']),1)
-        self.assertEqual(projection['examples']['population_count'],4000)
-        self.assertLess(projection['examples']['selected_count'],4000)
+        self.assertEqual(projection['examples']['population_count'],volume_fills)
+        self.assertLess(projection['examples']['selected_count'],volume_fills)
+        self.assertEqual(prepared['advanced'][0]['status'],'analysis_ready')
         self.assertLessEqual(len(canonical(packet)),policy['task_policy']['max_packet_chars'])
         from tamtam_again.population_runtime import build_proposal_prompt
         prompt=build_proposal_prompt(packet,request_id)
@@ -577,6 +585,9 @@ class PopulationPilotTests(unittest.TestCase):
         size_proof=json.loads(prepared_event['details_json'])['outcome']
         self.assertEqual(size_proof['packet_chars'],len(canonical(packet)))
         self.assertEqual(size_proof['proposal_prompt_chars'],len(prompt))
+        self.assertEqual(size_proof['size_proof']['fill_count'],volume_fills)
+        self.assertEqual(size_proof['size_proof']['projected_evidence_chars'],len(canonical(projection)))
+        self.assertEqual(size_proof['size_proof']['serialized_report_chars'],len(report_json))
         proposal={'decision':'hypothesis','diagnostic':'Comparaison descriptive seulement.','wake':{},'hypothesis':{
             'mechanism':'Observed taker inventory reductions may differ in subsequent price movement.',
             'type':'autonomous','markets':['ETH'],'signal':'Classify observed fills by inventory effect.',

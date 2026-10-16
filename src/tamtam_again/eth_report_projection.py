@@ -281,3 +281,17 @@ def project(report):
     projection['examples']['rows'] = examples
     projection['projection_fingerprint'] = fingerprint(projection)
     return projection
+
+
+def size_proof(report, projection, *, serialized_report_chars=None):
+    """Measure source and projected evidence without embedding raw report data."""
+    fills = report.get('fills') if isinstance(report.get('fills'), list) else []
+    coverage = report.get('coverage') if isinstance(report.get('coverage'), dict) else {}
+    return {
+        'serialized_report_chars': serialized_report_chars,
+        'fills_source_chars': len(canonical(fills)),
+        'coverage_source_chars': len(canonical(coverage)),
+        'projected_evidence_chars': len(canonical(projection)),
+        'fill_count': len(fills),
+        'example_count': projection.get('examples', {}).get('selected_count', 0),
+    }

@@ -89,10 +89,17 @@ def tick(store, *, clock_ms=None, max_jobs=1, pilot_policy=None):
         if payload.get('semantic_fingerprint') and payload['semantic_fingerprint']!=semantic:
             set_status(store,row['work_id'],'technical_required','queued report fingerprint no longer matches persisted evidence',clock_ms=clock); advanced.append({'work_id':row['work_id'],'status':'technical_required'}); continue
         decision=value.get('decision')
-        from .eth_report_projection import project as project_eth_report
+        from .eth_report_projection import project as project_eth_report, size_proof as report_size_proof
         projection=project_eth_report(value)
         compact={'version':'eth-observation-review-packet-v3','evidence_projection':projection,
             'next_action':value.get('route',{}).get('next_action')}
+        compact['projection_size_proof']=report_size_proof(value,projection,
+            serialized_report_chars=len(report_row['report_json']))
+        compact['projection_size_proof']['queue_projection_packet_chars']=0
+        while True:
+            measured=len(canonical(compact))
+            if compact['projection_size_proof']['queue_projection_packet_chars']==measured: break
+            compact['projection_size_proof']['queue_projection_packet_chars']=measured
         if decision=='data_insufficient':
             outcome={**compact,'analysis':'skipped','reason':'deterministic report says data_insufficient',
                 'next_action':'retain the result as insufficient; do not call IA or extend the observation'}
@@ -113,7 +120,13 @@ def tick(store, *, clock_ms=None, max_jobs=1, pilot_policy=None):
             outcome={**compact,'analysis':'authorized_task_sealed','request_id':sealed['request_id'],
                 'packet_fingerprint':sealed['packet_fingerprint'],'model_calls':0,
                 'packet_chars':sealed.get('packet_chars'),'packet_char_limit':sealed.get('packet_char_limit'),
-                'proposal_prompt_chars':sealed.get('proposal_prompt_chars'),'prompt_char_limit':sealed.get('prompt_char_limit')}
+                'proposal_prompt_chars':sealed.get('proposal_prompt_chars'),'prompt_char_limit':sealed.get('prompt_char_limit'),
+                'size_proof':sealed.get('size_proof',compact['projection_size_proof'])}
+            outcome['queue_outcome_chars']=0
+            while True:
+                measured=len(canonical(outcome))
+                if outcome['queue_outcome_chars']==measured: break
+                outcome['queue_outcome_chars']=measured
             set_status(store,row['work_id'],'packet_prepared','evidence packet sealed and linked to the v2 allowance',payload=payload,outcome=outcome,clock_ms=clock)
             set_status(store,row['work_id'],'analysis_ready','new prospective evidence sealed for v2 runtime',payload=payload,outcome=outcome,clock_ms=clock)
         elif state=='budget_exhausted':

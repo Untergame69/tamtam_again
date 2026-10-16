@@ -646,8 +646,9 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
         pilot_id=policy['pilot_id'],policy_version=policy['version'],cutoff_ms=cutoff)
     semantic=eth_report_semantic_fingerprint(report)
     reference=f"eth_observation_reports:{protocol_id}:final_24h#sha256:{semantic}"
-    from .eth_report_projection import project as project_eth_report
-    packet['observations']['prospective_eth_observation_v1']=project_eth_report(report)
+    from .eth_report_projection import project as project_eth_report, size_proof as report_size_proof
+    eth_projection=project_eth_report(report)
+    packet['observations']['prospective_eth_observation_v1']=eth_projection
     if reference not in packet['evidence_refs']:
         packet['evidence_refs'].append(reference)
     packet['available_ms']=max(packet.get('available_ms',0),report.get('generated_at_ms',0))
@@ -656,9 +657,11 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
         'question':question,'prospective_eth_report':semantic})
     packet.pop('fingerprint',None);packet['fingerprint']=fingerprint(packet)
     packet_chars=len(canonical(packet))
+    source_size=report_size_proof(report,eth_projection,serialized_report_chars=len(report_row['report_json']))
     if packet_chars>task_policy['max_packet_chars']:
         return {'status':'technical_required','reason':'prospective report packet exceeds the existing character limit',
-            'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars']}
+            'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
+            'size_proof':source_size}
     digest=packet['research_input_fingerprint']
     request_id=fingerprint({'pilot_id':policy['pilot_id'],'protocol_id':protocol_id,
         'semantic_report_fingerprint':semantic,'research_input_fingerprint':digest})
@@ -667,7 +670,8 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
     if prompt_chars>task_policy['max_prompt_chars']:
         return {'status':'technical_required','reason':'prospective report prompt exceeds the existing character limit',
             'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
-            'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars']}
+            'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars'],
+            'size_proof':source_size}
     old=store.connection.execute('select request_id,status,packet_json from population_research_jobs where network=? and address=? and input_fingerprint=?',
         (policy['network'],item['address'].lower(),digest)).fetchone()
     if old:
@@ -681,13 +685,14 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
             return {'status':'analysis_ready','request_id':request_id,'packet_fingerprint':packet['fingerprint'],
                 'authorization':auth_result,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic,
                 'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
-                'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars']}
+                'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars'],
+                'size_proof':source_size}
         if auth and auth['pilot_id']==policy['pilot_id'] and auth['packet_fingerprint']==json.loads(old['packet_json']).get('fingerprint'):
             return {'status':'analysis_ready','request_id':old['request_id'],'packet_fingerprint':auth['packet_fingerprint'],
                 'authorization':{'status':'already_authorized','request_id':old['request_id']},'model_calls':0,
                 'evidence_ref':reference,'semantic_fingerprint':semantic,'packet_chars':packet_chars,
                 'packet_char_limit':task_policy['max_packet_chars'],'proposal_prompt_chars':prompt_chars,
-                'prompt_char_limit':task_policy['max_prompt_chars']}
+                'prompt_char_limit':task_policy['max_prompt_chars'],'size_proof':source_size}
         return {'status':'unchanged_no_inference','request_id':old['request_id'],'source_status':old['status']}
     count=store.connection.execute('select count(*) from population_research_pilot_tasks where pilot_id=?',(policy['pilot_id'],)).fetchone()[0]
     if count>=policy['pilot_limits']['max_tasks']:
@@ -708,7 +713,8 @@ def seal_final_eth_observation(store, policy, report, *, semantic_fingerprint, c
     return {'status':'analysis_ready','request_id':request_id,'packet_fingerprint':packet['fingerprint'],
         'authorization':auth,'model_calls':0,'evidence_ref':reference,'semantic_fingerprint':semantic,
         'packet_chars':packet_chars,'packet_char_limit':task_policy['max_packet_chars'],
-        'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars']}
+        'proposal_prompt_chars':prompt_chars,'prompt_char_limit':task_policy['max_prompt_chars'],
+        'size_proof':source_size}
 
 
 def eth_report_semantic_fingerprint(report):

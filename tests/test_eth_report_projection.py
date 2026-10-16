@@ -1,7 +1,8 @@
 import copy
 import unittest
 
-from tamtam_again.eth_report_projection import project
+from tamtam_again.eth_report_projection import project, size_proof
+from tamtam_again.engine import canonical
 
 
 class EthReportProjectionTests(unittest.TestCase):
@@ -43,6 +44,11 @@ class EthReportProjectionTests(unittest.TestCase):
             'eth_observation_reports:eth-test:final_24h#sha256:'+projection['source']['semantic_fingerprint'])
         self.assertEqual(projection['examples']['population_count'],stats['fill_count'])
         self.assertEqual(projection['examples']['selected_count'],len(projection['examples']['rows']))
+        proof=size_proof(report,projection,serialized_report_chars=123456)
+        self.assertEqual(proof['serialized_report_chars'],123456)
+        self.assertEqual(proof['fills_source_chars'],len(canonical(report['fills'])))
+        self.assertEqual(proof['coverage_source_chars'],len(canonical(report['coverage'])))
+        self.assertEqual(proof['projected_evidence_chars'],len(canonical(projection)))
 
     def test_example_selection_does_not_depend_on_outcomes(self):
         report=self.report(); first=project(report)

@@ -509,11 +509,14 @@ class PopulationPilotTests(unittest.TestCase):
         prior_a880=_seal_candidate(self.store,POLICY,'a880',clock_ms=39)
         self.assertEqual(prior_a880['status'],'sealed')
         protocol_id='67f7-eth-public-observation-24h-20261014-v1'
-        protocol={'protocol_id':protocol_id,'network':policy['network'],'address':item['address'],'market':'ETH','start_ms':1,'end_ms':50}
-        self.store.connection.execute('create table eth_observation_runs(protocol_id text,status text,protocol_fingerprint text,protocol_json text,finalised_ms integer)')
-        self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
         from datetime import datetime, timezone
         day_start=int(datetime(2026,10,14,tzinfo=timezone.utc).timestamp()*1000)
+        protocol={'protocol_id':protocol_id,'network':policy['network'],'address':item['address'],'market':'ETH',
+            'start_ms':day_start,'end_ms':day_start+86_400_000}
+        finalised_ms=protocol['end_ms']+5_000
+        task_clock=finalised_ms+2_000
+        self.store.connection.execute('create table eth_observation_runs(protocol_id text,status text,protocol_fingerprint text,protocol_json text,finalised_ms integer)')
+        self.store.connection.execute('create table eth_observation_reports(protocol_id text,stage text,input_fingerprint text,report_json text,created_ms integer,primary key(protocol_id,stage))')
         large_fills=[]
         volume_fills=12000
         fill_step_ms=7200  # 12,000 records spanning just under one UTC day.
@@ -548,17 +551,17 @@ class PopulationPilotTests(unittest.TestCase):
             'summary':{'taker':{'reduces':{'markout_60s_count':4},'opens':{'markout_60s_count':2}}},
             'fills':large_fills,
             'quote_latency_ms':{},'limits':['outcomes only'],'generated_at_ms':40,
-            'window':{'start_ms':1,'end_ms':50,'interval':'[start_ms,end_ms)'},
+            'window':{'start_ms':protocol['start_ms'],'end_ms':protocol['end_ms'],'interval':'[start_ms,end_ms)'},
             'route':{'next_action':'human review'}}
         report_json=json.dumps(report)
         self.assertGreater(len(report_json),policy['task_policy']['max_packet_chars'])
         self.store.connection.execute('insert into eth_observation_runs values(?,?,?,?,?)',
-            (protocol_id,'finalised',fingerprint(protocol),json.dumps(protocol),55))
+            (protocol_id,'finalised',fingerprint(protocol),json.dumps(protocol),finalised_ms))
         self.store.connection.execute('insert into eth_observation_reports values(?,?,?,?,?)',
-            (protocol_id,'final_24h',report['input_fingerprint'],report_json,40));self.store.connection.commit()
+            (protocol_id,'final_24h',report['input_fingerprint'],report_json,finalised_ms));self.store.connection.commit()
         semantic=eth_report_semantic_fingerprint(report)
-        work,_=enqueue(self.store,'eth_observation_report',protocol_id,{'protocol_id':protocol_id,'stage':'final_24h','semantic_fingerprint':semantic},clock_ms=40)
-        prepared=tick_queue(self.store,clock_ms=41,pilot_policy=policy)
+        work,_=enqueue(self.store,'eth_observation_report',protocol_id,{'protocol_id':protocol_id,'stage':'final_24h','semantic_fingerprint':semantic},clock_ms=finalised_ms+1)
+        prepared=tick_queue(self.store,clock_ms=task_clock,pilot_policy=policy)
         self.assertEqual(prepared['advanced'][0]['status'],'analysis_ready')
         queue_row=self.store.connection.execute('select outcome_json from research_work_queue where work_id=?',
             (work['work_id'],)).fetchone()
@@ -606,19 +609,20 @@ class PopulationPilotTests(unittest.TestCase):
             'type':'autonomous','markets':['ETH'],'signal':'Classify observed fills by inventory effect.',
             'entry':'Observed execution only; no order instruction.','exit':'Measure the 60 second outcome markout.',
             'sizing':'Not applicable to observed fills.','risk':'No profitability inference from this sample.',
-            'horizon_justification':'The report already records 60 second markouts.', 'required_data':[],
+            'horizon_justification':'The report already records 60 second markouts.',
+            'required_data':['Join report fills and quotes through their sealed archive references.'],
             'execution_constraints':'No paper or live execution.','rejection_criteria':'No persistent difference or inadequate coverage.',
             'evidence_refs':[evidence_ref]}}
         critique={'decision':'consistent','diagnostic':'The question is falsifiable but remains exploratory.','wake':{}}
         usage={'cost_usd':0,'cost_status':'included','input_tokens':900,'output_tokens':80,'duration_ms':12,
             'model':policy['task_policy']['model']}
-        with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.now_ms',return_value=42),patch(
+        with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.now_ms',return_value=task_clock+1),patch(
                 'tamtam_again.population_runtime.call',side_effect=[(json.dumps(proposal),usage),(json.dumps(critique),usage)]) as call:
-            run_result=tick_locked(self.store,policy,dispatch=True,clock_ms=42)
+            run_result=tick_locked(self.store,policy,dispatch=True,clock_ms=task_clock+1)
             self.assertEqual(call.call_count,2,(run_result,dict(self.store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone())))
             self.assertTrue(all(len(args.args[1])<=policy['task_policy']['max_prompt_chars'] for args in call.call_args_list))
             self.assertEqual(size_proof['proposal_prompt_chars'],len(call.call_args_list[0].args[1]))
-            replay=tick_locked(self.store,policy,dispatch=True,clock_ms=43)
+            replay=tick_locked(self.store,policy,dispatch=True,clock_ms=task_clock+2)
             self.assertEqual(replay['status'],'no_admissible_candidate')
             self.assertEqual(call.call_count,2)
         saved=self.store.connection.execute('select status,result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
@@ -630,12 +634,43 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertEqual(validate_contract(json.loads(after_runtime),
             json.loads(after_runtime)['local_analysis_contract_v1'])['contract_fingerprint'],
             contract_validation['contract_fingerprint'])
-        self.assertEqual(tick_queue(self.store,clock_ms=43,pilot_policy=policy)['advanced'],[])
+        self.assertEqual(tick_queue(self.store,clock_ms=task_clock+3,pilot_policy=policy)['advanced'],[])
         queue=self.store.connection.execute('select status,outcome_json from research_work_queue where work_id=?',(work['work_id'],)).fetchone()
-        self.assertEqual(queue['status'],'analysis_completed')
+        self.assertEqual(queue['status'],'resolution_ready')
         self.assertEqual(json.loads(queue['outcome_json'])['promotion_authorized'],False)
         self.assertEqual(self.store.connection.execute('select count(*) from population_research_pilot_calls where pilot_id=?',(policy['pilot_id'],)).fetchone()[0],2)
         self.assertEqual(self.store.connection.execute("select count(*) from population_research_pilot_tasks where pilot_id=? and candidate='67f7'",(policy['pilot_id'],)).fetchone()[0],1)
+        self.assertEqual(run_result['route']['state'],'local_archive_analysis_required')
+        from gzip import compress
+        from pathlib import Path
+        from tamtam_again.population_scheduler import tick as scheduler_tick
+        scheduler_policy=json.loads((ROOT/'config/population-research-policy.json').read_text())
+        def write_artifact_to_temp(path,artifact):
+            out=Path(self.tmp.name)/Path(path).name
+            out.write_bytes(compress(canonical(artifact).encode('utf-8'),mtime=0))
+        with patch('tamtam_again.population_local_archive_resolution._write_artifact',
+                side_effect=write_artifact_to_temp):
+            scheduler_result=scheduler_tick(self.store,policy['network'],scheduler_policy,
+                dispatch=False,resume_local_resolution=request_id)
+            resolution=scheduler_result['local_resolutions'][0]
+        self.assertEqual(resolution['status'],'prepared')
+        self.assertEqual(resolution['resolution']['state'],'partial')
+        self.assertEqual(resolution['model_calls'],0)
+        resolved_result=json.loads(self.store.connection.execute(
+            'select result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()[0])
+        self.assertIn(resolution['contract_fingerprint'],resolved_result['local_archive_resolutions_v1'])
+        with patch('tamtam_again.population_local_archive_resolution._write_artifact',
+                side_effect=write_artifact_to_temp), \
+                patch('tamtam_again.population_local_archive_resolution._fills',
+                    side_effect=AssertionError('replayed resolution must not reload fills')), \
+                patch('tamtam_again.population_local_archive_resolution._quotes',
+                    side_effect=AssertionError('replayed resolution must not reload quotes')):
+            replay_result=scheduler_tick(self.store,policy['network'],scheduler_policy,
+                dispatch=False,resume_local_resolution=request_id)
+        rerun=replay_result['local_resolutions'][0]
+        self.assertEqual(rerun['status'],'unchanged')
+        self.assertFalse(rerun['recalculated'])
+        self.assertEqual(rerun['artifact_fingerprint'],resolution['artifact_fingerprint'])
 
     def test_pilot_jobs_do_not_consume_shared_research_request_ceiling(self):
         from tamtam_again.research_jobs import request_count

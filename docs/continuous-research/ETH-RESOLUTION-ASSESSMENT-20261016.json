@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "question": "L'association entre réductions taker ETH et markout à 60 secondes constitue-t-elle un avantage exploitable avec les pages REST utilisées, ou une règle autonome disponible avant décision ?",
+  "artifact_fingerprints": ["697a4b00d599d15fabbfa2ab530efd7fdfb24dfb162a49b6e3f7bc9440e65da1"],
+  "new_evidence": [
+    "Bilan final : 9874 fills joints exactement par tid; 6724 ordres; 109268 paires de fenêtres à 60 s chevauchantes.",
+    "Médianes événement→60 s : réductions taker 2.484 bps contre 1.275 pour ouvertures/inversions; par ordre : 2.480 contre ouvertures 2.105 et inversions 0.851; par bloc 5 min : 2.274 contre 1.849 et 0.411. Ces regroupements sont descriptifs et ne prouvent pas l'indépendance.",
+    "Après réception REST : réductions taker -0.414 bps contre 0 pour ouvertures/inversions. Le contraste événementiel ne se transporte pas au repère de disponibilité de ces pages. Les moyennes ne sont pas assimilées aux médianes ni à un rendement net.",
+    "Le contrôle de fraîcheur 1 s conserve le contraste événementiel; il ne résout pas la disponibilité avant une décision réelle. Les strates ne corrigent ni sélection ni dépendance."
+  ],
+  "conclusion": "Tâche de fenêtre existante terminée avec rejet de l'interprétation selon laquelle le contraste événementiel démontre un avantage exploitable par les pages REST utilisées. Association descriptive conservée à l'heure source; ce rejet de preuve n'établit pas l'absence universelle d'avantage. Un suivi live n'est pas mesuré par ces pages et n'est donc ni validé ni rejeté. Aucune stratégie autonome n'est définie : la politique de placement du trader et une règle observable avant notre décision restent absentes. Aucun markout n'est converti en rendement net.",
+  "unknowns": [
+    "Suivi live : disponibilité du signal, latence signal→décision→exécution, spread/profondeur exécutables et coûts propres au suiveur non mesurés par ces pages REST.",
+    "Autonomie : aucune règle d'entrée, sortie, taille et risque fondée sur des entrées observables avant décision; placements non exécutés, file et politique du trader non identifiables depuis les fills.",
+    "Répétabilité hors fenêtre et causalité inconnues; les regroupements existants ne constituent pas des essais indépendants."
+  ],
+  "next_action": "Archiver la décision et ses preuves dans la mémoire actualisée; retirer cette question résolue du travail actif et examiner l'admissibilité des autres tâches. Aucun calcul supplémentaire n'est nécessaire pour cette décision de portée limitée. Toute étude live ou règle explicite serait un travail distinct avec autorisation et mesures propres; aucun lancement ni attente de backfill historique ici.",
+  "disposition": "completed"
+}

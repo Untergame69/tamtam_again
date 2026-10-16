@@ -1,0 +1,700 @@
+{
+  "version": 1,
+  "execution": "real local SQLite scheduler, dispatch=False; no model or collection launched",
+  "captured_ms": 1792173025638,
+  "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+  "assessment": {
+    "artifact_fingerprints": [
+      "697a4b00d599d15fabbfa2ab530efd7fdfb24dfb162a49b6e3f7bc9440e65da1"
+    ],
+    "conclusion": "Tâche de fenêtre existante terminée avec rejet de l'interprétation selon laquelle le contraste événementiel démontre un avantage exploitable par les pages REST utilisées. Association descriptive conservée à l'heure source; ce rejet de preuve n'établit pas l'absence universelle d'avantage. Un suivi live n'est pas mesuré par ces pages et n'est donc ni validé ni rejeté. Aucune stratégie autonome n'est définie : la politique de placement du trader et une règle observable avant notre décision restent absentes. Aucun markout n'est converti en rendement net.",
+    "disposition": "completed",
+    "new_evidence": [
+      "Bilan final : 9874 fills joints exactement par tid; 6724 ordres; 109268 paires de fenêtres à 60 s chevauchantes.",
+      "Médianes événement→60 s : réductions taker 2.484 bps contre 1.275 pour ouvertures/inversions; par ordre : 2.480 contre ouvertures 2.105 et inversions 0.851; par bloc 5 min : 2.274 contre 1.849 et 0.411. Ces regroupements sont descriptifs et ne prouvent pas l'indépendance.",
+      "Après réception REST : réductions taker -0.414 bps contre 0 pour ouvertures/inversions. Le contraste événementiel ne se transporte pas au repère de disponibilité de ces pages. Les moyennes ne sont pas assimilées aux médianes ni à un rendement net.",
+      "Le contrôle de fraîcheur 1 s conserve le contraste événementiel; il ne résout pas la disponibilité avant une décision réelle. Les strates ne corrigent ni sélection ni dépendance."
+    ],
+    "next_action": "Archiver la décision et ses preuves dans la mémoire actualisée; retirer cette question résolue du travail actif et examiner l'admissibilité des autres tâches. Aucun calcul supplémentaire n'est nécessaire pour cette décision de portée limitée. Toute étude live ou règle explicite serait un travail distinct avec autorisation et mesures propres; aucun lancement ni attente de backfill historique ici.",
+    "question": "L'association entre réductions taker ETH et markout à 60 secondes constitue-t-elle un avantage exploitable avec les pages REST utilisées, ou une règle autonome disponible avant décision ?",
+    "unknowns": [
+      "Suivi live : disponibilité du signal, latence signal→décision→exécution, spread/profondeur exécutables et coûts propres au suiveur non mesurés par ces pages REST.",
+      "Autonomie : aucune règle d'entrée, sortie, taille et risque fondée sur des entrées observables avant décision; placements non exécutés, file et politique du trader non identifiables depuis les fills.",
+      "Répétabilité hors fenêtre et causalité inconnues; les regroupements existants ne constituent pas des essais indépendants."
+    ],
+    "version": 1
+  },
+  "original_review_status_preserved": "hypothesis_recorded",
+  "original_review_usage": [
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 56442,
+      "input_tokens": 47981,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 2052
+    },
+    {
+      "api_calls": 1,
+      "cost_status": "included",
+      "cost_usd": 0.0,
+      "duration_ms": 18473,
+      "input_tokens": 49013,
+      "model": "gpt-6.1-sol",
+      "output_tokens": 565
+    }
+  ],
+  "original_memory_link": {
+    "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+    "knowledge_id": "e50b4e69f2c75a153da4bf4eaa7548e3ed7846465663bc07be72713cdc34828b",
+    "created_ms": 1792078810481
+  },
+  "memory_revisions": [
+    {
+      "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+      "resolution_fingerprint": "4be9d5da00cada2fda7c5a5a44af8afaa9f3b85e2531b6ba0ab739687384c7df",
+      "knowledge_id": "d5b3a31d0340af213f839d45fb5f2d4eb4d884e1d1dcc0884a0961e865675b33",
+      "created_ms": 1792172827945
+    }
+  ],
+  "next_prepared_packet": {
+    "status": "packet_ready",
+    "cutoff_ms": 1792173025638,
+    "fingerprint": "01db77a18877b58578e2c1e10ccd173125e60cfb1d22632bbe51c2293c989e96",
+    "research_input_fingerprint": "8becf6f90847185907ccf75c08ac84825844db0fd91adeb34e410d5a66b835e7",
+    "memory_selection": {
+      "eligible_exported_items": 1,
+      "included_items": 1,
+      "method": "latest authorized revisions first, superseded items excluded, whole items within packet budget",
+      "new_memory_alone_does_not_reopen_unchanged_population_input": true
+    },
+    "selected_memory_ids": [
+      "d5b3a31d0340af213f839d45fb5f2d4eb4d884e1d1dcc0884a0961e865675b33"
+    ],
+    "evidence_refs": [
+      "knowledge:d5b3a31d0340af213f839d45fb5f2d4eb4d884e1d1dcc0884a0961e865675b33",
+      "population_resolution:501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece:4be9d5da00cada2fda7c5a5a44af8afaa9f3b85e2531b6ba0ab739687384c7df"
+    ],
+    "latest_synthesis_matches_assessment": true,
+    "inference_dispatched": false
+  },
+  "queue_current": [
+    {
+      "work_id": "792dc83c084745b398f0fa9233b38e407a4c08dbd224ed5edb59bcf80b9c113e",
+      "status": "completed",
+      "route": {
+        "diagnostic": {
+          "causal_inputs": "Execution classification uses observed fill information, not an available pre-execution decision signal. Future quotes are confined to outcomes. Strict-prior event timestamps do not establish local pre-execution availability; the proposal acknowledges this limitation. Conditioning on side and pre-event context can test a conditional association but cannot by itself identify a causal inventory effect, trader intent or order-placement policy.",
+          "evidence_limits": "References, hashes and reported coverage were not independently verified. The packet's favorable label is not accepted as causal evidence.",
+          "fidelity": "The proposal accurately distinguishes pooled event-time group medians, unequal day portions, maker context and REST-receipt outcomes. It correctly states that the historical summary cannot establish a historical position-effect markout association.",
+          "missing_requirements": [
+            "Existing-window event-level fill, order, position-effect and quote joins with provenance.",
+            "Pre-event market-context measurements and explicit clock-alignment, freshness and gap handling.",
+            "An explicit conditional comparison method and treatment of order dependence, temporal clustering and overlapping outcomes before confirmatory interpretation.",
+            "A separate prospective evaluation of this now-articulated conditional hypothesis; further analysis of the already inspected window remains exploratory."
+          ],
+          "optional_spec_review": "Neither executable_spec nor experiment_profile is supplied. Execution compatibility is therefore not established. Claims about adapter capabilities and unsupported strategy types are unverified observations, not grounds to reject this non-executable study.",
+          "parameter_evidence": "The 60-second horizon is grounded in the pilot question and supplied measurements. Freshness thresholds are reported sensitivity settings, not independently validated parameters. No executable sizing, exposure or execution parameters are inferred.",
+          "scope": "Consistent as a descriptive, falsifiable research hypothesis requiring further evaluation, not as an identified causal effect or proof of an advantage.",
+          "testability": "The proposed conditional contrasts are testable in principle with the requested event-level joins. Aggregate medians alone cannot support those contrasts, recover the combined comparator, or quantify clustered variation. Clustering and overlapping outcomes must remain explicit in interpretation."
+        },
+        "economic_rejection": false,
+        "evidence_refs": [
+          "population_research:501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece"
+        ],
+        "followup_task": {
+          "collection_authorized": false,
+          "kind": "eth_existing_window_analysis",
+          "model_calls_authorized": 0,
+          "protocol_id": "67f7-eth-public-observation-24h-20261014-v1",
+          "report_input_fingerprint": "602639142e248a9e7714139f3fdfb8fc8b3cca7b03df5f41acb3d43485274e9c",
+          "report_semantic_fingerprint": "47d0c3c3c3c9d4303d76c7d762c97530962c1de4ea8e42ed59b40ec8e52cf91f",
+          "requested_data_count": 2,
+          "stage": "final_24h",
+          "title": "Join every final-window fill to archived ETH pre-event context and persist order/time-aware comparisons",
+          "version": "population-eth-existing-window-resolution-v1",
+          "window_ms": [
+            1791990000000,
+            1792076400000
+          ]
+        },
+        "local_eth_existing_window_resolution": {
+          "artifact_fingerprint": "697a4b00d599d15fabbfa2ab530efd7fdfb24dfb162a49b6e3f7bc9440e65da1",
+          "artifact_path": "docs/continuous-research/POPULATION-67F7-ETH-EXISTING-WINDOW-RESOLUTION-20261016-v1.json.gz",
+          "collection_started": false,
+          "model_calls": 0,
+          "report_input_fingerprint": "602639142e248a9e7714139f3fdfb8fc8b3cca7b03df5f41acb3d43485274e9c",
+          "state": "completed",
+          "summary": {
+            "bbo_event_count": 684948,
+            "event_time_markout_count": 9866,
+            "exact_tid_join_count": 9874,
+            "fill_count": 9874,
+            "l2book_event_count": 159358,
+            "market_condition_usable_fill_count": 9861,
+            "order_count": 6724,
+            "overlapping_outcome_pairs": 109268,
+            "primary_context_usable_count": 9874,
+            "receipt_markout_count": 9855
+          },
+          "version": "population-eth-existing-window-resolution-v1"
+        },
+        "local_resolution": {
+          "followup_task": {
+            "artifact_fingerprint": "697a4b00d599d15fabbfa2ab530efd7fdfb24dfb162a49b6e3f7bc9440e65da1",
+            "kind": "eth_existing_window_analysis",
+            "next_action": {
+              "automatic_action": "Persist this exploratory result and its route; stop this existing-window task without collection or another IA call.",
+              "collection_started": false,
+              "decision": "The two IA data requests are answered to the extent the fixed archive allows; no further historical collection or inference is justified.",
+              "model_calls_authorized_or_used_by_resolution": 0,
+              "paper_or_order_authorized": false,
+              "remaining_question": "A separate prospectively specified evaluation is needed to test conditional repeatability; current fills cannot establish placement decisions, real-time quote availability at execution, or causal trader policy.",
+              "state": "local_analysis_complete"
+            },
+            "request_inventory": [
+              {
+                "classification": "available_and_joined",
+                "complete_pages": 283,
+                "conflicts": 0,
+                "duplicate_instances": 1966,
+                "fields_used": [
+                  "tid",
+                  "oid",
+                  "time",
+                  "side",
+                  "crossed",
+                  "startPosition",
+                  "sz",
+                  "px",
+                  "fee",
+                  "feeToken"
+                ],
+                "pages": 283,
+                "period_ms": [
+                  1791990000000,
+                  1792076400000
+                ],
+                "raw_unique_fills": 9874,
+                "report_fills": 9874,
+                "request": "Fill/order identity, side, crossed, start position, signed size and position effect for the fixed window",
+                "source": "final_24h report plus archived prospective REST pages",
+                "usage": "all unique fills joined by tid; oid added from raw pages; effects recalculated from startPosition and signed size"
+              },
+              {
+                "bbo_events": 684948,
+                "classification": "available_and_joined",
+                "event_count": 844306,
+                "l2book_events": 159358,
+                "market_lots": 437338,
+                "period_ms": [
+                  1791990000000,
+                  1792076400000
+                ],
+                "report_source_fingerprint": "485d57c646ab2e6b381e4243b49f097c1539099b0f1d9aca40875055832aa215",
+                "request": "Strict-prior quotes, outcomes, local REST/page receipt and reference joins",
+                "source": "final_24h report plus archived BBO/l2Book event lots",
+                "source_fingerprint": "b9a1e041a32594a4de995fdcb531bd94fcccd937d55a5ecf500c87e59b763eaa",
+                "usage": "all decoded event lots searched for per-fill context; strict predecessors, local receipt and archive time kept separate"
+              },
+              {
+                "classification": "available_but_calculation_was_missing",
+                "depth_scope": "best displayed bid and ask level only; deeper L2 levels are not inferred from top-level projection",
+                "period_ms": [
+                  1791990000000,
+                  1792076400000
+                ],
+                "request": "Matched pre-event spread, displayed depth, recent price changes, connection and gap context",
+                "source": "BBO and l2Book raw event snapshots",
+                "usage": "strict event-time predecessors and preceding BBO returns; equal timestamps excluded and counted as ambiguous"
+              },
+              {
+                "available": "quote frame received_at and archived_at; fill REST requested_at/received_at; connection IDs",
+                "classification": "partially_covered_unavailable_retroactively",
+                "missing": "decision timestamp and calibrated venue-to-local clock offset",
+                "request": "A local market quote known at the actual execution-decision instant",
+                "usage": "compare quote receipt/archive to local REST request as a diagnostic only; do not claim execution-time availability"
+              },
+              {
+                "classification": "absent_or_unobservable_from_fills",
+                "request": "Trader order placement, unfilled orders, queue position, and why the trader chose each action",
+                "usage": "not inferred; observed fills are not treated as placement decisions"
+              },
+              {
+                "classification": "not_in_this_archive_and_not_authorized_for_collection_here",
+                "request": "Independent prospective confirmation of the conditional association",
+                "usage": "remains the single next research stage; no request or collection initiated"
+              }
+            ],
+            "state": "completed",
+            "version": "population-eth-existing-window-resolution-v1"
+          },
+          "kind": "eth_existing_window_analysis",
+          "result": {
+            "artifact_fingerprint": "697a4b00d599d15fabbfa2ab530efd7fdfb24dfb162a49b6e3f7bc9440e65da1",
+            "artifact_path": "docs/continuous-research/POPULATION-67F7-ETH-EXISTING-WINDOW-RESOLUTION-20261016-v1.json.gz",
+            "collection_started": false,
+            "model_calls": 0,
+            "report_input_fingerprint": "602639142e248a9e7714139f3fdfb8fc8b3cca7b03df5f41acb3d43485274e9c",
+            "state": "completed",
+            "summary": {
+              "bbo_event_count": 684948,
+              "event_time_markout_count": 9866,
+              "exact_tid_join_count": 9874,
+              "fill_count": 9874,
+              "l2book_event_count": 159358,
+              "market_condition_usable_fill_count": 9861,
+              "order_count": 6724,
+              "overlapping_outcome_pairs": 109268,
+              "primary_context_usable_count": 9874,
+              "receipt_markout_count": 9855
+            },
+            "version": "population-eth-existing-window-resolution-v1"
+          },
+          "state": "completed",
+          "version": "population-eth-existing-window-resolution-v1"
+        },
+        "next_action": "Archiver la décision et ses preuves dans la mémoire actualisée; retirer cette question résolue du travail actif et examiner l'admissibilité des autres tâches. Aucun calcul supplémentaire n'est nécessaire pour cette décision de portée limitée. Toute étude live ou règle explicite serait un travail distinct avec autorisation et mesures propres; aucun lancement ni attente de backfill historique ici.",
+        "promotion_authorized": false,
+        "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+        "research_origin": "population",
+        "resolution_assessment_v1": {
+          "artifact_fingerprints": [
+            "697a4b00d599d15fabbfa2ab530efd7fdfb24dfb162a49b6e3f7bc9440e65da1"
+          ],
+          "conclusion": "Tâche de fenêtre existante terminée avec rejet de l'interprétation selon laquelle le contraste événementiel démontre un avantage exploitable par les pages REST utilisées. Association descriptive conservée à l'heure source; ce rejet de preuve n'établit pas l'absence universelle d'avantage. Un suivi live n'est pas mesuré par ces pages et n'est donc ni validé ni rejeté. Aucune stratégie autonome n'est définie : la politique de placement du trader et une règle observable avant notre décision restent absentes. Aucun markout n'est converti en rendement net.",
+          "disposition": "completed",
+          "new_evidence": [
+            "Bilan final : 9874 fills joints exactement par tid; 6724 ordres; 109268 paires de fenêtres à 60 s chevauchantes.",
+            "Médianes événement→60 s : réductions taker 2.484 bps contre 1.275 pour ouvertures/inversions; par ordre : 2.480 contre ouvertures 2.105 et inversions 0.851; par bloc 5 min : 2.274 contre 1.849 et 0.411. Ces regroupements sont descriptifs et ne prouvent pas l'indépendance.",
+            "Après réception REST : réductions taker -0.414 bps contre 0 pour ouvertures/inversions. Le contraste événementiel ne se transporte pas au repère de disponibilité de ces pages. Les moyennes ne sont pas assimilées aux médianes ni à un rendement net.",
+            "Le contrôle de fraîcheur 1 s conserve le contraste événementiel; il ne résout pas la disponibilité avant une décision réelle. Les strates ne corrigent ni sélection ni dépendance."
+          ],
+          "next_action": "Archiver la décision et ses preuves dans la mémoire actualisée; retirer cette question résolue du travail actif et examiner l'admissibilité des autres tâches. Aucun calcul supplémentaire n'est nécessaire pour cette décision de portée limitée. Toute étude live ou règle explicite serait un travail distinct avec autorisation et mesures propres; aucun lancement ni attente de backfill historique ici.",
+          "question": "L'association entre réductions taker ETH et markout à 60 secondes constitue-t-elle un avantage exploitable avec les pages REST utilisées, ou une règle autonome disponible avant décision ?",
+          "unknowns": [
+            "Suivi live : disponibilité du signal, latence signal→décision→exécution, spread/profondeur exécutables et coûts propres au suiveur non mesurés par ces pages REST.",
+            "Autonomie : aucune règle d'entrée, sortie, taille et risque fondée sur des entrées observables avant décision; placements non exécutés, file et politique du trader non identifiables depuis les fills.",
+            "Répétabilité hors fenêtre et causalité inconnues; les regroupements existants ne constituent pas des essais indépendants."
+          ],
+          "version": 1
+        },
+        "resolution_fingerprint": "4be9d5da00cada2fda7c5a5a44af8afaa9f3b85e2531b6ba0ab739687384c7df",
+        "resolved_data": [
+          "Event-level measurements for the existing prospective window, 1791990000000 through 1792076400000 ms: stable fill/order identity, side, crossed flag, start position, signed size, position-effect label, strict-prior and outcome quote references/timestamps, REST receipt time, and gap/freshness exclusions. These are needed to calculate the combined opening-or-inversion comparison and assess clustered rather than independent-fill variation.",
+          "Matched pre-event ETH market context from the existing prospective archive: spread, displayed depth, preceding price changes, quote receive timestamps and connection/gap annotations, joined to each execution without future information. These are needed to distinguish inventory-effect association from side, time and market-state composition."
+        ],
+        "source_result_fingerprint": "886b7ceccce5d564e2ac81e7d8ee687d21736ba250b4f3cb1009af30d831ae19",
+        "source_status": "hypothesis_recorded",
+        "state": "completed",
+        "supersedes_route_fingerprint": "142b5c764a884381b5717a9ae8baaaa65955ac404f86111b0704856a27e5b035",
+        "wake": {
+          "collection_authorized": false,
+          "kind": "changed_authorized_evidence_only",
+          "model_calls_authorized": 0,
+          "new_input_fingerprint_required": true,
+          "paper_authorized": false
+        }
+      }
+    }
+  ],
+  "queue_history": [
+    {
+      "work_id": "cb4ddac9684dc6d830d36a50fad1da8a07773e61b8b48006c38cef798225d100",
+      "status": "waiting_data",
+      "reason": "persisted population route: needs_data",
+      "input_fingerprint": "33ea97130680eb0c3f1e7b22cc6e827de3881d2f1dd54875d934e2943c1c780b"
+    },
+    {
+      "work_id": "c63d2ac055cb92c2fd201e2fd0c72bbe2812f2f4429ba3322d8545b45e42a37c",
+      "status": "ready",
+      "reason": "persisted population route: local_archive_analysis_required",
+      "input_fingerprint": "6b4a742a01b050cb93ec6ff77fe84f9934cc66e0f745f756f4a660cee7395ce7"
+    },
+    {
+      "work_id": "8a81349c42dac6389fab691375778f71876582eca499e06e12d3e24613d8b62e",
+      "status": "completed",
+      "reason": "persisted population route: local_archive_analysis_complete",
+      "input_fingerprint": "fa6dc0ebca2934b06758827dd83cd3ce8a2cd4b59dc65d6799c83c3a16ac6695"
+    },
+    {
+      "work_id": "db0ad11fa725f1a8c8e38c8d21373163d0948d95575f280269ac1ca6df57cbcd",
+      "status": "completed",
+      "reason": "persisted population route: completed",
+      "input_fingerprint": "5150d45124b426dc7f3abfa18b2859653871af67f3dbdfe6e5c8bf992c63f1b8"
+    },
+    {
+      "work_id": "792dc83c084745b398f0fa9233b38e407a4c08dbd224ed5edb59bcf80b9c113e",
+      "status": "completed",
+      "reason": "persisted population route: completed",
+      "input_fingerprint": "2efc0e64cb23f10c569a652a50ab80b139437855847ffbd12afd90b6229a923d"
+    }
+  ],
+  "queue_current_events": [
+    {
+      "status": "completed",
+      "reason": "persisted population route: completed",
+      "created_ms": 1792172956017
+    }
+  ],
+  "report_queue": [
+    {
+      "status": "completed",
+      "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+      "route_state": "completed"
+    }
+  ],
+  "scheduler_command": "scripts/population-research-tick.py --db data/tamtam.sqlite3 --policy config/population-research-policy.json --pilot-policy config/research-loop-pilot-v2.json --prepare-only --max-jobs 1",
+  "scheduler": {
+    "pilot_research": {
+      "status": "no_admissible_candidate",
+      "candidate_evaluations": [
+        {
+          "candidate": "a880",
+          "status": "unchanged_no_inference",
+          "request_id": "2647534ba8ed0dc03598585e3afdade2ac2f54e797175b9926d057ca7b404b49",
+          "reason": "same question, archive cutoff and fill-content fingerprint already processed"
+        },
+        {
+          "candidate": "67f7",
+          "status": "terminal_route",
+          "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+          "route": "completed"
+        },
+        {
+          "candidate": "be504",
+          "status": "unchanged_no_inference",
+          "request_id": "92c7bb3cb925467177994001127b7eecc6425f3823f61fbc05f0cfc7752c9151",
+          "reason": "same question, archive cutoff and fill-content fingerprint already processed"
+        }
+      ],
+      "allowance": {
+        "pilot_id": "research-loop-pilot-20261014-v2",
+        "tasks": [
+          {
+            "candidate": "a880",
+            "request_id": "2647534ba8ed0dc03598585e3afdade2ac2f54e797175b9926d057ca7b404b49",
+            "state": "needs_data"
+          },
+          {
+            "candidate": "67f7",
+            "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+            "state": "hypothesis_recorded"
+          }
+        ],
+        "calls_reserved": 2,
+        "input_tokens_reserved": 160000,
+        "output_tokens_reserved": 10000,
+        "duration_ms_reserved": 240000,
+        "input_tokens_reported": 96994,
+        "output_tokens_reported": 2617,
+        "duration_ms_reported": 74915,
+        "non_renewing": true
+      }
+    },
+    "historical_ai_gates": [
+      {
+        "address": "0x0ebb6fe26ea840b2623a660c8fd4c44e847b4dde",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:b9b035ba11cece4f23673d9ce11488c883d46593565a2f1e6208547c2e063c71"
+      },
+      {
+        "address": "0x152f2280675535c0c16f87d4be147c659209ff7f",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:27f93b538ceea628fb42c9505d40054b4a87a39c3aee6dc0e38c21f73b8ef297"
+      },
+      {
+        "address": "0x1649b16f62d5a663412fa5ffbc3fdcad414c2d2e",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:e1cb9bc1c6cec009e0558c78f5da59195e4de2c9c6e9a1ed012df61f4a971bb6"
+      },
+      {
+        "address": "0x34dbfcdd0685b0c72cbaadc2f380df32738b5889",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:b9469301743dfa12d9917fdb0985687e6203d4049b79d3177d790502cd6e9865"
+      },
+      {
+        "address": "0x45690ccf6d26f92a3727d5d05b8aa84795d8a6f9",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:acc69731044ca59477a84f5724e7a768de090ec0744e2b8f4645611fae693a90"
+      },
+      {
+        "address": "0x668f77b1b9d948ab5f5b08e75142770bbafadc03",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:95fcf731b296072748980e09445f1040ee83466f66437c5dc57836aa0e567131"
+      },
+      {
+        "address": "0x6c95ac7349c248bb3371a8911274ee5782ef58f8",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:a6b4dbe8a9c64699e34f3679573c6888ba3e493e55c243394b134e5f76b0dcc8"
+      },
+      {
+        "address": "0x6e2d02c2aa7a3911b0c58ad6ced7d64e9a258f54",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:2bc48a36601c6678662fa32cbae1070566dacb6e27a404139ca03e080b725974"
+      },
+      {
+        "address": "0x77375a8c9d13bf79afb2a87f1b0ac1dfd5f5bf66",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:6555bf929af8cbd3dfc6c780bbcc17b16752e397a2ff4fbd6d0e5f14e9806b71"
+      },
+      {
+        "address": "0x84912149f93d963ad5ddc3c2781b1950d160a4da",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:37614c3fd965587f2ee8b036975e4c3bd3e083bd06ef1fa7717c2ad01a0a75a7"
+      },
+      {
+        "address": "0xa38157f31371eec73fd878097c249f16472b066c",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:cf8ba6fc4206897e419580e54ef199388c5db910e0723e118ca80e2b7766591c"
+      },
+      {
+        "address": "0xb13add6646de5ded49d9872cdef318c80a5013ac",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:1770e2c23ce9653023a60d3af3daeba56bbfdd8fd2352a345bdf92e2c0e47e13"
+      },
+      {
+        "address": "0xb4c95770c99d6154473b1947219f7a49e3fb6fff",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:de2a9587f097fb6a2b10fe18a8b02903c62d0ae60d74275ecddaddee611628c3"
+      },
+      {
+        "address": "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "curve/activity screening has not passed the separate economic review required for research RE",
+        "historical_decision_ref": "population_historical_decisions:f9bd4290d38df4d471b5b7ec71bbcca3bdfff4cc8b02d2ae8b879a07db935ad3"
+      },
+      {
+        "address": "0xcd73047a311410821ee26ec8c5f999710bbca591",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:f35a8aec2710052e0a3d5855e2028a53f48592244d0e37cb8795dfd151c614b6"
+      },
+      {
+        "address": "0xda3768e9299e1fd81708ec030dac5ea37125f7b5",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:9bd70d88c09dbdb7238a443061bf07a9b4621d0fae982b02fc7373dab3c62601"
+      },
+      {
+        "address": "0xe02ba7632b616d18662ca5365edc2e89d57b0328",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:0073711f320d21b0bc56bdca603f5cfecd9ab3c299904eed0fb177f820c78901"
+      },
+      {
+        "address": "0xe49cf2d1b24bfde85afe2cdd34f8cd9d8ab17ed5",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:5e0cd2a9cef37ca71ea76c03e2007ca401d4519dbda421513b69eea59647c190"
+      },
+      {
+        "address": "0xe6914fa2c80e5440cabe3167c075f6ff963aab82",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:06a3fbdbef3b219563dee8252afec8c04c17e5e8179ad6d37dafc797e06f9186"
+      },
+      {
+        "address": "0xe867fbdad3291530e41530301ecb77693850c78e",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:5ed08da90408abf627b19887eb597d23b20f8944ddce21e3233dd7e5e052d04f"
+      },
+      {
+        "address": "0xf5f569a7006860e6e17c92ba9d5959090acf0336",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:20c3ccb6d7bd190d9a29d2b839f0a7f99b8c23cb6655dfa56590577fd5ee98b3"
+      },
+      {
+        "address": "0xb13380849b95f9c890987016f1565d1ac2d96b2e",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:f654098286590875c819f05c7779b17a36153392ac4f9b5d421af017ed41b6c6"
+      },
+      {
+        "address": "0xdf1cdd59b69ee403bc38c5ea4f33234f9bb5948d",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:971863c7566877173819237d72785159b6df487ffe149bcffd61fab42e21a926"
+      },
+      {
+        "address": "0x3895d155b005191686476a39580d43258a518e46",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "curve/activity screening has not passed the separate economic review required for research RE",
+        "historical_decision_ref": "population_historical_decisions:58dbe39094d10120fb9d96b8b49cd54760cd45f92dfaac73abccb632f9f1259c"
+      },
+      {
+        "address": "0x72655b3926db3afbe914a53b0604905af7ce11a5",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:f9e4cf463fed1942d609c2d5bcb6cc285cb2c9b9c88afa07e11325e341459a51"
+      },
+      {
+        "address": "0xc6cd4f327ebda9a78cc52414aa5101c211b5e4d9",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:69466c9718be0c0d2f5de45c67108716456b1a4668f4ca0268bfe6ccf4e5c3c4"
+      },
+      {
+        "address": "0x8f63c88fccae90c1f9eb8b447f830bce7b71dd74",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "curve/activity screening has not passed the separate economic review required for research RE",
+        "historical_decision_ref": "population_historical_decisions:7f090ea70b5426babda386519baa3d3d300481c1067e2356f26920f0f081eb0f"
+      },
+      {
+        "address": "0xbf732ea04197942783e34730ed6e0f6099575d58",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:6e53c80f181f74ce2f4f939cf84cb44beea7820e3b24704872b1f3369a5789c1"
+      },
+      {
+        "address": "0xbb160cb61e694570f9d570f9fcde7c61dd2143ad",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "curve/activity screening has not passed the separate economic review required for research RE",
+        "historical_decision_ref": "population_historical_decisions:f48c1d2165f561925553c7221a34fd3135536574a09c915152ebedbc7604583a"
+      },
+      {
+        "address": "0x09587978974036120ed3b17e81b0ff802351aaa2",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:67247faa71c4b25f93f875551df9919949c598b4c772e0a7a2baebeeb562f458"
+      },
+      {
+        "address": "0x09b6719da579fd7358360665f5529ae07378f669",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "historical qualification is not sufficient for deeper AI research",
+        "historical_decision_ref": "population_historical_decisions:8ab689985a6423594b93eb8b849136325e8f0e451d45d295de69c2d40da36973"
+      },
+      {
+        "address": "0x0e6d1d7aecf601d2c000f0baea0b9bf6ab358fe7",
+        "allowed": false,
+        "qualification": false,
+        "new_data": true,
+        "budget": false,
+        "reason": "curve/activity screening has not passed the separate economic review required for research RE",
+        "historical_decision_ref": "population_historical_decisions:f366a933e72c98c8686f16b1bc75cf6202fd85011b2c04d4ab9a653c1b826e94"
+      }
+    ],
+    "sealed": [],
+    "processed": [],
+    "work_queue": {
+      "advanced": [],
+      "pending": 9,
+      "model_calls": 0
+    }
+  },
+  "replay": {
+    "sealed": [],
+    "processed": [],
+    "same_memory_id": true
+  },
+  "simulation": "Tests use synthetic fixtures and mocked provider only; another report advances to waiting_data in simulation. No other real candidate analyzed."
+}

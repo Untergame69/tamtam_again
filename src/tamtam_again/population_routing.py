@@ -32,6 +32,7 @@ def route(store,request_id,*,kind='population'):
     route_version=('population-local-analysis-routing-v1' if isinstance(local_contract,dict)
         else 'population-eth-existing-window-routing-v1' if is_existing_eth_window
         else 'prospective-execution-routing-v7' if isinstance(pilot_scope,dict) else 'population-routing-v1')
+    if result.get('resolution_assessment_v1'):route_version+='-assessment-v1'
     result_fp=fingerprint({'status':row['status'],'result':result,'route_version':route_version})
     history=store.connection.execute('select route_json from population_hypothesis_route_history where request_id=? and result_fingerprint=?',(request_id,result_fp)).fetchone()
     if history:return json.loads(history[0])
@@ -224,6 +225,16 @@ def route(store,request_id,*,kind='population'):
                     next_action='Traiter la tâche technique d’instrumentation et d’adaptation passive; relancer l’analyse seulement sur des preuves autorisées réellement nouvelles.',
                     wake={'kind':'changed_authorized_prospective_evidence','historical_backfill_requested':False,
                         'new_input_fingerprint_required':True,'execution_or_promotion_authorized':False})
+    if result.get('resolution_assessment_v1'):
+        from .population_memory import resolution_snapshot
+        snapshot=resolution_snapshot(store,request_id,result)
+        if not snapshot:raise ValueError('Resolution assessment requires registered local evidence')
+        assessment=snapshot['synthesis']
+        if output.get('required_data'):output['resolved_data']=output.pop('required_data')
+        output.update(state='completed',resolution_assessment_v1=assessment,
+            resolution_fingerprint=snapshot['fingerprint'],next_action=assessment['next_action'],
+            wake={'kind':'changed_authorized_evidence_only','new_input_fingerprint_required':True,
+                'model_calls_authorized':0,'collection_authorized':False,'paper_authorized':False})
     output['source_result_fingerprint']=result_fp
     output['supersedes_route_fingerprint']=fingerprint(saved) if saved else None
     if not saved:

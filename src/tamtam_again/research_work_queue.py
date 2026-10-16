@@ -24,7 +24,21 @@ def initialize(store):
         event_id text primary key, work_id text not null, status text not null,
         reason text not null, details_json text not null, created_ms integer not null,
         foreign key(work_id) references research_work_queue(work_id))''')
+    store.connection.execute("""create table if not exists research_work_current (
+        source_kind text not null,source_id text not null,work_id text not null,
+        primary key(source_kind,source_id))""")
+    store.connection.execute("""create view if not exists research_work_queue_current as
+        select q.* from research_work_queue q where q.source_kind!='population_route'
+        or exists (select 1 from research_work_current c where c.source_kind=q.source_kind
+            and c.source_id=q.source_id and c.work_id=q.work_id)""")
     store.connection.commit()
+
+
+def select_current(store, work):
+    if work['source_kind']=='population_route':
+        store.connection.execute('insert into research_work_current values(?,?,?) on conflict(source_kind,source_id) do update set work_id=excluded.work_id',
+            (work['source_kind'],work['source_id'],work['work_id']))
+        store.connection.commit()
 
 
 def enqueue(store, source_kind, source_id, payload, *, status='ready', reason='', wake_at_ms=None, clock_ms=None):
@@ -34,7 +48,9 @@ def enqueue(store, source_kind, source_id, payload, *, status='ready', reason=''
     digest = fingerprint(payload)
     old = store.connection.execute('select * from research_work_queue where source_kind=? and source_id=? and input_fingerprint=?',
         (source_kind, source_id, digest)).fetchone()
-    if old: return dict(old), False
+    if old:
+        select_current(store,old)
+        return dict(old), False
     clock = now_ms() if clock_ms is None else clock_ms
     work_id = fingerprint({'source_kind':source_kind,'source_id':source_id,'input_fingerprint':digest})
     store.connection.execute('insert into research_work_queue values(?,?,?,?,?,?,?,?,?,?,?)',
@@ -43,7 +59,9 @@ def enqueue(store, source_kind, source_id, payload, *, status='ready', reason=''
     store.connection.execute('insert or ignore into research_work_queue_events values(?,?,?,?,?,?)',
         (fingerprint(event),work_id,status,reason,canonical({'payload':payload}),clock))
     store.connection.commit()
-    return dict(store.connection.execute('select * from research_work_queue where work_id=?',(work_id,)).fetchone()), True
+    work=dict(store.connection.execute('select * from research_work_queue where work_id=?',(work_id,)).fetchone())
+    select_current(store,work)
+    return work, True
 
 
 def set_status(store, work_id, status, reason='', *, wake_at_ms=None, outcome=None, payload=None, clock_ms=None):
@@ -168,5 +186,5 @@ def tick(store, *, clock_ms=None, max_jobs=1, pilot_policy=None):
         else:
             set_status(store,row['work_id'],'analysis_completed','analysis decision persisted; follow-up route recorded',outcome=outcome,clock_ms=clock)
     store.connection.commit()
-    pending=store.connection.execute("select count(*) from research_work_queue where status in ('ready','analysis_ready','analysis_running','resolution_ready','waiting_data','waiting_deadline')").fetchone()[0]
+    pending=store.connection.execute("select count(*) from research_work_queue_current where status in ('ready','analysis_ready','analysis_running','resolution_ready','waiting_data','waiting_deadline')").fetchone()[0]
     return {'advanced':advanced,'pending':pending,'model_calls':0}

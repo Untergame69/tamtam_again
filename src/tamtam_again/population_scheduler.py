@@ -133,7 +133,7 @@ def _execute_local_eth_contribution(store, request_id):
 def _reconcile_final_eth_report_queue(store, route_value):
     followup=route_value.get('followup_task',{})
     if followup.get('kind') not in {'eth_existing_window_analysis','population_local_archive_analysis'} or route_value.get('state') not in {
-            'local_archive_analysis_required','local_archive_analysis_complete'}:
+            'local_archive_analysis_required','local_archive_analysis_complete','completed'}:
         return None
     from .research_work_queue import eth_report_work_payload,set_status
     source=followup.get('source',{})
@@ -147,7 +147,7 @@ def _reconcile_final_eth_report_queue(store, route_value):
     work=store.connection.execute("select work_id from research_work_queue where source_kind='eth_observation_report' and source_id=? and input_fingerprint=?",
         (protocol_id,fingerprint(payload))).fetchone()
     if not work:return None
-    complete=route_value['state']=='local_archive_analysis_complete'
+    complete=route_value['state'] in {'local_archive_analysis_complete','completed'}
     set_status(store,work['work_id'],'completed' if complete else 'resolution_ready',
         'final report local analysis completed' if complete else 'final report local archive analysis required',
         outcome={'request_id':route_value['request_id'],'report_semantic_fingerprint':payload['semantic_fingerprint'],
@@ -220,6 +220,10 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
             store.connection.executemany("update population_research_pilot_tasks set state='interrupted' where request_id=? and state in ('authorized','needs_critique')",
                 [(request_id,) for request_id in recovered])
         store.connection.commit()
+        from .population_memory import remember
+        for request, in store.connection.execute("select request_id from population_research_jobs where status='hypothesis_recorded'").fetchall():
+            try:remember(store,request)
+            except ValueError:pass  # Explicit waiting diagnostics are returned after local work below.
         pilot=None
         if pilot_policy is not None:
             from .population_pilot import tick_locked
@@ -257,11 +261,6 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                     continue
                 processed.append(_run(store,request['request_id']))
                 if len(processed)>=max_jobs:break
-        from .population_memory import remember
-        memory=[]
-        for request, in store.connection.execute("select request_id from population_research_jobs where status='hypothesis_recorded'").fetchall():
-            try:memory.append({'request_id':request,**remember(store,request)})
-            except ValueError as exc:memory.append({'request_id':request,'status':'waiting','reason':str(exc)})
         from .population_routing import route
         routes=[route(store,r[0]) for r in store.connection.execute("select request_id from population_research_jobs where network=? and status not in ('sealed','running') order by created_ms,request_id",(network,)).fetchall()]
         # Resolve deterministic local archive work in the same locked scheduler
@@ -362,6 +361,11 @@ def tick(store,network,policy,*,dispatch=True,max_jobs=1,plan_policies=None,expe
                         plans.append({'request_id':request_id,**_prepare_plan(store,request_id,allocated,profile)})
                     except ValueError as exc:plans.append({'request_id':request_id,'status':'waiting','reason':str(exc)})
                 if len(plans)>=max_jobs:break
+        from .population_memory import remember
+        memory=[]
+        for request, in store.connection.execute("select request_id from population_research_jobs where status='hypothesis_recorded'").fetchall():
+            try:memory.append({'request_id':request,**remember(store,request)})
+            except ValueError as exc:memory.append({'request_id':request,'status':'waiting','reason':str(exc)})
         # Persist due research work without coupling it to an IA call. The
         # observation's dates and collection protocol remain owned by its runner.
         from .research_work_queue import (initialize as initialize_work_queue, enqueue as enqueue_work,

@@ -112,13 +112,19 @@ def packet_for_account(store,network,address,*,as_of_ms,max_chars):
         from .research_memory import export_knowledge
         memory=export_knowledge(store,as_of_ms=as_of_ms,network=network,address=address,market='*')
         eligible=len(memory)
-        while memory and len(canonical({**packet,'research_memory':memory}))>max_chars-512:
+        def memory_refs(entries):
+            return (['knowledge:'+entry['knowledge_id'] for entry in entries]+
+                [proof['kind']+':'+proof['id'] for entry in entries
+                    for proof in entry['item'].get('evidence_refs',[]) if proof['kind']=='population_resolution'])
+        while memory and len(canonical({**packet,'research_memory':memory,
+                'evidence_refs':packet['evidence_refs']+memory_refs(memory)}))>max_chars-512:
             memory.pop()
         if memory:
             packet['research_memory']=memory
+            packet['evidence_refs'].extend(memory_refs(memory))
             packet['available_ms']=max(packet['available_ms'],max(entry.get('created_ms',0) for entry in memory))
         packet['memory_selection']={'eligible_exported_items':eligible,'included_items':len(memory),
-            'method':'whole authorized items in chronological order within remaining packet budget',
+            'method':'latest authorized revisions first, superseded items excluded, whole items within packet budget',
             'new_memory_alone_does_not_reopen_unchanged_population_input':True}
     from .research_need_collection import export_wakes
     wakes=export_wakes(store,network,address,as_of_ms=as_of_ms,research_origin='population')

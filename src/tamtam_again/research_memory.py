@@ -134,6 +134,15 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
                        p['market']=='*' and p['start_ms']==0 and
                        p['end_ms']>=packet['available_ms']+1 for p in item['periods']):
                 raise ValueError('Whole population packet source period must remain explicit')
+        elif proof['kind']=='population_resolution':
+            from .population_memory import resolution_snapshot
+            request_id, digest=proof['id'].rsplit(':',1)
+            row=store.connection.execute('select result_json from population_research_jobs where request_id=?',(request_id,)).fetchone()
+            snapshot=resolution_snapshot(store,request_id,json.loads(row[0])) if row else None
+            if (not snapshot or snapshot['fingerprint']!=digest or
+                    item.get('resolution_synthesis_v1')!=snapshot['synthesis'] or
+                    any(p not in item['periods'] for p in snapshot['periods'])):
+                raise ValueError('Current verified resolution and explicit periods required')
         elif proof['kind']=='paper_research':
             row=store.connection.execute('select network,address,status,updated_ms,packet_json,result_json from paper_research_jobs where request_id=?',(proof['id'],)).fetchone()
             if not row or row['status']!='hypothesis_recorded' or row['updated_ms']>now:
@@ -160,14 +169,22 @@ def export_knowledge(store:Store, *,as_of_ms:int,network:str,address:str,market:
     if type(as_of_ms) is not int or as_of_ms>clock() or type(max_chars) is not int or not 1<=max_chars<=24000:
         raise ValueError('Available cutoff and bounded export required')
     output=[]
-    for row in store.connection.execute('select * from research_knowledge where created_ms<=? order by created_ms,knowledge_id',(as_of_ms,)):
+    rows=store.connection.execute('select * from research_knowledge where created_ms<=? order by created_ms desc,rowid desc',(as_of_ms,)).fetchall()
+    eligible_rows=[row for row in rows if all(authorized_period(store,p,as_of_ms) for p in json.loads(row['item_json'])['periods'])]
+    superseded={json.loads(row['item_json']).get('memory_revision_v1',{}).get('supersedes') for row in eligible_rows}
+    seen_revisions=set()
+    for row in rows:
+        if row['knowledge_id'] in superseded:continue
         item=json.loads(row['item_json'])
         if address not in item['origin_accounts'] or market not in item['origin_markets'] and '*' not in item['origin_markets']:continue
         if not all(authorized_period(store,p,as_of_ms) for p in item['periods']):continue
         if not any(p['network']==network for p in item['periods']):continue
+        revision=item.get('memory_revision_v1',{}).get('request_id')
+        if revision in seen_revisions:continue
+        if revision:seen_revisions.add(revision)
         entry={'knowledge_id':row['knowledge_id'],'created_ms':row['created_ms'],'item':item,
                'period_status':'development knowledge; evaluated source periods never become virgin again'}
-        if len(canonical(output+[entry]))>max_chars:break
+        if len(canonical(output+[entry]))>max_chars:continue
         output.append(entry)
     return output
 

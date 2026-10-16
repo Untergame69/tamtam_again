@@ -35,3 +35,17 @@ Les plafonds restent inchangés : 225 000 caractères pour le paquet et 260 000 
 `python -m unittest tests.test_eth_report_projection tests.test_research_work_queue tests.test_population_pilot.PopulationPilotTests.test_final_eth_report_drives_v2_proposal_critique_and_persistent_decision -v`
 
 Résultat : 11 tests réussis. Le traitement du vrai bilan final reste confié à la file automatique existante dans l’enveloppe déjà autorisée ; ce contrôle n’a appelé ni le runtime fournisseur ni le collecteur.
+
+## Recontrôle de cette tranche
+
+Le bilan `checkpoint_6h` a été relu depuis SQLite en mode lecture seule et reprojeté avec `eth_report_projection.project`. Les valeurs ci-dessus sont reproduites : 26 901 871 caractères pour le rapport source, 4 617 771 pour les fills, 21 505 121 pour la couverture et 47 755 pour la projection, avec 12 exemples. L’étape reste `checkpoint_6h`, jamais interprétée comme un résultat final.
+
+Le paquet final déjà persisté a été relu sans écriture : paquet complet, historique inclus, 120 744 caractères ; prompt de proposition, 125 227 caractères. Le test d’intégration a également rejoué un jour synthétique de 12 000 fills et 12 000 références de cotations jusqu’au runtime à réponses simulées. La file et le paquet scellé portent la même projection ; les tailles complètes restent respectivement sous 225 000 et 260 000 caractères.
+
+Reproduction ciblée :
+
+```sh
+PYTHONPATH=src python -m unittest tests.test_eth_report_projection tests.test_research_work_queue tests.test_population_pilot.PopulationPilotTests.test_final_eth_report_drives_v2_proposal_critique_and_persistent_decision -v
+```
+
+Résultat du recontrôle : 11 tests réussis. Aucune écriture en base, activation, nouvelle inférence ou collecte n’a été effectuée pendant cette vérification.

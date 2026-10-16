@@ -49,3 +49,5 @@ PYTHONPATH=src python -m unittest tests.test_eth_report_projection tests.test_re
 ```
 
 Résultat du recontrôle : 11 tests réussis. Aucune écriture en base, activation, nouvelle inférence ou collecte n’a été effectuée pendant cette vérification.
+
+Contrôle indépendant du paquet intermédiaire : en lecture seule, une copie du paquet historique `501c352c…` a reçu la projection `checkpoint_6h`, son empreinte et sa référence ; son paquet complet mesure 89 248 caractères et son prompt de proposition 93 685 caractères. Cette copie conserve aussi la référence de l’ancien rapport final, ce qui ajoute 152 caractères au paquet et 106 au prompt par rapport à la reconstruction minimale consignée ci-dessus (89 096 / 93 579). Les deux constructions restent largement sous les limites inchangées de 225 000 / 260 000. Le rapport archivé et le paquet de production n’ont pas été modifiés.

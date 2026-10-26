@@ -69,6 +69,43 @@ def _safe_response_parts(response):
     return canonical(body),canonical(metadata)
 
 
+def sealed_section_reference_paths(packet, allowed_refs):
+    """Finite section identities anchored to the unchanged, sealed evidence pool."""
+    from .engine import fingerprint
+    pool=packet.get('evidence_refs',[])
+    observations=packet.get('observations',{})
+    sources=set()
+    def source_backed(section):
+        if not isinstance(section,dict):return False
+        refs=section.get('evidence_refs')
+        if refs is None:
+            indices=section.get('evidence_ref_indices')
+            projection=section.get('reference_projection',{})
+            if (not isinstance(indices,list) or not indices
+                    or any(type(index) is not int or not 0<=index<len(pool) for index in indices)):
+                return False
+            refs=[pool[index] for index in indices]
+            if (projection.get('version')!='sealed-root-reference-indices-v1'
+                    or projection.get('reference_pool')!='packet.evidence_refs'
+                    or projection.get('reference_count')!=len(refs)
+                    or projection.get('ordered_reference_fingerprint')!=fingerprint(refs)):
+                return False
+        return isinstance(refs,list) and bool(refs) and all(
+            isinstance(ref,str) and ref in allowed_refs for ref in refs)
+    if source_backed(observations.get('descriptive_history_v1')):
+        sources.add('packet.observations.descriptive_history_v1')
+    for market,detail in observations.get('market_execution_detail_v1',{}).items():
+        if market in observations.get('markets',[]) and source_backed(detail):
+            sources.add('packet.observations.market_execution_detail_v1.'+market)
+    mechanisms=observations.get('market_mechanisms')
+    if (isinstance(mechanisms,list) and mechanisms
+            and all(source_backed(item) for item in mechanisms)):
+        sources.add('packet.observations.market_mechanisms')
+    context={'packet.'+key for key in ('pilot_research','research_contract')
+        if isinstance(packet.get(key),dict) and packet[key]}
+    return sources,context
+
+
 def validate_response(response,packet,*,request_id=None):
     from .research import CallContractError
     diagnostic=response.get('diagnostic')
@@ -111,10 +148,13 @@ def validate_response(response,packet,*,request_id=None):
         allowed_refs.update(mechanism.get('evidence_refs',[]))
     measurements=packet['observations'].get('system_measurements',{})
     allowed_refs.update(measurements)
-    if not hypothesis['evidence_refs'] or not set(hypothesis['evidence_refs'])<=allowed_refs:
+    section_refs,context_refs=sealed_section_reference_paths(packet,allowed_refs)
+    accepted_refs=allowed_refs|section_refs|context_refs
+    if (not hypothesis['evidence_refs'] or not set(hypothesis['evidence_refs'])<=accepted_refs
+            or not set(hypothesis['evidence_refs'])&(allowed_refs|section_refs)):
         raise CallContractError({'stage':'result_validation','code':'evidence_reference_invalid',
             'field':'hypothesis.evidence_refs','observed':hypothesis['evidence_refs'],
-            'limit':sorted(allowed_refs)})
+            'limit':sorted(accepted_refs)})
     if any(not hypothesis[k] for k in required-{'required_data'}):
         empty=sorted(k for k in required-{'required_data'} if not hypothesis[k])
         raise CallContractError({'stage':'result_validation','code':'hypothesis_field_empty',
@@ -127,7 +167,7 @@ def validate_response(response,packet,*,request_id=None):
         from .research_needs import validate_requests
         validate_requests(hypothesis['required_data'],hypothesis['observation_requests'])
     from .population_compilation import validate_compilation
-    validate_compilation(hypothesis,allowed_refs,request_id=request_id,measurements=measurements,as_of_ms=packet.get('available_ms'))
+    validate_compilation(hypothesis,accepted_refs,request_id=request_id,measurements=measurements,as_of_ms=packet.get('available_ms'))
 
 
 def build_proposal_prompt(packet,request_id):
@@ -153,6 +193,8 @@ Return JSON with decision hypothesis|needs_data|non_identifiable|unsupported_mec
 For hypothesis include hypothesis with mechanism, type autonomous|follower, markets, signal, entry, exit, sizing, risk,
 horizon_justification, required_data, execution_constraints, rejection_criteria, evidence_refs.
 Refer only to the packet evidence. Specify missing observations rather than inventing them.
+required_data must be a list of nonempty observation strings, not objects. Keep explanations in diagnostic or observation_requests.
+For evidence_refs prefer exact identifiers from packet.evidence_refs. A source-backed descriptive_history_v1 or market_execution_detail_v1 section may be cited by its exact packet.observations path; policy sections provide context only, never market evidence.
 For missing observations you may include hypothesis.observation_requests, one exact object per required_data index, with fields required_data_index, source, endpoint, start_ms, end_ms, proof, decision_use. All indices must be covered exactly once. Do not supply budgets or success criteria.
 Verified local history adapter: source public_rest_history; endpoint userFillsByTime, userFunding or userNonFundingLedgerUpdates; proof pagination_coverage only. It cannot certify retention, inventory continuity or economic completeness. Declare other sources/proofs explicitly when needed; the code will retain an unsupported acquisition/proof rather than guess or claim fulfillment.
 If all necessary observations and parameters are supplied, optionally include hypothesis.executable_spec and hypothesis.experiment_profile matching the compiler contract. Otherwise retain a descriptive hypothesis and explicit missing observations. Do not invent a rule or force an unknown mechanism into a supported signal.'''

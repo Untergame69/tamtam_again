@@ -1,3 +1,4 @@
+import hashlib
 import json
 import tempfile
 import unittest
@@ -57,6 +58,32 @@ class PopulationPilotTests(unittest.TestCase):
         authorize_task(self.store, POLICY, request_id=request_id, candidate=candidate,
             address=item['address'], packet_fingerprint_value=pkt['fingerprint'], authorized_ms=30)
         return request_id
+
+    def approved_43ad_policy(self):
+        from copy import deepcopy
+        policy = deepcopy(ETH_TASK_POLICY)
+        policy.update(authorization_scope='approved_descriptive_task',
+            pilot_id='43ad-btc-descriptive-20261026-v1')
+        policy['admission'].update(source='research-admission-20261026',
+            cutoff_ms=1793009400000,
+            owner_authorization=('Owner authorizes one bounded descriptive task from the approved proposal. '
+                'It does not grant economic approval, new collection, paper admission, or capital use.'))
+        policy['selection'] = [{
+            'candidate': '43ad',
+            'address': '0xbb160cb61e694570f9d570f9fcde7c61dd2143ad',
+            'rank': 1,
+            'descriptive_markets': ['BTC'],
+            'question': 'Only the approved descriptive scope is authorized.'
+        }]
+        policy['evidence'] = {
+            'max_archive_cutoff_ms': 1793009400000,
+            'period_start_ms': 1790417400000,
+            'proposal_sha256': 'b01c8f3f4a1ee4b239a78def96875076c4709b6a31e583c0607bd5c2a03c398b'
+        }
+        policy['pilot_limits'] = {'max_tasks': 1, 'max_calls': 2,
+            'max_input_tokens': 160000, 'max_output_tokens': 10000,
+            'max_duration_ms': 240000}
+        return policy
 
     def test_wait_and_missing_data_do_not_call_models(self):
         result = tick_locked(self.store, POLICY, dispatch=False, clock_ms=30)
@@ -126,6 +153,70 @@ class PopulationPilotTests(unittest.TestCase):
         self.assertEqual(report(self.store,ETH_TASK_POLICY)['calls_reserved'],2)
         self.assertEqual(report(self.store,POLICY)['calls_reserved'],0)
         self.assertNotIn('call_reservation_usd',ETH_TASK_POLICY['task_policy'])
+
+    def test_approved_43ad_policy_is_exact_and_rejects_scope_or_budget_changes(self):
+        from copy import deepcopy
+        policy = self.approved_43ad_policy()
+        proposal = ROOT / 'docs/continuous-research/NEXT-DESCRIPTIVE-STUDY-PROPOSAL-20261026.json'
+        self.assertEqual(hashlib.sha256(proposal.read_bytes()).hexdigest(), policy['evidence']['proposal_sha256'])
+        validate_policy(policy)
+
+        invalid = deepcopy(policy); invalid['selection'][0]['address'] = POLICY['selection'][0]['address']
+        with self.assertRaisesRegex(ValueError, '43ad/BTC only'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['selection'][0]['descriptive_markets'] = ['BTC', 'ETH']
+        with self.assertRaisesRegex(ValueError, '43ad/BTC only'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['admission']['cutoff_ms'] += 1
+        with self.assertRaisesRegex(ValueError, 'exact 43ad/BTC proposal'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['evidence']['proposal_sha256'] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'exact 43ad/BTC proposal'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['pilot_limits']['max_calls'] = 3
+        with self.assertRaisesRegex(ValueError, 'specifically authorized ceilings'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['task_policy']['call_reservation_usd'] = '1'
+        with self.assertRaisesRegex(ValueError, 'limits must remain bounded'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['task_policy']['max_packet_chars'] = 300000
+        with self.assertRaisesRegex(ValueError, 'bounded subscription runtime'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['paper_authorized'] = True
+        with self.assertRaisesRegex(ValueError, 'cannot authorize economic validation'):
+            validate_policy(invalid)
+        invalid = deepcopy(policy); invalid['grants'] = {'real_orders_authorized': True}
+        with self.assertRaisesRegex(ValueError, 'cannot authorize economic validation'):
+            validate_policy(invalid)
+
+    def test_approved_43ad_allowance_stops_after_one_task_and_two_reserved_calls(self):
+        policy = self.approved_43ad_policy()
+        item = policy['selection'][0]
+
+        def add_sealed(request_id):
+            packet = {'fingerprint': fingerprint({'fixture': request_id})}
+            self.store.connection.execute('insert into population_research_jobs '
+                '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+                'values(?,?,?,?,?,?,?,\'sealed\',?)',
+                (request_id, policy['network'], item['address'], 'input-' + request_id,
+                    json.dumps(packet), json.dumps(policy['task_policy']), 30, 30))
+            self.store.connection.commit()
+            return authorize_task(self.store, policy, request_id=request_id,
+                candidate='43ad', address=item['address'],
+                packet_fingerprint_value=packet['fingerprint'], authorized_ms=30)
+
+        self.assertEqual(add_sealed('43ad-task-1')['status'], 'authorized')
+        reserve_call(self.store, '43ad-task-1', 1, policy)
+        reserve_call(self.store, '43ad-task-1', 2, policy)
+        with self.assertRaisesRegex(ValueError, 'ceiling exhausted'):
+            reserve_call(self.store, '43ad-task-1', 3, policy)
+        with self.assertRaisesRegex(ValueError, 'allowance exhausted'):
+            add_sealed('43ad-task-2')
+        summary = report(self.store, policy)
+        self.assertEqual(summary['calls_reserved'], 2)
+        self.assertEqual(summary['input_tokens_reserved'], 160000)
+        self.assertEqual(summary['output_tokens_reserved'], 10000)
+        self.assertEqual(summary['duration_ms_reserved'], 240000)
 
     def test_real_runtime_contract_mocked_once_routes_persistently_and_replays_without_call(self):
         from unittest.mock import patch

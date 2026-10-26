@@ -7,19 +7,65 @@ from .engine import canonical, fingerprint
 from .validation import now_ms
 
 
+# This exact proposal is the only basis for the additional 43ad/BTC descriptive
+# allowance. Keep its digest in code so a policy cannot substitute a different
+# candidate, cutoff, or scope while reusing the dedicated pilot id.
+APPROVED_43AD_PROPOSAL_SHA256 = 'b01c8f3f4a1ee4b239a78def96875076c4709b6a31e583c0607bd5c2a03c398b'
+APPROVED_43AD_ADDRESS = '0xbb160cb61e694570f9d570f9fcde7c61dd2143ad'
+APPROVED_43AD_CUTOFF_MS = 1793009400000
+APPROVED_43AD_PERIOD_START_MS = 1790417400000
+
+
 def validate_policy(policy):
     if policy.get('version') not in {'research-loop-pilot-v1','research-loop-pilot-v2'} or policy.get('renewal') is not False:
         raise ValueError('Explicit non-renewing research pilot policy required')
     if policy.get('usage_mode') != 'subscription':
         raise ValueError('This pilot is subscription-only')
     admission = policy.get('admission', {})
-    if (admission.get('source') != 'historical-selection-20261012-f1-f4'
-            or admission.get('required_status') != 'credible_deep_dive_candidate'
-            or admission.get('cutoff_ms') != policy.get('evidence', {}).get('max_archive_cutoff_ms')
-            or not admission.get('owner_authorization') or 'does not grant' not in admission['owner_authorization']):
-        raise ValueError('Explicit research-only admission authorization and cutoff required')
+    evidence = policy.get('evidence', {})
+    authorization_scope = policy.get('authorization_scope')
+    if authorization_scope == 'approved_descriptive_task':
+        # Exact one-off exception for the owner-approved proposal. It remains
+        # separate from the existing historical-selection pilots and their
+        # admission source, candidate set, and budget.
+        if (policy.get('pilot_id') != '43ad-btc-descriptive-20261026-v1'
+                or policy.get('network') != 'hyperliquid-mainnet'
+                or admission.get('source') != 'research-admission-20261026'
+                or admission.get('required_status') != 'credible_deep_dive_candidate'
+                or admission.get('cutoff_ms') != APPROVED_43AD_CUTOFF_MS
+                or evidence.get('max_archive_cutoff_ms') != APPROVED_43AD_CUTOFF_MS
+                or evidence.get('period_start_ms') != APPROVED_43AD_PERIOD_START_MS
+                or evidence.get('proposal_sha256') != APPROVED_43AD_PROPOSAL_SHA256):
+            raise ValueError('Approved descriptive task must match the exact 43ad/BTC proposal and archive window')
+        if (not admission.get('owner_authorization')
+                or 'does not grant' not in admission['owner_authorization']):
+            raise ValueError('Explicit research-only admission authorization required')
+        candidates = policy.get('selection', [])
+        if (len(candidates) != 1
+                or candidates[0].get('candidate') != '43ad'
+                or candidates[0].get('address', '').lower() != APPROVED_43AD_ADDRESS
+                or candidates[0].get('descriptive_markets') != ['BTC']):
+            raise ValueError('Approved descriptive task is bound to 43ad/BTC only')
+        for key in ('economic_validation', 'new_collection_authorized', 'paper_authorized',
+                    'real_orders_authorized'):
+            if policy.get(key) is True:
+                raise ValueError('Descriptive task cannot authorize economic validation, collection, paper, or orders')
+        grants = policy.get('grants', {})
+        if not isinstance(grants, dict) or any(grants.get(key) is True for key in (
+                'economic_validation', 'new_collection_authorized', 'paper_authorized',
+                'real_orders_authorized')):
+            raise ValueError('Descriptive task cannot authorize economic validation, collection, paper, or orders')
+        expected = {'max_tasks': 1, 'max_calls': 2, 'max_input_tokens': 160000,
+                    'max_output_tokens': 10000, 'max_duration_ms': 240000}
+    else:
+        if (admission.get('source') != 'historical-selection-20261012-f1-f4'
+                or admission.get('required_status') != 'credible_deep_dive_candidate'
+                or admission.get('cutoff_ms') != evidence.get('max_archive_cutoff_ms')
+                or not admission.get('owner_authorization')
+                or 'does not grant' not in admission['owner_authorization']):
+            raise ValueError('Explicit research-only admission authorization and cutoff required')
     limits = policy.get('pilot_limits', {})
-    if policy.get('authorization_scope') == 'single_task':
+    if authorization_scope == 'single_task':
         expected = {'max_tasks': 1, 'max_calls': 2, 'max_input_tokens': 160000,
                     'max_output_tokens': 10000, 'max_duration_ms': 240000}
         if policy.get('pilot_id') != 'eth-mechanism-followup-20261014-v1':
@@ -29,7 +75,7 @@ def validate_policy(policy):
                 or candidates[0].get('address','').lower() != '0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba'
                 or candidates[0].get('descriptive_markets') != ['ETH']):
             raise ValueError('Single-task authorization is bound to 67f7 and its ETH evidence only')
-    else:
+    elif authorization_scope != 'approved_descriptive_task':
         expected = {'max_tasks': 3, 'max_calls': 6, 'max_input_tokens': 480000,
                     'max_output_tokens': 30000, 'max_duration_ms': 720000}
     if limits != expected:
@@ -40,10 +86,20 @@ def validate_policy(policy):
             or task.get('max_output_tokens') != 5000 or task.get('max_input_tokens_per_call') != 80000
             or task.get('max_total_input_tokens') != 160000
             or task.get('max_total_output_tokens') != 10000
-            or task.get('max_total_duration_ms') != 240000):
+            or task.get('max_total_duration_ms') != 240000
+            or 'call_reservation_usd' in task):
         raise ValueError('Per-call and per-task research limits must remain bounded')
+    if authorization_scope == 'approved_descriptive_task' and (
+            task.get('model') != 'gpt-6.1-sol'
+            or task.get('max_requests') != 8
+            or task.get('max_packet_chars') != 225000
+            or task.get('max_prompt_chars') != 260000
+            or task.get('minimum_interval_ms') != 86400000
+            or task.get('max_request_age_ms') != 3600000
+            or 'call_reservation_usd' in policy):
+        raise ValueError('Approved descriptive task must retain the existing bounded subscription runtime')
     candidates = policy.get('selection', [])
-    if policy.get('authorization_scope') != 'single_task':
+    if authorization_scope not in {'single_task', 'approved_descriptive_task'}:
         if len(candidates) != 3 or {c.get('candidate') for c in candidates} != {'a880', '67f7', 'be504'}:
             raise ValueError('Pilot scope must remain the three preselected candidates')
         if len({c.get('address', '').lower() for c in candidates}) != 3:

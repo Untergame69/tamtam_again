@@ -353,6 +353,163 @@ class PopulationPilotTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Unrecognized evidence path'):
             adapt_eth_evidence_paths_v1(invalid,packet)
 
+    def test_observation_text_adapter_preserves_source_and_rejects_unknown_shapes(self):
+        from copy import deepcopy
+        from tamtam_again.population_pilot import adapt_observation_text_records_v1
+        records = [
+            {'index': 0, 'observation': 'Observed daily fill count', 'purpose': 'Describe archived activity'},
+            {'index': 1, 'observation': 'Request page coverage', 'purpose': 'Bound the observed sample'},
+            {'index': 2, 'observation': 'Evidence cutoff', 'purpose': 'Keep the archived window fixed'}]
+        paths = ['account_scope_reports:scope#sha256:' + 'a' * 64,
+            'packet.observations.descriptive_history_v1',
+            'packet.observations.market_execution_detail_v1.BTC',
+            'packet.observations.market_mechanisms', 'packet.pilot_research',
+            'packet.research_contract']
+        source = {'decision': 'hypothesis', 'diagnostic': 'preserve this', 'wake': {'condition': 'none'},
+            'hypothesis': {'mechanism': 'as supplied', 'required_data': records,
+                'evidence_refs': paths, 'other_field': {'unchanged': True}}}
+        original = deepcopy(source)
+        adapted = adapt_observation_text_records_v1(source)
+        self.assertEqual(source, original)
+        expected = deepcopy(original)
+        expected['hypothesis']['required_data'] = [item['observation'] for item in records]
+        expected['hypothesis']['required_data_context_v1'] = records
+        self.assertEqual(adapted, expected)
+        self.assertEqual(adapted['hypothesis']['required_data'], [item['observation'] for item in records])
+        self.assertEqual(adapted['hypothesis']['required_data_context_v1'], records)
+        self.assertEqual(adapted['hypothesis']['evidence_refs'], paths)
+        self.assertEqual(adapted['diagnostic'], original['diagnostic'])
+        self.assertEqual(adapted['wake'], original['wake'])
+        self.assertEqual(adapted['hypothesis']['other_field'], original['hypothesis']['other_field'])
+
+        malformed = deepcopy(source)
+        malformed['hypothesis']['required_data'][1]['unexpected'] = 'ambiguous'
+        malformed_original = deepcopy(malformed)
+        with self.assertRaisesRegex(ValueError, 'exact observation-text record shape'):
+            adapt_observation_text_records_v1(malformed)
+        self.assertEqual(malformed, malformed_original)
+        malformed = deepcopy(source)
+        malformed['hypothesis']['required_data'][1]['index'] = 7
+        with self.assertRaisesRegex(ValueError, 'indices are not a lossless ordered sequence'):
+            adapt_observation_text_records_v1(malformed)
+
+    def test_approved_43ad_revalidation_preserves_paths_and_uses_only_remaining_critique(self):
+        from unittest.mock import patch
+        from tamtam_again.population_pilot import (mark_call_state, revalidate_and_critique)
+        policy = self.approved_43ad_policy()
+        item = policy['selection'][0]
+        initialize(self.store, policy)
+        packet = {'network': policy['network'], 'address': item['address'], 'available_ms': 1793009400000,
+            'fingerprint': fingerprint({'fixture': '43ad sealed packet'}),
+            'evidence_refs': ['account_scope_reports:43ad-scope#sha256:' + 'a' * 64],
+            'observations': {'descriptive_history_v1': {'evidence_refs': []},
+                'market_execution_detail_v1': {'BTC': {'evidence_refs': []}},
+                'market_mechanisms': []},
+            'pilot_research': {}, 'research_contract': {}}
+        request = '43ad-structural-fixture'
+        self.store.connection.execute('insert into population_research_jobs '
+            '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+            'values(?,?,?,?,?,?,?,\'sealed\',?)',
+            (request, policy['network'], item['address'], 'fixture-input', json.dumps(packet),
+                json.dumps(policy['task_policy']), 1793009400000, 1793009400000))
+        self.store.connection.commit()
+        authorize_task(self.store, policy, request_id=request, candidate='43ad',
+            address=item['address'], packet_fingerprint_value=packet['fingerprint'],
+            authorized_ms=1793009400000)
+        source = {'decision': 'hypothesis', 'diagnostic': 'original diagnostic', 'wake': {'condition': 'unchanged'},
+            'hypothesis': {
+                'type': 'autonomous', 'markets': ['BTC'],
+                'mechanism': 'Stored mechanism', 'signal': 'Stored signal', 'entry': 'Stored entry',
+                'exit': 'Stored exit', 'sizing': 'Stored sizing', 'risk': 'Stored risk',
+                'horizon_justification': 'Stored horizon', 'execution_constraints': 'Stored constraints',
+                'rejection_criteria': 'Stored rejection criteria',
+                'required_data': [
+                    {'index': 0, 'observation': 'Observed daily fill count', 'purpose': 'Describe activity'},
+                    {'index': 1, 'observation': 'Request page coverage', 'purpose': 'Bound coverage'},
+                    {'index': 2, 'observation': 'Evidence cutoff', 'purpose': 'Freeze sample'}],
+                'evidence_refs': [packet['evidence_refs'][0],
+                    'packet.observations.descriptive_history_v1',
+                    'packet.observations.market_execution_detail_v1.BTC',
+                    'packet.observations.market_mechanisms', 'packet.pilot_research',
+                    'packet.research_contract']}}
+        raw = json.dumps(source)
+        original_usage = {'cost_status': 'included', 'cost_usd': 0, 'input_tokens': 63349,
+            'output_tokens': 2599, 'duration_ms': 103080, 'model': policy['task_policy']['model']}
+        reserve_call(self.store, request, 1, policy)
+        record_provider_response(self.store, request, 1,
+            {'response': raw, 'usage': original_usage, 'duration_ms': 103080})
+        mark_call_state(self.store, request, 1, 'result_validated')
+        result_before = {'raw_proposal': raw,
+            'validation_diagnostic': {'code': 'evidence_reference_invalid', 'stage': 'result_validation',
+                'field': 'hypothesis.evidence_refs', 'observed': 'sealed section paths',
+                'limit': 'source-backed evidence references'},
+            'local_resolution': {'version': '43ad-local-calculation-fixture-v1',
+                'state': 'completed_from_authorized_cutoff',
+                'artifact_ref': 'docs/continuous-research/43AD-BTC-LOCAL-CALCULATION-FIXTURE.json',
+                'finding': 'A fixture-only local result; no new inference.'}}
+        self.store.connection.execute("update population_research_jobs set status='suspended',result_json=?,usage_json=?,updated_ms=? where request_id=?",
+            (canonical(result_before), canonical([original_usage]), 1793009500000, request))
+        self.store.connection.execute("update population_research_pilot_tasks set state='suspended' where request_id=?",
+            (request,))
+        self.store.connection.commit()
+
+        critique = {'decision': 'needs_data', 'diagnostic': {'summary': 'Coverage is bounded by recorded requests.'},
+            'wake': {'condition': 'No action until a separately authorized observation exists.'}}
+        critique_usage = {'cost_status': 'included', 'cost_usd': 0, 'input_tokens': 1200,
+            'output_tokens': 80, 'duration_ms': 60000, 'model': policy['task_policy']['model']}
+
+        def simulated_call(task_policy, prompt, *, on_response):
+            response = {'response': json.dumps(critique), 'usage': critique_usage, 'duration_ms': 60000}
+            on_response(response)
+            return json.dumps(critique), critique_usage
+
+        with patch('tamtam_again.population_runtime.now_ms', return_value=1793009600000), \
+                patch('tamtam_again.population_runtime.verify') as verify, \
+                patch('tamtam_again.population_runtime.validate_response') as validate, \
+                patch('tamtam_again.population_runtime.call', side_effect=simulated_call) as call, \
+                patch('tamtam_again.population_pilot._eth_execution_local_resolution') as eth_resolution:
+            result = revalidate_and_critique(self.store, policy, request)
+            call.assert_called_once()
+            prompt = call.call_args.args[1]
+            self.assertNotIn('ETH', prompt)
+            self.assertNotIn('local calculation addendum', prompt.lower())
+            self.assertIn('Post-proposal local-calculation addendum, preserved as supplied:', prompt)
+            self.assertIn(canonical(result_before['local_resolution']), prompt)
+            self.assertIn('do not rewrite it, add a new hypothesis', prompt)
+            verify.assert_called_once_with(policy['task_policy']['model'])
+            eth_resolution.assert_not_called()
+            validate.assert_called_once()
+
+        self.assertEqual(result['status'], 'needs_data')
+        self.assertEqual(result['adapter_version'], 'sealed-section-observation-text-v1')
+        saved = json.loads(self.store.connection.execute(
+            'select result_json from population_research_jobs where request_id=?', (request,)).fetchone()[0])
+        self.assertEqual(saved['raw_proposal'], raw)
+        self.assertEqual(saved['local_resolution']['version'], result_before['local_resolution']['version'])
+        self.assertEqual(saved['local_resolution']['artifact_ref'], result_before['local_resolution']['artifact_ref'])
+        self.assertEqual(saved['local_resolution']['finding'], result_before['local_resolution']['finding'])
+        self.assertEqual(saved['local_resolution']['provider_decision'], 'needs_data')
+        self.assertEqual(saved['structural_adaptation']['adapter_version'], 'sealed-section-observation-text-v1')
+        adapted = saved['proposal']
+        self.assertEqual(adapted['hypothesis']['evidence_refs'], source['hypothesis']['evidence_refs'])
+        self.assertEqual(adapted['hypothesis']['required_data'], [
+            item['observation'] for item in source['hypothesis']['required_data']])
+        self.assertEqual(adapted['hypothesis']['required_data_context_v1'], source['hypothesis']['required_data'])
+        artifact = self.store.connection.execute(
+            'select adapter_version,source_response_json,adapted_response_json,validation_state '
+            'from population_research_adaptation_artifacts where request_id=?', (request,)).fetchone()
+        self.assertEqual(artifact['adapter_version'], 'sealed-section-observation-text-v1')
+        self.assertEqual(json.loads(artifact['source_response_json']), source)
+        self.assertEqual(json.loads(artifact['adapted_response_json']), adapted)
+        self.assertEqual(artifact['validation_state'], 'revalidated')
+        states = [row[0] for row in self.store.connection.execute(
+            'select state from population_research_pilot_calls where request_id=? order by call_index', (request,))]
+        self.assertEqual(states, ['structurally_revalidated', 'result_validated'])
+        summary = report(self.store, policy)
+        self.assertEqual(summary['calls_reserved'], 2)
+        self.assertEqual(summary['input_tokens_reported'], 63349 + 1200)
+        self.assertEqual(summary['output_tokens_reported'], 2599 + 80)
+
     def test_pilot_missing_prospective_evidence_routes_to_persistent_technical_task(self):
         from tamtam_again.population_pilot import _seal_candidate
         from tamtam_again.population_routing import route

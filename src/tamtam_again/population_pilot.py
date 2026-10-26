@@ -262,6 +262,28 @@ def adapt_required_data_objects_v1(response):
     return adapted
 
 
+def adapt_observation_text_records_v1(response):
+    """Project exact sealed-section observation records without rewriting other fields."""
+    if not isinstance(response, dict) or response.get('decision') != 'hypothesis':
+        raise ValueError('Observation-text adapter applies only to a hypothesis response')
+    adapted = deepcopy(response)
+    hypothesis = adapted.get('hypothesis')
+    items = hypothesis.get('required_data') if isinstance(hypothesis, dict) else None
+    required_keys = {'index', 'observation', 'purpose'}
+    if (not isinstance(items, list) or not items
+            or any(not isinstance(item, dict) or set(item) != required_keys
+                or type(item.get('index')) is not int
+                or not isinstance(item.get('observation'), str) or not item['observation'].strip()
+                or not isinstance(item.get('purpose'), str) or not item['purpose'].strip()
+                for item in items)):
+        raise ValueError('Response does not have the exact observation-text record shape')
+    if [item['index'] for item in items] != list(range(len(items))):
+        raise ValueError('Observation-text record indices are not a lossless ordered sequence')
+    hypothesis['required_data'] = [item['observation'] for item in items]
+    hypothesis['required_data_context_v1'] = deepcopy(items)
+    return adapted
+
+
 def adapt_eth_evidence_paths_v1(response, packet):
     """Project the exact ETH packet-section paths used by the provider to source refs.
 
@@ -395,34 +417,47 @@ def revalidate_and_critique(store, policy, request_id):
     packet = json.loads(job['packet_json'])
     adapted = source
     projection_details = None
+    approved_descriptive_task = policy.get('authorization_scope') == 'approved_descriptive_task'
     if diagnostic.get('code') == 'required_data_invalid':
-        adapted = adapt_required_data_objects_v1(adapted)
+        if approved_descriptive_task:
+            adapted = adapt_observation_text_records_v1(adapted)
+            projection_details = {'evidence_refs_preserved_verbatim': True,
+                'required_data_record_count': len(adapted['hypothesis']['required_data_context_v1'])}
+        else:
+            adapted = adapt_required_data_objects_v1(adapted)
     elif diagnostic.get('code') == 'evidence_reference_invalid':
-        adapted, projection_details = adapt_eth_evidence_paths_v1(adapted, packet)
-        # This task's provider used two exact, structured missing-data records. Their
-        # narrative remains intact; the runtime receives the contract's string list.
-        if all(isinstance(item, dict) for item in adapted.get('hypothesis', {}).get('required_data', [])):
-            items = adapted['hypothesis']['required_data']
-            keys = {'required_data_index', 'classification', 'observation', 'scope',
-                'decision_use', 'acquisition'}
-            if any(set(item) != keys or type(item['required_data_index']) is not int
-                    or not all(isinstance(item[k], str) and item[k].strip()
-                        for k in keys - {'required_data_index'}) for item in items):
-                raise ValueError('Structured required-data records are not losslessly projectable')
-            if [item['required_data_index'] for item in items] != list(range(len(items))):
-                raise ValueError('Structured required-data indices are not consecutive')
-            adapted['hypothesis']['required_data'] = [item['observation'] for item in items]
-            adapted['hypothesis']['required_data_context_v1'] = deepcopy(items)
+        if approved_descriptive_task:
+            adapted = adapt_observation_text_records_v1(adapted)
+            projection_details = {'evidence_refs_preserved_verbatim': True,
+                'required_data_record_count': len(adapted['hypothesis']['required_data_context_v1'])}
+        else:
+            adapted, projection_details = adapt_eth_evidence_paths_v1(adapted, packet)
+            # This task's provider used two exact, structured missing-data records. Their
+            # narrative remains intact; the runtime receives the contract's string list.
+            if all(isinstance(item, dict) for item in adapted.get('hypothesis', {}).get('required_data', [])):
+                items = adapted['hypothesis']['required_data']
+                keys = {'required_data_index', 'classification', 'observation', 'scope',
+                    'decision_use', 'acquisition'}
+                if any(set(item) != keys or type(item['required_data_index']) is not int
+                        or not all(isinstance(item[k], str) and item[k].strip()
+                            for k in keys - {'required_data_index'}) for item in items):
+                    raise ValueError('Structured required-data records are not losslessly projectable')
+                if [item['required_data_index'] for item in items] != list(range(len(items))):
+                    raise ValueError('Structured required-data indices are not consecutive')
+                adapted['hypothesis']['required_data'] = [item['observation'] for item in items]
+                adapted['hypothesis']['required_data_context_v1'] = deepcopy(items)
     validate_response(adapted, packet, request_id=request_id)
-    local_resolution = _eth_execution_local_resolution(store, packet) if projection_details is not None else None
+    local_resolution = (_eth_execution_local_resolution(store, packet)
+        if projection_details is not None and not approved_descriptive_task else None)
     source_sha = hashlib.sha256(raw.encode()).hexdigest()
     mark_call_state(store,request_id,1,'structurally_revalidated')
     store.connection.execute('create table if not exists population_research_adaptation_artifacts '
         '(request_id text not null,adapter_version text not null,source_response_sha256 text not null,'
         'source_response_json text not null,adapted_response_json text not null,validation_state text not null,'
         'created_ms integer not null,primary key(request_id,adapter_version))')
-    adapter_version = ('eth-evidence-path-projection-v1' if projection_details is not None
-        else 'required-data-object-projection-v1')
+    adapter_version = ('sealed-section-observation-text-v1' if approved_descriptive_task else
+        'eth-evidence-path-projection-v1' if projection_details is not None else
+        'required-data-object-projection-v1')
     artifact = store.connection.execute('select source_response_sha256,adapted_response_json from '
         'population_research_adaptation_artifacts where request_id=? and adapter_version=?',
         (request_id, adapter_version)).fetchone()
@@ -468,18 +503,31 @@ def revalidate_and_critique(store, policy, request_id):
             _advance_call(store, 'population', request_id, call_index, 'response_received',
                 time_field='response_received_ms', response_json=body, metadata_json=metadata)
             captured=True
-        prompt=('Review only causal consistency and testability. This is the same preserved proposal '
-            'after a deterministic, versioned structural projection; do not rewrite its content. No tools. '
-            'Do not claim profitability or authorize strategy promotion. Return JSON with decision '
-            'consistent|needs_data|non_identifiable|unsupported_mechanism|reject, diagnostic and wake. '
-            'Treat prospective lifecycle, continuous order/quote timing and fee schedule observations as required '
-            'where the packet does not contain them. A deterministic local calculation is available as a '
-            'separate post-proposal addendum: it measures ETH pre-fill inventory side and quartile against '
-            'maker/taker executed quantities, reversal close/open splits, fees, day and segment. Treat it as '
-            'descriptive archive evidence only, with one local chain rupture and censored endpoints; it does '
-            'not establish causality or order placement. Resolve the proposal\'s missing_calculation request '
-            'from this addendum and do not request it again. Local calculation addendum:\n'+
-            canonical(local_resolution or {})+'\nPacket:\n'+canonical(packet)+'\nProposal:\n'+canonical(adapted))
+        if approved_descriptive_task:
+            local_addendum = local_resolution or prior.get('local_resolution')
+            addendum_section = ('\nPost-proposal local-calculation addendum, preserved as supplied:\n'
+                + canonical(local_addendum) + '\n') if local_addendum else ''
+            prompt=('Review only causal consistency and testability of this preserved 43ad/BTC descriptive '
+                'hypothesis. It is the same stored proposal after a deterministic structural projection; do '
+                'not rewrite it, add a new hypothesis, or ask for another proposal. No tools. Do not claim '
+                'profitability or authorize strategy promotion. Return JSON with decision '
+                'consistent|needs_data|non_identifiable|unsupported_mechanism|reject, diagnostic and wake. '
+                'Assess whether each observation request is supported by its preserved purpose and the exact '
+                'sealed packet sections. Keep evidence paths verbatim; do not expand them into archive references '
+                'or infer facts absent from the packet. '+addendum_section+'Packet:\n'+canonical(packet)+'\nProposal:\n'+canonical(adapted))
+        else:
+            prompt=('Review only causal consistency and testability. This is the same preserved proposal '
+                'after a deterministic, versioned structural projection; do not rewrite its content. No tools. '
+                'Do not claim profitability or authorize strategy promotion. Return JSON with decision '
+                'consistent|needs_data|non_identifiable|unsupported_mechanism|reject, diagnostic and wake. '
+                'Treat prospective lifecycle, continuous order/quote timing and fee schedule observations as required '
+                'where the packet does not contain them. A deterministic local calculation is available as a '
+                'separate post-proposal addendum: it measures ETH pre-fill inventory side and quartile against '
+                'maker/taker executed quantities, reversal close/open splits, fees, day and segment. Treat it as '
+                'descriptive archive evidence only, with one local chain rupture and censored endpoints; it does '
+                'not establish causality or order placement. Resolve the proposal\'s missing_calculation request '
+                'from this addendum and do not request it again. Local calculation addendum:\n'+
+                canonical(local_resolution or {})+'\nPacket:\n'+canonical(packet)+'\nProposal:\n'+canonical(adapted))
         try:
             critique_raw, measured=call(policy['task_policy'], prompt, on_response=capture)
         except Exception as exc:

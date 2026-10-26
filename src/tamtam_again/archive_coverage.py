@@ -208,14 +208,18 @@ def _latest_scope(conn: sqlite3.Connection, address: str, cutoff_ms: int) -> dic
 
 
 def _fetch_account_pages(conn: sqlite3.Connection, address: str, *, since_ms: int,
-                         cutoff_ms: int, max_pages: int) -> tuple[list[sqlite3.Row], bool]:
+                         cutoff_ms: int, max_pages: int) -> tuple[list[sqlite3.Row], bool, dict[str, dict[str, bool]]]:
     since, cutoff = iso_ms(since_ms), iso_ms(cutoff_ms)
     rows: list[sqlite3.Row] = []
     capped = False
+    endpoint_limits: dict[str, dict[str, bool]] = {}
     for source, endpoint, _ in FILL_ENDPOINTS:
+        endpoint_key = f"{source}:{endpoint}"
         room = max_pages - len(rows)
         if room <= 0:
-            return rows, True
+            endpoint_limits[endpoint_key] = {"possibly_truncated_at_page_budget": True,
+                                             "query_skipped_for_page_budget": True}
+            return rows, True, endpoint_limits
         query = ("select observation_id,source,endpoint,request_json,requested_at,observed_at,"
                  "window_start_ms,window_end_ms,record_count,complete,response_encoding,response_sha256,response_json "
                  "from raw_observations where network=? and entity_type='account' and entity_id=? "
@@ -223,9 +227,12 @@ def _fetch_account_pages(conn: sqlite3.Connection, address: str, *, since_ms: in
                  "order by observed_at desc,observation_id desc limit ?")
         batch = conn.execute(query, (NETWORK, address, since, cutoff, source, endpoint, room)).fetchall()
         rows.extend(batch)
-        if len(batch) == room:
+        hit = len(batch) == room
+        endpoint_limits[endpoint_key] = {"possibly_truncated_at_page_budget": hit,
+                                         "query_skipped_for_page_budget": False}
+        if hit:
             capped = True
-    return rows, capped
+    return rows, capped, endpoint_limits
 
 
 def _fetch_account_endpoint_pages(conn: sqlite3.Connection, address: str, endpoint: str, *,
@@ -253,7 +260,9 @@ def _read_fill_pages(conn: sqlite3.Connection, address: str, rows: list[sqlite3.
                      since_ms: int, cutoff_ms: int) -> dict[str, Any]:
     items: dict[tuple[str, int, str], dict[str, Any]] = {}
     contents_by_id: dict[tuple[str, int, str], set[str]] = {}
-    sources_by_id: dict[tuple[str, int, str], set[str]] = defaultdict(set)
+    conflicts_by_market: dict[str, set[tuple[str, int, str]]] = defaultdict(set)
+    conflict_refs_by_market: dict[str, set[str]] = defaultdict(set)
+    conflicted_ids: set[tuple[str, int, str]] = set()
     pair_pages: dict[str, dict[str, Any]] = defaultdict(lambda: {"pages": 0, "incomplete_pages": 0,
         "events_batches": 0, "observation_refs": [], "request_windows_ms": []})
     ws_sessions_by_market: dict[str, set[str]] = defaultdict(set)
@@ -289,14 +298,18 @@ def _read_fill_pages(conn: sqlite3.Connection, address: str, rows: list[sqlite3.
                 malformed += 1
                 continue
             content = json.dumps(fill, sort_keys=True, separators=(",", ":"), default=str)
-            sources_by_id[key].add(source_kind)
             if key in contents_by_id:
                 if content in contents_by_id[key]:
                     duplicates += 1
                 else:
                     conflicts += 1
+                    conflicted_ids.add(key)
+                    conflicts_by_market[coin].add(key)
+                    conflict_refs_by_market[coin].add(ref)
+                    if key in items:
+                        conflict_refs_by_market[coin].add(items[key]["evidence_ref"])
                     contents_by_id[key].add(content)
-                    # Keep the first recorded payload as the canonical evidence.
+                    # No payload version is safe for derived metrics.
                 continue
             if len(items) >= event_cap:
                 return {"pairs": {}, "decoded_pages": decoded_page_count,
@@ -311,11 +324,15 @@ def _read_fill_pages(conn: sqlite3.Connection, address: str, rows: list[sqlite3.
                           "evidence_ref": ref}
             contents_by_id[key] = {content}
     by_market: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for item in items.values():
+    for key, item in items.items():
+        if key in conflicted_ids:
+            continue
         by_market[str(item["fill"]["coin"])].append(item)
     pair_result = {}
     timing_by_market: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for market, market_rows in sorted(by_market.items()):
+    all_markets = set(by_market) | set(conflicts_by_market)
+    for market in sorted(all_markets):
+        market_rows = by_market.get(market, [])
         market_rows.sort(key=lambda x: (x["fill"]["time"], x["available_ms"], x["evidence_ref"]))
         ev = [x["fill"]["time"] for x in market_rows]
         av = [x["available_ms"] for x in market_rows]
@@ -328,9 +345,17 @@ def _read_fill_pages(conn: sqlite3.Connection, address: str, rows: list[sqlite3.
         fill_list = [x["fill"] for x in market_rows]
         fee = _fee_summary(fill_list)
         position = _position_delta(fill_list)
+        conflict_count = len(conflicts_by_market.get(market, set()))
+        if conflict_count:
+            position = {**position, "status": "unknown_conflicting_fill_identities",
+                        "net_size_delta": None,
+                        "reason": "conflicted fill identities were excluded from derived position delta"}
+            fee["completeness"] = "incomplete_conflicting_fill_identities; observed fields only"
         pair_result[market] = {
-            "fills": {"unique_events": len(market_rows), "event_period_ms": [min(ev), max(ev)],
-                      "local_available_period_ms": [min(av), max(av)],
+            "fills": {"unique_events": len(market_rows), "event_period_ms": [min(ev), max(ev)] if ev else None,
+                      "local_available_period_ms": [min(av), max(av)] if av else None,
+                      "conflicting_identity_count": conflict_count,
+                      "conflicting_identity_refs": sorted(conflict_refs_by_market.get(market, set()))[:25],
                       "provenance": {k: {"unique_events": len(v),
                           "event_period_ms": [min(x["fill"]["time"] for x in v), max(x["fill"]["time"] for x in v)],
                           "available_period_ms": [min(x["available_ms"] for x in v), max(x["available_ms"] for x in v)],
@@ -512,7 +537,8 @@ def _state_snapshots(conn: sqlite3.Connection, address: str, *, since_ms: int, c
                         positions[position["coin"]] = str(Decimal(str(position.get("szi", "0"))))
                     except (InvalidOperation, TypeError, ValueError):
                         continue
-        snapshots.append({"available_ms": available, "dex": request.get("dex", ""),
+        snapshots.append({"available_ms": available, "event_ms": _snapshot_event_ms(request, payload),
+                          "dex": request.get("dex", ""),
                           "positions": positions,
                           "evidence_ref": "raw_observations:" + str(row["observation_id"])})
     return {"snapshots": snapshots, "skipped_reserved_refs": skipped,
@@ -520,16 +546,30 @@ def _state_snapshots(conn: sqlite3.Connection, address: str, *, since_ms: int, c
             "sample_is_boundary_biased": True}
 
 
+def _snapshot_event_ms(request: dict[str, Any], payload: Any) -> int | None:
+    """Read the response event time used by the account adapter, never request or receipt time."""
+    del request  # A requested as-of value is not evidence of when the returned state was true.
+    value = payload.get("time") if isinstance(payload, dict) else None
+    return value if type(value) is int and value >= 0 else None
+
+
 def _position_boundary_check(market: str, fill_points: list[dict[str, Any]],
                              snapshots: list[dict[str, Any]]) -> dict[str, Any]:
     dex = market.split(":", 1)[0] if ":" in market else ""
-    compatible = [s for s in snapshots if s["dex"] == dex]
+    compatible = sorted((s for s in snapshots if s["dex"] == dex),
+                        key=lambda s: s.get("event_ms") if s.get("event_ms") is not None else -1)
     if len(compatible) < 2:
         return {"status": "missing_boundary_snapshots", "coherent_position_proven": False,
                 "snapshots_available": len(compatible),
                 "reason": "fewer than two nonreserved snapshots for market dex"}
     start, end = compatible[0], compatible[-1]
-    if start["available_ms"] >= end["available_ms"]:
+    # Do not compare local observation availability with exchange event time.
+    if type(start.get("event_ms")) is not int or type(end.get("event_ms")) is not int:
+        return {"status": "unknown_noncomparable_boundaries", "coherent_position_proven": False,
+                "snapshots_available": len(compatible),
+                "snapshot_refs": [start["evidence_ref"], end["evidence_ref"]],
+                "reason": "snapshot source event timestamps are absent; receipt time cannot be compared with fill event time"}
+    if start["event_ms"] >= end["event_ms"]:
         return {"status": "missing_boundary_snapshots", "coherent_position_proven": False,
                 "snapshots_available": len(compatible), "reason": "no distinct snapshot boundaries"}
     try:
@@ -539,7 +579,7 @@ def _position_boundary_check(market: str, fill_points: list[dict[str, Any]],
         n = 0
         unknown = 0
         for fill in fill_points:
-            if not start["available_ms"] <= fill["event_ms"] < end["available_ms"]:
+            if not start["event_ms"] <= fill["event_ms"] < end["event_ms"]:
                 continue
             if fill.get("side") not in ("B", "A", "S"):
                 unknown += 1
@@ -558,8 +598,9 @@ def _position_boundary_check(market: str, fill_points: list[dict[str, Any]],
                 "state_size_delta": str(state_delta), "fills_compared": n,
                 "fills_with_unknown_direction_or_size": unknown,
                 "snapshot_refs": [start["evidence_ref"], end["evidence_ref"]],
+                "boundary_event_ms": [start["event_ms"], end["event_ms"]],
                 "boundary_availability_ms": [start["available_ms"], end["available_ms"]],
-                "reason": "coarse local-receipt boundary check; pagination and API retention are not a completeness proof"}
+                "reason": "comparable source event clocks; pagination and API retention are not a completeness proof"}
     except (InvalidOperation, TypeError, ValueError):
         return {"status": "unknown_state_or_fill_size", "coherent_position_proven": False,
                 "snapshot_refs": [start["evidence_ref"], end["evidence_ref"]]}
@@ -567,23 +608,32 @@ def _position_boundary_check(market: str, fill_points: list[dict[str, Any]],
 
 def _history_pages(conn: sqlite3.Connection, address: str, *, since_ms: int,
                    cutoff_ms: int, max_pages: int, reserved: list[dict[str, Any]],
-                   fill_rows: list[sqlite3.Row]) -> tuple[dict[str, Any], int]:
+                   fill_rows: list[sqlite3.Row],
+                   fill_endpoint_limits: dict[str, dict[str, bool]] | None = None) -> tuple[dict[str, Any], int]:
     result = {}
     pages_read = 0
     capped = False
     for endpoint in ACCOUNT_HISTORY_ENDPOINTS:
+        endpoint_possibly_truncated = False
+        query_skipped_for_budget = False
         if endpoint == "userFillsByTime":
             rows = [r for r in fill_rows if r["endpoint"] == endpoint and r["source"] == REST_SOURCE]
+            fill_limit = (fill_endpoint_limits or {}).get(f"{REST_SOURCE}:{endpoint}", {})
+            endpoint_possibly_truncated = bool(fill_limit.get("possibly_truncated_at_page_budget"))
+            query_skipped_for_budget = bool(fill_limit.get("query_skipped_for_page_budget"))
         else:
             room = max_pages - pages_read
             if room <= 0:
                 rows = []
                 capped = True
+                endpoint_possibly_truncated = True
+                query_skipped_for_budget = True
             else:
                 rows = _fetch_account_endpoint_pages(conn, address, endpoint, since_ms=since_ms,
                                                      cutoff_ms=cutoff_ms, max_pages=room)
                 if len(rows) == room:
                     capped = True
+                    endpoint_possibly_truncated = True
         pages_read += len(rows) if endpoint != "userFillsByTime" else 0
         decoded = 0
         events = 0
@@ -631,6 +681,8 @@ def _history_pages(conn: sqlite3.Connection, address: str, *, since_ms: int,
             "event_rows_observed": events, "events_batches": batches,
             "incomplete_pages": incomplete,
             "skipped_reserved_pages": skipped[:25], "skipped_reserved_page_count": len(skipped),
+            "possibly_truncated_at_page_budget": endpoint_possibly_truncated,
+            "query_skipped_for_page_budget": query_skipped_for_budget,
             "request_intervals_ms": _merge_ms_intervals(intervals), "evidence_refs": refs[:25],
             "refs_truncated": len(refs) > 25,
             "coverage_claim": "observed pages only; pagination and local retention do not prove endpoint-history completeness"}
@@ -807,7 +859,7 @@ def build_manifest(conn: sqlite3.Connection, selection_addresses: list[str], *,
         markets.update(str(w["market"]) for w in windows if w.get("market"))
         total_room = max(0, max_total_pages - total_pages_read)
         fill_page_limit = min(max_pages_per_account, total_room)
-        rows, page_capped = _fetch_account_pages(conn, address, since_ms=since_ms,
+        rows, page_capped, fill_endpoint_limits = _fetch_account_pages(conn, address, since_ms=since_ms,
                                                  cutoff_ms=cutoff_ms, max_pages=fill_page_limit)
         total_pages_read += len(rows)
         fill_data = _read_fill_pages(conn, address, rows, windows,
@@ -819,8 +871,9 @@ def build_manifest(conn: sqlite3.Connection, selection_addresses: list[str], *,
         total_room = max(0, max_total_pages - total_pages_read)
         histories, history_pages_read = _history_pages(conn, address, since_ms=since_ms, cutoff_ms=cutoff_ms,
                                    max_pages=min(max_pages_per_account, total_room), reserved=windows,
-                                   fill_rows=rows)
+                                   fill_rows=rows, fill_endpoint_limits=fill_endpoint_limits)
         total_pages_read += history_pages_read
+        markets.update(histories.get("userFunding", {}).get("by_market", {}).keys())
         snapshots = _state_snapshots(conn, address, since_ms=since_ms, cutoff_ms=cutoff_ms,
                                      reserved=windows, cap=50)
         cursor_statuses = {}
@@ -835,7 +888,7 @@ def build_manifest(conn: sqlite3.Connection, selection_addresses: list[str], *,
         for market in sorted(markets):
             fill_record = fill_data.get("pairs", {}).get(market, {
                     "fills": {"unique_events": 0, "event_period_ms": None, "local_available_period_ms": None,
-                        "provenance": {}},
+                        "conflicting_identity_count": 0, "conflicting_identity_refs": [], "provenance": {}},
                     "fees": {"unique_fills": 0, "fee_field_present": 0,
                         "fee_field_missing": 0, "fee_currencies_observed": [],
                         "completeness": "no decoded fills in interval; absence does not prove no activity"},
@@ -843,6 +896,11 @@ def build_manifest(conn: sqlite3.Connection, selection_addresses: list[str], *,
                         "reason": "no locally decoded fills in bounded interval"}, "evidence_refs": []})
             boundary_check = _position_boundary_check(market,
                 fill_data.get("timing_by_market", {}).get(market, []), snapshots["snapshots"])
+            conflict_count = fill_record.get("fills", {}).get("conflicting_identity_count", 0)
+            if conflict_count:
+                boundary_check = {"status": "unknown_conflicting_fill_identities",
+                    "coherent_position_proven": False, "conflicting_identity_count": conflict_count,
+                    "reason": "state-boundary reconciliation is unknown because conflicting fill identities were excluded"}
             pairs[market] = {
                 "fills": fill_record.get("fills", {}),
                 "fees": fill_record.get("fees", {}),
@@ -873,6 +931,7 @@ def build_manifest(conn: sqlite3.Connection, selection_addresses: list[str], *,
                      "conflicting_events": fill_data.get("conflicting_events", 0),
                      "malformed_events": fill_data.get("malformed_events", 0),
                      "skipped_reserved_pages": fill_data.get("skipped_reserved_pages", []),
+                     "fill_endpoint_limits": fill_endpoint_limits,
                      "unprocessed_reason": fill_data.get("error")},
             "pairs": pairs,
             "accounting_history": histories,
@@ -956,7 +1015,10 @@ def render_markdown(manifest: dict[str, Any], *, selection_report: str,
               "duplicates": 0, "conflicts": 0, "batches": 0,
               "accounts_page_capped": 0, "accounts_event_capped": 0,
               "accounts_global_budget_exhausted": 0,
+              "history_endpoints_possibly_truncated": 0,
+              "history_endpoints_skipped_for_budget": 0,
               "position_match": 0, "position_mismatch": 0, "position_missing": 0,
+              "position_noncomparable": 0,
               "book_bbo_30s": 0, "book_l2_30s": 0}
     health = manifest.get("stream_health", {})
     health_sessions = health.get("sessions", {})
@@ -964,6 +1026,18 @@ def render_markdown(manifest: dict[str, Any], *, selection_report: str,
                      "gaps": sum(x.get("heartbeat_gaps_over_threshold", 0) for x in health_sessions.values()),
                      "disconnects": sum(x.get("explicit_disconnect_count", 0) for x in health_sessions.values()),
                      "capped": health.get("event_cap_reached", False)}
+    book_available = [stamp for market in manifest.get("book_sample", {}).get("markets", {}).values()
+                      for endpoint in BOOK_ENDPOINTS
+                      for stamp in (market.get(endpoint, {}).get("available_period_ms") or [])]
+    book_period_note = (f"L’échantillon global borné des carnets couvre les disponibilités locales "
+        f"[{iso_ms(min(book_available))}, {iso_ms(max(book_available))}] seulement; la couverture carnet du reste de la fenêtre est inconnue."
+        if book_available else "Aucune période de disponibilité de carnet n’est présente dans l’échantillon borné.")
+    # Funding history can contain markets absent from the fill/scope market set.
+    # Count the endpoint evidence directly so those rows are not silently lost.
+    for account in manifest["accounts"]:
+        funding_by_market = account.get("accounting_history", {}).get("userFunding", {}).get("by_market", {})
+        totals["funding"] += sum(x.get("events_observed", 0) for x in funding_by_market.values())
+        totals["funding_pairs"] += sum(bool(x.get("events_observed", 0)) for x in funding_by_market.values())
     for account in manifest["accounts"]:
         scan = account["scan"]
         totals["duplicates"] += scan["duplicate_events"]
@@ -972,6 +1046,9 @@ def render_markdown(manifest: dict[str, Any], *, selection_report: str,
         totals["accounts_page_capped"] += bool(scan["account_page_query_capped"])
         totals["accounts_event_capped"] += bool(scan["event_cap_reached"])
         totals["accounts_global_budget_exhausted"] += bool(scan["global_page_budget_exhausted"])
+        for endpoint_info in account.get("accounting_history", {}).values():
+            totals["history_endpoints_possibly_truncated"] += bool(endpoint_info.get("possibly_truncated_at_page_budget"))
+            totals["history_endpoints_skipped_for_budget"] += bool(endpoint_info.get("query_skipped_for_page_budget"))
         for market, pair in account["pairs"].items():
             fills = pair["fills"]
             provenance = fills.get("provenance", {})
@@ -982,9 +1059,6 @@ def render_markdown(manifest: dict[str, Any], *, selection_report: str,
             totals["websocket"] += websocket
             totals["fees_present"] += pair.get("fees", {}).get("fee_field_present", 0)
             totals["fees_missing"] += pair.get("fees", {}).get("fee_field_missing", 0)
-            funding = pair.get("funding", {}).get("events_observed", 0)
-            totals["funding"] += funding
-            totals["funding_pairs"] += bool(funding)
             position_status = pair.get("position_reconstruction", {}).get("status")
             if position_status == "arithmetic_match_on_observed_interval":
                 totals["position_match"] += 1
@@ -992,6 +1066,10 @@ def render_markdown(manifest: dict[str, Any], *, selection_report: str,
                 totals["position_mismatch"] += 1
             elif position_status == "missing_boundary_snapshots":
                 totals["position_missing"] += 1
+            elif position_status in ("unknown_noncomparable_boundaries", "unknown_noncomparable_historical_artifact",
+                                     "unknown_conflicting_fill_identities",
+                                     "unknown_state_or_fill_size"):
+                totals["position_noncomparable"] += 1
             prov = ", ".join(f"{k}:{v['unique_events']}" for k, v in provenance.items()) or "aucun fill décodé"
             book = pair.get("book_evidence", {})
             bbo = book.get("bbo", {})
@@ -1024,13 +1102,19 @@ def render_markdown(manifest: dict[str, Any], *, selection_report: str,
         f"Plafonds : {manifest['limits']['max_pages_per_account']} pages fills par compte; {manifest['limits']['max_total_pages']} pages au total ({manifest['limits']['pages_read']} lues), {manifest['limits']['max_events_per_account']} fills décodés par compte, {manifest['limits']['max_book_rows_per_endpoint']} observations globales récentes par canal de carnet.",
         f"La fenêtre commence exactement à la fin événementielle du bilan précédent, 2026-10-15T15:00:00Z; elle ne recouvre pas sa fenêtre 67f7/ETH déjà utilisée.",
         "Les études descriptives déjà utilisées sur a880, 67f7 et be504 (6–11 octobre) ainsi que la résolution bornée 67f7/ETH du 14–15 octobre sont explicitement conservées comme preuves historiques dans `global_period_policy.historical_studies`; aucune n’est requalifiée vierge.",
-        "Les comptes protégés sont listés uniquement par leur référence d’adresse, sans lecture de leurs charges utiles. Le carnet n’a pas d’index dont la première clé est le marché : la période de carnet est donc un échantillon global récent et plafonné, pas un inventaire exhaustif de la fenêtre.", "",
+        "Les comptes protégés sont listés uniquement par leur référence d’adresse, sans lecture de leurs charges utiles. Le carnet n’a pas d’index dont la première clé est le marché : la période de carnet est donc un échantillon global récent et plafonné, pas un inventaire exhaustif de la fenêtre.",
+        book_period_note, "",
         "## Résumé des éléments décodés", "",
-        f"{totals['fills']:,} fills uniques ({totals['rest']:,} REST, {totals['websocket']:,} WebSocket) sur {len(all_pairs)} couples avec activité. Champ de frais présent sur {totals['fees_present']:,}/{totals['fees_present']+totals['fees_missing']:,} fills; {totals['funding']:,} lignes de funding observées sur {totals['funding_pairs']} couples. Déduplication des seules identités de fills : {totals['duplicates']:,} répétitions exactes, {totals['conflicts']:,} identités conflictuelles; enveloppes `events[]` : {totals['batches']:,}.",
-        f"Plafond pages atteint pour {totals['accounts_page_capped']} comptes; plafond événements atteint pour {totals['accounts_event_capped']}; budget global épuisé : {totals['accounts_global_budget_exhausted']}. Un hit de plafond classe les portions non projetées `present_not_exported`; sans preuve locale admissible, zéro décodé reste `absent` dans ce scan seulement.",
-        f"Le contrôle de bornes d’état donne {totals['position_match']} correspondances arithmétiques, {totals['position_mismatch']} écarts ou intervalles incomplets, {totals['position_missing']} couples sans deux snapshots. Cela ne prouve aucune position cohérente complète.",
+        f"{totals['fills']:,} fills uniques ({totals['rest']:,} REST, {totals['websocket']:,} WebSocket) sur {len(all_pairs)} couples avec activité. Champ de frais présent sur {totals['fees_present']:,}/{totals['fees_present']+totals['fees_missing']:,} fills; {totals['funding']:,} lignes de funding observées sur {totals['funding_pairs']} couples compte/marché. Déduplication des seules identités de fills : {totals['duplicates']:,} répétitions exactes, {totals['conflicts']:,} identités conflictuelles exclues des métriques dérivées; enveloppes `events[]` de fills : {totals['batches']:,}.",
+        (f"Plafond pages fills atteint pour {totals['accounts_page_capped']} comptes; plafond événements atteint pour {totals['accounts_event_capped']}; budget global épuisé : {totals['accounts_global_budget_exhausted']}. Les plafonds par endpoint historique ne sont pas enregistrés dans cet artefact historique."
+         if manifest.get("historical_artifact_limitations", {}).get("per_endpoint_page_caps_not_recorded") else
+         f"Plafond pages fills atteint pour {totals['accounts_page_capped']} comptes; plafond événements atteint pour {totals['accounts_event_capped']}; budget global épuisé : {totals['accounts_global_budget_exhausted']}. {totals['history_endpoints_possibly_truncated']} endpoints d’historique sont possiblement tronqués au plafond et {totals['history_endpoints_skipped_for_budget']} n’ont pas été interrogés faute de budget.") +
+        " Un hit de plafond classe les portions non projetées `present_not_exported`; sans preuve locale admissible, zéro décodé reste `absent` dans ce scan seulement.",
+        f"Le contrôle de bornes d’état donne {totals['position_match']} correspondances arithmétiques, {totals['position_mismatch']} écarts ou intervalles incomplets, {totals['position_missing']} couples sans deux snapshots, et {totals['position_noncomparable']} limites non comparables. La disponibilité locale d’un snapshot n’est pas son temps économique; seules des bornes source horodatées dans le même domaine que les fills sont comparées. Aucune correspondance ne prouve une position cohérente complète.",
         f"Dans l’échantillon de carnets, des snapshots strictement antérieurs et déjà disponibles dans les 30 s du reçu fill correspondent à {totals['book_bbo_30s']} fills WebSocket pour BBO et {totals['book_l2_30s']} pour L2; les deux canaux sont nécessaires à un rejeu avec carnet.", "",
         f"Santé des flux : {health_totals['sessions']} sessions reliées à des frames de fills WebSocket, {health_totals['events']:,} événements santé décodés, {health_totals['gaps']} intervalles heartbeat >65 s et {health_totals['disconnects']} déconnexions explicites dans la fenêtre; plafond global atteint : {health_totals['capped']}. Cette association prouve une activité de flux pour ces sessions, sans preuve d’ACK d’abonnement par compte.", "",
+        *([f"Limite de reprise de l’artefact : {manifest['historical_artifact_limitations'].get('summary')}" ]
+          if manifest.get("historical_artifact_limitations") else []),
         "### Meilleures pistes descriptives observées", "", *shortlist(descriptive, "rest"), "",
         "### Meilleures pistes de rejeu follower observées", "",
         *(shortlist(follower, "websocket") or ["Aucun couple ne réunit des fills WebSocket et des correspondances BBO et L2 dans l’échantillon borné."]),

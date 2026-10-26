@@ -10,16 +10,18 @@ Plafonds : 300 pages fills par compte; 25000 pages au total (7450 lues), 250000 
 La fenêtre commence exactement à la fin événementielle du bilan précédent, 2026-10-15T15:00:00Z; elle ne recouvre pas sa fenêtre 67f7/ETH déjà utilisée.
 Les études descriptives déjà utilisées sur a880, 67f7 et be504 (6–11 octobre) ainsi que la résolution bornée 67f7/ETH du 14–15 octobre sont explicitement conservées comme preuves historiques dans `global_period_policy.historical_studies`; aucune n’est requalifiée vierge.
 Les comptes protégés sont listés uniquement par leur référence d’adresse, sans lecture de leurs charges utiles. Le carnet n’a pas d’index dont la première clé est le marché : la période de carnet est donc un échantillon global récent et plafonné, pas un inventaire exhaustif de la fenêtre.
+L’échantillon global borné des carnets couvre les disponibilités locales [2026-10-26T13:23:58.790+00:00, 2026-10-26T13:30:21.970+00:00] seulement; la couverture carnet du reste de la fenêtre est inconnue.
 
 ## Résumé des éléments décodés
 
-492,165 fills uniques (482,963 REST, 9,202 WebSocket) sur 271 couples avec activité. Champ de frais présent sur 492,165/492,165 fills; 11,005 lignes de funding observées sur 115 couples. Déduplication des seules identités de fills : 264,558 répétitions exactes, 0 identités conflictuelles; enveloppes `events[]` : 0.
-Plafond pages atteint pour 8 comptes; plafond événements atteint pour 0; budget global épuisé : 0. Un hit de plafond classe les portions non projetées `present_not_exported`; sans preuve locale admissible, zéro décodé reste `absent` dans ce scan seulement.
-Le contrôle de bornes d’état donne 145 correspondances arithmétiques, 83 écarts ou intervalles incomplets, 196 couples sans deux snapshots. Cela ne prouve aucune position cohérente complète.
+492,165 fills uniques (482,963 REST, 9,202 WebSocket) sur 271 couples avec activité. Champ de frais présent sur 492,165/492,165 fills; 11,178 lignes de funding observées sur 116 couples compte/marché. Déduplication des seules identités de fills : 264,558 répétitions exactes, 0 identités conflictuelles exclues des métriques dérivées; enveloppes `events[]` de fills : 0.
+Plafond pages fills atteint pour 8 comptes; plafond événements atteint pour 0; budget global épuisé : 0. Les plafonds par endpoint historique ne sont pas enregistrés dans cet artefact historique. Un hit de plafond classe les portions non projetées `present_not_exported`; sans preuve locale admissible, zéro décodé reste `absent` dans ce scan seulement.
+Le contrôle de bornes d’état donne 0 correspondances arithmétiques, 0 écarts ou intervalles incomplets, 196 couples sans deux snapshots, et 228 limites non comparables. La disponibilité locale d’un snapshot n’est pas son temps économique; seules des bornes source horodatées dans le même domaine que les fills sont comparées. Aucune correspondance ne prouve une position cohérente complète.
 Dans l’échantillon de carnets, des snapshots strictement antérieurs et déjà disponibles dans les 30 s du reçu fill correspondent à 944 fills WebSocket pour BBO et 1012 pour L2; les deux canaux sont nécessaires à un rejeu avec carnet.
 
 Santé des flux : 74 sessions reliées à des frames de fills WebSocket, 34,842 événements santé décodés, 0 intervalles heartbeat >65 s et 73 déconnexions explicites dans la fenêtre; plafond global atteint : False. Cette association prouve une activité de flux pour ces sessions, sans preuve d’ACK d’abonnement par compte.
 
+Limite de reprise de l’artefact : 228 anciennes correspondances/écarts de bornes sont reclassés non comparables faute de temps source des snapshots. Les caps par endpoint n’étaient pas enregistrés; le manifeste source conserve 173 funding OP sans ligne de couple détaillée. Le code corrigé traite ces trois cas pour toute nouvelle génération; aucun scan ni détail manquant n’a été régénéré.
 ### Meilleures pistes descriptives observées
 
 - `0xbb160cb61e694570f9d570f9fcde7c61dd2143ad` / `BTC` : 107887 fills; événements [1792076404981, 1792969023003], disponibilité locale [1792079440133, 1792969292161].

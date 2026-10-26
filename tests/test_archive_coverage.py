@@ -1,10 +1,15 @@
 import json
+import os
 import sqlite3
+import subprocess
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from tamtam_again.archive_coverage import (
     _fill_rows, _position_boundary_check, _summarize_stream_health,
-    build_manifest, iso_ms, parse_selection_addresses,
+    _snapshot_event_ms, build_manifest, iso_ms, parse_selection_addresses,
 )
 
 
@@ -65,13 +70,28 @@ class ArchiveCoverageTests(unittest.TestCase):
 
     def test_position_boundary_match_stays_short_of_completeness_proof(self):
         snapshots = [
-            {"available_ms": 10, "dex": "", "positions": {"ETH": "1"}, "evidence_ref": "state:1"},
-            {"available_ms": 100, "dex": "", "positions": {"ETH": "2"}, "evidence_ref": "state:2"},
+            {"available_ms": 1000, "event_ms": 10, "dex": "", "positions": {"ETH": "1"}, "evidence_ref": "state:1"},
+            {"available_ms": 2000, "event_ms": 100, "dex": "", "positions": {"ETH": "2"}, "evidence_ref": "state:2"},
         ]
-        fills = [{"event_ms": 20, "available_ms": 21, "source": "websocket", "side": "B", "sz": "1"}]
+        # The fill arrives well after both local snapshot receipts; source event
+        # time still places it between comparable source-time snapshot bounds.
+        fills = [{"event_ms": 20, "available_ms": 3000, "source": "websocket", "side": "B", "sz": "1"}]
         result = _position_boundary_check("ETH", fills, snapshots)
         self.assertEqual(result["status"], "arithmetic_match_on_observed_interval")
         self.assertFalse(result["coherent_position_proven"])
+
+    def test_delayed_fill_with_receipt_clock_only_boundaries_is_noncomparable(self):
+        snapshots = [
+            {"available_ms": 10, "dex": "", "positions": {"ETH": "1"}, "evidence_ref": "state:1"},
+            {"available_ms": 100, "dex": "", "positions": {"ETH": "2"}, "evidence_ref": "state:2"},
+        ]
+        delayed_fill = [{"event_ms": 99, "available_ms": 105, "source": "websocket", "side": "B", "sz": "1"}]
+        result = _position_boundary_check("ETH", delayed_fill, snapshots)
+        self.assertEqual(result["status"], "unknown_noncomparable_boundaries")
+
+    def test_snapshot_source_time_comes_from_response_not_requested_cutoff(self):
+        self.assertIsNone(_snapshot_event_ms({"as_of_ms": 10}, {"assetPositions": []}))
+        self.assertEqual(_snapshot_event_ms({"as_of_ms": 10}, {"time": 12}), 12)
 
     def test_stream_health_counts_heartbeat_gaps_and_explicit_disconnects(self):
         result = _summarize_stream_health([
@@ -121,10 +141,13 @@ class ArchiveCoverageTests(unittest.TestCase):
         result = build_manifest(conn, [ADDR], since_ms=1793000000000,
             cutoff_ms=1793020000000, max_book_rows_per_endpoint=1)
         pair = result["accounts"][0]["pairs"]["ETH"]
-        self.assertEqual(pair["fills"]["unique_events"], 1)
+        self.assertEqual(pair["fills"]["unique_events"], 0)
         self.assertEqual(result["accounts"][0]["scan"]["duplicate_events"], 1)
         self.assertEqual(result["accounts"][0]["scan"]["conflicting_events"], 1)
-        self.assertEqual(pair["fees"]["fee_field_present"], 1)
+        self.assertEqual(pair["fills"]["conflicting_identity_count"], 1)
+        self.assertEqual(pair["fees"]["fee_field_present"], 0)
+        self.assertEqual(pair["position_reconstruction"]["fill_delta_only"]["status"], "unknown_conflicting_fill_identities")
+        self.assertEqual(pair["position_reconstruction"]["status"], "unknown_conflicting_fill_identities")
         conn.close()
 
     def test_protected_address_payload_is_not_included_in_manifest(self):
@@ -154,6 +177,61 @@ class ArchiveCoverageTests(unittest.TestCase):
         self.assertEqual(account["scan"]["skipped_reserved_pages"], ["raw_observations:1"])
         self.assertEqual(account["pairs"]["ETH"]["fills"]["unique_events"], 0)
         conn.close()
+
+    def test_funding_only_market_is_included_and_history_page_caps_are_reported(self):
+        conn = fixture_db()
+        insert_obs(conn, 1, endpoint="userFunding", payload=[{
+            "time": 1793010000001, "delta": {"type": "funding", "coin": "OP", "usdc": "1"}}])
+        result = build_manifest(conn, [ADDR], since_ms=1793000000000,
+            cutoff_ms=1793020000000, max_pages_per_account=1, max_total_pages=1,
+            max_book_rows_per_endpoint=1)
+        account = result["accounts"][0]
+        self.assertIn("OP", account["pairs"])
+        self.assertEqual(account["pairs"]["OP"]["funding"]["events_observed"], 1)
+        funding = account["accounting_history"]["userFunding"]
+        self.assertTrue(funding["possibly_truncated_at_page_budget"])
+        ledger = account["accounting_history"]["userNonFundingLedgerUpdates"]
+        self.assertTrue(ledger["query_skipped_for_page_budget"])
+        conn.close()
+
+    def test_fill_endpoint_limits_are_labeled_possibly_truncated_or_skipped(self):
+        conn = fixture_db()
+        fill = {"coin": "ETH", "time": 1793010000001, "tid": 9, "side": "B", "sz": "1"}
+        insert_obs(conn, 1, payload=[fill])
+        insert_obs(conn, 2, payload=[{**fill, "tid": 10, "time": 1793010000002}])
+        result = build_manifest(conn, [ADDR], since_ms=1793000000000,
+            cutoff_ms=1793020000000, max_pages_per_account=1, max_total_pages=1,
+            max_book_rows_per_endpoint=1)
+        limits = result["accounts"][0]["scan"]["fill_endpoint_limits"]
+        rest = limits["hyperliquid-population-rest-v1:userFillsByTime"]
+        ws = limits["hyperliquid-websocket-v1:userFills"]
+        self.assertTrue(rest["possibly_truncated_at_page_budget"])
+        self.assertFalse(rest["query_skipped_for_page_budget"])
+        self.assertTrue(ws["possibly_truncated_at_page_budget"])
+        self.assertTrue(ws["query_skipped_for_page_budget"])
+        conn.close()
+
+    def test_cli_rejects_output_aliasing_archive(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            db = base / "archive.db"
+            report = base / "selection.md"
+            out = base / "out"
+            out.mkdir()
+            original = b"read-only archive sentinel"
+            db.write_bytes(original)
+            report.write_text(f"| `{ADDR}` | présélection courbes + activité |\n")
+            os.symlink(db, out / "manifest.json")
+            proc = subprocess.run([
+                sys.executable, str(root / "scripts" / "archive-coverage.py"),
+                "--db", str(db), "--selection-report", str(report),
+                "--since", "2026-10-01T00:00:00Z", "--cutoff", "2026-10-02T00:00:00Z",
+                "--output-dir", str(out),
+            ], capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 2)
+            self.assertIn("must not alias", proc.stderr)
+            self.assertEqual(db.read_bytes(), original)
 
 
 if __name__ == "__main__":

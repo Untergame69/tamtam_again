@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -15,6 +16,15 @@ sys.path.insert(0, str(ROOT / "src"))
 from tamtam_again.archive_coverage import (  # noqa: E402
     build_manifest, parse_cutoff, parse_selection_addresses, render_markdown,
 )
+
+
+def _aliases(left: Path, right: Path) -> bool:
+    if left.resolve() == right.resolve():
+        return True
+    try:
+        return left.exists() and right.exists() and os.path.samefile(left, right)
+    except OSError:
+        return False
 
 
 def main() -> int:
@@ -33,6 +43,10 @@ def main() -> int:
     args = parser.parse_args()
     if not args.db.is_file() or not args.selection_report.is_file():
         parser.error("--db and --selection-report must name existing files")
+    output_targets = (args.output_dir / "manifest.json", args.output_dir / "report.md")
+    if any(_aliases(target, source) for target in output_targets
+           for source in (args.db, args.selection_report)):
+        parser.error("output files must not alias --db or --selection-report")
     if args.max_accounts < 1 or args.max_pages_per_account < 1 or args.max_total_pages < 1 or args.max_book_rows_per_endpoint < 1 or args.max_events_per_account < 1:
         parser.error("all processing caps must be positive")
 

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import zlib
 from datetime import datetime,timezone
+from decimal import Decimal
 from pathlib import Path
 
 from tamtam_again.engine import canonical
@@ -11,6 +12,7 @@ from tamtam_again.population_descriptive import (prepare_candidate_market_detail
     prepare_candidate_summary,prepare_inventory_execution_association,prepare_pilot_packet,
     _compact_repeated_reference_lists)
 from tamtam_again.storage import Store
+from scripts.prepare_43ad_local_resolution import _episode_table
 
 
 class PopulationDescriptiveTests(unittest.TestCase):
@@ -180,6 +182,56 @@ class PopulationDescriptiveTests(unittest.TestCase):
             if r['position_side']=='long' and r['crossed_group']=='taker_crossed_true')
         self.assertEqual(taker['close_quantity'],'0.5')
         self.assertEqual(taker['open_quantity'],'0')
+
+    def test_local_resolution_splits_reversal_part_notional_and_fee_between_episodes(self):
+        fills=[
+            {'coin':'BTC','tid':'open','time':100,'startPosition':'0','side':'B','sz':'1','px':'10','fee':'0.01','feeToken':'USDC','crossed':False},
+            {'coin':'BTC','tid':'reduce','time':110,'startPosition':'1','side':'A','sz':'0.5','px':'12','fee':'-0.02','feeToken':'USDC','crossed':True},
+            {'coin':'BTC','tid':'reverse','time':120,'startPosition':'0.5','side':'A','sz':'1','px':'12','fee':'-0.01','feeToken':'USDC','crossed':False},
+            {'coin':'BTC','tid':'flat','time':130,'startPosition':'-0.5','side':'B','sz':'0.5','px':'13','fee':'0.02','feeToken':'USDC','crossed':True},
+        ]
+        events=[
+            {'fill':fill,'pre_position':fill['startPosition'],
+             'post_position':str(Decimal(fill['startPosition']) + (Decimal(fill['sz']) if fill['side']=='B' else -Decimal(fill['sz'])))}
+            for fill in fills
+        ]
+        episodes, _ = _episode_table([(1,events)])
+        self.assertEqual(len(episodes),2)
+        prior, following = episodes
+        self.assertEqual(prior['close_type'],'position_reversal')
+        self.assertEqual(prior['price_result_quote_units'],'2.0')
+        self.assertEqual(prior['signed_fees_by_token']['USDC'],'-0.015')
+        self.assertEqual(prior['maker_quantity'],'1.5')
+        self.assertEqual(prior['taker_quantity'],'0.5')
+        self.assertEqual(prior['total_part_notional_quote_units'],'22.0')
+        self.assertEqual(following['close_type'],'returned_to_zero')
+        self.assertEqual(following['price_result_quote_units'],'-0.5')
+        self.assertEqual(following['signed_fees_by_token']['USDC'],'0.015')
+        self.assertEqual(following['maker_quantity'],'0.5')
+        self.assertEqual(following['taker_quantity'],'0.5')
+        self.assertEqual(following['total_part_notional_quote_units'],'12.5')
+
+        inverse_fills=[
+            {'coin':'BTC','tid':'short-open','time':200,'startPosition':'0','side':'A','sz':'1','px':'10','fee':'0.01','feeToken':'USDC','crossed':False},
+            {'coin':'BTC','tid':'inverse-reverse','time':210,'startPosition':'-1','side':'B','sz':'1.5','px':'12','fee':'0.03','feeToken':'USDC','crossed':True},
+            {'coin':'BTC','tid':'long-flat','time':220,'startPosition':'0.5','side':'A','sz':'0.5','px':'13','fee':'-0.02','feeToken':'USDC','crossed':False},
+        ]
+        inverse_events=[
+            {'fill':fill,'pre_position':fill['startPosition'],
+             'post_position':str(Decimal(fill['startPosition']) + (Decimal(fill['sz']) if fill['side']=='B' else -Decimal(fill['sz'])))}
+            for fill in inverse_fills
+        ]
+        inverse, _ = _episode_table([(2,inverse_events)])
+        self.assertEqual(len(inverse),2)
+        closing, opening = inverse
+        self.assertEqual(closing['price_result_quote_units'],'-2')
+        self.assertEqual(closing['signed_fees_by_token']['USDC'],'0.03')
+        self.assertEqual(closing['buy_quantity'],'1')
+        self.assertEqual(closing['sell_quantity'],'1')
+        self.assertEqual(opening['price_result_quote_units'],'0.5')
+        self.assertEqual(opening['signed_fees_by_token']['USDC'],'-0.01')
+        self.assertEqual(opening['buy_quantity'],'0.5')
+        self.assertEqual(opening['sell_quantity'],'0.5')
 
 
 if __name__=='__main__':unittest.main()

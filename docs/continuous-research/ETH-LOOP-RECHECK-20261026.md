@@ -70,3 +70,9 @@ Le cas où un autre travail avance pendant qu’ETH est terminale est couvert pa
 les tests simulés déjà consignés dans la clôture ; il n’est pas présenté ici
 comme une transition réelle. Les huit tentatives historiques, toutes les
 décisions antérieures et les deux tâches du pilote v2 restent intactes.
+
+Les détails structurés du tick, ses empreintes de route, les liens de mémoire,
+les lignes brutes/courantes de file et le compte rendu des 80 tests figurent
+dans [la preuve JSON](ETH-LOOP-RECHECK-20261026.json). La route conserve quatre
+versions historiques ; la file brute en garde cinq lignes, tandis que sa vue
+courante n’expose que la ligne terminale.

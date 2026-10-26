@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "captured_at_local": "2026-10-26T13:46:49.665061+01:00",
+  "execution": {
+    "kind": "real_scheduler_tick",
+    "dispatch": false,
+    "max_jobs": 1,
+    "command": "PYTHONPATH=src python3 scripts/population-research-tick.py --db data/tamtam.sqlite3 --policy config/population-research-policy.json --pilot-policy config/research-loop-pilot-v2.json --prepare-only --max-jobs 1",
+    "output_sha256": "97389b2492f91ae2ce35b170d15ae071bd5bc5b02cd2fafe3a24d150c5e3a00e"
+  },
+  "tick_result": {
+    "pilot_research": {
+      "status": "no_admissible_candidate",
+      "candidate_evaluations": [
+        {
+          "candidate": "a880",
+          "status": "unchanged_no_inference",
+          "request_id": "2647534ba8ed0dc03598585e3afdade2ac2f54e797175b9926d057ca7b404b49",
+          "reason": "same question, archive cutoff and fill-content fingerprint already processed"
+        },
+        {
+          "candidate": "67f7",
+          "status": "terminal_route",
+          "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+          "route": "completed"
+        },
+        {
+          "candidate": "be504",
+          "status": "unchanged_no_inference",
+          "request_id": "92c7bb3cb925467177994001127b7eecc6425f3823f61fbc05f0cfc7752c9151",
+          "reason": "same question, archive cutoff and fill-content fingerprint already processed"
+        }
+      ],
+      "allowance": {
+        "pilot_id": "research-loop-pilot-20261014-v2",
+        "tasks": [
+          {
+            "candidate": "a880",
+            "request_id": "2647534ba8ed0dc03598585e3afdade2ac2f54e797175b9926d057ca7b404b49",
+            "state": "needs_data"
+          },
+          {
+            "candidate": "67f7",
+            "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+            "state": "hypothesis_recorded"
+          }
+        ],
+        "calls_reserved": 2,
+        "input_tokens_reserved": 160000,
+        "output_tokens_reserved": 10000,
+        "duration_ms_reserved": 240000,
+        "input_tokens_reported": 96994,
+        "output_tokens_reported": 2617,
+        "duration_ms_reported": 74915,
+        "non_renewing": true
+      }
+    },
+    "work_queue": {
+      "advanced": [],
+      "pending": 9,
+      "model_calls": 0
+    },
+    "local_resolutions": [
+      {
+        "request_id": "2b7bf5b9d35a8059bba6d0af645000f357d6494577ec99a8377fbff8f1a3c6f6",
+        "status": "unchanged",
+        "resolver_version": "population-offline-archive-join-v3",
+        "artifact_fingerprint": "7c9127a0c44cc1bfe801cf3a5ce74949b9e96d5ef610630fbaf3f2117b744169",
+        "model_calls": 0
+      }
+    ]
+  },
+  "general_gate": {
+    "evaluated": 32,
+    "allowed": 0,
+    "qualification_passed": 0,
+    "new_data": 32,
+    "budget_available": 0,
+    "reason_counts": {
+      "historical qualification is not sufficient for deeper AI research": 26,
+      "curve/activity screening has not passed the separate economic review required for research RE": 6
+    },
+    "shared_requests_used": 11,
+    "shared_requests_max": 8
+  },
+  "eth_persisted_state": {
+    "request_id": "501c352cd53c5a65ce3f035fe393ccdf15d640f418976b1a279b2d4bd248aece",
+    "original_job_status": "hypothesis_recorded",
+    "route_history": [
+      {
+        "sequence": 1,
+        "created_ms": 1792151525431,
+        "result_fingerprint": "fbb8179e22c7b3af2b28e89e7356e22e10ccf76ce849ddf610c1542d3b42aed2",
+        "state": "needs_data",
+        "next_action": "Join every final-window fill to archived ETH pre-event context and persist order/time-aware comparisons"
+      },
+      {
+        "sequence": 2,
+        "created_ms": 1792151780135,
+        "result_fingerprint": "a33aef7089c8ba6b66fc9c373f8ac1bd27b26a33034c3e449cbc6601f5a0757f",
+        "state": "local_archive_analysis_complete",
+        "next_action": "No additional historical collection is needed. Keep the result exploratory; any repeatability test requires a separately authorized prospective evaluation."
+      },
+      {
+        "sequence": 3,
+        "created_ms": 1792172833423,
+        "result_fingerprint": "ef04c7c5a36d46f222fa211f7e41e391786b9f05e25056825448e3f00611409d",
+        "state": "completed",
+        "next_action": "Archiver la décision et ses preuves dans la mémoire actualisée; retirer cette question résolue du travail actif et examiner l'admissibilité des autres tâches. Aucun calcul supplémentaire n'est nécessaire pour cette décision de portée limitée. Toute étude live ou règle explicite serait un travail distinct avec autorisation et mesures propres; aucun lancement ni attente de backfill historique ici."
+      },
+      {
+        "sequence": 4,
+        "created_ms": 1792172951321,
+        "result_fingerprint": "886b7ceccce5d564e2ac81e7d8ee687d21736ba250b4f3cb1009af30d831ae19",
+        "state": "completed",
+        "next_action": "Archiver la décision et ses preuves dans la mémoire actualisée; retirer cette question résolue du travail actif et examiner l'admissibilité des autres tâches. Aucun calcul supplémentaire n'est nécessaire pour cette décision de portée limitée. Toute étude live ou règle explicite serait un travail distinct avec autorisation et mesures propres; aucun lancement ni attente de backfill historique ici."
+      }
+    ],
+    "original_memory": {
+      "knowledge_id": "e50b4e69f2c75a153da4bf4eaa7548e3ed7846465663bc07be72713cdc34828b",
+      "created_ms": 1792078810481
+    },
+    "latest_resolution_memory_revision": {
+      "resolution_fingerprint": "4be9d5da00cada2fda7c5a5a44af8afaa9f3b85e2531b6ba0ab739687384c7df",
+      "knowledge_id": "d5b3a31d0340af213f839d45fb5f2d4eb4d884e1d1dcc0884a0961e865675b33",
+      "created_ms": 1792172827945
+    },
+    "raw_queue_rows": [
+      {
+        "work_id": "cb4ddac9684dc6d830d36a50fad1da8a07773e61b8b48006c38cef798225d100",
+        "status": "waiting_data",
+        "reason": "persisted population route: needs_data"
+      },
+      {
+        "work_id": "c63d2ac055cb92c2fd201e2fd0c72bbe2812f2f4429ba3322d8545b45e42a37c",
+        "status": "ready",
+        "reason": "persisted population route: local_archive_analysis_required"
+      },
+      {
+        "work_id": "8a81349c42dac6389fab691375778f71876582eca499e06e12d3e24613d8b62e",
+        "status": "completed",
+        "reason": "persisted population route: local_archive_analysis_complete"
+      },
+      {
+        "work_id": "db0ad11fa725f1a8c8e38c8d21373163d0948d95575f280269ac1ca6df57cbcd",
+        "status": "completed",
+        "reason": "persisted population route: completed"
+      },
+      {
+        "work_id": "792dc83c084745b398f0fa9233b38e407a4c08dbd224ed5edb59bcf80b9c113e",
+        "status": "completed",
+        "reason": "persisted population route: completed"
+      }
+    ],
+    "current_queue_rows": [
+      {
+        "work_id": "792dc83c084745b398f0fa9233b38e407a4c08dbd224ed5edb59bcf80b9c113e",
+        "status": "completed",
+        "reason": "persisted population route: completed"
+      }
+    ]
+  },
+  "database_counts_after_tick": {
+    "research_jobs": 14,
+    "pilot_tasks": 6,
+    "pilot_calls": 9
+  },
+  "test_evidence": {
+    "command": "PYTHONPATH=src python3 -m unittest tests.test_population_resolution_memory tests.test_population_runtime tests.test_research_memory tests.test_eth_existing_window_resolution tests.test_research_work_queue tests.test_population_local_archive_resolution tests.test_population_pilot tests.test_population_packet tests.test_population_research tests.test_population_pipeline -v",
+    "passed": 80,
+    "failed": 0
+  }
+}

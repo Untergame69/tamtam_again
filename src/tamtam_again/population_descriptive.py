@@ -422,18 +422,22 @@ def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, marke
     for segment_no,events in segment_events:
         seg=blank();seg_fills=[e['fill'] for e in events]
         _,episodes,_=_position_flows(seg_fills)
+        # TIDs are unique within a reconstructed segment. Build the lookup once;
+        # rebuilding and scanning it for every episode is quadratic on active accounts.
+        event_index_by_tid={str(e['fill']['tid']):index for index,e in enumerate(events)}
         for ep in episodes:
             ep['segment']=segment_no
             ep['duration_ms']=int(ep['end_ms'])-int(ep['start_ms'])
-            tids=[str(e['fill']['tid']) for e in events]
             try:
-                first=tids.index(ep['entry_tid']);last=tids.index(ep['exit_tid'],first)
+                first=event_index_by_tid[ep['entry_tid']];last=event_index_by_tid[ep['exit_tid']]
+                if last < first:
+                    raise ValueError('Episode exit precedes its entry')
                 path_events=events[first:last+1]
                 ep['peak_abs_position']=str(max((_d(e['pre_position']).copy_abs() for e in path_events),
                     default=Decimal(0)))
                 ep['peak_abs_position']=str(max(_d(ep['peak_abs_position']),max((_d(e['post_position']).copy_abs()
                     for e in path_events),default=Decimal(0))))
-            except ValueError:ep['peak_abs_position']=None
+            except (KeyError,ValueError):ep['peak_abs_position']=None
         episode_rows.extend(episodes)
         ep_fees=defaultdict(Decimal)
         for ep in episodes:
@@ -653,6 +657,30 @@ def enrich_research_packet(packet, summary, market_details=None):
     return out
 
 
+def _compact_repeated_reference_lists(packet):
+    """Represent repeated reference lists as exact indices into the sealed pool."""
+    pool=packet.get('evidence_refs',[])
+    indices={ref:index for index,ref in enumerate(pool)}
+    observations=packet.get('observations',{})
+    sections=[(observations.get('descriptive_history_v1'), 'summary_fingerprint')]
+    sections.extend((detail,'detail_fingerprint')
+        for detail in observations.get('market_execution_detail_v1',{}).values())
+    for section,fingerprint_field in sections:
+        if not isinstance(section,dict) or not isinstance(section.get('evidence_refs'),list):
+            continue
+        refs=section['evidence_refs']
+        if any(ref not in indices for ref in refs):
+            raise ValueError('Projected evidence reference is absent from the sealed root pool')
+        section['source_'+fingerprint_field]=section.pop(fingerprint_field)
+        section['evidence_ref_indices']=[indices[ref] for ref in refs]
+        section.pop('evidence_refs')
+        section['reference_projection']={'version':'sealed-root-reference-indices-v1',
+            'reference_pool':'packet.evidence_refs','reference_count':len(refs),
+            'ordered_reference_fingerprint':fingerprint(refs),
+            'note':'All aggregates retained; each index resolves exactly to the original source reference.'}
+        section[fingerprint_field]=fingerprint(section)
+
+
 def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, policy_version, cutoff_ms,
         local_analysis_report=None, local_analysis_protocol=None):
     """Build the ordinary pilot packet, optionally binding an authorized immutable report.
@@ -729,9 +757,13 @@ def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, polic
             'economic_validation':'false; this is owner-authorized descriptive research only',
             'execution_compatibility_is_separate':True,'promotion_authorized':False,
             'admission_cutoff_ms':cutoff_ms})
+    # Keep decision identity bound to source evidence, not its display projection.
+    summary_source_fingerprint=summary['summary_fingerprint']
+    if len(canonical(packet))>225000:
+        _compact_repeated_reference_lists(packet)
     packet['research_input_fingerprint']=fingerprint({'base':packet['research_input_fingerprint'],
         'pilot_id':pilot_id,'candidate':candidate,'question':item.get('question'),
-        'descriptive_summary_fingerprint':summary['summary_fingerprint'],
+        'descriptive_summary_fingerprint':summary_source_fingerprint,
         'local_analysis_contract_fingerprint':fingerprint(local_analysis_contract) if local_analysis_contract else None,
         'prospective_report_fingerprint':semantic_fingerprint(local_analysis_report)
             if local_analysis_report is not None else None})

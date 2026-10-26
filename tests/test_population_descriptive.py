@@ -8,11 +8,37 @@ from pathlib import Path
 
 from tamtam_again.engine import canonical
 from tamtam_again.population_descriptive import (prepare_candidate_market_detail,
-    prepare_candidate_summary,prepare_inventory_execution_association,prepare_pilot_packet)
+    prepare_candidate_summary,prepare_inventory_execution_association,prepare_pilot_packet,
+    _compact_repeated_reference_lists)
 from tamtam_again.storage import Store
 
 
 class PopulationDescriptiveTests(unittest.TestCase):
+    def test_reference_projection_reconstructs_full_evidence_without_changing_aggregates(self):
+        from copy import deepcopy
+        from tamtam_again.engine import fingerprint
+        refs=['raw_observations:1#sha256:a','raw_observations:2#sha256:b','raw_observations:3#sha256:c']
+        summary={'summary_fingerprint':'source-summary','evidence_refs':refs[:],
+            'by_day':{'day1':{'fills':1000,'fee':'-5'},'day2':{'fills':2000,'fee':'2'}}}
+        detail={'detail_fingerprint':'source-detail','evidence_refs':[refs[2],refs[0]],
+            'fills':3000,'price_flow':'17.25'}
+        packet={'evidence_refs':refs[:],'observations':{'descriptive_history_v1':deepcopy(summary),
+            'market_execution_detail_v1':{'BTC':deepcopy(detail)}}}
+        _compact_repeated_reference_lists(packet)
+        for projected,original,field in [
+                (packet['observations']['descriptive_history_v1'],summary,'summary_fingerprint'),
+                (packet['observations']['market_execution_detail_v1']['BTC'],detail,'detail_fingerprint')]:
+            recovered=[packet['evidence_refs'][i] for i in projected['evidence_ref_indices']]
+            self.assertEqual(recovered,original['evidence_refs'])
+            self.assertEqual(fingerprint(recovered),projected['reference_projection']['ordered_reference_fingerprint'])
+            self.assertEqual(projected['source_'+field],original[field])
+            for key,value in original.items():
+                if key not in ('evidence_refs',field):self.assertEqual(projected[key],value)
+        before=deepcopy(packet)
+        _compact_repeated_reference_lists(packet)
+        self.assertEqual(packet,before)
+        self.assertEqual(packet['evidence_refs'],refs)
+
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         self.store=Store(Path(self.tmp.name)/'summary.sqlite3')

@@ -1,0 +1,76 @@
+{
+  "admission": {
+    "cutoff_ms": 1793009400000,
+    "owner_authorization": "User explicitly approved the frozen NEXT-DESCRIPTIVE-STUDY-PROPOSAL-20261026.json in this conversation. This authorization permits one bounded 43ad/BTC descriptive study. It does not grant economic validation, new collection, paper admission, real orders or capital use.",
+    "required_status": "credible_deep_dive_candidate",
+    "source": "research-admission-20261026"
+  },
+  "authorization_scope": "approved_descriptive_task",
+  "description": "Owner-approved, one-subject descriptive study; existing BTC archives only, deterministic evidence before at most proposal and critique.",
+  "evidence": {
+    "admission_decision_ref": "population_historical_decisions:56a03112fa26c23f4b5d823906ef21ea405bedcd36f38c75a069f4fe15224404",
+    "admission_input_fingerprint": "cc6806e1f083c50266225e9abc05ae0ddea5e74e4bd0faeb7ab194a937f63114",
+    "deterministic_evidence": "docs/continuous-research/43AD-BTC-DETERMINISTIC-20261026.json.gz",
+    "deterministic_fingerprint": "82b6d33e8efb7b8e0e7fe164f0487b93bc153a2da87d8a61529f64aaffc9bc4d",
+    "max_archive_cutoff_ms": 1793009400000,
+    "period_start_ms": 1790417400000,
+    "proposal_file": "docs/continuous-research/NEXT-DESCRIPTIVE-STUDY-PROPOSAL-20261026.json",
+    "proposal_sha256": "b01c8f3f4a1ee4b239a78def96875076c4709b6a31e583c0607bd5c2a03c398b"
+  },
+  "grants": {
+    "economic_validation": false,
+    "new_collection_authorized": false,
+    "paper_authorized": false,
+    "real_orders_authorized": false,
+    "resource_authorized": true
+  },
+  "network": "hyperliquid-mainnet",
+  "pilot_id": "43ad-btc-descriptive-20261026-v1",
+  "pilot_limits": {
+    "max_calls": 2,
+    "max_duration_ms": 240000,
+    "max_input_tokens": 160000,
+    "max_output_tokens": 10000,
+    "max_tasks": 1
+  },
+  "renewal": false,
+  "routing": {
+    "irrecoverable_data": "record a useful terminal conclusion; never wait for unavailable historical links",
+    "local_resolution": "reuse authorized archived evidence only; reanalyze only after a different sealed evidence fingerprint",
+    "unchanged_fingerprint": "do_not_retrigger",
+    "unsupported_execution_mechanism": "create a technical route; do not start paper or real orders"
+  },
+  "selection": [
+    {
+      "address": "0xbb160cb61e694570f9d570f9fcde7c61dd2143ad",
+      "candidate": "43ad",
+      "descriptive_markets": [
+        "BTC"
+      ],
+      "observability": "165055 deduplicated observed BTC fills on16 UTC days, exact source-page provenance, fees and start positions. Order placement, cancellations, quote availability and missing fills remain unknown.",
+      "paper_engine_compatibility": "not_assessed; predominant passive maker executions are not faithfully reproduced by current IOC engine.",
+      "question": "On the authorized 43ad/BTC archive, do the execution mix, signed fees, locally bounded episode price cashflows and inventory-increase/reduction patterns support a falsifiable inventory-management/passive-quoting hypothesis distinct from merely receiving maker rebates? State what is observed versus inferred, compare plausible alternatives, and specify the smallest next local calculation or missing observation that would change the conclusion. Use all aggregated evidence, retain ruptures and censored boundaries, and do not infer placement policy, private intent, live signal availability or consolidated profitability. Source-account fees are not our accessible fees. Propose no executable trading rule unless its inputs are actually available before our decision.",
+      "rank": 1,
+      "research_interest": "Observed high activity and provider-positive long-horizon curves. Deterministic local episodes have positive price cashflows before signed fees, with censored boundaries and ruptures. This is not consolidated performance validation."
+    }
+  ],
+  "task_policy": {
+    "max_input_tokens_per_call": 80000,
+    "max_model_calls": 2,
+    "max_output_tokens": 5000,
+    "max_packet_chars": 225000,
+    "max_prompt_chars": 260000,
+    "max_request_age_ms": 3600000,
+    "max_requests": 8,
+    "max_total_duration_ms": 240000,
+    "max_total_input_tokens": 160000,
+    "max_total_output_tokens": 10000,
+    "minimum_interval_ms": 86400000,
+    "model": "gpt-6.1-sol",
+    "timeout_seconds": 120,
+    "usage_mode": "subscription",
+    "version": "population-research-v1"
+  },
+  "usage_mode": "subscription",
+  "version": "research-loop-pilot-v2"
+}

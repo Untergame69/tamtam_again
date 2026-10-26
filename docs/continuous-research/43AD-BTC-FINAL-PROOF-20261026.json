@@ -1,0 +1,66 @@
+{
+  "allowance": {
+    "calls_reserved": 2,
+    "duration_ms_reported": 140296,
+    "duration_ms_reserved": 240000,
+    "input_tokens_reported": 135364,
+    "input_tokens_reserved": 160000,
+    "non_renewing": true,
+    "output_tokens_reported": 3579,
+    "output_tokens_reserved": 10000,
+    "pilot_id": "43ad-btc-descriptive-20261026-v1",
+    "tasks": [
+      {
+        "candidate": "43ad",
+        "request_id": "52a31dce1f171f51849b38c0a3760992e12d02991f07bc9276a7f1e79388ce32",
+        "state": "needs_data"
+      }
+    ]
+  },
+  "assessment_fingerprint": "05c94c63dfc672aef6d581fe85e0e80038051492c0e3c72e96693dc3ad4b34f6",
+  "current_route": "completed",
+  "descriptor_exported": true,
+  "evidence_files_sha256": {
+    "43AD-BTC-ACTIVATION-20261026.json.gz": "f9565c3465c91927c707085dba4629451ee88ccefa7ad5bdafe9e00ee1ecc478",
+    "43AD-BTC-FINAL-ASSESSMENT-20261026.json": "49cdba7d500dc6215ba88e44c6bf0fe90f9c7b1623f8d745889b68f35a614d3d",
+    "43AD-BTC-LOCAL-RESOLUTION-20261026.json.gz": "6462cce5981f8435637cbfe52a64aff38ee173c76a4729b58f7d2ef5010c9d79",
+    "43AD-BTC-LOCAL-RESOLUTION-ADDENDUM-20261026.json": "82b53d9bddbbb25de6b1810bd9aba866fe309d92bff8a5dcb86253726e17400e",
+    "43AD-BTC-REVALIDATION-20261026.json.gz": "19c721b54b1cc6dbeff6cc7c8584f8c4e7b9240f66f7057c14e58c678c4b5763"
+  },
+  "existing_v2_calls": 2,
+  "fresh_connection_replay_unchanged": true,
+  "fresh_connection_verified": true,
+  "knowledge": {
+    "created_ms": 1793025984743,
+    "economic_validation": false,
+    "knowledge_id": "a49e4ec6ed21d8de1284710d4a8d22f4ccb263ccdd30c7e31bda945b0c731807",
+    "resolution_fingerprint": "f65079063f24299fac0539370defe3a711abcbba170d52c08f3e0ee71cd8b73d",
+    "status": "recorded_descriptor"
+  },
+  "paper_session_states": [
+    {
+      "n": 2,
+      "status": "retired"
+    },
+    {
+      "n": 3,
+      "status": "suspended"
+    }
+  ],
+  "provider_decision_preserved": "needs_data",
+  "replay": {
+    "request_id": "52a31dce1f171f51849b38c0a3760992e12d02991f07bc9276a7f1e79388ce32",
+    "status": "unchanged_no_inference"
+  },
+  "replay_counts_unchanged": true,
+  "request_id": "52a31dce1f171f51849b38c0a3760992e12d02991f07bc9276a7f1e79388ce32",
+  "runtime_status_preserved": "needs_data",
+  "schema_version": "bounded-descriptive-study-final-proof-v1",
+  "shared_request_count": 11,
+  "targeted_tests": {
+    "count": 65,
+    "failed": 0,
+    "provider_calls": "simulated in tests"
+  },
+  "work_id": "a69e6b722e3d58dae30d36977365032744d06aaedcb51708a760445229e77f93"
+}

@@ -44,6 +44,9 @@ class ResolutionMemoryTests(unittest.TestCase):
             item=json.loads(self.s.connection.execute('select item_json from research_knowledge where knowledge_id=?',
                 (first['knowledge_id'],)).fetchone()[0])
             self.assertEqual(item['status'],'observed_descriptor')
+            exported=export_knowledge(self.s,as_of_ms=100,network='test',address='account',market='*')
+            self.assertIn(first['knowledge_id'],[entry['knowledge_id'] for entry in exported])
+            self.assertEqual(item['periods'][0]['market'],'ETH')
             self.assertEqual(self.s.connection.execute('select status from population_research_jobs where request_id=?',
                 (self.request,)).fetchone()[0],'needs_data')
 

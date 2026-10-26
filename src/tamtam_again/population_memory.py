@@ -141,13 +141,28 @@ def remember_resolution_descriptor(store,request_id):
     if not snapshot or not result.get('resolution_assessment_v1'):
         raise ValueError('Explicit assessment and registered local evidence required')
     synthesis=snapshot['synthesis'];periods=snapshot['periods']
+    proof_id=request_id+':'+snapshot['fingerprint']
+    previous=None
+    if store.connection.execute("select 1 from sqlite_master where name='research_knowledge'").fetchone():
+        for prior in store.connection.execute('select knowledge_id,item_json from research_knowledge '
+                'where item_json like ? order by created_ms desc,rowid desc',('%'+request_id+'%',)):
+            prior_item=json.loads(prior['item_json'])
+            if (prior_item.get('status')=='observed_descriptor' and
+                    {'kind':'population_resolution','id':proof_id} in prior_item.get('evidence_refs',[])):
+                if '*' in prior_item.get('origin_markets',[]):
+                    return {'status':'already_recorded_descriptor','knowledge_id':prior['knowledge_id'],
+                        'economic_validation':False,'resolution_fingerprint':snapshot['fingerprint']}
+                previous=prior['knowledge_id'];break
     item={'schema_version':1,'mechanism':synthesis['conclusion'],
         'origin_accounts':sorted({period['address'] for period in periods}),
-        'origin_markets':sorted({period['market'] for period in periods}),'periods':periods,
-        'evidence_refs':[{'kind':'population_resolution','id':request_id+':'+snapshot['fingerprint']}],
+        # The wildcard makes this descriptor selectable by the account-wide
+        # packet builder. Source periods remain restricted to their actual markets.
+        'origin_markets':sorted({period['market'] for period in periods}|{'*'}),'periods':periods,
+        'evidence_refs':[{'kind':'population_resolution','id':proof_id}],
         'experiments':[],'success_conditions':['Descriptive calculations only; no strategy validation.'],
         'failure_conditions':[],'execution_limits':['No execution, collection or model call authorized by this memory.'],
         'open_questions':synthesis['unknowns'],'related_hypotheses':[],
-        'status':'observed_descriptor','resolution_synthesis_v1':synthesis}
+        'status':'observed_descriptor','resolution_synthesis_v1':synthesis,
+        'memory_revision_v1':{'request_id':request_id,'supersedes':previous}}
     saved=save_knowledge(store,item)
     return {'status':'recorded_descriptor',**saved,'resolution_fingerprint':snapshot['fingerprint']}

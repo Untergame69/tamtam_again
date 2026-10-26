@@ -7,6 +7,7 @@ resource, or changes the economic-validation gate.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import gzip
 import json
 from pathlib import Path
 import sqlite3
@@ -91,7 +92,8 @@ def _performance_summary(decision: dict[str, Any]) -> dict[str, Any]:
 
 
 def _risk_summary(decision: dict[str, Any]) -> dict[str, Any]:
-    horizon = (decision.get("horizons") or {}).get("180", {})
+    horizons = decision.get("horizons")
+    horizon = horizons.get("180", {}) if isinstance(horizons, dict) else {}
     if not isinstance(horizon, dict):
         horizon = {}
     snapshots = decision.get("current_exposure_observations")
@@ -258,6 +260,31 @@ def _evaluate_record(meta: dict[str, Any], decision: dict[str, Any] | None,
     }
 
 
+def _decision_shape_error(decision: Any) -> str | None:
+    """Reject malformed nested evidence before any candidate can be admitted."""
+    if not isinstance(decision, dict):
+        return "snapshot must be an object"
+    for key in ("fill_activity", "data_quality", "horizons", "economic_research_readiness"):
+        if key in decision and decision[key] is not None and not isinstance(decision[key], dict):
+            return f"{key} must be an object"
+    fill = decision.get("fill_activity")
+    if isinstance(fill, dict) and "markets_30d_observed" in fill and fill["markets_30d_observed"] is not None:
+        markets = fill["markets_30d_observed"]
+        if not isinstance(markets, list) or any(not isinstance(item, str) for item in markets):
+            return "fill_activity.markets_30d_observed must be a list of strings"
+    horizons = decision.get("horizons")
+    if isinstance(horizons, dict) and any(value is not None and not isinstance(value, dict)
+                                          for value in horizons.values()):
+        return "horizons entries must be objects or null"
+    for key in ("risk_unknowns", "current_exposure_observations"):
+        if key in decision and decision[key] is not None and not isinstance(decision[key], list):
+            return f"{key} must be a list"
+    exposures = decision.get("current_exposure_observations")
+    if isinstance(exposures, list) and any(not isinstance(item, dict) for item in exposures):
+        return "current_exposure_observations entries must be objects"
+    return None
+
+
 def _readonly_connection(db_path: str | Path) -> sqlite3.Connection:
     path = Path(db_path).expanduser().resolve()
     if not path.is_file():
@@ -267,6 +294,27 @@ def _readonly_connection(db_path: str | Path) -> sqlite3.Connection:
     conn.execute("PRAGMA query_only=ON")
     conn.execute("BEGIN")
     return conn
+
+
+def validate_report_paths(db_path: str | Path, json_path: str | Path,
+                          markdown_path: str | Path) -> None:
+    """Prevent report writes from replacing the source DB or each other."""
+    db = Path(db_path).expanduser().resolve()
+    json_target = Path(json_path).expanduser().resolve()
+    markdown_target = Path(markdown_path).expanduser().resolve()
+
+    def same_file(left: Path, right: Path) -> bool:
+        if left == right:
+            return True
+        try:
+            return left.exists() and right.exists() and left.samefile(right)
+        except OSError:
+            return False
+
+    if same_file(db, json_target) or same_file(db, markdown_target):
+        raise ValueError("Report output path must not refer to the source database")
+    if same_file(json_target, markdown_target):
+        raise ValueError("JSON and Markdown report outputs must be different files")
 
 
 def evaluate_inventory(*, db_path: str | Path, cutoff_ms: int, network: str = "hyperliquid-mainnet",
@@ -312,7 +360,7 @@ def evaluate_inventory(*, db_path: str | Path, cutoff_ms: int, network: str = "h
             for row in rows:
                 try:
                     parsed = json.loads(row["decision_json"])
-                    decisions[row["decision_id"]] = parsed if isinstance(parsed, dict) else None
+                    decisions[row["decision_id"]] = parsed if _decision_shape_error(parsed) is None else None
                 except (TypeError, json.JSONDecodeError):
                     decisions[row["decision_id"]] = None
     finally:
@@ -425,8 +473,12 @@ def evaluate_inventory(*, db_path: str | Path, cutoff_ms: int, network: str = "h
 def render_markdown(report: dict[str, Any]) -> str:
     inventory = report["inventory"]
     sens = report["threshold_sensitivity"]
+    cutoff = datetime.fromtimestamp(report["cutoff_ms"] / 1000, timezone.utc)
+    french_months = ("janvier", "février", "mars", "avril", "mai", "juin",
+                     "juillet", "août", "septembre", "octobre", "novembre", "décembre")
+    title_date = f"{cutoff.day} {french_months[cutoff.month - 1]} {cutoff.year}"
     out = [
-        "# Proposition d’admission à la recherche descriptive — 26 octobre 2026",
+        f"# Proposition d’admission à la recherche descriptive — {title_date}",
         "",
         f"Cutoff commun : `{report['cutoff_ms']}` ms (`{report['cutoff_utc']}`). "
         f"Période de question : `[cutoff − 30 jours, cutoff]`. Réseau : `{report['network']}`.",
@@ -556,7 +608,11 @@ def render_markdown(report: dict[str, Any]) -> str:
 def write_report(report: dict[str, Any], json_path: str | Path, markdown_path: str | Path) -> None:
     target = Path(json_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    payload = (json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    if target.suffix == ".gz":
+        target.write_bytes(gzip.compress(payload, mtime=0))
+    else:
+        target.write_bytes(payload)
     md = Path(markdown_path)
     md.parent.mkdir(parents=True, exist_ok=True)
     md.write_text(render_markdown(report), encoding="utf-8")

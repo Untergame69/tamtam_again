@@ -1,10 +1,15 @@
+import gzip
 import json
 import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 
-from tamtam_again.descriptive_admission import evaluate_inventory
+from tamtam_again.descriptive_admission import (
+    evaluate_inventory,
+    validate_report_paths,
+    write_report,
+)
 
 
 CUTOFF = 1_800_000_000_000
@@ -107,6 +112,42 @@ class DescriptiveAdmissionTests(unittest.TestCase):
         self.assertIsNone(row["candidate_id"])
         self.assertNotIn("source_ref", row)
         self.assertIsNone(row["declared_performance"])
+
+    def test_malformed_nested_evidence_is_deferred_per_record(self):
+        malformed = decision("0x0000000000000000000000000000000000006666",
+                             markets=["BTC"], fills=20, days=4)
+        malformed["horizons"] = ["not-a-horizon-map"]
+        self.insert(malformed["address"], malformed["status"], malformed)
+        valid = decision("0x0000000000000000000000000000000000006667",
+                         markets=["ETH"], fills=20, days=4)
+        self.insert(valid["address"], valid["status"], valid)
+
+        rows = {row["candidate_id"]: row for row in self.evaluate()["candidate_evaluations"]}
+        self.assertEqual(rows[malformed["address"]]["disposition"], "deferred")
+        self.assertIsNone(rows[malformed["address"]]["activity"])
+        self.assertEqual(rows[valid["address"]]["disposition"], "admissible_descriptive")
+
+    def test_report_paths_reject_db_symlinks_and_output_collisions(self):
+        db_alias = Path(self.tmp.name) / "db-link.sqlite3"
+        db_alias.symlink_to(self.db)
+        with self.assertRaisesRegex(ValueError, "source database"):
+            validate_report_paths(self.db, db_alias, Path(self.tmp.name) / "report.md")
+        with self.assertRaisesRegex(ValueError, "different files"):
+            validate_report_paths(self.db, Path(self.tmp.name) / "same.out",
+                                  Path(self.tmp.name) / "same.out")
+
+    def test_gzip_report_preserves_json_and_markdown_uses_cutoff_date(self):
+        payload = decision("0x0000000000000000000000000000000000007777",
+                           markets=["BTC"], fills=20, days=4)
+        self.insert(payload["address"], payload["status"], payload)
+        report = self.evaluate()
+        json_path = Path(self.tmp.name) / "report.json.gz"
+        markdown_path = Path(self.tmp.name) / "report.md"
+        write_report(report, json_path, markdown_path)
+
+        self.assertEqual(json.loads(gzip.decompress(json_path.read_bytes())), report)
+        self.assertIn("# Proposition d’admission à la recherche descriptive — 15 janvier 2027",
+                      markdown_path.read_text(encoding="utf-8"))
 
     def test_cutoff_is_exact_and_cap_is_enforced(self):
         payload = decision("0x0000000000000000000000000000000000005555", markets=["BTC"], fills=20, days=4)

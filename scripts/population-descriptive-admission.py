@@ -9,7 +9,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from tamtam_again.descriptive_admission import evaluate_inventory, write_report
+from tamtam_again.descriptive_admission import evaluate_inventory, validate_report_paths, write_report
 
 
 def main() -> int:
@@ -24,6 +24,7 @@ def main() -> int:
     parser.add_argument("--markdown-output", required=True, type=Path)
     args = parser.parse_args()
     try:
+        validate_report_paths(args.db, args.json_output, args.markdown_output)
         report = evaluate_inventory(db_path=args.db, cutoff_ms=args.cutoff_ms,
                                     network=args.network, max_candidates=args.max_candidates,
                                     queue_size=args.queue_size)

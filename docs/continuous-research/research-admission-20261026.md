@@ -71,6 +71,6 @@ Les comptes multi-marchés ayant assez d’activité sont `needs_more_evidence`,
 
 ## Sources et limites
 
-Source : lignes `population_historical_decisions` à cutoff exact, produites par le screening historique autorisé ; aucune observation brute ni archive n’a été relue. Le cutoff n’est pas une période vierge et ne libère aucune période réservée. Le fichier JSON adjacent conserve les décisions détaillées des 2 533 comptes.
+Source : lignes `population_historical_decisions` à cutoff exact, produites par le screening historique autorisé ; aucune observation brute ni archive n’a été relue. Le cutoff n’est pas une période vierge et ne libère aucune période réservée. `research-admission-20261026.json.gz` conserve les décisions détaillées des 2 533 comptes, compressées sans modification du JSON source. Pour le lire : `gzip -dc research-admission-20261026.json.gz`.
 
 Références locales : `docs/continuous-research/ETH-DECISION-CLOSURE-20261016.md`, `docs/continuous-research/ETH-LOOP-RECHECK-20261026.md`, `docs/continuous-research/HISTORICAL-SELECTION.md`, `src/tamtam_again/population_scheduler.py`.

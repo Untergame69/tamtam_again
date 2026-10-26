@@ -16,6 +16,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from tamtam_again.engine import canonical, fingerprint
+from tamtam_again.descriptive_admission import validate_report_paths
 from tamtam_again.hype_diagnostics import start_position_chain_summary
 from tamtam_again.population_descriptive import (
     _d, _load_fills, _position_flows, prepare_candidate_market_detail,
@@ -190,6 +191,7 @@ def _episode_table(segment_events):
             fee_parts = defaultdict(Decimal)
             part_count = 0
             peak = Decimal(0)
+            local_position = Decimal(0)
             for j, event in enumerate(path):
                 fill = event['fill']
                 pre, post = _d(event['pre_position']), _d(event['post_position'])
@@ -224,9 +226,14 @@ def _episode_table(segment_events):
                     token = str(fill.get('feeToken') or 'unknown')
                     fee_parts[token] += _d(fill['fee']) * qty / full_qty if full_qty else Decimal(0)
                 part_count += 1
-                peak = max(peak, abs(pre), abs(post))
+                # A reversal also belongs to its neighbouring episode. Only the
+                # allocated leg contributes to this episode's inventory peak.
+                local_position += qty if fill['side']=='B' else -qty
+                peak = max(peak, abs(local_position))
 
             cash = sell_notional - buy_notional
+            if local_position != 0:
+                raise AssertionError('allocated bounded episode does not return to zero')
             if cash != _d(ep['price_result_quote_units']):
                 raise AssertionError(f"episode cash reconstruction mismatch: {ep['entry_tid']}..{ep['exit_tid']}")
             expected_fees = {str(k): _d(v) for k, v in ep['signed_fees_by_token'].items()}
@@ -338,6 +345,14 @@ def _sealed_fingerprint(store, request_id):
 
 def build(store, request_id=REQUEST_ID):
     sealed = _sealed_fingerprint(store, request_id)
+    metadata=store.connection.execute(
+        "select count(*) pages,coalesce(sum(record_count),0) records from raw_observations "
+        "where network=? and entity_type='account' and entity_id=? "
+        "and source='hyperliquid-population-rest-v1' and endpoint in ('userFills','userFillsByTime') "
+        "and observed_at<=? and (window_end_ms is null or window_end_ms<=?)",
+        ('hyperliquid-mainnet',ADDRESS,datetime.fromtimestamp(CUTOFF_MS/1000,timezone.utc).isoformat(timespec='milliseconds'),CUTOFF_MS)).fetchone()
+    if metadata['pages']>500 or metadata['records']>250000:
+        raise ValueError('approved local study exceeds 500-page / 250000-record processing cap')
     detail = prepare_candidate_market_detail(store, 'hyperliquid-mainnet', ADDRESS,
         cutoff_ms=CUTOFF_MS, market=MARKET)
     if detail['detail_fingerprint'] != sealed['sealed_source_detail_fingerprint']:
@@ -541,14 +556,14 @@ def main():
     parser.add_argument('--artifact', type=Path, required=True)
     parser.add_argument('--addendum', type=Path, required=True)
     args = parser.parse_args()
+    validate_report_paths(args.db,args.artifact,args.addendum)
     store = ReadOnlyStore(args.db)
     try:
         artifact, addendum = build(store, args.request_id)
     finally:
         store.close()
     args.artifact.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(args.artifact, 'wt', encoding='utf-8', compresslevel=9, newline='\n') as handle:
-        handle.write(canonical(artifact) + '\n')
+    args.artifact.write_bytes(gzip.compress((canonical(artifact)+'\n').encode('utf-8'),compresslevel=9,mtime=0))
     args.addendum.parent.mkdir(parents=True, exist_ok=True)
     args.addendum.write_text(canonical(addendum) + '\n', encoding='utf-8')
     print(json.dumps({

@@ -232,6 +232,8 @@ class PopulationDescriptiveTests(unittest.TestCase):
         self.assertEqual(opening['signed_fees_by_token']['USDC'],'-0.01')
         self.assertEqual(opening['buy_quantity'],'0.5')
         self.assertEqual(opening['sell_quantity'],'0.5')
+        self.assertEqual(closing['peak_abs_position'],'1')
+        self.assertEqual(opening['peak_abs_position'],'0.5')
 
 
 if __name__=='__main__':unittest.main()

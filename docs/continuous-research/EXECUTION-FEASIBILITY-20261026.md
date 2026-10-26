@@ -2,13 +2,13 @@
 
 ## Décision
 
-**Aucune nouvelle expérience économique n’est assez définie pour être lancée maintenant.** Les trois voies répondent à des questions différentes et aucune ne donne aujourd’hui une mesure de PnL net comparable avec un modèle de fill et des coûts suffisamment établis :
+**Aucune expérience supplémentaire n’est autorisée par cette mission. Les éléments examinés ne justifient pas encore de choisir une nouvelle expérience économique.** Les trois voies répondent à des questions différentes ; l'absence de certaines mesures ne doit pas devenir une interdiction générale d'étudier des hypothèses sous scénarios explicites :
 
-- **Après réception REST**, on peut mesurer un markout conditionné par la disponibilité tardive du fill. On ne peut pas le transformer en signal de copie ou en PnL.
+- **Après réception REST**, on peut définir un signal tardif, puis simuler nos propres décisions et prix si les données le permettent. Les markouts existants ne constituent ni cette simulation ni son PnL, et n'établissent pas ici un avantage exploitable.
 - **Après réception WebSocket archivée**, le paper sait déclencher une règle de suivi et simuler un IOC. Le délai de 5 s et le slippage sont des paramètres, pas une latence d’ordre mesurée; le résultat HYPE récent est court, négatif et encore exposé.
 - **Maker passif / rebates**, le code n’a pas de modèle de fill positif : le modèle conservateur rend zéro fill. Une cotation touchée ou une taille visible ne donne pas la priorité de file.
 
-La seule voie techniquement esquissable est le paper IOC post-WebSocket déjà gelé pour a880/HYPE. Les versions v4/v5 n’ont toutefois pas démontré une session économique closeable, et leur réexécution exigerait une nouvelle période prospective. Je ne recommande pas de consommer cette période avant d’avoir les frais de notre compte au cutoff et une mesure du délai entre la réception du signal et l’instant où l’exécution virtuelle est censée avoir lieu. Une nouvelle période ne peut pas réutiliser l’historique ou les fenêtres déjà réservés.
+La voie la plus proche des capacités déjà exercées est le paper IOC post-WebSocket pour a880/HYPE ; ce constat porte sur les parcours examinés, pas sur toutes les stratégies possibles. Les versions v4/v5 n’ont toutefois pas démontré une session avec clôture complète. Une nouvelle évaluation prospective demanderait une fenêtre distincte. Pour une étude de sensibilité préalable, des frais publics et plusieurs délais explicitement supposés sont utilisables ; le tarif réel de notre compte et les délais d'ordre non mesurés restent alors inconnus. Un résultat sous ces hypothèses ne prouve pas une exécution réelle.
 
 ## État vérifié et preuves conservées
 
@@ -71,9 +71,11 @@ Pour une échelle de coûts seulement, 2,484 bp représente `0,02484 USDC` sur 1
 
 ## Plus petit manque concret et condition de reprise
 
-Le manque commun n’est pas un nouveau scan historique. C’est une **observation prospective horodatée d’une instruction IOC complète** qui lie, dans le même épisode : réception WebSocket non-snapshot, règle/taille décidées, quote localement disponible, heure simulée d’envoi, réponse/fill/partiel ou expiration, frais de notre compte, position restante et éventuel funding. L’engine actuel contient l’intention, le délai et le prix virtuel, mais pas un aller-retour venue mesuré; la collecte des fills de source ne produit pas ces champs.
+Pour une future expérience IOC, la trace utile doit lier, dans le même épisode : réception WebSocket non-snapshot, règle/taille décidées, quote localement disponible, délai choisi, décision simulée de fill/partiel ou expiration, coûts, position restante et funding disponible. L’engine actuel contient plusieurs de ces éléments ; il faut vérifier leurs liens avant d'ajouter une collecte. Un aller-retour d'ordre réel auprès de la venue n'est pas un préalable au paper. Sans lui, le délai de soumission et le modèle de fill demeurent des hypothèses dont on doit mesurer la sensibilité. Aucun ordre réel n'est proposé pour combler cette limite.
 
-Avant de rouvrir la question, il faut aussi figer la question économique (valeur incrémentale du suivi par rapport au cash et au HYPE hold), la fenêtre prospective nouvelle, le taux `userFees` de notre compte daté au cutoff, et le traitement à plat des résidus. La règle de signal de a880 v5 est déjà spécifiée; aucune stratégie nouvelle n’est proposée ici. Les périodes v4/v5 et 67f7 restent fermées et leurs preuves intactes.
+Avant une nouvelle expérience, il faut figer la question économique (valeur incrémentale du suivi par rapport au cash et au HYPE hold), la fenêtre future, les frais observés ou les scénarios de frais, et le traitement des résidus. Le taux `userFees` de notre compte peut remplacer un scénario lorsqu'il est disponible ; son absence n'empêche pas un calcul hors ligne avec hypothèses affichées. La règle de signal de a880 v5 est déjà spécifiée ; aucune stratégie nouvelle n’est proposée ici. Les périodes v4/v5 et 67f7 restent fermées et leurs preuves intactes.
+
+Revue de consolidation du 26 octobre : les pages officielles [Fees](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/fees), [Order book](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/order-book) et [Order types](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/order-types) ont été relues. Les taux de base utilisés dans les scénarios, la priorité prix-temps et les options ALO/IOC y sont documentés. Ces règles ne fournissent ni notre probabilité de fill passif ni une mesure de notre latence d'ordre.
 
 Une décision future pourrait changer si cette observation démontre un résultat net positif **après** frais propres au compte, spread, slippage et funding, avec une clôture déterminée, et sans dépendre d’un seul bloc temporel. Une session à net négatif, un résidu non liquidable, des frais/timestamps inconnus ou une couverture trop faible laisserait la voie au statut rejeté ou indéterminé. Ces critères décrivent un seuil de décision pour une étude ultérieure; ils n’autorisent ni collecte, ni paper, ni ordre dans cette mission.
 

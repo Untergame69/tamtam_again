@@ -1,0 +1,103 @@
+{
+  "admission_counts": {
+    "admissible_descriptive": 22,
+    "deferred": 2190,
+    "excluded": 1,
+    "needs_more_evidence": 320
+  },
+  "admission_cutoff_ms": 1793009400000,
+  "artifact_sha256": {
+    "docs/continuous-research/archive-coverage-20261026/manifest.json": "e6866bc3b9013c3a1dccee6e3c86d10e0d215a580bd7a213de015bbc87ccb66f",
+    "docs/continuous-research/research-admission-20261026.json.gz": "d55c25c187b38b451481154525e67ffe77180b227b6b5c4579bbdf849ed3bf58"
+  },
+  "base_commit": "b579de1b942ae8ace544f8d2fde0beb95cbd3750",
+  "current_queue": [
+    {
+      "n": 4,
+      "status": "completed"
+    },
+    {
+      "n": 3,
+      "status": "technical_required"
+    },
+    {
+      "n": 9,
+      "status": "waiting_data"
+    }
+  ],
+  "database_access": "mode=ro; query_only=on; one read transaction; registry queries only",
+  "mission_commits": {
+    "admission": "5c6d1f9",
+    "coverage": "e1beb28",
+    "cycle_verification": "e36fc83",
+    "execution": "f95bf25"
+  },
+  "observed_at_utc": "2026-10-26T13:47:12.272220+00:00",
+  "paper_sessions": [
+    {
+      "n": 2,
+      "status": "retired"
+    },
+    {
+      "n": 3,
+      "status": "suspended"
+    }
+  ],
+  "pilot_v2": {
+    "allowlisted_accounts": [
+      "0xa880d6cc607a05ea617307ab3b0d335e8d8424ee",
+      "0x67f7aa8fb95c47e6ea9c517b623e0701cbf9d9ba",
+      "0xbe504fbfc1ad30708a79f5821ed5ea6eef1a877b"
+    ],
+    "calls": [
+      {
+        "known_input_tokens": 96994,
+        "known_output_tokens": 2617,
+        "n": 2,
+        "state": "result_validated"
+      }
+    ],
+    "limits": {
+      "max_calls": 6,
+      "max_duration_ms": 720000,
+      "max_input_tokens": 480000,
+      "max_output_tokens": 30000,
+      "max_tasks": 3
+    },
+    "pilot_id": "research-loop-pilot-20261014-v2",
+    "tasks": [
+      {
+        "candidate": "67f7",
+        "n": 1,
+        "state": "hypothesis_recorded"
+      },
+      {
+        "candidate": "a880",
+        "n": 1,
+        "state": "needs_data"
+      }
+    ]
+  },
+  "proposed_candidate_population_jobs": 0,
+  "review_fix_commits": {
+    "admission": "c5b52a1",
+    "coverage": "c14069a",
+    "cycle_verification": "c38df57"
+  },
+  "schema_version": "research-consolidation-evidence-v1",
+  "verification": {
+    "combined_research_suite": {
+      "duration_seconds": 27.4,
+      "failures": 0,
+      "tests": 85
+    },
+    "coverage_suite": {
+      "duration_seconds": 0.036,
+      "failures": 0,
+      "tests": 13
+    },
+    "live_database_writes_by_consolidation": 0,
+    "live_model_calls_by_consolidation": 0,
+    "provider_responses": "simulated in integration tests"
+  }
+}

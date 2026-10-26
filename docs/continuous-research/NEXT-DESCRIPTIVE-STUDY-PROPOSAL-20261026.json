@@ -1,0 +1,79 @@
+{
+  "alternatives": [
+    {
+      "effect": "Separate explicit descriptive permission for 43ad/BTC with this finite envelope; preserve all prior counters and economic gates.",
+      "option": "authorize_one_candidate_pilot",
+      "recommended": true
+    },
+    {
+      "effect": "Define an allowlist/rotation and total resource envelope first; broader policy change needs a separate owner decision.",
+      "option": "authorize_general_descriptive_admission",
+      "recommended": false
+    },
+    {
+      "effect": "Continue existing deterministic collection/screening only; no new 43ad AI study.",
+      "option": "keep_current_permissions",
+      "recommended": false
+    }
+  ],
+  "candidate": {
+    "address": "0xbb160cb61e694570f9d570f9fcde7c61dd2143ad",
+    "alias": "43ad",
+    "market": "BTC",
+    "network": "hyperliquid-mainnet"
+  },
+  "created_at_utc": "2026-10-26T13:47:12.272220+00:00",
+  "first_action_after_authorization": "Run bounded deterministic daily-fill and request-coverage summary from authorized existing archives. No IA is needed for this tabulation. Only propose a mechanism question if evidence warrants it.",
+  "grants": {
+    "economic_validation": false,
+    "new_collection_authorized": false,
+    "paper_authorized": false,
+    "real_orders_authorized": false,
+    "resource_authorized": false
+  },
+  "not_an_executable_policy": true,
+  "proposed_resource_envelope": {
+    "call_condition": "No model call for calculations available deterministically; at most proposal and critique only if a mechanism question is justified and newly authorized.",
+    "max_calls": 2,
+    "max_duration_seconds_per_call": 120,
+    "max_input_tokens_per_call": 80000,
+    "max_output_tokens_per_call": 5000,
+    "max_packet_chars": 225000,
+    "max_prompt_chars": 260000,
+    "max_tasks": 1,
+    "max_total_duration_seconds": 240,
+    "max_total_input_tokens": 160000,
+    "max_total_output_tokens": 10000,
+    "renewal": false,
+    "scope": "one dedicated non-renewing descriptive task, if the owner chooses to authorize it",
+    "usage_mode": "subscription",
+    "usd_reservation": null
+  },
+  "question": "Pour BTC, quelle est la distribution par jour UTC des 165055 fills observés pendant les 30 jours avant le cutoff 1793009400000, et quelle couverture des requêtes est réellement documentée ? Garder les limites de pages visibles et ne pas attribuer la courbe du compte à ce marché.",
+  "safety_preconditions": [
+    "Recheck period/account authorization before raw payload reads.",
+    "Verify source fingerprints and cutoff; reject stale or mismatched proposal rather than silently broaden scope.",
+    "Stop with a precise reason when source coverage or supported adapters are insufficient."
+  ],
+  "schema_version": "next-descriptive-study-proposal-v1",
+  "selection_rationale": {
+    "activity": {
+      "active_days_30d_observed_lower_bound": 16,
+      "fills_30d_observed_lower_bound": 165055,
+      "observed_markets": 1,
+      "quality": "frequent_activity_observed_lower_bound"
+    },
+    "declared_performance_status": "positive_declared",
+    "note": "First proposed activity-ranked subject, also provider-positive on measured 90/180d horizons. Not economically validated; not proven net profitable. Counts are archived lower bounds."
+  },
+  "selection_source": {
+    "artifact": "docs/continuous-research/research-admission-20261026.json.gz",
+    "artifact_sha256": "d55c25c187b38b451481154525e67ffe77180b227b6b5c4579bbdf849ed3bf58",
+    "cutoff_ms": 1793009400000,
+    "decision_input_fingerprint": "cc6806e1f083c50266225e9abc05ae0ddea5e74e4bd0faeb7ab194a937f63114",
+    "decision_ref": "population_historical_decisions:56a03112fa26c23f4b5d823906ef21ea405bedcd36f38c75a069f4fe15224404",
+    "period_start_ms": 1790417400000
+  },
+  "status": "requires_owner_decision_not_activated",
+  "why_owner_decision_is_needed": "Current v2 allowance is limited to a880/67f7/be504; the goal forbids changing budgets or economic/admission policies. Remaining numeric v2 capacity does not authorize 43ad."
+}

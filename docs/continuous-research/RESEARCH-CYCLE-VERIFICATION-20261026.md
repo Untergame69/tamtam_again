@@ -8,11 +8,13 @@ instructions fournies pour cette mission ont été suivies.
 ## Résultat de l’intégration isolée
 
 Le nouveau test `tests/test_population_research_cycle_integration.py` utilise une
-base SQLite temporaire. Il insère des observations brutes de test, puis appelle
-les points d’entrée habituels : l’observateur construit et persiste le rapport,
-la file prépare le paquet et le contrat, le scellement v2 autorise la tâche, le
-runtime valide deux réponses fournisseur simulées, et le scheduler résout les
-références locales et actualise la mémoire.
+base SQLite et un répertoire d’artefacts temporaires. Il insère des observations
+brutes de test, puis appelle les points d’entrée habituels : l’observateur
+construit et persiste le rapport, la file prépare le paquet et le contrat, le
+scellement v2 autorise la tâche, le runtime valide deux réponses fournisseur
+simulées, et le scheduler résout les références locales et actualise la mémoire.
+Le test compare l’artefact gzip écrit, y compris au rejeu, à l’enregistrement
+SQLite correspondant ; ces écritures restent dans son dossier temporaire.
 
 Le chemin observé est :
 
@@ -62,7 +64,7 @@ PYTHONPATH=src python3 -m unittest \
   tests.test_research_work_queue -v
 ```
 
-Résultat : **62 tests réussis** en 22,33 s. `git diff --check` passe.
+Résultat : **62 tests réussis** en 22,42 s. `git diff --check` passe.
 
 ## État opérationnel lu séparément
 

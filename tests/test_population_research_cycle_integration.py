@@ -5,6 +5,7 @@ production observer builds the report; the queue and pilot build/seal the
 packet and contract; provider replies alone are simulated.
 """
 import json
+import gzip
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -38,6 +39,8 @@ class ResearchCycleIntegrationTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'cycle.sqlite3'
         self.store = Store(self.path)
+        self.artifact_dir = Path(self.tmp.name) / 'artifacts'
+        self.written_artifacts = []
         init_research(self.store)
         self.store.connection.execute('''create table account_scope_reports (
             report_id text, network text, address text, available_ms integer, payload_json text)''')
@@ -60,6 +63,13 @@ class ResearchCycleIntegrationTests(unittest.TestCase):
     def tearDown(self):
         self.store.close()
         self.tmp.cleanup()
+
+    def _write_test_artifact(self, _repo_path, artifact):
+        """Keep resolver output inside this test's disposable fixture."""
+        path = self.artifact_dir / Path(_repo_path).name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(gzip.compress(canonical(artifact).encode('utf-8'), mtime=0))
+        self.written_artifacts.append(path)
 
     def _add_admitted_pilot_candidate(self, candidate, *, available_ms):
         item = next(row for row in PILOT_POLICY['selection'] if row['candidate'] == candidate)
@@ -185,10 +195,19 @@ class ResearchCycleIntegrationTests(unittest.TestCase):
             {'request_id': request_id, 'state': 'needs_data', 'required_data': ['old waiting route']},
             status='waiting_data', reason='pre-resolution route', clock_ms=now_ms())
         with patch('tamtam_again.population_local_archive_resolution._write_artifact',
-                side_effect=lambda path, artifact: (Path(self.tmp.name) / Path(path).name).write_bytes(
-                    __import__('gzip').compress(canonical(artifact).encode(), mtime=0))):
+                side_effect=self._write_test_artifact) as artifact_writer:
             scheduled = scheduler_tick(self.store, NETWORK, RESEARCH_POLICY,
                 dispatch=False, max_jobs=1)
+        self.assertEqual(artifact_writer.call_count, 1)
+        self.assertEqual(len(self.written_artifacts), 1)
+        artifact_path = self.written_artifacts[0]
+        self.assertTrue(artifact_path.is_file())
+        artifact = json.loads(gzip.decompress(artifact_path.read_bytes()))
+        self.assertEqual(artifact['analysis_fingerprint'], scheduled['local_resolutions'][0]['artifact_fingerprint'])
+        persisted_artifact = self.store.connection.execute(
+            'select artifact_json from population_local_archive_resolutions where request_id=?',
+            (request_id,)).fetchone()
+        self.assertEqual(artifact, json.loads(persisted_artifact['artifact_json']))
         self.assertEqual(scheduled['local_resolutions'][0]['status'], 'prepared')
         self.assertEqual(scheduled['local_resolutions'][0]['model_calls'], 0)
         self.assertEqual(scheduled['processed'], [])
@@ -260,11 +279,18 @@ class ResearchCycleIntegrationTests(unittest.TestCase):
 
         counts_before = self.store.connection.execute('select count(*) from research_knowledge').fetchone()[0]
         artifact_table = self.store.connection.execute('select count(*) from population_local_archive_resolutions').fetchone()[0]
-        with patch('tamtam_again.population_runtime.call', side_effect=AssertionError('replay must not call provider')), \
+        with patch('tamtam_again.population_local_archive_resolution._write_artifact',
+                side_effect=self._write_test_artifact) as replay_artifact_writer, \
+                patch('tamtam_again.population_runtime.call', side_effect=AssertionError('replay must not call provider')), \
                 patch('tamtam_again.population_local_archive_resolution._fills', side_effect=AssertionError('replay must not reload fills')), \
                 patch('tamtam_again.population_local_archive_resolution._quotes', side_effect=AssertionError('replay must not reload quotes')):
             replay = scheduler_tick(self.store, NETWORK, RESEARCH_POLICY,
                 dispatch=False, max_jobs=1, resume_local_resolution=request_id)
+        self.assertEqual(replay_artifact_writer.call_count, 1)
+        self.assertEqual(len(self.written_artifacts), 2)
+        self.assertTrue(all(path.parent == self.artifact_dir for path in self.written_artifacts))
+        self.assertEqual(self.written_artifacts[0], self.written_artifacts[1])
+        self.assertEqual(json.loads(gzip.decompress(self.written_artifacts[1].read_bytes())), artifact)
         self.assertEqual(replay['local_resolutions'][0]['status'], 'unchanged')
         self.assertFalse(replay['local_resolutions'][0]['recalculated'])
         self.assertEqual(self.store.connection.execute('select count(*) from research_knowledge').fetchone()[0], counts_before)

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from tests.test_population_runtime import RuntimeTests
 from tamtam_again.engine import canonical, fingerprint
-from tamtam_again.population_memory import remember
+from tamtam_again.population_memory import remember,remember_resolution_descriptor
 from tamtam_again.population_packet import packet_for_account as build_packet
 from tamtam_again.research_memory import export_knowledge
 from tamtam_again.research_work_queue import enqueue, tick as queue_tick
@@ -14,6 +14,44 @@ from tamtam_again.research_work_queue import enqueue, tick as queue_tick
 class ResolutionMemoryTests(unittest.TestCase):
     setUp=RuntimeTests.setUp
     tearDown=RuntimeTests.tearDown
+
+    def seed_descriptor_resolution(self, *, wrong_source=False):
+        self.seed()
+        packet=json.loads(self.s.connection.execute('select packet_json from population_research_jobs where request_id=?',
+            (self.request,)).fetchone()[0])
+        artifact={'request_id':self.request,'network':'test','address':'account','market':'ETH',
+            'source_packet_fingerprint':'forged' if wrong_source else packet['fingerprint'],
+            'window':{'start_ms':1,'end_ms':9,'archive_receipt_cutoff_ms':9},
+            'next_action':{'remaining_question':'placement remains unknown','automatic_action':'stop bounded study'}}
+        digest=fingerprint(artifact)
+        self.s.connection.execute('create table population_descriptive_study_resolutions '
+            '(request_id text,artifact_fingerprint text,artifact_json text,created_ms integer)')
+        self.s.connection.execute('insert into population_descriptive_study_resolutions values(?,?,?,?)',
+            (self.request,digest,canonical(artifact),50))
+        self.result['local_archive_resolutions_v1']={'descriptor':{'state':'complete','artifact_fingerprint':digest,
+            'report_input_fingerprint':packet['research_input_fingerprint']}}
+        self.result['resolution_assessment_v1']['artifact_fingerprints']=[digest]
+        self.result['critique']['decision']='needs_data'
+        self.s.connection.execute("update population_research_jobs set status='needs_data',result_json=? where request_id=?",
+            (canonical(self.result),self.request));self.s.connection.commit()
+
+    def test_verified_local_descriptor_preserves_ia_needs_data_and_replays(self):
+        with patch('tamtam_again.research_memory.clock',return_value=100),patch('tamtam_again.population_runtime.call') as call:
+            self.seed_descriptor_resolution()
+            first=remember_resolution_descriptor(self.s,self.request)
+            again=remember_resolution_descriptor(self.s,self.request)
+            self.assertEqual(first['knowledge_id'],again['knowledge_id']);call.assert_not_called()
+            item=json.loads(self.s.connection.execute('select item_json from research_knowledge where knowledge_id=?',
+                (first['knowledge_id'],)).fetchone()[0])
+            self.assertEqual(item['status'],'observed_descriptor')
+            self.assertEqual(self.s.connection.execute('select status from population_research_jobs where request_id=?',
+                (self.request,)).fetchone()[0],'needs_data')
+
+    def test_descriptor_resolution_cannot_change_sealed_source(self):
+        with patch('tamtam_again.research_memory.clock',return_value=100):
+            self.seed_descriptor_resolution(wrong_source=True)
+            with self.assertRaisesRegex(ValueError,'sealed source task'):
+                remember_resolution_descriptor(self.s,self.request)
 
     def seed(self):
         self.result={'proposal':{'hypothesis':{'mechanism':'inventory association','markets':['ETH'],

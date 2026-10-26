@@ -79,7 +79,8 @@ def resolution_snapshot(store,request_id,result):
     artifacts=[];periods=[]
     for ref in refs:
         found=None
-        for table in ('population_local_archive_resolutions','population_eth_existing_window_resolutions'):
+        for table in ('population_local_archive_resolutions','population_eth_existing_window_resolutions',
+                      'population_descriptive_study_resolutions'):
             if not store.connection.execute("select 1 from sqlite_master where name=?",(table,)).fetchone():continue
             row=store.connection.execute(f'select artifact_json,created_ms from {table} where request_id=? and artifact_fingerprint=?',
                 (request_id,ref['artifact_fingerprint'])).fetchone()
@@ -88,6 +89,22 @@ def resolution_snapshot(store,request_id,result):
                 checked=dict(artifact); checked.pop('analysis_fingerprint',None)
                 if fingerprint(checked)!=ref['artifact_fingerprint']:raise ValueError('Local resolution artifact fingerprint mismatch')
                 if row['created_ms']>now_ms():raise ValueError('Local resolution is not yet available')
+                if table=='population_descriptive_study_resolutions':
+                    job=store.connection.execute('select network,address,packet_json from population_research_jobs where request_id=?',
+                        (request_id,)).fetchone()
+                    packet=json.loads(job['packet_json']) if job else {}
+                    window=artifact.get('window',{})
+                    cutoff=packet.get('pilot_research',{}).get('admission_cutoff_ms',packet.get('available_ms'))
+                    if (not job or artifact.get('request_id')!=request_id
+                            or artifact.get('network')!=job['network'] or artifact.get('address')!=job['address']
+                            or artifact.get('market') not in packet.get('observations',{}).get('markets',[])
+                            or artifact.get('source_packet_fingerprint')!=packet.get('fingerprint')
+                            or ref.get('report_input_fingerprint')!=packet.get('research_input_fingerprint')
+                            or type(cutoff) is not int
+                            or type(window.get('start_ms')) is not int or type(window.get('end_ms')) is not int
+                            or not 0<=window['start_ms']<window['end_ms']<=cutoff
+                            or window.get('archive_receipt_cutoff_ms',window['end_ms'])>cutoff):
+                        raise ValueError('Descriptive resolution differs from its sealed source task')
                 found=artifact;break
         if found is None:raise ValueError('Registered local resolution artifact required')
         w=found['window']
@@ -111,3 +128,26 @@ def resolution_snapshot(store,request_id,result):
             'next_action':[a['next_action'] for a in artifacts]}
     semantic={'artifacts':artifacts,'synthesis':synthesis,'periods':periods}
     return {**semantic,'fingerprint':fingerprint(semantic)}
+
+
+def remember_resolution_descriptor(store,request_id):
+    """Remember verified local observations without upgrading an IA needs_data result."""
+    row=store.connection.execute('select network,address,status,result_json from population_research_jobs where request_id=?',
+        (request_id,)).fetchone()
+    if not row or row['status'] in ('sealed','running'):
+        raise ValueError('Terminal research result required before remembering local observations')
+    result=json.loads(row['result_json'])
+    snapshot=resolution_snapshot(store,request_id,result)
+    if not snapshot or not result.get('resolution_assessment_v1'):
+        raise ValueError('Explicit assessment and registered local evidence required')
+    synthesis=snapshot['synthesis'];periods=snapshot['periods']
+    item={'schema_version':1,'mechanism':synthesis['conclusion'],
+        'origin_accounts':sorted({period['address'] for period in periods}),
+        'origin_markets':sorted({period['market'] for period in periods}),'periods':periods,
+        'evidence_refs':[{'kind':'population_resolution','id':request_id+':'+snapshot['fingerprint']}],
+        'experiments':[],'success_conditions':['Descriptive calculations only; no strategy validation.'],
+        'failure_conditions':[],'execution_limits':['No execution, collection or model call authorized by this memory.'],
+        'open_questions':synthesis['unknowns'],'related_hypotheses':[],
+        'status':'observed_descriptor','resolution_synthesis_v1':synthesis}
+    saved=save_knowledge(store,item)
+    return {'status':'recorded_descriptor',**saved,'resolution_fingerprint':snapshot['fingerprint']}

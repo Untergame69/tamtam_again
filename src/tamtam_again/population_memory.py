@@ -37,6 +37,17 @@ def remember(store,request_id):
         item['origin_accounts']=sorted(set(item['origin_accounts'])|set(inherited['origin_accounts']))
         item['origin_markets']=sorted(set(item['origin_markets'])|set(inherited['origin_markets']))
         item['evidence_refs'].append({'kind':'knowledge','id':entry['knowledge_id']})
+    # Lifecycle feedback is a distinct typed proof, including all inherited
+    # accounts and evaluated periods. Never collapse it to this packet's account.
+    from .research_evaluation import validate_feedback_reference
+    for entry in packet.get('research_evaluation_memory', []):
+        verified=validate_feedback_reference(store,entry['event_id'],entry['periods'],now_ms())
+        if verified!=entry:raise ValueError('Packet evaluation feedback differs from registered authorized proof')
+        for period in verified['periods']:
+            if period not in item['periods']:item['periods'].append(period)
+        item['origin_accounts']=sorted(set(item['origin_accounts'])|{p['address'] for p in verified['periods']})
+        item['origin_markets']=sorted(set(item['origin_markets'])|{p['market'] for p in verified['periods']})
+        item['evidence_refs'].append({'kind':'research_evaluation','id':entry['event_id']})
     # Keep the original import link immutable; later evidence is a new item.
     resolution=resolution_snapshot(store,request_id,result)
     if resolution and not previous:

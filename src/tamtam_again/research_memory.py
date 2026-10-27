@@ -99,6 +99,9 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
             window=json.loads(row['plan_json'])[row['stage']]
             period={'network':row['network'],'address':row['address'],'market':row['coin'],**window}
             if period not in item['periods'] or not authorized_period(store,period,now):raise ValueError('Evaluation evidence is not an authorized declared period')
+        elif proof['kind']=='research_evaluation':
+            from .research_evaluation import validate_feedback_reference
+            validate_feedback_reference(store,proof['id'],item['periods'],now)
         elif proof['kind']=='raw_observation':
             row=store.connection.execute('select network,source,entity_type,entity_id,endpoint,observed_at,window_start_ms,window_end_ms from raw_observations where observation_id=?',(proof['id'],)).fetchone()
             if not row or row['source']!='hyperliquid-population-rest-v1' or row['entity_type']!='account':
@@ -125,6 +128,12 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
                     json.loads(inherited['item_json'])['periods']!=entry['item']['periods'] or
                     {'kind':'knowledge','id':entry['knowledge_id']} not in item['evidence_refs']):
                     raise ValueError('Population inherited knowledge proof must remain available and explicit')
+            for entry in packet.get('research_evaluation_memory',[]):
+                from .research_evaluation import validate_feedback_reference
+                registered=validate_feedback_reference(store,entry['event_id'],entry['periods'],packet['available_ms'])
+                if (registered!=entry or any(p not in item['periods'] for p in registered['periods']) or
+                    {'kind':'research_evaluation','id':entry['event_id']} not in item['evidence_refs']):
+                    raise ValueError('Population evaluation feedback proof and complete periods must remain explicit')
             inherited_periods=[p for entry in packet.get('research_memory',[]) for p in entry['item']['periods']]
             if any(p not in item['periods'] for p in inherited_periods):
                 raise ValueError('Population packet inherited periods must remain explicit')

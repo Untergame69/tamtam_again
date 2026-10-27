@@ -54,14 +54,14 @@ def reserve(store, request_id, policy, profile, clock):
         '(request_id text primary key,allocation_policy_id text not null,period_start_ms integer not null,'
         'reserved_ms integer not null,contract_fingerprint text not null,scope_json text not null)')
     contract = fingerprint({'policy': policy, 'profile': profile})
+    period = task['authorized_ms'] // DAY_MS * DAY_MS
+    if not task['authorized_ms'] <= clock < period + DAY_MS:
+        raise ValueError('Continuous plan allocation expired; no transfer into a renewed day')
     previous = store.connection.execute('select contract_fingerprint from continuous_plan_reservations where request_id=?', (request_id,)).fetchone()
     if previous:
         if previous[0] != contract:
             raise ValueError('Continuous plan reservation is immutable')
         return
-    period = task['authorized_ms'] // DAY_MS * DAY_MS
-    if not task['authorized_ms'] <= clock < period + DAY_MS:
-        raise ValueError('Continuous plan allocation expired; no transfer into a renewed day')
     used = store.connection.execute('select count(*) from continuous_plan_reservations where allocation_policy_id=? and period_start_ms=?',
         (scope['allocation_policy_id'], period)).fetchone()[0]
     if used >= allowance['max_plans_per_period']:
@@ -75,6 +75,15 @@ def reserve(store, request_id, policy, profile, clock):
             terminal = store.connection.execute("select 1 from experiment_selections s join experiment_families f using(family_id) where f.plan_id=? and s.status='no_candidate'", (plan_id,)).fetchone()
         if not terminal and store.connection.execute("select 1 from sqlite_master where name='research_window_releases'").fetchone():
             terminal = store.connection.execute('select 1 from research_window_releases where plan_id=? group by plan_id having count(distinct stage)=2', (plan_id,)).fetchone()
+        if not terminal:
+            data=json.loads(row[0])
+            if clock >= data['final']['end_ms'] and store.connection.execute("select 1 from sqlite_master where name='research_evaluation_events'").fetchone():
+                request=data.get('population_origin',{}).get('request_id')
+                for event_row in store.connection.execute('select event_json from research_evaluation_events where request_id=? and created_ms<=? order by created_ms desc limit 64', (request,clock)):
+                    event=json.loads(event_row[0])
+                    if event.get('state')=='technical_required' and event.get('evidence',{}).get('plan_id')==plan_id:
+                        terminal=True
+                        break
         if not terminal:
             active += 1
     if active >= allowance['max_concurrent_plans']:

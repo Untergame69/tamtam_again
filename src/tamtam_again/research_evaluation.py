@@ -289,3 +289,22 @@ def export_memory(store, network, address, as_of_ms, *, limit=8):
                 'periods': periods, 'item': json.loads(body[0]),
                 'evidence_refs': [{'kind': 'research_evaluation', 'id': row['event_id']}]})
     return sorted(records, key=lambda r: (-r['available_ms'], r['event_id']))[:limit]
+
+
+def validate_feedback_reference(store, event_id, periods, as_of_ms):
+    """Resolve one typed proof through the same causal export authorization."""
+    from .research_jobs import table
+    if not _exists(store, 'research_evaluation_events'):
+        raise ValueError('Registered evaluation feedback proof required')
+    metadata = store.connection.execute('select request_id,research_origin,created_ms from research_evaluation_events where event_id=?', (event_id,)).fetchone()
+    if not metadata or metadata['created_ms'] > as_of_ms:
+        raise ValueError('Available evaluation feedback proof required')
+    registry = table(metadata['research_origin'])
+    source = store.connection.execute(f'select network,address from {registry} where request_id=?', (metadata['request_id'],)).fetchone()
+    if not source:
+        raise ValueError('Evaluation feedback source required')
+    found = next((entry for entry in export_memory(store, source['network'], source['address'], as_of_ms, limit=64)
+                  if entry['event_id'] == event_id), None)
+    if not found or any(period not in periods for period in found['periods']):
+        raise ValueError('Evaluation feedback requires its complete authorized source-period union')
+    return found

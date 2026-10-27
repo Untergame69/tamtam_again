@@ -101,3 +101,24 @@ class ContinuousPlanAllocationTests(unittest.TestCase):
   third=self.candidate('third',2*DAY_MS+100000,policy)
   self.assertEqual(third['state'],'awaiting_comparison')
   self.assertEqual(self.s.connection.execute('select count(*) from continuous_plan_reservations').fetchone()[0],3)
+
+ def test_completed_technical_plan_frees_slot_without_releasing_reserve(self):
+  from tamtam_again.research_evaluation import _persist
+  policy=self.policy();policy['continuous_plan_allowance']['max_concurrent_plans']=1
+  first=self.candidate('first',100000,policy)
+  plan=json.loads(self.s.connection.execute('select plan_json from validation_plans where plan_id=?',(first['evidence']['plan_id'],)).fetchone()[0])
+  ended=plan['final']['end_ms']+1
+  with patch('tamtam_again.research_evaluation.now_ms',return_value=ended):
+   _persist(self.s,'first','population','technical_required',evidence=first['evidence'],diagnostic='Selection window missed')
+  second=self.candidate('next',ended+1,policy)
+  self.assertEqual(second['state'],'awaiting_comparison')
+  self.assertEqual(self.s.connection.execute('select count(*) from continuous_plan_reservations').fetchone()[0],2)
+  self.assertFalse(self.s.connection.execute("select 1 from sqlite_master where name='research_window_releases'").fetchone())
+
+ def test_unanchored_failed_reservation_cannot_resume_across_midnight(self):
+  policy=self.policy();policy['plan_template']['budget']['max_duration_ms']=1
+  self.candidate('bad-budget',100000,policy)
+  with patch('tamtam_again.population_plans.now_ms',return_value=DAY_MS+1):
+   outcome=handoff(self.s,'bad-budget',experiment_policy=policy)
+  self.assertIn('expired',outcome['diagnostic'])
+  self.assertEqual(self.s.connection.execute('select count(*) from continuous_plan_reservations').fetchone()[0],1)

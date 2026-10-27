@@ -113,3 +113,31 @@ class ResearchEvaluationTests(unittest.TestCase):
   self.assertEqual(outcome['state'],'technical_required')
   self.assertEqual(outcome['next_plan']['kind'],'next_candidate')
   self.assertEqual(outcome['evidence']['archive_blockers'][0]['variant_id'],variant)
+
+ def test_standard_memory_preserves_transitive_feedback_and_rejects_omission(self):
+  from unittest.mock import patch
+  from tamtam_again.research_evaluation import export_memory
+  from tamtam_again.population_memory import remember
+  from tamtam_again.research_memory import save_knowledge
+  self.s.connection.execute('delete from validation_plans')
+  self.result['proposal']['hypothesis'].pop('executable_spec')
+  other={'network':'synthetic','address':'other-source','market':'OTHER','start_ms':10,'end_ms':40}
+  parent_packet={'available_ms':50,'research_memory':[{'item':{'periods':[other]}}]}
+  self.s.connection.execute('update population_research_jobs set result_json=?,packet_json=?',
+   (json.dumps(self.result),json.dumps(parent_packet)));self.s.connection.commit()
+  with patch('tamtam_again.research_evaluation.now_ms',return_value=2000):handoff(self.s,'request')
+  feedback=export_memory(self.s,'synthetic','fixture-only',2001)
+  self.assertIn(other,feedback[0]['periods'])
+  child_result={'proposal':{'hypothesis':{'mechanism':'test association','markets':['SYNTH'],
+   'required_data':[],'rejection_criteria':'test','execution_constraints':'none','risk':'unknown'}},
+   'critique':{'decision':'consistent'},'promotion_authorized':False,'profitability_proven':False}
+  child_packet={'available_ms':2001,'research_evaluation_memory':feedback}
+  self.s.connection.execute('insert into population_research_jobs values(?,?,?,?,?,?,?)',
+   ('child','synthetic','fixture-only','hypothesis_recorded',json.dumps(child_result),2002,json.dumps(child_packet)))
+  self.s.connection.commit()
+  with patch('tamtam_again.research_memory.clock',return_value=3000),patch('tamtam_again.population_memory.now_ms',return_value=3000):
+   saved=remember(self.s,'child')
+   item=json.loads(self.s.connection.execute('select item_json from research_knowledge where knowledge_id=?',(saved['knowledge_id'],)).fetchone()[0])
+   self.assertIn(other,item['periods']);self.assertIn('other-source',item['origin_accounts'])
+   item['periods'].remove(other)
+   with self.assertRaisesRegex(ValueError,'complete|union|explicit'):save_knowledge(self.s,item)

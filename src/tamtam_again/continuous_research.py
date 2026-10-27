@@ -26,6 +26,8 @@ def initialize(store):
         network text not null,address text not null,cutoff_ms integer not null,
         archive_id integer,proof_json text not null,checked_ms integer not null,
         primary key(network,address))''')
+    store.connection.execute('''create table if not exists continuous_research_projections (
+        source_fingerprint text primary key,available_ms integer not null,body_gzip blob not null)''')
     store.connection.commit()
 
 
@@ -114,7 +116,10 @@ def prepare_packet(store, policy, item):
         return {'status':'technical_required','reason':'archive requires indexed bounded projection',
             'observed_pages':bounds[0],'record_upper_bound':bounds[1]}
     base=packet_for_account(store,policy['network'],item['address'],as_of_ms=item['cutoff_ms'],
-        max_chars=policy['task_policy']['max_packet_chars'])
+        # Working representation only: the deterministic projector below
+        # removes duplicated per-episode examples before the unchanged sealed
+        # packet/prompt limits. No oversized representation reaches a model.
+        max_chars=2000000)
     if base.get('status')!='packet_ready': return base
     packet=prepare_pilot_packet(store,base['packet'],candidate=item['candidate'],item=item,
         pilot_id=policy['policy_id'],policy_version=policy['version'],cutoff_ms=item['cutoff_ms'])
@@ -124,17 +129,39 @@ def prepare_packet(store, policy, item):
         'archive_receipt_cutoff_ms':item['cutoff_ms'],
         'detail_period':'all authorized archived history through cutoff; admission activity uses preceding 30 days',
         'other_markets':'account context only, not eligible for this hypothesis'}
+    if len(canonical(packet))>policy['task_policy']['max_packet_chars']:
+        _project_other_markets(store,packet,item['market'],item['cutoff_ms'])
     from .continuous_research_identity import semantic_identity
     semantic=semantic_identity(packet,item['market'])
     from .research_evaluation import export_memory
     feedback=export_memory(store,policy['network'],item['address'],item['cutoff_ms'])
     if feedback:packet['research_evaluation_memory']=feedback
+    # History and feedback were selected at this cutoff; never advertise the
+    # older scope-report receipt as availability of the enriched packet.
+    packet['available_ms']=item['cutoff_ms']
     packet['continuous_research']={'version':1,'policy_id':policy['policy_id'],
         'semantic_fingerprint':semantic,'market':item['market'],'source_ref':item['source_ref']}
     packet.pop('fingerprint',None);packet['fingerprint']=fingerprint(packet)
     if len(canonical(packet))>policy['task_policy']['max_packet_chars']:
         return {'status':'packet_too_large','reason':'full deterministic projection exceeds unchanged bound'}
     return {'status':'packet_ready','packet':packet,'semantic_fingerprint':semantic}
+
+
+def _project_other_markets(store, packet, market, available_ms):
+    """Keep selected-market statistics whole; archive the full context losslessly."""
+    import gzip
+    full=canonical(packet);source=fingerprint(packet)
+    store.connection.execute('insert or ignore into continuous_research_projections values(?,?,?)',
+        (source,available_ms,gzip.compress(full.encode(),mtime=0)));store.connection.commit()
+    summary=packet['observations']['descriptive_history_v1']
+    markets=summary.get('markets',{})
+    summary['other_market_activity_context']={symbol:{'activity':row.get('activity',{}),
+        'scope_membership':row.get('scope_membership')} for symbol,row in markets.items() if symbol!=market}
+    summary['markets']={symbol:row for symbol,row in markets.items() if symbol==market}
+    summary['full_account_context_reference']='continuous_research_projections:'+source
+    summary['projection_scope']='All selected-market aggregates retained; other markets are activity context only; full source is losslessly archived.'
+    summary.pop('summary_fingerprint',None);summary['summary_fingerprint']=fingerprint(summary)
+    packet['evidence_refs'].append('continuous_research_projections:'+source)
 
 
 def _seal(store, policy, item, prepared, clock):
@@ -234,7 +261,9 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
         def ordering(item):
             old=store.connection.execute('select updated_ms from continuous_research_candidates '
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
-            return (0 if old is None else old[0],item.get('priority',''),item['candidate'])
+            account=store.connection.execute('select max(updated_ms) from continuous_research_candidates '
+                'where network=? and address=?',(policy['network'],item['address'])).fetchone()[0]
+            return (account or 0,0 if old is None else old[0],item.get('priority',''),item['candidate'])
         for item in sorted(selections,key=ordering)[:max_candidates]:
             item={**item,'network':policy['network'],'admission_cutoff_ms':item['cutoff_ms'],'cutoff_ms':clock}
             item['question']=('From the authorized executions on '+item['market']+', identify a falsifiable observable mechanism, '

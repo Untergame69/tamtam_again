@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 import unittest
-import test_population_experiments as fixtures
+from tests import test_population_experiments as fixtures
 from tamtam_again.research_evaluation import handoff
 from tamtam_again.continuous_plan_allocation import DAY_MS
 

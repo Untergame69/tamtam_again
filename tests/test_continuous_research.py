@@ -32,6 +32,11 @@ class ContinuousPreparationTests(unittest.TestCase):
         self.assertEqual(packet['available_ms'],200)
         self.assertEqual(packet['observations']['markets'],['COIN'])
         self.assertEqual(packet['observations']['account_context_markets'],['COIN','OTHER'])
+        context=packet['execution_research_context']
+        self.assertEqual(context['classification'],'chosen_simulation_scenario_not_measured_capacity')
+        self.assertFalse(context['market_evidence'])
+        self.assertFalse(context['paper_authorized'])
+        self.assertNotIn('signal',context['scenario'])
         detail=packet['observations']['market_execution_detail_v1']['COIN']
         self.assertEqual(detail['execution_activity']['fill_count'],2)
         self.assertEqual(packet['fingerprint'],fingerprint({k:v for k,v in packet.items() if k!='fingerprint'}))

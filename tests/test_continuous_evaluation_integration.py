@@ -12,6 +12,34 @@ from tamtam_again.population_experiments import register_experiment
 
 
 class ContinuousEvaluationIntegrationTests(unittest.TestCase):
+ def test_exhausted_admission_skips_archive_preparation_but_polls_existing_work(self):
+  from tamtam_again import continuous_research
+  from tamtam_again.continuous_research_policy import authorize_task, finish_task
+  from tamtam_again.population_research import initialize
+  policy=json.loads((Path(continuous_research.__file__).resolve().parents[2]/'config/continuous-research-policy.json').read_text())
+  policy['network']='synthetic'
+  with tempfile.TemporaryDirectory() as directory, Store(Path(directory)/'fixture.sqlite') as store:
+   initialize(store)
+   for request in ('one','two','three'):
+    packet={'available_ms':50,'fingerprint':request}
+    store.connection.execute('insert into population_research_jobs '
+     '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+     'values(?,?,?,?,?,?,?,?,?)',(request,'synthetic',request,request,canonical(packet),canonical(policy['task_policy']),100,'sealed',100))
+    store.connection.commit()
+    authorize_task(store,policy,request_id=request,candidate=request+':SYNTH',address=request,market='SYNTH',
+     packet_fingerprint_value=request,semantic_fingerprint_value=request,authorized_ms=100)
+    store.connection.execute("update population_research_jobs set status='non_identifiable' where request_id=?",(request,));store.connection.commit()
+    finish_task(store,request,'non_identifiable')
+   with patch('tamtam_again.continuous_research.admission_inventory') as inventory,patch(
+      'tamtam_again.continuous_research.prepare_packet') as preparation,patch(
+      'tamtam_again.research_evaluation.poll',return_value={'decisions':[]}) as evaluations,patch(
+      'tamtam_again.continuous_research_resolution.poll_waits',return_value={'advanced':[]}) as waits:
+    outcome=continuous_research.tick(store,policy,clock_ms=1000)
+   self.assertEqual(outcome['admission']['status'],'waiting_allowance')
+   self.assertEqual(outcome['dispatched'],[])
+   inventory.assert_not_called();preparation.assert_not_called()
+   evaluations.assert_called_once();waits.assert_called_once()
+
  def test_rejection_feedback_and_another_market_continue_in_same_tick(self):
   from tamtam_again import continuous_research
   from tamtam_again.continuous_research_policy import authorize_task, finish_task

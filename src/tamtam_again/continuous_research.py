@@ -7,6 +7,7 @@ owns the entire queue. This module sends no exchange orders.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from .engine import canonical, fingerprint
 from .validation import now_ms
 
@@ -129,6 +130,8 @@ def prepare_packet(store, policy, item):
         'archive_receipt_cutoff_ms':item['cutoff_ms'],
         'detail_period':'all authorized archived history through cutoff; admission activity uses preceding 30 days',
         'other_markets':'account context only, not eligible for this hypothesis'}
+    from .execution_research_context import attach_execution_context
+    attach_execution_context(packet,Path(__file__).resolve().parents[2])
     if len(canonical(packet))>policy['task_policy']['max_packet_chars']:
         _project_other_markets(store,packet,item['market'],item['cutoff_ms'])
     from .research_evaluation import export_memory
@@ -289,6 +292,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                     'join population_research_jobs j using(request_id) where j.network=? and j.address=? and m.available_ms<=?',
                     (policy['network'],item['address'],clock)).fetchone()[0]
             source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
+                'packet_preparation_version':'continuous-execution-context-v2',
                 'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes,
                 'feedback_available_ms':feedback_latest})
             old=store.connection.execute('select source_fingerprint,status,result_json from continuous_research_candidates '

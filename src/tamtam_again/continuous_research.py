@@ -52,6 +52,28 @@ def _save_candidate(store, item, source_fp, result, clock):
     store.connection.commit()
 
 
+def execution_data_readiness(store, network, address, market, cutoff_ms):
+    """Source metadata is a necessary condition, never a live-fill guarantee."""
+    from .population_descriptive import _event_time
+    sources={}
+    for kind,entity,identity,endpoints in (
+            ('account','account',address,('userFills',)),
+            ('market','market',market,('bbo','l2Book'))):
+        placeholders=','.join('?' for _ in endpoints)
+        row=store.connection.execute('select observation_id,response_sha256,observed_at,endpoint '
+            "from raw_observations where network=? and source='hyperliquid-websocket-v1' "
+            'and entity_type=? and entity_id=? and endpoint in ('+placeholders+') and observed_at<=? '
+            'order by observed_at desc,observation_id desc limit 1',
+            (network,entity,identity,*endpoints,_event_time(cutoff_ms))).fetchone()
+        sources[kind]=None if row is None else {'evidence_ref':'raw_observations:'+str(row['observation_id'])+
+            '#sha256:'+row['response_sha256'],'archived_at':row['observed_at'],'endpoint':row['endpoint']}
+    return {'version':'execution-data-readiness-v1','account_ws_observed':sources['account'] is not None,
+        'market_ws_observed':sources['market'] is not None,'source_metadata':sources,
+        'non_snapshot_live_signal_proven':False,'future_continuity_proven':False,
+        'rest_follower_contract':'unsupported by current engine; REST event time is never signal availability',
+        'limits':'Metadata confirms an archive exists, not a current subscription, a non-snapshot signal, calibrated clocks or future coverage.'}
+
+
 def market_proofs(store, inventory, policy, clock):
     """Gradually resolve multi-market scopes from all authorized fills, bounded.
 
@@ -130,6 +152,8 @@ def prepare_packet(store, policy, item):
         'archive_receipt_cutoff_ms':item['cutoff_ms'],
         'detail_period':'all authorized archived history through cutoff; admission activity uses preceding 30 days',
         'other_markets':'account context only, not eligible for this hypothesis'}
+    packet['observations']['execution_data_readiness']=execution_data_readiness(
+        store,policy['network'],item['address'],item['market'],item['cutoff_ms'])
     from .execution_research_context import attach_execution_context
     attach_execution_context(packet,Path(__file__).resolve().parents[2])
     if len(canonical(packet))>policy['task_policy']['max_packet_chars']:

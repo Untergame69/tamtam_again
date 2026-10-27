@@ -12,6 +12,43 @@ from tamtam_again.population_experiments import register_experiment
 
 
 class ContinuousEvaluationIntegrationTests(unittest.TestCase):
+ def test_malformed_provider_wake_does_not_block_the_next_candidate(self):
+  from tamtam_again import continuous_research
+  from tamtam_again.population import migrate
+  policy=json.loads((Path(continuous_research.__file__).resolve().parents[2]/'config/continuous-research-policy.json').read_text())
+  policy['network']='synthetic'
+  inventory={'candidate_evaluations':[{'candidate_id':name,'candidate_alias':name,
+    'disposition':'admissible_descriptive','research_question':'Describe observations.',
+    'source_ref':'fixture:'+name,'priority':'P3','scope':{'markets':['SYNTH'],'market_count':1,
+    'period_start_ms':0,'cutoff_ms':100}} for name in ('first','second')]}
+  def preparation(store,policy,item):
+   packet={'network':'synthetic','address':item['address'],'available_ms':100,
+    'observations':{'markets':['SYNTH'],'market_execution_detail_v1':{'SYNTH':{'market':'SYNTH',
+    'execution_activity':{'fills':10},'position_path':{},'by_utc_day':{},'fees_signed_by_token':{},
+    'observed_fill_content_fingerprint':item['address']}}}}
+   packet['fingerprint']=fingerprint(packet)
+   from tamtam_again.continuous_research_identity import semantic_identity
+   return {'status':'packet_ready','packet':packet,'semantic_fingerprint':semantic_identity(packet,'SYNTH')}
+  responses=[{'decision':'unsupported_mechanism','diagnostic':'Passive queue is unsupported.',
+    'wake':{'kind':{'malformed':True},'diagnostic_code':['invalid']}},
+   {'decision':'non_identifiable','diagnostic':'No pre-decision signal identified.','wake':{}}]
+  usage={'cost_usd':0,'cost_status':'included','input_tokens':100,'output_tokens':50,
+    'duration_ms':5,'model':policy['task_policy']['model']}
+  with tempfile.TemporaryDirectory() as directory, Store(Path(directory)/'fixture.sqlite') as store:
+   migrate(store)
+   with patch('tamtam_again.continuous_research.admission_inventory',return_value=inventory),patch(
+      'tamtam_again.continuous_research.prepare_packet',side_effect=preparation),patch(
+      'tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.now_ms',return_value=1002),patch(
+      'tamtam_again.population_runtime.call',side_effect=[(json.dumps(r),usage) for r in responses]) as provider:
+    first=continuous_research.tick(store,policy,clock_ms=1000)
+    second=continuous_research.tick(store,policy,clock_ms=1001)
+   self.assertEqual(first['dispatched'][0]['status'],'unsupported_mechanism')
+   self.assertEqual(second['dispatched'][0]['status'],'non_identifiable')
+   self.assertEqual(second['candidates'][0]['candidate'],'second:SYNTH')
+   self.assertEqual(provider.call_count,2)
+   self.assertEqual(store.connection.execute('select count(*) from continuous_research_calls').fetchone()[0],2)
+   self.assertTrue(first['technical_priorities'])
+
  def test_exhausted_admission_skips_archive_preparation_but_polls_existing_work(self):
   from tamtam_again import continuous_research
   from tamtam_again.continuous_research_policy import authorize_task, finish_task

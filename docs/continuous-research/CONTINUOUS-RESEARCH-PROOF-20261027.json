@@ -1,0 +1,108 @@
+{
+  "calls": [
+    {
+      "actual_duration_ms": 49050,
+      "actual_input_tokens": 13451,
+      "actual_output_tokens": 1894,
+      "call_index": 1,
+      "request_id": "c6fc83f25274a55ebc79fb8e4fb28be589d7629c16bb163ae873541355e1850c",
+      "state": "result_validated"
+    },
+    {
+      "actual_duration_ms": 44208,
+      "actual_input_tokens": 14428,
+      "actual_output_tokens": 2042,
+      "call_index": 1,
+      "request_id": "4034a390379056f9c6f999d60096913395e1f4140b6820ae5fc33531c1cf9782",
+      "state": "result_validated"
+    }
+  ],
+  "code_commit": "1d35af581fab35cc2ffefbf94241ed41a48ba07e",
+  "file_sha256": {
+    "config/continuous-experiment-policy.json": "9ae127d27bc845b271df183751e57901b141389ed239ccb28fa2cf0f728ea4d5",
+    "config/continuous-research-policy.json": "0581473e2e377dd6701f4fd6d394a6220c21b3a649325f066092eac0aa17e78b",
+    "systemd/user/tamtam-again-population-research.service": "b3147cd1f838d63ffd8a0afd34d4ac027b9ba7e6233160bef759aff7b07bd2bc"
+  },
+  "installed_unit_matches_git": true,
+  "paper_sessions": [
+    {
+      "count": 2,
+      "status": "retired"
+    },
+    {
+      "count": 3,
+      "status": "suspended"
+    }
+  ],
+  "policy_fingerprint": "d24dfa51bbbe23574e7d911b4e9664ae91d3a9d9c17e9e4e8652e6943ae0f2ce",
+  "real_final_evaluations_passed": 0,
+  "real_orders_enabled": false,
+  "replay_call_count_unchanged": true,
+  "shared_historical_ceiling": 8,
+  "shared_historical_request_count": 11,
+  "tasks": [
+    {
+      "candidate": "10f0:SOL",
+      "next_plan": {
+        "changed_evidence_required": true,
+        "iteration_class": "technical",
+        "kind": "next_candidate",
+        "live_orders_authorized": false,
+        "model_calls_authorized": 0,
+        "rearm_budget": false
+      },
+      "operational_state": "technical_required",
+      "packet_fingerprint_valid": true,
+      "provider_state": "needs_data",
+      "replay": "unchanged_no_inference",
+      "request_id": "c6fc83f25274a55ebc79fb8e4fb28be589d7629c16bb163ae873541355e1850c"
+    },
+    {
+      "candidate": "1e07:ETH",
+      "next_plan": {
+        "changed_evidence_required": true,
+        "iteration_class": "technical",
+        "kind": "next_candidate",
+        "live_orders_authorized": false,
+        "model_calls_authorized": 0,
+        "rearm_budget": false
+      },
+      "operational_state": "technical_required",
+      "packet_fingerprint_valid": true,
+      "provider_state": "unsupported_mechanism",
+      "replay": "unchanged_no_inference",
+      "request_id": "4034a390379056f9c6f999d60096913395e1f4140b6820ae5fc33531c1cf9782"
+    }
+  ],
+  "units": {
+    "tamtam-again-paper.timer": {
+      "ActiveState": "active",
+      "NextElapseUSecRealtime": "",
+      "Result": "success",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    },
+    "tamtam-again-population-research.service": {
+      "ActiveState": "inactive",
+      "ExecMainStatus": "0",
+      "Result": "success",
+      "SubState": "dead",
+      "UnitFileState": "static"
+    },
+    "tamtam-again-population-research.timer": {
+      "ActiveState": "active",
+      "NextElapseUSecRealtime": "",
+      "Result": "success",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    },
+    "tamtam-again-population.timer": {
+      "ActiveState": "active",
+      "NextElapseUSecRealtime": "",
+      "Result": "success",
+      "SubState": "running",
+      "UnitFileState": "enabled"
+    }
+  },
+  "version": "continuous-research-production-proof-v1"
+}

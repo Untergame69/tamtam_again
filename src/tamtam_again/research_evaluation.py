@@ -102,6 +102,9 @@ def _handoff(store, request_id, *, kind, experiment_policy):
         validate_packet_compilation(hypothesis, profile, json.loads(job['packet_json']), request_id)
         allocated = plan_policy(experiment_policy, profile, hypothesis['executable_spec'])
         bind_policy(store, experiment_policy)
+        if kind == 'population':
+            from .continuous_plan_allocation import scoped_policy
+            allocated = scoped_policy(store, request_id, experiment_policy, allocated)
         prepared = _prepare_plan(store, request_id, allocated, profile, kind=kind)
     except ValueError as exc:
         return _persist(store, request_id, kind, 'technical_required', evidence=evidence, diagnostic=str(exc))

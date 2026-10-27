@@ -35,8 +35,15 @@ def _prepare_plan(store,request_id,policy,profile,*,kind='population'):
         if linked and store.connection.execute('select 1 from population_experiment_links where request_id=?',(request_id,)).fetchone():
             return _register_experiment(store,request_id,plan_id,profile,kind=kind)
     else:
-        if store.connection.execute('select count(*) from population_plan_drafts').fetchone()[0]>=policy['max_plans']:
-            return {'status':'budget_exhausted','promotion_authorized':False}
+        if 'continuous_allocation_scope' in policy:
+            from .continuous_plan_allocation import reserve
+            reserve(store, request_id, policy, profile, now_ms())
+        else:
+            query='select count(*) from population_plan_drafts'
+            if store.connection.execute("select 1 from sqlite_master where name='continuous_plan_reservations'").fetchone():
+                query+=' where request_id not in (select request_id from continuous_plan_reservations)'
+            if store.connection.execute(query).fetchone()[0]>=policy['max_plans']:
+                return {'status':'budget_exhausted','promotion_authorized':False}
         decision=route(store,request_id,kind=kind)
         if decision['state']!='prospective_plan_required':
             return {'status':decision['state'],'promotion_authorized':False,'next_action':decision['next_action']}

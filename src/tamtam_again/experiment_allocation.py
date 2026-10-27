@@ -10,6 +10,9 @@ def validate_policy(policy):
         raise ValueError('Versioned external experiment allocation required')
     if type(policy.get('max_profile_variants')) is not int or not 1<=policy['max_profile_variants']<=64:
         raise ValueError('Explicit allocation variant cap required')
+    if 'continuous_plan_allowance' in policy:
+        from .continuous_plan_allocation import validate
+        validate(policy['continuous_plan_allowance'])
     template=policy.get('plan_template',{})
     if template.get('version')!='population-plan-v1' or not template.get('justification'):
         raise ValueError('Explicit prospective plan template required')

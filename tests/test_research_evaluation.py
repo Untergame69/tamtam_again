@@ -86,3 +86,17 @@ class ResearchEvaluationTests(unittest.TestCase):
   event=handoff(self.s,'request')
   self.assertEqual(memory(self.s,as_of_ms=event['created_ms']-1),[])
   self.assertEqual(memory(self.s,as_of_ms=event['created_ms'])[0]['evaluation_event_id'],event['event_id'])
+
+ def test_export_feedback_scope_cutoff_and_reserve_protection(self):
+  from tamtam_again.research_evaluation import export_memory
+  self.result['proposal']['hypothesis'].pop('executable_spec')
+  self.s.connection.execute('update population_research_jobs set result_json=?',(json.dumps(self.result),));self.s.connection.commit()
+  event=handoff(self.s,'request')
+  # Existing synthetic plan protects the whole account once comparison opens.
+  self.assertEqual(export_memory(self.s,'synthetic','fixture-only',event['created_ms']),[])
+  self.s.connection.execute('delete from validation_plans');self.s.connection.commit()
+  records=export_memory(self.s,'synthetic','fixture-only',event['created_ms'])
+  self.assertEqual(records[0]['item']['state'],'descriptive')
+  self.assertEqual(records[0]['periods'][0]['end_ms'],51)
+  self.assertEqual(export_memory(self.s,'synthetic','other',event['created_ms']),[])
+  self.assertEqual(export_memory(self.s,'synthetic','fixture-only',event['created_ms']-1),[])

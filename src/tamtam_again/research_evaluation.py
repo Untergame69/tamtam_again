@@ -193,3 +193,59 @@ def memory(store, *, as_of_ms, request_id=None, limit=8):
     query += ' order by available_ms desc,event_id limit ?'
     args.append(limit)
     return [json.loads(row[0]) for row in store.connection.execute(query, args)]
+
+
+def export_memory(store, network, address, as_of_ms, *, limit=8):
+    """Export causal, scoped lifecycle feedback after all source reserve checks.
+
+    Full source unions are retained, including inherited accounts. A release at
+    today's cutoff never grants an earlier decision access to these outcomes.
+    """
+    from .research_memory import authorized_account_history, authorized_period
+    from .research_jobs import table
+    if type(as_of_ms) is not int or as_of_ms < 0 or type(limit) is not int or not 1 <= limit <= 64:
+        raise ValueError('Explicit cutoff and bounded export limit required')
+    if not _exists(store, 'research_evaluation_memory'):
+        return []
+    if not authorized_account_history(store, network, address, as_of_ms):
+        return []
+    records = []
+    for kind in ('population', 'paper'):
+        registry = table(kind)
+        if not _exists(store, registry):
+            continue
+        # Availability and account scope precede reading any outcome payload.
+        rows = store.connection.execute(
+            f'select m.event_id,m.request_id,m.available_ms from research_evaluation_memory m '
+            f'join {registry} j using(request_id) where j.network=? and j.address=? and m.available_ms<=? '
+            'order by m.available_ms desc,m.event_id limit ?', (network, address, as_of_ms, limit)).fetchall()
+        for row in rows:
+            source = store.connection.execute(f'select packet_json from {registry} where request_id=?', (row['request_id'],)).fetchone()
+            packet = json.loads(source[0])
+            periods = [{'network': network, 'address': address, 'market': '*',
+                        'start_ms': 0, 'end_ms': packet['available_ms'] + 1}]
+            for inherited in packet.get('research_memory', []):
+                for period in inherited['item']['periods']:
+                    if period not in periods:
+                        periods.append(period)
+            # Feedback itself can refer to earlier lifecycle feedback; retain
+            # those source unions rather than reducing to the current address.
+            for inherited in packet.get('research_evaluation_memory', []):
+                for period in inherited['periods']:
+                    if period not in periods:
+                        periods.append(period)
+            if _exists(store, 'population_experiment_links'):
+                plan_row = store.connection.execute('select p.plan_id,p.plan_json,p.coin from population_experiment_links l '
+                    'join validation_plans p using(plan_id) where l.request_id=?', (row['request_id'],)).fetchone()
+                if plan_row:
+                    plan = json.loads(plan_row['plan_json'])
+                    stages = {r[0] for r in store.connection.execute('select stage from validation_evaluations where plan_id=?', (plan_row['plan_id'],))}
+                    for stage in stages:
+                        periods.append({'network': network, 'address': address, 'market': plan_row['coin'], **plan[stage]})
+            if not all(authorized_period(store, p, as_of_ms) for p in periods):
+                continue
+            body = store.connection.execute('select memory_json from research_evaluation_memory where event_id=?', (row['event_id'],)).fetchone()
+            records.append({'event_id': row['event_id'], 'available_ms': row['available_ms'],
+                'periods': periods, 'item': json.loads(body[0]),
+                'evidence_refs': [{'kind': 'research_evaluation', 'id': row['event_id']}]})
+    return sorted(records, key=lambda r: (-r['available_ms'], r['event_id']))[:limit]

@@ -512,6 +512,7 @@ def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, marke
         return None if not values else str(values[max(0,(q*len(values)+99)//100-1)])
     result={'schema_version':'population-market-execution-detail-v1','network':network,
         'address':address.lower(),'market':market,'cutoff_ms':cutoff_ms,
+        'observed_fill_content_fingerprint':fingerprint(fills),
         'coverage':{'fill_archive':coverage,'selected_market_fill_count':len(fills),
             'position_chain_segment_count':len(segment_events),'rupture_count':len(chain.get('position_chain_ruptures',[])),
             'ruptures_fingerprint':fingerprint(chain.get('position_chain_ruptures',[])),

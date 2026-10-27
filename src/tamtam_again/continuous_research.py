@@ -185,32 +185,27 @@ def _seal(store, policy, item, prepared, clock):
         'where network=? and address=? and input_fingerprint=?',
         (policy['network'],item['address'],digest)).fetchone()
     if prior:return {'status':'unchanged_no_inference','request_id':prior[0]}
-    store.connection.execute('insert into population_research_jobs '
-        '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
-        'values(?,?,?,?,?,?,?,?,?)',(request_id,policy['network'],item['address'],digest,
-        canonical(packet),canonical(policy['task_policy']),clock,'sealed',clock))
-    store.connection.commit()
-    try:
-        authorize_task(store,policy,request_id=request_id,candidate=item['candidate'],address=item['address'],
-            market=item['market'],packet_fingerprint_value=packet['fingerprint'],
-            semantic_fingerprint_value=semantic,authorized_ms=clock)
-    except Exception:
-        # A failed reservation must not create a dispatchable orphan.
-        store.connection.execute("delete from population_research_jobs where request_id=? and status='sealed' "
-            'and not exists(select 1 from continuous_research_tasks where request_id=?)',(request_id,request_id))
-        store.connection.commit();raise
+    authorize_task(store,policy,request_id=request_id,candidate=item['candidate'],address=item['address'],
+        market=item['market'],packet_fingerprint_value=packet['fingerprint'],
+        semantic_fingerprint_value=semantic,authorized_ms=clock,sealed_job={
+            'network':policy['network'],'address':item['address'],'input_fingerprint':digest,
+            'packet_json':canonical(packet),'policy_json':canonical(policy['task_policy']),'created_ms':clock})
     return {'status':'sealed','request_id':request_id}
 
 
 def _consume(store, request_id, experiment_policy, clock):
     from .continuous_research_resolution import resolve_result
     from .research_evaluation import handoff_locked
-    resolved=resolve_result(store,'population',request_id,clock_ms=clock)
+    # A just-finished response did not exist at the tick's start time.
+    resolved=resolve_result(store,'population',request_id,clock_ms=max(clock,now_ms()))
     evaluated=handoff_locked(store,request_id,experiment_policy=experiment_policy)
-    return {'request_id':request_id,'resolution':resolved,'evaluation':evaluated}
+    return {'request_id':request_id,'resolution':{key:resolved.get(key) for key in (
+        'state','work_id','queue_status','next_candidate','next_packet','memory')},
+        'evaluation':evaluated}
 
 
-def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None, collection_policy=None, max_candidates=8):
+def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None, collection_policy=None,
+         reserve_policy=None, max_candidates=8):
     """One inference task at most; deterministic follow-ups proceed independently."""
     from .research import scheduler_lock
     from .continuous_research_policy import initialize as allowance, candidates_for_admission, report
@@ -223,6 +218,9 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
         initialize(store);allowance(store,policy)
         result={'version':'continuous-research-tick-v1','started_ms':clock,'dispatch':dispatch,
             'followups':[],'candidates':[],'dispatched':[],'real_orders_authorized':False}
+        if reserve_policy is not None:
+            from .reserve_cycle import tick as release_closed_reserves
+            result['reserves']=release_closed_reserves(store,reserve_policy,clock_ms=clock)
         # Only recover jobs owned by this policy after obtaining the shared
         # kernel lock. Unknown provider usage stays unknown and is not refunded.
         for row in store.connection.execute('select j.request_id,j.status from population_research_jobs j '

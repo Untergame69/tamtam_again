@@ -11,6 +11,7 @@ p.add_argument('--db',type=Path,required=True)
 p.add_argument('--policy',type=Path,required=True)
 p.add_argument('--experiment-policy',type=Path)
 p.add_argument('--collection-policy',type=Path,help='Reconcile existing bounded acquisition; no independent REST calls')
+p.add_argument('--reserve-policy',type=Path,help='Existing release policy; preserves consumed holdouts and legacy pilots')
 p.add_argument('--prepare-only',action='store_true',help='Prepare and resolve only; never call an inference provider')
 p.add_argument('--max-candidates',type=int,default=4)
 a=p.parse_args()
@@ -18,5 +19,6 @@ with Store(a.db) as store:
     result=tick(store,json.loads(a.policy.read_text()),dispatch=not a.prepare_only,
         experiment_policy=json.loads(a.experiment_policy.read_text()) if a.experiment_policy else None,
         collection_policy=json.loads(a.collection_policy.read_text()) if a.collection_policy else None,
+        reserve_policy=json.loads(a.reserve_policy.read_text()) if a.reserve_policy else None,
         max_candidates=a.max_candidates)
 print(json.dumps(result,ensure_ascii=False,indent=2))

@@ -5,7 +5,7 @@ Description=Tamtam Again continuous bounded public account research
 Type=oneshot
 WorkingDirectory=/home/Untergame/tamtam_again
 Environment=PYTHONPATH=src
-ExecStart=/home/Untergame/tamtam_again/.venv/bin/python scripts/continuous-research-tick.py --db data/tamtam.sqlite3 --policy config/continuous-research-policy.json --max-candidates 4 --experiment-policy config/continuous-experiment-policy.json --collection-policy config/research-need-collection-policy.json
+ExecStart=/home/Untergame/tamtam_again/.venv/bin/python scripts/continuous-research-tick.py --db data/tamtam.sqlite3 --policy config/continuous-research-policy.json --max-candidates 4 --experiment-policy config/continuous-experiment-policy.json --collection-policy config/research-need-collection-policy.json --reserve-policy config/reserve-cycle-policy.json
 TimeoutStartSec=420
 KillMode=control-group
 NoNewPrivileges=true

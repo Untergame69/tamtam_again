@@ -228,6 +228,7 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
     registry=table(kind)
     policy=json.loads(row['policy_json'])
     pilot_policy=None
+    from . import population_pilot as allowance_backend
     if kind=='population' and store.connection.execute(
             "select 1 from sqlite_master where type='table' and name='population_research_pilot_tasks'").fetchone():
         pilot_task=store.connection.execute('select pilot_id,state from population_research_pilot_tasks where request_id=?',
@@ -240,13 +241,27 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
             pilot_policy=json.loads(allowance['policy_json']);validate_policy(pilot_policy)
             if policy != pilot_policy['task_policy']:
                 raise ValueError('Sealed task policy differs from its immutable pilot limits')
+    if kind=='population' and store.connection.execute(
+            "select 1 from sqlite_master where type='table' and name='continuous_research_tasks'").fetchone():
+        continuous_task=store.connection.execute('select policy_id from continuous_research_tasks where request_id=?',
+            (request_id,)).fetchone()
+        if continuous_task:
+            if pilot_policy is not None:
+                raise ValueError('A task cannot consume both historical and continuous allowances')
+            from . import continuous_research_policy as allowance_backend
+            allowance=store.connection.execute('select policy_json from continuous_research_allowances where policy_id=?',
+                (continuous_task['policy_id'],)).fetchone()
+            if not allowance:raise ValueError('Continuous allowance record missing')
+            pilot_policy=json.loads(allowance['policy_json']);allowance_backend.validate_policy(pilot_policy)
+            if policy != pilot_policy['task_policy']:
+                raise ValueError('Sealed task policy differs from its immutable continuous limits')
     usage_mode=policy.get('usage_mode','pay_as_you_go')
     activated_ms=(row['activated_ms'] if kind=='paper' and 'activated_ms' in row.keys() and row['activated_ms'] is not None else row['created_ms'])
     if now_ms()<activated_ms:raise ValueError('Research job is not yet available')
     if now_ms()-activated_ms>policy['max_request_age_ms']:
         store.connection.execute(f"update {registry} set status='expired',updated_ms=? where request_id=? and status='sealed'",(now_ms(),request_id));store.connection.commit()
         if pilot_policy is not None:
-            from .population_pilot import finish_task
+            finish_task = allowance_backend.finish_task
             finish_task(store, request_id, 'expired')
         if kind=='paper':
             from .paper_research import finish_authorized_task
@@ -265,7 +280,7 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
         store.connection.execute(f"update {registry} set status='suspended',actual_cost_usd=NULL,usage_json='[]',result_json=?,updated_ms=? where request_id=? and status='running'",
             (canonical(failure),now_ms(),request_id));store.connection.commit()
         if pilot_policy is not None:
-            from .population_pilot import finish_task
+            finish_task = allowance_backend.finish_task
             finish_task(store, request_id, 'suspended')
         if kind=='paper':
             from .paper_research import finish_authorized_task
@@ -299,14 +314,17 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
                     raise ValueError('Aggregate subscription duration ceiling would be exceeded; no further call')
             active_call_index=len(usage)+1;active_response_received=False
             if pilot_policy is not None:
-                from .population_pilot import reserve_call
-                reserve_call(store,request_id,active_call_index,pilot_policy)
+                reserve_call = allowance_backend.reserve_call
+                if pilot_policy.get('version') == 'continuous-descriptive-research-v1':
+                    reserve_call(store,request_id,active_call_index,pilot_policy,clock_ms=now_ms())
+                else:
+                    reserve_call(store,request_id,active_call_index,pilot_policy)
             _reserve_call(store,kind,request_id,active_call_index)
             call_in_progress=True
             def capture_provider_response(provider_response):
                 nonlocal active_response_received
                 if pilot_policy is not None:
-                    from .population_pilot import record_provider_response
+                    record_provider_response = allowance_backend.record_provider_response
                     record_provider_response(store,request_id,active_call_index,provider_response)
                 body,metadata=_safe_response_parts(provider_response)
                 _advance_call(store,kind,request_id,active_call_index,'response_received',
@@ -341,7 +359,7 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
                     raise CallContractError({'stage':'usage_validation','code':'aggregate_usage_limit_exceeded',
                         'field':'aggregate.'+field,'observed':observed,'limit':limits[field]})
             if pilot_policy is not None:
-                from .population_pilot import mark_call_state
+                mark_call_state = allowance_backend.mark_call_state
                 mark_call_state(store,request_id,active_call_index,'usage_validated')
             _advance_call(store,kind,request_id,active_call_index,'response_validated',
                 time_field='response_validated_ms')
@@ -352,7 +370,7 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
         proposal=parse_response(raw);validate_response(proposal,packet,request_id=request_id);artifacts['proposal']=proposal
         _advance_call(store,kind,request_id,active_call_index,'result_validated',time_field='result_validated_ms')
         if pilot_policy is not None:
-            from .population_pilot import mark_call_state
+            mark_call_state = allowance_backend.mark_call_state
             mark_call_state(store,request_id,active_call_index,'result_validated')
         state=proposal['decision']
         if state=='hypothesis':
@@ -373,7 +391,7 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
                     'limit':'diagnostic string and wake object with a supported decision'})
             _advance_call(store,kind,request_id,active_call_index,'result_validated',time_field='result_validated_ms')
             if pilot_policy is not None:
-                from .population_pilot import mark_call_state
+                mark_call_state = allowance_backend.mark_call_state
                 mark_call_state(store,request_id,active_call_index,'result_validated')
             state='hypothesis_recorded' if critique['decision']=='consistent' else critique['decision']
     except Exception as exc:
@@ -392,7 +410,7 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
             _advance_call(store,kind,request_id,active_call_index,
                 'rejected' if active_response_received else 'interrupted',diagnostic_json=canonical(diagnostic))
             if pilot_policy is not None:
-                from .population_pilot import mark_call_state
+                mark_call_state = allowance_backend.mark_call_state
                 mark_call_state(store,request_id,active_call_index,
                     'response_rejected' if active_response_received else 'interrupted')
     artifacts.update(profitability_proven=False,promotion_authorized=False,
@@ -403,7 +421,7 @@ Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
     store.connection.execute(f'update {registry} set status=?,actual_cost_usd=?,result_json=?,usage_json=?,updated_ms=? where request_id=? and status=\'running\'',
         (state,cost,canonical(artifacts),canonical(usage),now_ms(),request_id));store.connection.commit()
     if pilot_policy is not None:
-        from .population_pilot import finish_task
+        finish_task = allowance_backend.finish_task
         finish_task(store,request_id,state)
     if kind=='paper':
         from .paper_research import finish_authorized_task

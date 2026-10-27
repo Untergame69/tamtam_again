@@ -1,0 +1,35 @@
+{
+  "network": "hyperliquid-mainnet",
+  "usage_mode": "subscription",
+  "task_policy": {
+    "version": "population-research-v1",
+    "model": "gpt-6.1-sol",
+    "usage_mode": "subscription",
+    "max_requests": 8,
+    "max_packet_chars": 225000,
+    "max_prompt_chars": 260000,
+    "minimum_interval_ms": 86400000,
+    "max_request_age_ms": 3600000,
+    "timeout_seconds": 120,
+    "max_output_tokens": 5000,
+    "max_model_calls": 2,
+    "max_input_tokens_per_call": 80000,
+    "max_total_input_tokens": 160000,
+    "max_total_output_tokens": 10000,
+    "max_total_duration_ms": 240000
+  },
+  "version": "continuous-descriptive-research-v1",
+  "policy_id": "continuous-descriptive-research-v1",
+  "renewal": true,
+  "period_ms": 86400000,
+  "economic_validation": false,
+  "paper_authorized": false,
+  "real_orders_authorized": false,
+  "period_limits": {
+    "max_tasks": 3,
+    "max_calls": 6,
+    "max_input_tokens": 480000,
+    "max_output_tokens": 30000,
+    "max_duration_ms": 720000
+  }
+}

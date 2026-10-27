@@ -32,7 +32,7 @@ Les limites finales restent 225 000 caractères de paquet et 260 000 de prompt. 
 - La déduplication repose sur les fills dédupliqués du marché, les statistiques économiques et les nouvelles preuves de demandes satisfaites. Un changement de sérialisation, de politique, de jour, de réception équivalente ou des fills d'un autre instrument ne suffit pas.
 - Les demandes en langage libre ne deviennent jamais des appels réseau ou des commandes. Une demande `needs_data` peut porter un contrat typé public ; le collecteur existant l'exécute dans son bail et son quota partagés. Sans contrat exploitable, la disposition courante est technique, avec passage au candidat suivant ; la réponse fournisseur originale reste intacte.
 - Les horloges d'événement, de réception et d'archivage restent distinctes. Les fills REST ne deviennent pas des signaux de suivi live.
-- Les mémoires conservent leurs comptes, marchés, périodes et références transitives, y compris les résultats d'évaluation. Une mémoire nouvelle seule n'autorise pas une nouvelle inférence sur les mêmes faits.
+- Les mémoires conservent leurs comptes, marchés, périodes et références transitives, y compris les résultats d'évaluation. Une mémoire nouvelle seule n'autorise pas une nouvelle inférence sur les mêmes faits ; un véritable résultat de validation ou un bilan paper inactif apporte au contraire une nouvelle preuve exploitable, même sans nouveau fill source.
 - Un modèle maker non pris en charge reste une limite technique. Aucun fill passif, rebate accessible à notre compte ou résultat de clôture n'est inventé.
 - La validation réelle et les conditions de paper restent celles du pipeline ; un test synthétique ne peut pas les satisfaire.
 
@@ -55,5 +55,15 @@ Pour revenir à l'ancien worker, arrêter seulement ce timer/service, réinstall
 La preuve opérationnelle compacte et les vérifications finales sont dans `CONTINUOUS-RESEARCH-PROOF-20261027.json`. Le parcours intégré sur base temporaire exerce réellement le moteur et ses coûts : comparaison rejetée → mémoire persistée → examen automatique d'un autre marché. Seuls le fournisseur et l'admission de cette recette sont simulés.
 
 Un premier passage réel a étudié automatiquement `10f0/SOL` : 102 fills archivés, un appel abonnement valide, puis `needs_data`. La réponse n'établit aucune règle exploitable. L'absence de demande structurée a ensuite été classée en tâche technique avec passage au candidat suivant, sans réinterroger le modèle. Les réponses, décisions et usages restent dans la base opérationnelle.
+
+Le service installé a ensuite traité `1e07/ETH` sans intervention sur la première tâche. Il a terminé avec `Result=success`, code 0 ; la réponse `unsupported_mechanism` est conservée et routée en travail technique. Le timer reste activé. Les deux appels enregistrent respectivement 13 451 / 1 894 et 14 428 / 2 042 tokens d'entrée / sortie. Le compteur partagé historique reste 11 pour son plafond inchangé de 8 ; ces nouvelles études ont leur propre enveloppe.
+
+Vérifications finales : 195 tests ciblés réussis en 49,588 secondes sur l'intégration finale, puis vérification du service installé et rejeu des tâches réelles depuis une connexion SQLite en lecture seule. La recette économique complète reste synthétique ; aucune nouvelle stratégie réelle n'a passé une finale à ce checkpoint.
+
+Capture reproductible du checkpoint, sans appel IA :
+
+```sh
+PYTHONPATH=src python3 scripts/verify_continuous_research.py --db data/tamtam.sqlite3 --output /tmp/continuous-research-proof.json
+```
 
 La livraison automatise les transitions prises en charge, les refus et la poursuite de la recherche. Elle ne démontre pas encore une stratégie réelle profitable ni une nouvelle finale prospective passée. Un mécanisme ou une source non implémenté exige toujours un travail technique ; cette limitation concerne le sujet, pas le fonctionnement des autres études. Les preuves de validation futures seront produites par les timers quand leurs données seront disponibles, sans inventer une mesure anticipée.

@@ -128,6 +128,36 @@ class ContinuousResearchResolutionTests(unittest.TestCase):
         self.assertEqual(self.store.connection.execute(
             'select status from research_work_queue where work_id=?', (work['work_id'],)).fetchone()[0], 'completed')
 
+    def test_poll_waits_rotates_across_more_work_than_one_limit(self):
+        initialize_queue(self.store)
+        ids = []
+        for index in range(10):
+            work, _ = enqueue(self.store, 'population_resolution', f'request-{index}',
+                {'request_id': f'request-{index}'}, status='waiting_data', clock_ms=100+index)
+            ids.append(work['work_id'])
+        first = poll_waits(self.store, clock_ms=500, limit=3)
+        first_cursor = self.store.connection.execute(
+            'select last_work_id from continuous_research_wait_poll_cursor').fetchone()[0]
+        second = poll_waits(self.store, clock_ms=600, limit=3)
+        second_cursor = self.store.connection.execute(
+            'select last_work_id from continuous_research_wait_poll_cursor').fetchone()[0]
+        self.assertEqual(len(first['advanced']), 0)
+        self.assertEqual(len(second['advanced']), 0)
+        self.assertNotEqual(first_cursor, second_cursor)
+        self.assertEqual(second_cursor, sorted(ids)[5])
+
+    def test_reviewed_hypothesis_is_remembered_even_when_waiting_for_specification(self):
+        result = {'proposal': {'hypothesis': {'mechanism': 'descriptive association',
+            'markets': ['ETH'], 'required_data': [], 'rejection_criteria': 'no association',
+            'execution_constraints': 'no execution', 'risk': 'exploratory'}},
+            'critique': {'decision': 'consistent'}, 'promotion_authorized': False,
+            'profitability_proven': False}
+        self.add_job('hypothesis_recorded', result)
+        resolved = resolve_result(self.store, 'population', self.request_id, clock_ms=500)
+        self.assertEqual(resolved['state'], 'technical')
+        self.assertTrue(resolved['memory'])
+        self.assertEqual(self.store.connection.execute('select count(*) from research_knowledge').fetchone()[0], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -104,6 +104,13 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
     if type(clock) is not int or clock < 0:
         raise ValueError('Explicit nonnegative clock required')
     row, result, packet = _job(store, source_kind, source_id)
+    # Preserve every reviewed, non-economic hypothesis before acting on its
+    # next route. Packet construction can then select it even when this result
+    # still needs data or an executable contract.
+    memory = None
+    if source_kind == 'population' and row['status'] == 'hypothesis_recorded':
+        from .population_memory import remember
+        memory = remember(store, source_id)
     from .population_routing import route
     routed = route(store, source_id, kind=source_kind)
     assessment = _assessment(result, routed)
@@ -155,18 +162,20 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
             assessment['wake'] = {'kind': 'structured_contract_required', 'pollable': False,
                 'new_input_fingerprint_required': True}
 
-    memory = None
-    if assessment['state'] == 'resolved':
+    if assessment['state'] == 'resolved' and memory is None:
         status = row['status']
-        if source_kind == 'population' and status == 'hypothesis_recorded':
-            from .population_memory import remember
-            memory = remember(store, source_id)
-        elif source_kind == 'population' and status == 'needs_data':
+        if source_kind == 'population' and status == 'needs_data':
             from .population_memory import remember_verified_local_resolution
             memory = remember_verified_local_resolution(store, source_id)
         elif result.get('resolution_assessment_v1'):
             from .population_memory import remember_resolution_descriptor
             memory = remember_resolution_descriptor(store, source_id)
+    elif assessment['state'] == 'resolved' and source_kind == 'population' and row['status'] == 'hypothesis_recorded':
+        # A local resolver may have added a verified artifact after the early
+        # hypothesis import above. Re-read it so the descriptor revision also
+        # reaches the next packet; this is idempotent when no artifact changed.
+        from .population_memory import remember
+        memory = remember(store, source_id)
 
     semantic = {'source_kind': source_kind, 'source_id': source_id,
         'source_status': row['status'], 'source_result_fingerprint': fingerprint(result),
@@ -218,9 +227,21 @@ def poll_waits(store, *, clock_ms=None, limit=8, client=None, collection_job=Non
         if client is not None:
             collection = tick_for_job(store, client, collection_job, collection_policy, clock_ms=clock)
 
+    store.connection.execute('create table if not exists continuous_research_wait_poll_cursor '
+        '(cursor_id integer primary key check(cursor_id=1),last_work_id text not null,updated_ms integer not null)')
+    cursor = store.connection.execute('select last_work_id from continuous_research_wait_poll_cursor where cursor_id=1').fetchone()
+    last_id = cursor['last_work_id'] if cursor else ''
     rows = store.connection.execute(
         "select * from research_work_queue where source_kind='population_resolution' "
-        "and status in ('waiting_data','waiting_deadline') order by created_ms,work_id limit ?", (limit,)).fetchall()
+        "and status in ('waiting_data','waiting_deadline') and work_id>? order by work_id limit ?",
+        (last_id, limit)).fetchall()
+    if len(rows) < limit:
+        remainder = limit - len(rows)
+        wrapped = store.connection.execute(
+            "select * from research_work_queue where source_kind='population_resolution' "
+            "and status in ('waiting_data','waiting_deadline') and work_id<=? order by work_id limit ?",
+            (last_id, remainder)).fetchall()
+        rows = list(rows) + list(wrapped)
     advanced = []
     for work in rows:
         request_id = work['source_id']
@@ -387,6 +408,11 @@ def poll_waits(store, *, clock_ms=None, limit=8, client=None, collection_job=Non
             advanced.append({'request_id': request_id, 'state': 'waiting_data',
                 'absence': 'incomplete_or_unobserved', 'export': 'not_attempted',
                 'calculation': 'not_run'})
+    if rows:
+        store.connection.execute('insert into continuous_research_wait_poll_cursor values(1,?,?) '
+            'on conflict(cursor_id) do update set last_work_id=excluded.last_work_id,updated_ms=excluded.updated_ms',
+            (rows[-1]['work_id'], clock))
+        store.connection.commit()
     return {'advanced': advanced, 'collection': collection, 'candidate_followups': [x for x in advanced if x['state']=='evidence_changed'],
         'model_calls': 0, 'orders_authorized': False}
 

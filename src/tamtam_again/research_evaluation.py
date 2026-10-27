@@ -138,6 +138,14 @@ def _observe(store, request_id, kind, link):
         return _persist(store, request_id, kind, 'technical_required', evidence=evidence,
                         diagnostic='No executable family variants; failed specifications retained')
     evaluations = [dict(r) for r in store.connection.execute('select evaluation_id,variant_id,stage,status from validation_evaluations where plan_id=? order by stage,variant_id,evaluation_id', (plan_id,))]
+    for evaluation in evaluations:
+        row = store.connection.execute('select result_json from validation_evaluations where evaluation_id=?',
+            (evaluation['evaluation_id'],)).fetchone()
+        result = json.loads(row[0] or '{}')
+        # Preserve the actual gate diagnostic for later released feedback, not
+        # merely a label that makes the next candidate repeat the same mistake.
+        evaluation['outcome'] = {key: result[key] for key in (
+            'failures', 'error_type', 'criteria_fingerprint', 'synthetic', 'promotable') if key in result}
     evidence['evaluations'] = evaluations
     selection = store.connection.execute('select variant_id,status from experiment_selections where family_id=?', (family,)).fetchone()
     if not selection:

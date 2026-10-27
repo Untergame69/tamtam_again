@@ -35,6 +35,7 @@ class ResearchEvaluationTests(unittest.TestCase):
   self.assertNotEqual(outcome['status'],'passed')
   decision=poll(self.s)['decisions'][0]
   self.assertEqual(decision['state'],'rejected')
+  self.assertEqual(decision['evidence']['evaluations'][0]['outcome']['failures'],outcome['failures'])
   self.assertEqual(decision['next_plan']['kind'],'next_candidate')
   self.assertFalse(decision['next_plan']['rearm_budget'])
   self.assertEqual(poll(self.s)['decisions'][0],decision)

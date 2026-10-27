@@ -133,11 +133,27 @@ def prior_equivalent(store, network, address, market, packet):
     reconstruction where permitted, otherwise conservative aggregate dedup.
     """
     current = semantic_identity(packet, market)
+    has_continuous = bool(store.connection.execute(
+        "select 1 from sqlite_master where name='continuous_research_tasks'").fetchone())
+    if has_continuous:
+        # This permanent unique index is the authoritative identity for every
+        # continuous attempt. Do not deserialize years of 225k-character packets
+        # merely to rediscover the identity already stored at admission.
+        exact = store.connection.execute('select t.request_id,j.status from continuous_research_tasks t '
+            'join population_research_jobs j using(request_id) '
+            'where t.network=? and t.address=? and t.market=? and t.semantic_fingerprint=?',
+            (network, address.lower(), market, current)).fetchone()
+        if exact:
+            return {'request_id': exact['request_id'], 'source_status': exact['status'],
+                'semantic_fingerprint': current, 'legacy_aggregate_fallback': False}
     projection = market_content(packet, market)
     current_hash = packet['observations']['market_execution_detail_v1'][market]['observed_fill_content_fingerprint']
     current_wakes = wake_identities(packet)
-    for row in store.connection.execute('select request_id,status,packet_json from population_research_jobs '
-            'where network=? and address=? order by created_ms,request_id', (network, address.lower())):
+    legacy_filter = (' and not exists(select 1 from continuous_research_tasks t '
+        'where t.request_id=j.request_id)' if has_continuous else '')
+    for row in store.connection.execute('select j.request_id,j.status,j.packet_json from population_research_jobs j '
+            'where j.network=? and j.address=?' + legacy_filter + ' order by j.created_ms,j.request_id',
+            (network, address.lower())):
         try:
             old = json.loads(row['packet_json'])
             old_projection = market_content(old, market)

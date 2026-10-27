@@ -123,3 +123,26 @@ class IdentityTests(unittest.TestCase):
         forged['observations']['completed_observation_requests'][0]['evidence']['proofs'][0]['pagination_status'] = 'incomplete'
         with self.assertRaisesRegex(ValueError, 'proof'):
             semantic_identity(forged, 'BTC')
+
+    def test_continuous_history_uses_permanent_index_without_reparsing_packets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / 'db.sqlite')
+            try:
+                initialize(store)
+                store.connection.execute('create table continuous_research_tasks '
+                    '(request_id text primary key,network text,address text,market text,semantic_fingerprint text,'
+                    'unique(network,address,market,semantic_fingerprint))')
+                current = packet(); semantic = semantic_identity(current, 'BTC')
+                store.connection.execute('insert into population_research_jobs '
+                    '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+                    'values(?,?,?,?,?,?,?,?,?)', ('continuous', 'net', '0xabc', 'input', json.dumps(current), '{}', 1, 'suspended', 1))
+                store.connection.execute('insert into continuous_research_tasks values(?,?,?,?,?)',
+                    ('continuous', 'net', '0xabc', 'BTC', semantic))
+                store.connection.commit()
+                with patch('tamtam_again.continuous_research_identity.json.loads', side_effect=AssertionError('must use persisted semantic index')):
+                    self.assertEqual(prior_equivalent(store, 'net', '0xabc', 'BTC', current)['request_id'], 'continuous')
+                    changed = copy.deepcopy(current)
+                    changed['observations']['market_execution_detail_v1']['BTC']['observed_fill_content_fingerprint'] = 'fresh'
+                    self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', changed))
+            finally:
+                store.close()

@@ -215,6 +215,52 @@ def promotion(metrics_normal: dict[str,Any], stressed: dict[str,Any], criteria: 
     return failures
 
 
+def classify_evaluation_failures(result: dict[str,Any]) -> dict[str,Any]:
+    """Interpret fixed gate failures without changing gates or old results.
+
+    Missing funding, an incomplete path or an insufficient sample cannot
+    establish economic rejection. Performance figures remain recorded even when
+    evidence prevents that verdict. Legacy results are interpreted read-only.
+    """
+    if result.get('status')=='passed':
+        return {'version':'evaluation-failure-classes-v1','state':'passed',
+                'decision_basis':'all_preregistered_gates_passed',
+                'evidence_failures':[],'sample_failures':[],'economic_failures':[]}
+    failures=result.get('failures')
+    if result.get('status')=='error' or not isinstance(failures,list) or not failures:
+        return {'version':'evaluation-failure-classes-v1','state':'technical_required',
+                'decision_basis':'execution_error_or_unclassified_result',
+                'evidence_failures':['evaluation_error_or_missing_gate_details'],
+                'sample_failures':[],'economic_failures':[]}
+    metrics=result.get('metrics') if isinstance(result.get('metrics'),dict) else {}
+    evidence=[];sample=[];economic=[]
+    for failure in failures:
+        if not isinstance(failure,str):
+            evidence.append('unclassified_gate_failure');continue
+        if failure in {'flat_boundaries','funding_observed'}:
+            evidence.append(failure)
+        elif failure in {'independent_block_volume','regime_coverage'}:
+            sample.append(failure)
+        elif failure=='uninterrupted_observation':
+            diagnostics=metrics.get('diagnostics')
+            if isinstance(diagnostics,list) and diagnostics and set(diagnostics)<={'risk_drawdown_limit'}:
+                economic.append(failure)
+            else:evidence.append(failure)
+        elif failure=='market_reference' and metrics.get('benchmark_matched_size_buy_hold_pnl') is None:
+            evidence.append(failure)
+        elif failure=='uncertainty' and metrics.get('block_mean_lower_95_descriptive') is None:
+            sample.append(failure)
+        elif failure in {'net_edge_after_costs','market_reference','drawdown_limit',
+                         'gain_concentration','uncertainty','stress_edge'}:
+            economic.append(failure)
+        else:evidence.append(failure)
+    state='technical_required' if evidence else 'inconclusive' if sample else 'rejected'
+    return {'version':'evaluation-failure-classes-v1','state':state,
+            'decision_basis':'incomplete_evaluation_evidence' if evidence else
+                'insufficient_sample_or_regime_support' if sample else 'preregistered_economic_gates_failed',
+            'evidence_failures':evidence,'sample_failures':sample,'economic_failures':economic}
+
+
 def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,Any]], *, provenance: str) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
     if plan.get("experiment_mode") == "experimental_paper_only":
@@ -278,6 +324,7 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
                   "promotable":stage == "final" and not failures and not row["synthetic"],
                   "failures":failures,"metrics":normal["metrics"],"stress_metrics":stress["metrics"],
                   "input_fingerprint":data_fp,"criteria_fingerprint":fingerprint(criteria)}
+        result['failure_classification']=classify_evaluation_failures(result)
     except Exception as exc:
         store.connection.execute("UPDATE validation_evaluations SET status='error',result_json=? WHERE evaluation_id=?",(canonical({"status":"error","error_type":type(exc).__name__}),evaluation_id))
         record_evaluation_terminal(store,evaluation_id,'error')
@@ -286,7 +333,10 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
     store.connection.execute("UPDATE validation_evaluations SET status=?,result_json=? WHERE evaluation_id=?",(result["status"],canonical(result),evaluation_id))
     record_evaluation_terminal(store,evaluation_id,result["status"])
     store.connection.commit()
-    decision(store,row["network"],row["address"],row["coin"],"ready_to_test" if result["promotable"] else "needs_data" if not failures else "rejected",
+    disposition=result['failure_classification']
+    decision(store,row["network"],row["address"],row["coin"],"ready_to_test" if result["promotable"] else
+             "rejected" if disposition['state']=='rejected' else "needs_data",
              f"{stage}: {result['status']}; synthetic={bool(row['synthetic'])}",
-             {"new_prospective_plan_required":stage=="final","failures":failures},"start_n2" if result["promotable"] else "review_diagnostic",{"evaluation_id":evaluation_id})
+             {"new_prospective_plan_required":stage=="final","failures":failures,
+              "failure_classification":disposition},"start_n2" if result["promotable"] else "review_diagnostic",{"evaluation_id":evaluation_id})
     return result

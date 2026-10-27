@@ -165,7 +165,7 @@ class ExecutionResearchContextTests(unittest.TestCase):
     def test_readiness_blocks_unavailable_streams_without_forcing_hypothesis_type(self):
         packet=self.packet();attach_execution_context(packet,ROOT)
         packet['observations']['execution_data_readiness']={
-            'market_ws_observed':True,'account_ws_observed':False}
+            'market_ws_observed':True,'account_ws_observed':False,'funding_ws_observed':True}
         hypothesis=self.hypothesis(packet)
         with self.assertRaisesRegex(ValueError,'account WebSocket'):
             validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
@@ -185,6 +185,17 @@ class ExecutionResearchContextTests(unittest.TestCase):
         del hypothesis['executable_spec'];del hypothesis['experiment_profile']
         validate_response(response,packet,request_id='request')
         self.assertIn('REST receipt is not an account WebSocket signal',build_proposal_prompt(packet,'request'))
+
+    def test_autonomous_market_stream_without_supported_funding_cannot_allocate(self):
+        packet=self.packet();attach_execution_context(packet,ROOT)
+        packet['observations']['execution_data_readiness']={
+            'market_ws_observed':True,'account_ws_observed':True,'funding_ws_observed':False}
+        hypothesis=self.hypothesis(packet)
+        with self.assertRaisesRegex(ValueError,'funding stream'):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+        hypothesis['type']='autonomous';hypothesis['executable_spec']['type']='autonomous'
+        with self.assertRaisesRegex(ValueError,'funding stream'):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
 
     def test_context_alone_cannot_be_market_evidence_and_prompt_keeps_hypothesis_scope(self):
         packet = self.packet()

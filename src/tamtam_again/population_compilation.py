@@ -54,6 +54,8 @@ def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=
             raise ValueError('Observed public market stream required before executable allocation')
         if spec.get('type')=='follower' and readiness.get('account_ws_observed') is not True:
             raise ValueError('Observed account WebSocket fills required for follower allocation; REST is not a live signal')
+        if readiness.get('funding_ws_observed') is not True:
+            raise ValueError('Observed supported funding stream required before allocation; missing funding is not zero funding')
     if execution_context is not None:
         from .execution_research_context import validate_scenario_spec
         validate_scenario_spec(execution_context,spec)

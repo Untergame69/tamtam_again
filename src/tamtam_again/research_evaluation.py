@@ -75,6 +75,19 @@ def _pollable_needs_data(result):
         return False
 
 
+def _failed_evaluation_state(evaluations, evidence):
+    """A family rejection requires interpretable economic failures throughout."""
+    classifications=[row['outcome']['failure_classification'] for row in evaluations
+                     if row.get('status') not in {'passed','running'}]
+    if not classifications or any(item['state']=='technical_required' for item in classifications):
+        state='technical_required';disposition='incomplete_evaluation_evidence'
+    elif any(item['state']=='inconclusive' for item in classifications):
+        state='descriptive';disposition='inconclusive'
+    else:state='rejected';disposition='economic_rejection'
+    evidence['evaluation_disposition']=disposition
+    return state
+
+
 def handoff(store, request_id, *, kind='population', experiment_policy=None):
     """Persist a typed next plan; freeze only an explicitly reviewed executable rule.
 
@@ -214,6 +227,9 @@ def _observe(store, request_id, kind, link):
         # merely a label that makes the next candidate repeat the same mistake.
         evaluation['outcome'] = {key: result[key] for key in (
             'failures', 'error_type', 'criteria_fingerprint', 'synthetic', 'promotable') if key in result}
+        from .validation import classify_evaluation_failures
+        evaluation['outcome']['failure_classification']=classify_evaluation_failures(
+            {**result,'status':evaluation['status']})
     evidence['evaluations'] = evaluations
     selection = store.connection.execute('select variant_id,status from experiment_selections where family_id=?', (family,)).fetchone()
     if not selection:
@@ -225,9 +241,10 @@ def _observe(store, request_id, kind, link):
         failed = {r['variant_id'] for r in evaluations if r['stage'] == 'comparison' and r['status'] not in {'running', 'passed'}}
         blocked = {r['variant_id'] for r in blockers}
         if len(failed | blocked) == len(variants):
-            state = 'technical_required' if blockers or any(r['status'] == 'error' for r in evaluations) else 'rejected'
+            state = 'technical_required' if blockers else _failed_evaluation_state(
+                [r for r in evaluations if r['stage']=='comparison'],evidence)
             return _persist(store, request_id, kind, state, evidence=evidence,
-                            diagnostic='All comparisons failed; no final or paper authorization')
+                            diagnostic='No comparison passed; distinguish evidence and sample gaps from economic gate failures; no final or paper authorization')
         if not plan.get('synthetic', False) and now_ms() >= plan['final']['start_ms']:
             return _persist(store, request_id, kind, 'technical_required', evidence=evidence,
                 diagnostic='Selection window missed; preserve original reserve and allocate a new prospective candidate')
@@ -235,7 +252,9 @@ def _observe(store, request_id, kind, link):
                         wake={'not_before_ms': plan['comparison']['end_ms'], 'owner': 'pipeline'})
     evidence['selection'] = dict(selection)
     if selection['status'] == 'no_candidate':
-        return _persist(store, request_id, kind, 'rejected', evidence=evidence, diagnostic='No comparison winner')
+        state=_failed_evaluation_state([r for r in evaluations if r['stage']=='comparison'],evidence)
+        return _persist(store, request_id, kind, state, evidence=evidence,
+                        diagnostic='No comparison winner; preserve evidence gaps and inconclusive samples separately from economic rejection')
     final = [r for r in evaluations if r['stage'] == 'final' and r['variant_id'] == selection['variant_id']]
     if not final or any(r['status'] == 'running' for r in final):
         blocker = _archive_blocker(store, selection['variant_id'], 'final') if not final else None
@@ -246,7 +265,7 @@ def _observe(store, request_id, kind, link):
         return _persist(store, request_id, kind, 'awaiting_final', evidence=evidence,
                         wake={'not_before_ms': plan['final']['end_ms'], 'owner': 'pipeline'})
     if not any(r['status'] == 'passed' for r in final):
-        state = 'technical_required' if any(r['status'] == 'error' for r in final) else 'rejected'
+        state = _failed_evaluation_state(final,evidence)
         return _persist(store, request_id, kind, state, evidence=evidence, diagnostic='Final did not pass; new candidate requires new future reserve')
     sessions = []
     for row in store.connection.execute('select session_id,status,state_json,started_ms,updated_at from paper_sessions where variant_id=? order by started_ms,session_id', (selection['variant_id'],)):

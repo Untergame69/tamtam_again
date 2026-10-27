@@ -1,7 +1,7 @@
 """Temporary synthetic proof only; no provider, archive or real paper use."""
 import json
 import unittest
-import test_population_experiments as fixtures
+from tests import test_population_experiments as fixtures
 from tamtam_again.research_evaluation import handoff, poll
 from tamtam_again.population_experiments import register_experiment
 from tamtam_again.validation import evaluate

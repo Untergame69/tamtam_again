@@ -183,7 +183,7 @@ def _consume(store, request_id, experiment_policy, clock):
     return {'request_id':request_id,'resolution':resolved,'evaluation':evaluated}
 
 
-def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None, max_candidates=8):
+def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None, collection_policy=None, max_candidates=8):
     """One inference task at most; deterministic follow-ups proceed independently."""
     from .research import scheduler_lock
     from .continuous_research_policy import initialize as allowance, candidates_for_admission, report
@@ -220,11 +220,13 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 "and j.status not in ('sealed','running') order by (j.request_id<=?),j.request_id limit 16",(policy['policy_id'],last)).fetchall()
         for row in followup_rows:
             try:result['followups'].append(_consume(store,row['request_id'],experiment_policy,clock))
-            except (ValueError,PermissionError) as exc:
+            except (ValueError,PermissionError,KeyError,TypeError) as exc:
                 result['followups'].append({'request_id':row['request_id'],'status':'technical_required','reason':str(exc)})
         if followup_rows:
             store.connection.execute('insert or replace into continuous_research_cursor values(1,?)',(followup_rows[-1][0],));store.connection.commit()
         result['evaluations']=poll(store,limit=8)
+        from .continuous_research_resolution import poll_waits
+        result['data_waits']=poll_waits(store,clock_ms=clock,limit=8,collection_policy=collection_policy)
         inventory=admission_inventory(store,policy,clock_ms=clock)
         selections=candidates_for_admission(inventory,market_evidence=market_proofs(store,inventory,policy,clock))
         # Least recently considered candidates first within the same priority;
@@ -234,7 +236,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
             return (0 if old is None else old[0],item.get('priority',''),item['candidate'])
         for item in sorted(selections,key=ordering)[:max_candidates]:
-            item={**item,'network':policy['network']}
+            item={**item,'network':policy['network'],'admission_cutoff_ms':item['cutoff_ms'],'cutoff_ms':clock}
             item['question']=('From the authorized executions on '+item['market']+', identify a falsifiable observable mechanism, '
                 'separating price flow, signed fees, funding, inventory and coverage. Use all deterministic statistics; '
                 'do not infer order placement from executed fills. If supported, specify an executable causal rule with '
@@ -245,8 +247,13 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 (policy['network'],item['address'])).fetchone()[0]
             scope=store.connection.execute('select max(available_ms) from account_scope_reports where network=? and address=?',
                 (policy['network'],item['address'])).fetchone()[0]
-            source_fp=fingerprint({'source_ref':item['source_ref'],'cutoff':item['cutoff_ms'],
-                'market':item['market'],'latest_archive_id':latest,'latest_scope':scope})
+            wakes=None
+            if store.connection.execute("select 1 from sqlite_master where name='research_observation_wakes'").fetchone():
+                wakes=[tuple(r) for r in store.connection.execute('select w.request_id,w.evidence_fingerprint from research_observation_wakes w '
+                    'join population_research_jobs j on j.request_id=w.request_id where j.network=? and j.address=? '
+                    'and w.available_ms<=? order by w.request_id',(policy['network'],item['address'],clock))]
+            source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
+                'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes})
             old=store.connection.execute('select source_fingerprint,status,result_json from continuous_research_candidates '
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
             if old and old['source_fingerprint']==source_fp and old['status'] not in {'budget_exhausted','prepared','technical_required','needs_data','reserved'}:
@@ -266,7 +273,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                             result['dispatched'].append(execution)
                             current={**current,'status':execution['status']}
                             result['followups'].append(_consume(store,current['request_id'],experiment_policy,clock))
-                except (ValueError,PermissionError) as exc:
+                except (ValueError,PermissionError,KeyError,TypeError) as exc:
                     message=str(exc)
                     current={'status':'budget_exhausted' if 'allowance exhausted' in message else 'technical_required','reason':message}
             _save_candidate(store,item,source_fp,current,clock)

@@ -22,12 +22,15 @@ def request_count(store):
                     # states prove that a paper research attempt was engaged.
                     total+=store.connection.execute("select count(*) from paper_research_jobs where status not in ('budget_required','archived')").fetchone()[0]
             else:
-                if kind=='population' and store.connection.execute(
-                        "select 1 from sqlite_master where type='table' and name='population_research_pilot_tasks'").fetchone():
-                    # The dedicated pilot carries its own immutable allowance and must
-                    # neither borrow from nor consume the pre-existing shared budget.
-                    total+=store.connection.execute('select count(*) from population_research_jobs j '
-                        'where not exists(select 1 from population_research_pilot_tasks p where p.request_id=j.request_id)').fetchone()[0]
-                else:
-                    total+=store.connection.execute('select count(*) from '+name).fetchone()[0]
+                # Dedicated allowances retain every attempt in the same jobs
+                # registry, but never consume or reset the historical shared
+                # allowance. Schemas can appear independently during migration.
+                exclusions=[]
+                for dedicated in ('population_research_pilot_tasks','continuous_research_tasks'):
+                    if store.connection.execute(
+                            "select 1 from sqlite_master where type='table' and name=?",(dedicated,)).fetchone():
+                        exclusions.append('not exists(select 1 from '+dedicated+' d where d.request_id=j.request_id)')
+                query='select count(*) from population_research_jobs j'
+                if exclusions:query+=' where '+' and '.join(exclusions)
+                total+=store.connection.execute(query).fetchone()[0]
     return total

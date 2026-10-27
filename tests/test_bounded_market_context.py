@@ -200,6 +200,43 @@ class BoundedMarketContextTests(unittest.TestCase):
         if exists:
             self.assertEqual(self.store.connection.execute('select count(*) from bounded_market_context_results').fetchone()[0],0)
 
+    def test_old_movement_anchor_is_visible_and_excluded_from_near_60s_summary(self):
+        self.fills()
+        self.quote(BASE-7_200_000,bid='89',ask='91')
+        self.quote(BASE+500,bid='99',ask='101')
+        result=self.run_context()
+        proof=load_result(self.store,result['result_fingerprint'])
+        row=proof['feeds']['bbo']['rows'][0]['strict_prefill_quote']
+        self.assertEqual(row['prior_move_anchor_age_ms'],7_200_500)
+        group=result['feeds']['bbo']['groups'][0]
+        self.assertGreater(group['prior_move_anchor_age_ms']['p50'],7_000_000)
+        self.assertGreater(group['at_least_60s_move_bps']['count'],0)
+        self.assertEqual(group['near_60s_move_bps']['count'],0)
+        self.assertEqual(group['near_60s_move_coverage']['matched'],0)
+        self.assertNotIn('prior_60s_move_bps',group)
+        self.assertTrue(any('much longer' in note for note in result['limitations']))
+
+    def test_near_60s_anchor_is_reported_in_distinct_summary(self):
+        self.fills()
+        self.quote(BASE-60_000,bid='89',ask='91')
+        self.quote(BASE+500,bid='99',ask='101')
+        result=self.run_context()
+        group=result['feeds']['bbo']['groups'][0]
+        self.assertEqual(group['near_60s_anchor_age_ms']['p50'],60_500)
+        self.assertGreater(group['near_60s_move_bps']['count'],0)
+
+    def test_load_result_checks_scope_and_reserve_before_decompressing_proof(self):
+        self.fills()
+        self.quote(BASE+500)
+        result=self.run_context()
+        with patch('tamtam_again.bounded_market_context.authorized_account_history',return_value=False), \
+                patch('tamtam_again.bounded_market_context.zlib.decompress',side_effect=AssertionError('decoded reserved proof')):
+            with self.assertRaises(PermissionError):load_result(self.store,result['result_fingerprint'])
+        self.store.connection.execute('delete from bounded_market_context_scopes')
+        self.store.connection.commit()
+        with patch('tamtam_again.bounded_market_context.zlib.decompress',side_effect=AssertionError('decoded unscoped proof')):
+            with self.assertRaises(PermissionError):load_result(self.store,result['result_fingerprint'])
+
     def test_cutoff_and_latest_fill_window_exclusions_are_explicit(self):
         self.fills()
         self.save([{'tid':3,'coin':'ETH','time':BASE-90_000_000,'side':'B','px':'99','sz':'1',

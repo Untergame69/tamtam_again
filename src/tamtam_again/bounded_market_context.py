@@ -15,8 +15,9 @@ from .engine import canonical, fingerprint
 from .population_descriptive import _load_fills
 from .population_local_join import _decode_verified, _event_iso, _ms, _quote_values, _ranked
 from .research_memory import authorized_account_history
+from .validation import now_ms
 
-VERSION = 'bounded-market-context-v2'
+VERSION = 'bounded-market-context-v3'
 DEFAULT_LIMITS = {
     'fill_window_ms': 86_400_000, 'quote_lookback_ms': 300_000,
     'max_fill_pages': 2_000, 'max_fill_records': 500_000,
@@ -31,6 +32,9 @@ CREATE TABLE IF NOT EXISTS bounded_market_context_fill_cache (
 CREATE TABLE IF NOT EXISTS bounded_market_context_results (
  result_fingerprint TEXT PRIMARY KEY, input_fingerprint TEXT UNIQUE NOT NULL,
  semantic_fingerprint TEXT NOT NULL, summary_json TEXT NOT NULL, payload BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS bounded_market_context_scopes (
+ result_fingerprint TEXT PRIMARY KEY, network TEXT NOT NULL, address TEXT NOT NULL,
+ market TEXT NOT NULL, evidence_cutoff_ms INTEGER NOT NULL);
 '''
 
 
@@ -269,11 +273,11 @@ def _join(fills, quotes, start, end, receipts, budget):
             if before >= 0:
                 earlier = quotes[before]
                 earlier_mid = (Decimal(earlier['bid'])+Decimal(earlier['ask']))/2
-                context['prior_60s_move_bps'] = str((midpoint/earlier_mid-1)*10_000)
+                context['at_least_60s_move_bps'] = str((midpoint/earlier_mid-1)*10_000)
                 context['prior_move_anchor_age_ms'] = previous['event_ms']-earlier['event_ms']
                 context['prior_move_anchor'] = earlier
             else:
-                context['prior_60s_move_bps'] = None
+                context['at_least_60s_move_bps'] = None
             try:
                 price = Decimal(str(fill['px']))
                 if fill.get('side') not in ('A','B') or not price.is_finite() or price <= 0:
@@ -316,7 +320,17 @@ def _groups(rows, budget):
         result.append({'utc_day': day, 'role': role, 'position_effect': effect, 'fill_side':side,
             'fills': len(values), 'matched': len(matches),
             'spread_bps': _ranked([Decimal(q['spread_bps']) for q in matches]),
-            'prior_60s_move_bps': _ranked([Decimal(q['prior_60s_move_bps']) for q in matches if q['prior_60s_move_bps'] is not None]),
+            'at_least_60s_move_bps': _ranked([Decimal(q['at_least_60s_move_bps']) for q in matches
+                if q['at_least_60s_move_bps'] is not None]),
+            'prior_move_anchor_age_ms': _ranked([q['prior_move_anchor_age_ms'] for q in matches
+                if q['at_least_60s_move_bps'] is not None]),
+            'near_60s_move_bps': _ranked([Decimal(q['at_least_60s_move_bps']) for q in matches
+                if q['at_least_60s_move_bps'] is not None and 55_000 <= q['prior_move_anchor_age_ms'] <= 65_000]),
+            'near_60s_anchor_age_ms': _ranked([q['prior_move_anchor_age_ms'] for q in matches
+                if q['at_least_60s_move_bps'] is not None and 55_000 <= q['prior_move_anchor_age_ms'] <= 65_000]),
+            'near_60s_move_coverage': {'matched': sum(q['at_least_60s_move_bps'] is not None
+                and 55_000 <= q['prior_move_anchor_age_ms'] <= 65_000 for q in matches),
+                'quote_matched_fills':len(matches),'anchor_age_window_ms':[55_000,65_000]},
             'fill_cost_vs_prior_midpoint_bps': _ranked([Decimal(q['fill_cost_vs_prior_midpoint_bps'])
                 for q in matches if q['fill_cost_vs_prior_midpoint_bps'] is not None]),
             'event_age_ms': _ranked([q['event_age_ms'] for q in matches])})
@@ -381,6 +395,7 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
         'Missing/stale quotes, source-clock offset and selective coverage remain unknown, never zero movement.',
         'Quotes describe executed-fill contexts only; orders without fills and decisions to abstain remain unobserved.',
         'Fills and overlapping market windows are dependent observations; no inferential significance is claimed.',
+        'at_least_60s_move_bps uses the latest observed anchor at or before quote time minus 60s; its age may be much longer. Only near_60s_move_bps restricts anchor ages to 55–65s, with separate coverage.',
     ]
     # Economic identity excludes cutoff/serialization/provenance churn. It changes
     # for actual selected prefill facts, not for wholly post-fill market updates.
@@ -401,10 +416,29 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
     with store.connection:
         store.connection.execute('insert or ignore into bounded_market_context_results values(?,?,?,?,?)',
             (result_fp, input_fp, semantic, canonical(summary), encoded))
+        store.connection.execute('insert or ignore into bounded_market_context_scopes values(?,?,?,?,?)',
+            (result_fp, network, address, market, cutoff_ms))
     return {**summary, 'cache': 'created', 'recalculated': True}
 
 
-def load_result(store, result_fingerprint):
+def load_result(store, result_fingerprint, *, as_of_ms=None):
+    """Load a proof only after its separately stored account scope is authorized.
+
+    Availability at the historical evidence cutoff does not grant access through
+    a newly protected evaluation period at the caller's present decision time.
+    """
+    as_of = now_ms() if as_of_ms is None else as_of_ms
+    if type(as_of) is not int or as_of < 0:
+        raise ValueError('Explicit nonnegative market-context access time required')
+    if not store.connection.execute("select 1 from sqlite_master where name='bounded_market_context_scopes'").fetchone():
+        raise PermissionError('Market-context proof has no verified scope metadata')
+    scope = store.connection.execute('select network,address,market,evidence_cutoff_ms '
+        'from bounded_market_context_scopes where result_fingerprint=?',(result_fingerprint,)).fetchone()
+    if scope is None:
+        raise PermissionError('Market-context proof has no verified scope metadata')
+    if (scope['evidence_cutoff_ms'] > as_of or not authorized_account_history(
+            store, scope['network'], scope['address'], as_of)):
+        raise PermissionError('Market-context proof is unavailable or intersects a reserved account period')
     row = store.connection.execute('select payload from bounded_market_context_results where result_fingerprint=?',
         (result_fingerprint,)).fetchone()
     if row is None:
@@ -412,4 +446,8 @@ def load_result(store, result_fingerprint):
     result = json.loads(zlib.decompress(row[0]))
     if fingerprint(result) != result_fingerprint:
         raise ValueError('Market-context proof integrity mismatch')
+    if any(result[key] != scope[column] for key,column in (
+            ('network','network'),('address','address'),('market','market'),
+            ('evidence_cutoff_ms','evidence_cutoff_ms'))):
+        raise ValueError('Market-context scope metadata disagrees with its proof')
     return result

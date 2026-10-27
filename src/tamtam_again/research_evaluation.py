@@ -111,6 +111,19 @@ def _handoff(store, request_id, *, kind, experiment_policy):
     return _observe(store, request_id, kind, prepared)
 
 
+def _archive_blocker(store, variant_id, stage):
+    if not _exists(store, 'pipeline_decisions'):
+        return None
+    row = store.connection.execute(
+        'select decision_id,diagnostic,wake_json from pipeline_decisions where evidence_json=? '
+        'order by decision_id desc limit 1',
+        (canonical({'variant_id': variant_id, 'stage': stage}),)).fetchone()
+    if row and json.loads(row['wake_json']).get('archive_or_plan_correction_required') is True:
+        return {'decision_id': row['decision_id'], 'diagnostic': row['diagnostic'],
+                'variant_id': variant_id, 'stage': stage}
+    return None
+
+
 def _observe(store, request_id, kind, link):
     family = link['family_id']; plan_id = link['plan_id']
     evidence = {'family_id': family, 'plan_id': plan_id}
@@ -125,9 +138,15 @@ def _observe(store, request_id, kind, link):
     evidence['evaluations'] = evaluations
     selection = store.connection.execute('select variant_id,status from experiment_selections where family_id=?', (family,)).fetchone()
     if not selection:
+        blockers = [blocker for variant in variants
+                    if not any(r['variant_id'] == variant and r['stage'] == 'comparison' for r in evaluations)
+                    if (blocker := _archive_blocker(store, variant, 'comparison'))]
+        if blockers:
+            evidence['archive_blockers'] = blockers
         failed = {r['variant_id'] for r in evaluations if r['stage'] == 'comparison' and r['status'] not in {'running', 'passed'}}
-        if len(failed) == len(variants):
-            state = 'technical_required' if any(r['status'] == 'error' for r in evaluations) else 'rejected'
+        blocked = {r['variant_id'] for r in blockers}
+        if len(failed | blocked) == len(variants):
+            state = 'technical_required' if blockers or any(r['status'] == 'error' for r in evaluations) else 'rejected'
             return _persist(store, request_id, kind, state, evidence=evidence,
                             diagnostic='All comparisons failed; no final or paper authorization')
         if not plan.get('synthetic', False) and now_ms() >= plan['final']['start_ms']:
@@ -140,6 +159,11 @@ def _observe(store, request_id, kind, link):
         return _persist(store, request_id, kind, 'rejected', evidence=evidence, diagnostic='No comparison winner')
     final = [r for r in evaluations if r['stage'] == 'final' and r['variant_id'] == selection['variant_id']]
     if not final or any(r['status'] == 'running' for r in final):
+        blocker = _archive_blocker(store, selection['variant_id'], 'final') if not final else None
+        if blocker:
+            evidence['archive_blockers'] = [blocker]
+            return _persist(store, request_id, kind, 'technical_required', evidence=evidence,
+                diagnostic='Completed final archive requires correction or a new prospective reserve; no economic rejection')
         return _persist(store, request_id, kind, 'awaiting_final', evidence=evidence,
                         wake={'not_before_ms': plan['final']['end_ms'], 'owner': 'pipeline'})
     if not any(r['status'] == 'passed' for r in final):

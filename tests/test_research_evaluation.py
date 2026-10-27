@@ -100,3 +100,15 @@ class ResearchEvaluationTests(unittest.TestCase):
   self.assertEqual(records[0]['periods'][0]['end_ms'],51)
   self.assertEqual(export_memory(self.s,'synthetic','other',event['created_ms']),[])
   self.assertEqual(export_memory(self.s,'synthetic','fixture-only',event['created_ms']-1),[])
+
+ def test_pipeline_archive_failure_is_technical_feedback_not_endless_wait(self):
+  from tamtam_again.validation import decision
+  family=register_experiment(self.s,'request',self.plan,self.profile)
+  variant=family['attempts'][0]['variant_id']
+  decision(self.s,'synthetic','fixture-only','SYNTH','needs_data','Missing complete archive',
+   {'archive_or_plan_correction_required':True},'inspect_validation_evidence',
+   {'variant_id':variant,'stage':'comparison'})
+  outcome=poll(self.s)['decisions'][0]
+  self.assertEqual(outcome['state'],'technical_required')
+  self.assertEqual(outcome['next_plan']['kind'],'next_candidate')
+  self.assertEqual(outcome['evidence']['archive_blockers'][0]['variant_id'],variant)

@@ -56,3 +56,54 @@ def validate_execution_rules(rules:dict[str,Any],market:str):
     if Decimal(str(rules.get('minimum_order_usdc'))) != Decimal(10):raise ValueError('Documented perpetual order minimum required')
     leverage=Decimal(str(rules.get('max_leverage')))
     if not leverage.is_finite() or leverage<=0:raise ValueError('Positive venue leverage cap required')
+
+
+def execution_rules_from_profile(profile:dict[str,Any], market:str, *,
+                                 cutoff_ms:int, evidence_refs:list[str]) -> dict[str,Any]:
+    """Project a source-backed perpetual profile, never a symbol-name guess.
+
+    Archived v1 profiles predate an explicit instrument-type field. Their full
+    precision/minimum/funding contract identifies the perpetual metadata path.
+    No historical profile is rewritten and no missing field receives a default.
+    """
+    if (not isinstance(profile,dict) or profile.get('schema_version')!=1
+            or profile.get('instrument')!=market or profile.get('status')!='descriptive'
+            or profile.get('instrument_type') not in (None,'perpetual')
+            or not isinstance(market,str) or market.startswith('@') or '/' in market
+            or type(cutoff_ms) is not int):
+        raise ValueError('Source-backed perpetual instrument profile required')
+    available=profile.get('available_ms');refs=profile.get('evidence_refs')
+    if (type(available) is not int or not 0<=available<=cutoff_ms
+            or not isinstance(refs,list) or not refs
+            or any(not isinstance(ref,str) or not ref.startswith('raw_observations:')
+                   or ref not in evidence_refs for ref in refs)):
+        raise ValueError('Available rooted metadata references required')
+    collateral=profile.get('collateral',{})
+    if (not isinstance(collateral,dict) or collateral.get('currency')!='USDC' or not isinstance(collateral.get('token_id'),str)
+            or not collateral['token_id']):
+        raise ValueError('Unsupported mechanism: identified USDC perpetual collateral required')
+    precision=profile.get('precision',{});minimum=profile.get('minimum_order',{})
+    funding=profile.get('funding',{})
+    if not all(isinstance(section,dict) for section in (precision,minimum,funding,profile.get('margin'))):
+        raise ValueError('Structured perpetual precision, minimum, margin and funding proof required')
+    decimals=precision.get('sz_decimals')
+    if (type(decimals) is not int or not 0<=decimals<=6
+            or precision.get('source')!=TICK_SOURCE
+            or precision.get('price_significant_figures')!=5
+            or precision.get('max_price_decimals')!=6-decimals
+            or precision.get('integer_price_exception') is not True
+            or minimum.get('source')!=ERROR_SOURCE
+            or minimum.get('denomination')!='USD for perps; collateral FX not assumed'
+            or funding.get('source')!=FUNDING_SOURCE
+            or funding.get('interval_ms')!=3600000
+            or profile.get('is_delisted') is not False):
+        raise ValueError('Complete perpetual precision, minimum and funding contract required')
+    rules={'version':1,'instrument':market,'currency':collateral['currency'],
+           'available_ms':available,'sz_decimals':decimals,
+           'minimum_order_usdc':minimum.get('documented_value'),
+           'max_leverage':profile.get('margin',{}).get('max_leverage'),
+           'evidence_refs':list(refs)}
+    try:validate_execution_rules(rules,market)
+    except (ValueError,TypeError,ArithmeticError) as exc:
+        raise ValueError('Valid causal perpetual execution rules required') from exc
+    return rules

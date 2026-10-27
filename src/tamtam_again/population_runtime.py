@@ -187,7 +187,8 @@ def validate_response(response,packet,*,request_id=None):
         validate_requests(hypothesis['required_data'],hypothesis['observation_requests'])
     from .population_compilation import validate_compilation
     validate_compilation(hypothesis,accepted_refs,request_id=request_id,measurements=measurements,
-        as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'))
+        as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'),
+        readiness=packet.get('observations',{}).get('execution_data_readiness'))
 
 
 def build_proposal_prompt(packet,request_id):
@@ -222,7 +223,9 @@ If all necessary observations and parameters are supplied, optionally include hy
         if isinstance(packet.get('execution_research_context'), dict):
             instructions += '''\nThe sealed execution_research_context provides existing, chosen virtual risk limits and simulation costs; these are not measured venue costs or latency. You may cite packet.execution_research_context to justify a simulated experiment axis, but it is policy context, never sole market evidence.
 Distinguish reconstructing the source trader policy from proposing a falsifiable policy for our own decisions. Source-trader intentions or a uniquely identified original rule are not prerequisites to testing our own evidence-motivated policy. For follower research the trigger is a locally received public execution, never its historical REST event time. Do not assume such a live feed exists when the packet does not demonstrate it.
-If proposing an executable rule under these assumptions, label the result scenario-dependent. Preserve the base latency_ms, virtual capital and execution object exactly; keep max_exposure within the supplied limits. Fees and slippage are lower bounds for this scenario: any upward cost stress must be explicitly justified in the experiment profile, never described as a measurement. Declared latency sensitivity axes may be simulated, never measured_reference without a separate sealed measurement. Do not assert maker rebate eligibility or a passive fill from the IOC scenario. If observations still do not motivate a testable rule, state the specific missing calculation or observation rather than inventing one.'''
+If proposing an executable rule under these assumptions, label the result scenario-dependent. Compilation requires execution_research_context.market_scope.state=supported for the same market: unknown or non-USDC metadata permits descriptive research only. Preserve the base latency_ms, virtual capital and execution guards; execution.market_rules must contain exactly the supplied market_scope.rules projection so venue precision and minimum apply. Keep max_exposure within the supplied limits. Fees and slippage are lower bounds for this scenario: any upward cost stress must be explicitly justified in the experiment profile, never described as a measurement. Declared latency sensitivity axes may be simulated, never measured_reference without a separate sealed measurement. Do not assert maker rebate eligibility or a passive fill from the IOC scenario. If observations still do not motivate a testable rule, state the specific missing calculation or observation rather than inventing one.'''
+        if 'execution_data_readiness' in packet.get('observations',{}):
+            instructions += '''\nThe sealed execution_data_readiness records whether relevant public WebSocket archives were observed before cutoff, not a guarantee of future continuity. An executable follower requires account_ws_observed=true and market_ws_observed=true; autonomous requires market_ws_observed=true. Otherwise retain a descriptive hypothesis or needs_data and name the missing supported stream. REST receipt is not an account WebSocket signal. Do not change a hypothesis type simply to bypass missing streams.'''
         pilot = packet.get('pilot_research')
         if isinstance(pilot, dict) and isinstance(pilot.get('question'), str):
             instructions += ('\nPilot question (answer only from this packet): ' + pilot['question'] +

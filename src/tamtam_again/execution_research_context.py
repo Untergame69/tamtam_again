@@ -7,7 +7,9 @@ scenario without supplying an entry signal, sizing rule or holding horizon.
 from copy import deepcopy
 import hashlib
 import json
+import zlib
 from pathlib import Path
+from datetime import datetime
 
 from .engine import fingerprint, number
 
@@ -18,7 +20,80 @@ SCENARIO_FIELDS = ('max_exposure', 'fees', 'slippage', 'latency_ms',
                    'starting_capital_usdc', 'execution')
 
 
-def attach_execution_context(packet, repo_root):
+def _market_scope(packet):
+    from .market_rules import execution_rules_from_profile
+    observations=packet.get('observations',{})
+    markets=observations.get('markets',[])
+    if not isinstance(markets,list) or len(markets)!=1:
+        return {'state':'unknown','reason':'Exactly one market needs verified perpetual metadata'}
+    market=markets[0]
+    matches=[row for row in observations.get('market_mechanisms',[])
+             if isinstance(row,dict) and row.get('instrument')==market]
+    if len(matches)!=1:
+        return {'state':'unknown','market':market,'reason':'One unambiguous matching metadata profile required'}
+    try:
+        rules=execution_rules_from_profile(matches[0],market,cutoff_ms=packet.get('available_ms'),
+                                          evidence_refs=packet.get('evidence_refs',[]))
+    except ValueError as exc:
+        return {'state':'unsupported' if 'Unsupported mechanism' in str(exc) else 'unknown',
+                'market':market,'reason':str(exc)}
+    return {'state':'supported','market':market,'rules':rules,
+            'evidence_refs':list(rules['evidence_refs']),
+            'scope':'Identified USDC perpetual; venue liquidation and isolated-tier dynamics remain unmodelled.'}
+
+
+def _root_verified_metadata(packet, store):
+    """Verify the two catalog observations before exporting their references.
+
+    This only reads public metadata already archived. It neither fills a missing
+    catalog from a network call nor changes a historical scope report.
+    """
+    from .collateral import build_catalog
+    from .market_rules import mechanism_profile
+    from .population_local_join import _decode_verified
+    observations=packet.get('observations',{})
+    markets=observations.get('markets',[])
+    if not isinstance(markets,list) or len(markets)!=1:
+        raise ValueError('Exactly one market needs verified metadata')
+    profiles=[row for row in observations.get('market_mechanisms',[])
+              if isinstance(row,dict) and row.get('instrument')==markets[0]]
+    if len(profiles)!=1:raise ValueError('One matching archived market profile required')
+    profile=profiles[0];refs=profile.get('evidence_refs');available=profile.get('available_ms')
+    cutoff=packet.get('available_ms')
+    if (not isinstance(refs,list) or len(refs)!=2 or len(set(refs))!=2
+            or type(available) is not int or type(cutoff) is not int
+            or not 0<=available<=cutoff):
+        raise ValueError('Complete causal two-observation catalog references required')
+    payloads={}
+    for ref in refs:
+        if not isinstance(ref,str) or not ref.startswith('raw_observations:') or not ref.split(':',1)[1].isdigit():
+            raise ValueError('Exact raw metadata identity required')
+        row=store.connection.execute('select * from raw_observations where observation_id=? '
+                                     'and length(response_json)<=2000000',
+                                     (int(ref.split(':',1)[1]),)).fetchone()
+        if (row is None or row['network']!=packet.get('network')
+                or row['source']!='hyperliquid-population-rest-v1'
+                or row['entity_type']!='market' or row['entity_id']!='collateral:all'
+                or row['endpoint'] not in {'allPerpMetas','spotMetaAndAssetCtxs'}
+                or row['endpoint'] in payloads
+                or json.loads(row['request_json']).get('type')!=row['endpoint']):
+            raise ValueError('Matching archived perpetual/token metadata sources required')
+        received=int(datetime.fromisoformat(row['observed_at'].replace('Z','+00:00')).timestamp()*1000)
+        if not 0<=received<=available:raise ValueError('Metadata must be received before catalog availability')
+        payloads[row['endpoint']]=_decode_verified(row,max_decoded_bytes=2_000_000)
+    if set(payloads)!={'allPerpMetas','spotMetaAndAssetCtxs'}:
+        raise ValueError('Both perpetual and collateral-token metadata are required')
+    catalog=build_catalog(payloads['allPerpMetas'],payloads['spotMetaAndAssetCtxs'],
+                          available_ms=available,evidence_refs=list(refs))
+    rebuilt=mechanism_profile(catalog,markets[0])
+    if fingerprint(rebuilt)!=fingerprint(profile):
+        raise ValueError('Archived market profile must equal its raw metadata reconstruction')
+    packet['evidence_refs']=list(dict.fromkeys([*packet.get('evidence_refs',[]),*refs]))
+    return {'state':'verified','evidence_refs':list(refs),
+            'profile_fingerprint':fingerprint(rebuilt)}
+
+
+def attach_execution_context(packet, repo_root, *, store=None):
     """Attach existing parameters before sealing; do not mutate observations.
 
     Absence or invalidity fails explicitly, rather than creating defaults. The
@@ -43,6 +118,14 @@ def attach_execution_context(packet, repo_root):
                    ('notional_usdc', 'max_drawdown_usdc', 'max_leverage'))
             or scenario['execution'].get('kind') != 'market_ioc'):
         raise ValueError('Explicit nonnegative costs and bounded IOC pilot scenario required')
+    metadata_resolution=None
+    if store is not None:
+        try:metadata_resolution=_root_verified_metadata(packet,store)
+        except (ValueError,TypeError,KeyError,ArithmeticError,zlib.error) as exc:
+            metadata_resolution={'state':'unverified','reason':str(exc)}
+    market_scope=_market_scope(packet)
+    if metadata_resolution is not None and metadata_resolution['state']!='verified':
+        market_scope={'state':'unknown','reason':metadata_resolution['reason']}
     context = {
         'schema_version': 'execution-research-context-v1',
         'source': {'path': SOURCE, 'policy_version': policy['version'],
@@ -50,6 +133,8 @@ def attach_execution_context(packet, repo_root):
         'classification': 'chosen_simulation_scenario_not_measured_capacity',
         'scope': 'Our single-perpetual IOC counterfactual only; not the source trader execution policy.',
         'scenario': scenario,
+        'market_scope': market_scope,
+        'metadata_resolution': metadata_resolution or {'state':'sealed_root_references_only'},
         'parameter_status': {
             'fees': 'Configured debit scenario, not our verified venue fee schedule or a maker rebate entitlement.',
             'slippage': 'Configured additional cost scenario, not measured impact.',
@@ -91,12 +176,19 @@ def validate_scenario_spec(context, spec):
                    ('market_evidence', 'economic_validation', 'paper_authorized', 'real_orders_authorized'))):
         raise ValueError('Verified non-promotional execution scenario required')
     scenario = context['scenario']
+    scope=context.get('market_scope',{})
+    if scope.get('state')!='supported' or spec.get('market')!=scope.get('market'):
+        raise ValueError('Verified matching USDC perpetual metadata required before compilation')
     if spec.get('engine') not in (None, 'single_perp_v2'):
         # A portfolio or passive model needs a separately supplied scenario,
         # rather than inheriting single-perp assumptions without accounting.
         raise ValueError('Execution context covers only the declared single-perp IOC scenario')
-    if any(spec.get(key) != scenario[key] for key in
-           ('latency_ms', 'starting_capital_usdc', 'execution')):
+    execution=deepcopy(spec.get('execution',{}))
+    rules=execution.pop('market_rules',None)
+    if rules!=scope['rules']:
+        raise ValueError('Execution market rules must equal the verified metadata projection')
+    if (execution!=scenario['execution'] or any(spec.get(key) != scenario[key] for key in
+           ('latency_ms', 'starting_capital_usdc'))):
         raise ValueError('Executable base specification must preserve the supplied simulation assumptions')
     costs = spec.get('fees', {})
     if (set(costs) != set(scenario['fees'])

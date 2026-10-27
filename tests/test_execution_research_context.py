@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tamtam_again.execution_research_context import attach_execution_context
 from tamtam_again.population_compilation import validate_packet_compilation
@@ -13,8 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ExecutionResearchContextTests(unittest.TestCase):
     def packet(self):
-        return {'available_ms': 100, 'evidence_refs': ['archive:one'],
-                'observations': {'markets': ['BTC']}}
+        from tamtam_again.market_rules import mechanism_profile
+        catalog={'available_ms':90,'evidence_refs':['raw_observations:1'],
+                 'instruments':{'BTC':{'currency':'USDC','token_id':'fixture-usdc',
+                    'sz_decimals':4,'max_leverage':40,'is_delisted':False}}}
+        return {'available_ms': 100, 'evidence_refs': ['archive:one','raw_observations:1'],
+                'observations': {'markets': ['BTC'],
+                    'market_mechanisms':[mechanism_profile(catalog,'BTC')]}}
 
     def test_existing_scenario_preserves_values_without_inventing_rule_or_measurements(self):
         packet = self.packet()
@@ -56,6 +62,7 @@ class ExecutionResearchContextTests(unittest.TestCase):
                 'signal': {'kind': 'leader_delta'}, 'entry': {'kind': 'target_position'},
                 'exit': {'kind': 'horizon_or_target'}, 'sizing': {'scale': '0.001'},
                 'horizon_ms': 60000, 'invalidation_conditions': ['insufficient observations']}
+        spec['execution']={**spec['execution'], 'market_rules':context['market_scope'].get('rules')}
         profile = {'schema_version': 1, 'hypothesis_id': 'request',
             'justification': 'Fixture only; declared simulation sensitivity', 'max_variants': 1,
             'selection_rule': 'comparison_then_one_final', 'axes': [{
@@ -80,6 +87,104 @@ class ExecutionResearchContextTests(unittest.TestCase):
                     measurement_ref='packet.execution_research_context', measurement_available_ms=100)
         with self.assertRaisesRegex(ValueError, 'Measured execution-delay'):
             validate_packet_compilation(hypothesis, hypothesis['experiment_profile'], packet, 'request')
+
+    def test_spot_non_usdc_unrooted_and_future_metadata_cannot_compile(self):
+        changes=[('spot',lambda p:p['observations']['market_mechanisms'][0].update(instrument_type='spot')),
+                 ('nonusdc',lambda p:p['observations']['market_mechanisms'][0]['collateral'].update(currency='USDH')),
+                 ('unrooted',lambda p:p['observations']['market_mechanisms'][0].update(evidence_refs=['raw_observations:999'])),
+                 ('future',lambda p:p['observations']['market_mechanisms'][0].update(available_ms=101)),
+                 ('incomplete',lambda p:p['observations']['market_mechanisms'][0]['minimum_order'].pop('denomination'))]
+        for label,change in changes:
+            with self.subTest(label=label):
+                packet=self.packet();change(packet)
+                context=attach_execution_context(packet,ROOT)
+                self.assertNotEqual(context['market_scope']['state'],'supported')
+                hypothesis=self.hypothesis(packet)
+                with self.assertRaisesRegex(ValueError,'Verified matching USDC perpetual'):
+                    validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+
+    def test_spot_symbol_alone_and_tampered_or_missing_rules_do_not_bypass_scope(self):
+        packet=self.packet();packet['observations']['markets']=['@1']
+        packet['observations']['market_mechanisms'][0]['instrument']='@1'
+        self.assertNotEqual(attach_execution_context(packet,ROOT)['market_scope']['state'],'supported')
+        packet=self.packet();attach_execution_context(packet,ROOT)
+        hypothesis=self.hypothesis(packet)
+        hypothesis['executable_spec']['execution']['market_rules']['minimum_order_usdc']='1'
+        with self.assertRaises(ValueError):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+        packet=self.packet();attach_execution_context(packet,ROOT)
+        hypothesis=self.hypothesis(packet)
+        del hypothesis['executable_spec']['execution']['market_rules']
+        with self.assertRaisesRegex(ValueError,'Execution market rules'):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+
+    def test_venue_rules_preserve_precision_minimum_and_cost_risk_guards(self):
+        packet=self.packet();context=attach_execution_context(packet,ROOT)
+        rules=context['market_scope']['rules']
+        self.assertEqual(rules['minimum_order_usdc'],'10')
+        self.assertEqual(rules['sz_decimals'],4)
+        self.assertEqual(rules['available_ms'],90)
+        hypothesis=self.hypothesis(packet)
+        self.assertEqual(validate_packet_compilation(hypothesis,
+            hypothesis['experiment_profile'],packet,'request')['state'],'executable')
+        hypothesis['executable_spec']['execution']['unknown_quote_max_age_ms']+=1
+        with self.assertRaisesRegex(ValueError,'preserve'):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+
+    def test_raw_metadata_reconstruction_roots_only_verified_archived_catalog(self):
+        from tamtam_again.collateral import build_catalog
+        from tamtam_again.market_rules import mechanism_profile
+        from tamtam_again.storage import Store
+        perps=[{'collateralToken':0,'universe':[{'name':'BTC','szDecimals':4,'maxLeverage':40}]}]
+        spot=[{'tokens':[{'index':0,'name':'USDC','tokenId':'fixture-usdc'}]},[]]
+        refs=['raw_observations:1','raw_observations:2']
+        catalog=build_catalog(perps,spot,available_ms=90,evidence_refs=refs)
+        with tempfile.TemporaryDirectory() as directory:
+            store=Store(Path(directory)/'db')
+            with patch('tamtam_again.storage.utc_now',return_value='1970-01-01T00:00:00.050+00:00'):
+                for endpoint,payload in [('allPerpMetas',perps),('spotMetaAndAssetCtxs',spot)]:
+                    store.save_observation(network='fixture',source='hyperliquid-population-rest-v1',
+                        entity_type='market',entity_id='collateral:all',endpoint=endpoint,payload=payload,
+                        request_payload={'type':endpoint})
+            packet=self.packet();packet['network']='fixture';packet['evidence_refs']=['archive:one']
+            packet['observations']['market_mechanisms']=[mechanism_profile(catalog,'BTC')]
+            store.connection.execute('pragma query_only=on')
+            context=attach_execution_context(packet,ROOT,store=store)
+            self.assertEqual(context['market_scope']['state'],'supported')
+            self.assertEqual(context['metadata_resolution']['state'],'verified')
+            self.assertTrue(set(refs)<=set(packet['evidence_refs']))
+            store.connection.execute('pragma query_only=off')
+            store.connection.execute("update raw_observations set response_sha256='corrupt' where observation_id=1")
+            store.connection.commit()
+            packet['evidence_refs']=['archive:one']
+            context=attach_execution_context(packet,ROOT,store=store)
+            self.assertEqual(context['market_scope']['state'],'unknown')
+            self.assertEqual(packet['evidence_refs'],['archive:one'])
+            store.close()
+
+    def test_readiness_blocks_unavailable_streams_without_forcing_hypothesis_type(self):
+        packet=self.packet();attach_execution_context(packet,ROOT)
+        packet['observations']['execution_data_readiness']={
+            'market_ws_observed':True,'account_ws_observed':False}
+        hypothesis=self.hypothesis(packet)
+        with self.assertRaisesRegex(ValueError,'account WebSocket'):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+        response={'decision':'hypothesis','diagnostic':'Fixture only','wake':{},'hypothesis':hypothesis}
+        with self.assertRaisesRegex(ValueError,'account WebSocket'):
+            validate_response(response,packet,request_id='request')
+        hypothesis['type']='autonomous'
+        spec=hypothesis['executable_spec'];spec['type']='autonomous'
+        spec['signal']={'kind':'momentum','lookback_ms':1000,'threshold_bps':'1'}
+        spec['data_sources']=['bbo','streamHealth','userFundings']
+        spec['sizing']={'scale':'0.001','units':'0.01'}
+        self.assertEqual(validate_packet_compilation(hypothesis,
+            hypothesis['experiment_profile'],packet,'request')['state'],'executable')
+        packet['observations']['execution_data_readiness']['market_ws_observed']=False
+        with self.assertRaisesRegex(ValueError,'market stream'):
+            validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+        del hypothesis['executable_spec'];del hypothesis['experiment_profile']
+        validate_response(response,packet,request_id='request')
+        self.assertIn('REST receipt is not an account WebSocket signal',build_proposal_prompt(packet,'request'))
 
     def test_context_alone_cannot_be_market_evidence_and_prompt_keeps_hypothesis_scope(self):
         packet = self.packet()

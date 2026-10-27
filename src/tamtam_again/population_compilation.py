@@ -38,16 +38,22 @@ def packet_references(packet):
 def validate_packet_compilation(hypothesis,profile,packet,request_id):
     return validate_compilation({**hypothesis,'experiment_profile':profile},packet_references(packet),
         request_id=request_id,measurements=packet.get('observations',{}).get('system_measurements',{}),
-        as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'))
+        as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'),
+        readiness=packet.get('observations',{}).get('execution_data_readiness'))
 
 
-def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None,execution_context=None):
+def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None,execution_context=None,readiness=None):
     present={'executable_spec','experiment_profile'}&hypothesis.keys()
     if not present:return None
     if present!={'executable_spec','experiment_profile'}:
         raise ValueError('Executable output requires both rule and justified experiment profile')
     spec=hypothesis['executable_spec'];profile=hypothesis['experiment_profile']
     if not isinstance(spec,dict) or not isinstance(profile,dict):raise ValueError('Structured compiler output required')
+    if readiness is not None:
+        if not isinstance(readiness,dict) or readiness.get('market_ws_observed') is not True:
+            raise ValueError('Observed public market stream required before executable allocation')
+        if spec.get('type')=='follower' and readiness.get('account_ws_observed') is not True:
+            raise ValueError('Observed account WebSocket fills required for follower allocation; REST is not a live signal')
     if execution_context is not None:
         from .execution_research_context import validate_scenario_spec
         validate_scenario_spec(execution_context,spec)

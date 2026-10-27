@@ -61,7 +61,7 @@ def initialize(store, policy):
 
 
 def authorize_task(store, policy, *, request_id, candidate, address, market,
-                   packet_fingerprint_value, semantic_fingerprint_value, authorized_ms=None):
+                   packet_fingerprint_value, semantic_fingerprint_value, authorized_ms=None, sealed_job=None):
     initialize(store, policy)
     stamp = now_ms() if authorized_ms is None else authorized_ms
     if type(stamp) is not int or stamp < 0 or not all(isinstance(x, str) and x for x in
@@ -85,6 +85,28 @@ def authorize_task(store, policy, *, request_id, candidate, address, market,
             (policy['policy_id'], period)).fetchone()[0]
         if used >= policy['period_limits']['max_tasks']:
             raise ValueError('Daily continuous task allowance exhausted')
+        if sealed_job is not None:
+            # The population job and its dedicated allowance must commit as one
+            # unit. A process death cannot leave an unowned dispatchable job.
+            import json
+            fields = {'network','address','input_fingerprint','packet_json','policy_json','created_ms'}
+            if not isinstance(sealed_job, dict) or set(sealed_job) != fields:
+                raise ValueError('Exact sealed job fields required')
+            if (sealed_job['network'] != policy['network'] or sealed_job['address'].lower() != address.lower()
+                    or not isinstance(sealed_job['input_fingerprint'], str) or not sealed_job['input_fingerprint']
+                    or type(sealed_job['created_ms']) is not int or sealed_job['created_ms'] < 0):
+                raise ValueError('Sealed job identity differs from authorization')
+            packet = json.loads(sealed_job['packet_json'])
+            if (not isinstance(packet, dict) or packet.get('fingerprint') != packet_fingerprint_value
+                    or fingerprint({k:v for k,v in packet.items() if k != 'fingerprint'}) != packet_fingerprint_value
+                    or packet.get('network') != policy['network'] or str(packet.get('address','')).lower() != address.lower()
+                    or json.loads(sealed_job['policy_json']) != policy['task_policy']):
+                raise ValueError('Sealed packet hash, origin or task policy differs from authorization')
+            conn.execute('insert into population_research_jobs '
+                '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+                "values(?,?,?,?,?,?,?,'sealed',?)", (request_id, policy['network'], address.lower(),
+                sealed_job['input_fingerprint'], sealed_job['packet_json'], sealed_job['policy_json'],
+                sealed_job['created_ms'], sealed_job['created_ms']))
         job = conn.execute('select network,address,status,packet_json,policy_json from population_research_jobs where request_id=?', (request_id,)).fetchone()
         if (not job or job['status'] != 'sealed' or job['network'] != policy['network']
                 or job['address'].lower() != address.lower()):

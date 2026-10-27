@@ -110,3 +110,50 @@ class ContinuousAllowanceTests(unittest.TestCase):
         call.assert_called_once()
         self.assertEqual(report(self.store, self.policy, clock_ms=3)['calls_reserved'], 1)
         self.assertEqual(self.store.connection.execute('select state from continuous_research_tasks').fetchone()[0], 'needs_data')
+
+    def atomic_task(self, name, stamp=1):
+        from tamtam_again.engine import fingerprint, canonical
+        packet = {'network': self.policy['network'], 'address': '0xabc', 'research_input_fingerprint': name}
+        packet['fingerprint'] = fingerprint(packet)
+        sealed = {'network': self.policy['network'], 'address': '0xabc', 'input_fingerprint': name,
+            'packet_json': canonical(packet), 'policy_json': canonical(self.policy['task_policy']), 'created_ms': stamp}
+        kwargs = dict(request_id=name, candidate='abc:BTC', address='0xabc', market='BTC',
+            packet_fingerprint_value=packet['fingerprint'], semantic_fingerprint_value=name,
+            authorized_ms=stamp, sealed_job=sealed)
+        return authorize_task(self.store, self.policy, **kwargs), kwargs
+
+    def test_atomic_job_and_allowance_survive_together_and_replay_idempotently(self):
+        import sqlite3
+        result, kwargs = self.atomic_task('atomic')
+        self.assertEqual(result['status'], 'authorized')
+        other = sqlite3.connect(Path(self.tmp.name) / 'db.sqlite')
+        try:
+            self.assertEqual(other.execute("select count(*) from population_research_jobs where request_id='atomic'").fetchone()[0], 1)
+            self.assertEqual(other.execute("select count(*) from continuous_research_tasks where request_id='atomic'").fetchone()[0], 1)
+        finally:
+            other.close()
+        self.assertEqual(authorize_task(self.store, self.policy, **kwargs)['status'], 'already_authorized')
+
+    def test_failure_after_job_insert_rolls_back_job_and_allowance(self):
+        import sqlite3
+        initialize(self.store, self.policy)
+        self.store.connection.execute("create trigger fail_task before insert on continuous_research_tasks begin select raise(abort,'simulated crash window'); end")
+        self.store.connection.commit()
+        with self.assertRaisesRegex(sqlite3.IntegrityError, 'simulated crash window'):
+            self.atomic_task('rolled-back')
+        self.assertEqual(self.store.connection.execute("select count(*) from population_research_jobs where request_id='rolled-back'").fetchone()[0], 0)
+        self.assertEqual(self.store.connection.execute('select count(*) from continuous_research_tasks').fetchone()[0], 0)
+
+    def test_atomic_budget_denial_and_packet_tampering_create_no_job(self):
+        self.policy['period_limits']['max_tasks'] = 1
+        _, kwargs = self.atomic_task('first-atomic')
+        with self.assertRaisesRegex(ValueError, 'allowance exhausted'):
+            self.atomic_task('denied-atomic')
+        self.assertEqual(self.store.connection.execute("select count(*) from population_research_jobs where request_id='denied-atomic'").fetchone()[0], 0)
+        self.policy = copy.deepcopy(POLICY)
+        self.policy['policy_id'] = 'tampering-test'
+        kwargs.update(request_id='tampered', semantic_fingerprint_value='tampered')
+        kwargs['sealed_job']['packet_json'] = kwargs['sealed_job']['packet_json'].replace('first-atomic', 'altered')
+        with self.assertRaisesRegex(ValueError, 'packet hash'):
+            authorize_task(self.store, self.policy, **kwargs)
+        self.assertEqual(self.store.connection.execute("select count(*) from population_research_jobs where request_id='tampered'").fetchone()[0], 0)

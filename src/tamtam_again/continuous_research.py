@@ -131,11 +131,11 @@ def prepare_packet(store, policy, item):
         'other_markets':'account context only, not eligible for this hypothesis'}
     if len(canonical(packet))>policy['task_policy']['max_packet_chars']:
         _project_other_markets(store,packet,item['market'],item['cutoff_ms'])
-    from .continuous_research_identity import semantic_identity
-    semantic=semantic_identity(packet,item['market'])
     from .research_evaluation import export_memory
     feedback=export_memory(store,policy['network'],item['address'],item['cutoff_ms'])
     if feedback:packet['research_evaluation_memory']=feedback
+    from .continuous_research_identity import semantic_identity
+    semantic=semantic_identity(packet,item['market'])
     # History and feedback were selected at this cutoff; never advertise the
     # older scope-report receipt as availability of the enriched packet.
     packet['available_ms']=item['cutoff_ms']
@@ -279,8 +279,14 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 wakes=[tuple(r) for r in store.connection.execute('select w.request_id,w.evidence_fingerprint from research_observation_wakes w '
                     'join population_research_jobs j on j.request_id=w.request_id where j.network=? and j.address=? '
                     'and w.available_ms<=? order by w.request_id',(policy['network'],item['address'],clock))]
+            feedback_latest=None
+            if store.connection.execute("select 1 from sqlite_master where name='research_evaluation_memory'").fetchone():
+                feedback_latest=store.connection.execute('select max(m.available_ms) from research_evaluation_memory m '
+                    'join population_research_jobs j using(request_id) where j.network=? and j.address=? and m.available_ms<=?',
+                    (policy['network'],item['address'],clock)).fetchone()[0]
             source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
-                'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes})
+                'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes,
+                'feedback_available_ms':feedback_latest})
             old=store.connection.execute('select source_fingerprint,status,result_json from continuous_research_candidates '
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
             if old and old['source_fingerprint']==source_fp and old['status'] not in {'budget_exhausted','prepared','technical_required','needs_data','reserved'}:

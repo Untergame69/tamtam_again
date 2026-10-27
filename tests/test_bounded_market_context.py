@@ -75,7 +75,9 @@ class BoundedMarketContextTests(unittest.TestCase):
         self.assertEqual(second['strict_prefill_quote']['source_ref'], 'raw_observations:'+str(simultaneous))
         self.assertEqual(second['role'], 'maker')
         self.assertEqual(second['position_effect'], 'closing')
-        self.assertEqual(second['earliest_rest_page_received_ms'], BASE+3000)
+        self.assertEqual(second['rest_page_request_started_ms'], BASE+3000)
+        self.assertIsNone(second['rest_page_received_ms'])
+        self.assertEqual(second['rest_page_available_upper_bound_ms'],BASE+3001)
         self.assertIsNone(proof['feeds']['l2Book']['rows'][0]['strict_prefill_quote'])
         self.assertEqual(proof['feeds']['l2Book']['rows'][1]['strict_prefill_quote']['event_ms'],BASE+1900)
         self.assertGreaterEqual(proof['feeds']['bbo']['coverage']['event_gap_ms_including_window_edges']['p50'],0)
@@ -140,6 +142,63 @@ class BoundedMarketContextTests(unittest.TestCase):
         self.assertEqual(first['semantic_fingerprint'],second['semantic_fingerprint'])
         proof=load_result(self.store,second['result_fingerprint'])
         self.assertEqual(proof['feeds']['bbo']['decoding']['rejected_or_excluded']['identical_source_quote_duplicates'],1)
+
+    def test_request_time_is_not_receipt_and_single_message_uses_archive_upper_bound(self):
+        self.fills()
+        lot=self.quote(BASE+500,feed='l2Book',batch=False,receipt=BASE+700)
+        # A long request began before the quote; the observation was archived
+        # after both fills. There is no exact receive timestamp in this format.
+        self.store.connection.execute('update raw_observations set requested_at=?,observed_at=? '
+            'where observation_id=?',(_event_iso(BASE-10_000),_event_iso(BASE+4000),lot))
+        self.store.connection.commit()
+        result=self.run_context()
+        proof=load_result(self.store,result['result_fingerprint'])
+        quote=proof['feeds']['l2Book']['rows'][0]['strict_prefill_quote']
+        self.assertEqual(quote['event_received_ms'],BASE+4000)
+        self.assertFalse(quote['local_receipt_exact'])
+        self.assertIsNone(quote['received_before_fill_event'])
+        self.assertFalse(quote['archived_before_fill_event'])
+        self.assertEqual(result['feeds']['l2Book']['coverage']['quote_locally_received_before_fill_event'],0)
+
+    def test_unchanged_page_future_fill_becomes_eligible_when_cutoff_advances(self):
+        self.save([
+            {'tid':1,'coin':'ETH','time':BASE+1000,'side':'B','px':'100','sz':'1',
+             'startPosition':'0','crossed':True},
+            {'tid':2,'coin':'ETH','time':BASE+5000,'side':'A','px':'101','sz':'1',
+             'startPosition':'1','crossed':False}],endpoint='userFillsByTime',
+            stamp=BASE+1500,account=True,window=(BASE,BASE+1500))
+        first=self.run_context(cutoff_ms=BASE+2000)
+        self.assertEqual(first['scope']['included_market_fills'],1)
+        second=self.run_context(cutoff_ms=BASE+6000)
+        self.assertEqual(second['scope']['included_market_fills'],2)
+        self.assertNotEqual(first['semantic_fingerprint'],second['semantic_fingerprint'])
+        proof=load_result(self.store,second['result_fingerprint'])
+        self.assertEqual(proof['feeds']['bbo']['rows'][1]['rest_page_request_started_ms'],BASE+1500)
+
+    def test_receipts_follow_exact_nonconflicting_fill_not_arbitrary_tid(self):
+        self.fills()
+        self.save([{'tid':1,'coin':'BTC','time':BASE+500,'side':'B','px':'100','sz':'1',
+            'startPosition':'0','crossed':False}],endpoint='userFillsByTime',
+            stamp=BASE+2000,account=True,window=(BASE,BASE+1000))
+        result=self.run_context()
+        proof=load_result(self.store,result['result_fingerprint'])
+        rows=proof['feeds']['bbo']['rows']
+        self.assertEqual([r['tid'] for r in rows],['2'])
+        self.assertEqual(rows[0]['rest_page_request_started_ms'],BASE+3000)
+
+    def test_monotonic_timeout_refuses_before_partial_result_is_published(self):
+        self.fills()
+        self.quote(BASE+500)
+        calls=[0]
+        def clock():
+            calls[0]+=1
+            return 0 if calls[0]<9 else 61
+        with patch('tamtam_again.bounded_market_context.time.monotonic',side_effect=clock):
+            with self.assertRaisesRegex(ContextBoundError,'time limit'):
+                self.run_context()
+        exists=self.store.connection.execute("select 1 from sqlite_master where name='bounded_market_context_results'").fetchone()
+        if exists:
+            self.assertEqual(self.store.connection.execute('select count(*) from bounded_market_context_results').fetchone()[0],0)
 
     def test_cutoff_and_latest_fill_window_exclusions_are_explicit(self):
         self.fills()

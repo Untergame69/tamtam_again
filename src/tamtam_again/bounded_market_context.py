@@ -7,6 +7,8 @@ from bisect import bisect_left
 from collections import Counter, defaultdict
 from decimal import Decimal, InvalidOperation
 import json
+import sqlite3
+import time
 import zlib
 
 from .engine import canonical, fingerprint
@@ -14,14 +16,14 @@ from .population_descriptive import _load_fills
 from .population_local_join import _decode_verified, _event_iso, _ms, _quote_values, _ranked
 from .research_memory import authorized_account_history
 
-VERSION = 'bounded-market-context-v1'
+VERSION = 'bounded-market-context-v2'
 DEFAULT_LIMITS = {
     'fill_window_ms': 86_400_000, 'quote_lookback_ms': 300_000,
     'max_fill_pages': 2_000, 'max_fill_records': 500_000,
     'max_fill_decoded_bytes': 64_000_000, 'max_fills_in_window': 30_000,
     'max_quote_lots_per_feed': 300_000, 'max_quote_events_per_feed': 1_500_000,
     'max_quote_decoded_bytes_per_feed': 256_000_000,
-    'max_decoded_bytes_per_lot': 4_000_000,
+    'max_decoded_bytes_per_lot': 4_000_000, 'max_duration_ms': 60_000,
 }
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS bounded_market_context_fill_cache (
@@ -36,6 +38,18 @@ class ContextBoundError(ValueError):
     """A resource refusal; no partial context statistics are published."""
 
 
+class _Budget:
+    def __init__(self, duration_ms):
+        self.deadline = time.monotonic() + duration_ms/1000
+
+    def expired(self):
+        return time.monotonic() >= self.deadline
+
+    def check(self):
+        if self.expired():
+            raise ContextBoundError('Market-context time limit exceeded; no partial context was retained')
+
+
 def _limits(overrides):
     value = {**DEFAULT_LIMITS, **(overrides or {})}
     if set(value) != set(DEFAULT_LIMITS) or any(type(v) is not int or v < 1 for v in value.values()):
@@ -43,11 +57,23 @@ def _limits(overrides):
     return value
 
 
-def _rows(store, where, params, limit):
-    rows = store.connection.execute(
-        'select observation_id,response_sha256,observed_at,requested_at,window_start_ms,'
-        'window_end_ms,record_count,complete,endpoint from raw_observations where '
-        + where + ' order by observation_id limit ?', (*params, limit + 1)).fetchall()
+def _rows(store, where, params, limit, budget):
+    budget.check()
+    # Metadata scans can span a high-rate archive even when few lots match.
+    # Interrupt SQLite itself at the same wall-clock resource boundary.
+    store.connection.set_progress_handler(lambda: int(budget.expired()), 10_000)
+    try:
+        rows = store.connection.execute(
+            'select observation_id,response_sha256,observed_at,requested_at,window_start_ms,'
+            'window_end_ms,record_count,complete,endpoint from raw_observations where '
+            + where + ' order by observation_id limit ?', (*params, limit + 1)).fetchall()
+    except sqlite3.OperationalError as exc:
+        if budget.expired():
+            raise ContextBoundError('Market-context metadata time limit exceeded; no partial context was retained') from exc
+        raise
+    finally:
+        store.connection.set_progress_handler(None, 0)
+    budget.check()
     if len(rows) > limit:
         raise ContextBoundError('Archived lot limit exceeded; no partial context was retained')
     return [dict(row) for row in rows]
@@ -61,26 +87,35 @@ def _raw(store, meta):
     return row
 
 
-def _fill_sources(store, network, address, cutoff, limits):
+def _fill_sources(store, network, address, cutoff, limits, budget):
     return _rows(store,
         "network=? and source='hyperliquid-population-rest-v1' and entity_type='account' "
         "and entity_id=? and endpoint in ('userFills','userFillsByTime') and observed_at<=? "
         'and (window_end_ms is null or window_end_ms<=?)',
-        (network, address, _event_iso(cutoff), cutoff), limits['max_fill_pages'])
+        (network, address, _event_iso(cutoff), cutoff), limits['max_fill_pages'], budget)
 
 
-def _fills(store, network, address, market, cutoff, limits, sources):
+def _fills(store, network, address, market, cutoff, limits, sources, budget):
+    budget.check()
     key = fingerprint({'version': VERSION, 'kind': 'fills', 'network': network,
         'address': address, 'sources': sources, 'limits': limits})
     row = store.connection.execute('select payload from bounded_market_context_fill_cache '
         'where input_fingerprint=?', (key,)).fetchone()
     if row:
-        return json.loads(zlib.decompress(row[0])), True
+        cached = json.loads(zlib.decompress(row[0]))
+        # An unchanged page may contain an event later than an older cutoff.
+        # Cache reuse is valid only until the next such event becomes eligible.
+        until = cached.get('valid_through_ms')
+        if cached['prepared_cutoff_ms'] <= cutoff and (until is None or cutoff <= until):
+            budget.check()
+            return cached, True
     # Bound decompression before reusing the existing account-wide deduplicator.
     # The duplicate decoding is intentional: the legacy helper has no byte cap.
     size = records = 0
     receipts = {}
+    next_future_event = None
     for meta in sources:
+        budget.check()
         payload, decoded = _decode_verified(_raw(store, meta),
             max_decoded_bytes=limits['max_decoded_bytes_per_lot'], with_size=True)
         size += decoded
@@ -88,27 +123,44 @@ def _fills(store, network, address, market, cutoff, limits, sources):
             if isinstance(payload, dict) and isinstance(payload.get('data'), dict)
             else payload.get('fills', payload.get('data', [])) if isinstance(payload, dict) else [])
         records += len(values) if isinstance(values, list) else 0
-        for fill in values if isinstance(values, list) else []:
-            if isinstance(fill, dict) and fill.get('tid') is not None:
-                receipt = {'earliest_rest_page_received_ms': _ms(meta['requested_at']),
-                    'earliest_rest_page_archived_ms': _ms(meta['observed_at']),
+        for index, fill in enumerate(values if isinstance(values, list) else []):
+            if index % 256 == 0: budget.check()
+            if (isinstance(fill, dict) and fill.get('tid') is not None
+                    and isinstance(fill.get('coin'), str) and type(fill.get('time')) is int):
+                if fill['time'] > cutoff:
+                    next_future_event = min(next_future_event or fill['time'], fill['time'])
+                    continue
+                receipt = {'rest_page_request_started_ms': _ms(meta['requested_at']),
+                    'rest_page_received_ms': None,
+                    'rest_page_received_status': 'unknown; requested_at starts the request, observed_at bounds availability',
+                    'rest_page_archived_ms': _ms(meta['observed_at']),
+                    'rest_page_available_upper_bound_ms': _ms(meta['observed_at']),
                     'fill_source_ref': 'raw_observations:' + str(meta['observation_id']),
                     'fill_source_sha256': meta['response_sha256']}
-                key_tid = str(fill['tid'])
-                if (key_tid not in receipts or receipt['earliest_rest_page_archived_ms']
-                        < receipts[key_tid]['earliest_rest_page_archived_ms']):
-                    receipts[key_tid] = receipt
+                identity = fingerprint(fill)
+                if (identity not in receipts or receipt['rest_page_archived_ms']
+                        < receipts[identity]['rest_page_archived_ms']):
+                    receipts[identity] = receipt
         if size > limits['max_fill_decoded_bytes'] or records > limits['max_fill_records']:
             raise ContextBoundError('Fill decoding limit exceeded; no partial context was retained')
     fills, coverage, refs = _load_fills(store, network, address, cutoff)
-    payload = {'fills': fills, 'coverage': coverage, 'source_refs': refs, 'receipts': receipts}
+    budget.check()
+    # Bind each receipt to the exact usable canonical fill, after conflict and
+    # cutoff rejection by the shared loader, not merely to an arbitrary TID.
+    selected_receipts = {str(fill['tid']): receipts[fingerprint(fill)] for fill in fills
+        if fingerprint(fill) in receipts}
+    payload = {'fills': fills, 'coverage': coverage, 'source_refs': refs,
+        'receipts': selected_receipts, 'prepared_cutoff_ms': cutoff,
+        'valid_through_ms': next_future_event-1 if next_future_event is not None else None}
+    encoded = zlib.compress(canonical(payload).encode(), 6)
+    budget.check()
     with store.connection:
-        store.connection.execute('insert or ignore into bounded_market_context_fill_cache values(?,?)',
-            (key, zlib.compress(canonical(payload).encode(), 6)))
+        store.connection.execute('insert into bounded_market_context_fill_cache values(?,?) '
+            'on conflict(input_fingerprint) do update set payload=excluded.payload', (key, encoded))
     return payload, False
 
 
-def _quote_sources(store, network, market, cutoff, start, end, feed, limits):
+def _quote_sources(store, network, market, cutoff, start, end, feed, limits, budget):
     # Source event bounds come from the collector's min/max frame timestamps.
     # They exclude wholly post-fill lots. Unknown bounds are decoded explicitly;
     # a bounded scan refusal never masquerades as absent market observations.
@@ -118,26 +170,31 @@ def _quote_sources(store, network, market, cutoff, start, end, feed, limits):
         'and (window_start_ms is null or window_start_ms<=?) '
         'and (window_end_ms is null or window_end_ms>=?)',
         (network, market, feed, _event_iso(cutoff), end, start),
-        limits['max_quote_lots_per_feed'])
+        limits['max_quote_lots_per_feed'], budget)
 
 
-def _quotes(store, sources, market, cutoff, start, end, limits):
+def _quotes(store, sources, market, cutoff, start, end, limits, budget):
     values = []
     diagnostics = Counter()
     decoded = events = 0
     for meta in sources:
+        budget.check()
         payload, size = _decode_verified(_raw(store, meta),
             max_decoded_bytes=limits['max_decoded_bytes_per_lot'], with_size=True)
         decoded += size
         feed = 'bbo' if meta['endpoint'] == 'bbo' else 'l2book'
-        rows, rejects, count, _ = _quote_values(feed, payload, market,
-            lot_received_ms=_ms(meta['requested_at']), cutoff_ms=cutoff)
+        rows, rejects, count, batched = _quote_values(feed, payload, market,
+            lot_received_ms=_ms(meta['observed_at']), cutoff_ms=cutoff)
         events += count
         if (decoded > limits['max_quote_decoded_bytes_per_feed']
                 or events > limits['max_quote_events_per_feed']):
             raise ContextBoundError('Quote decoding limit exceeded; no partial context was retained')
         diagnostics.update(rejects)
-        for quote in rows:
+        for index, quote in enumerate(rows):
+            if index % 256 == 0: budget.check()
+            if quote['event_received_ms'] > _ms(meta['observed_at']):
+                diagnostics['local_receipt_after_archive'] += 1
+                continue
             if not start <= quote['event_ms'] <= end:
                 diagnostics['outside_declared_context_window'] += 1
                 continue
@@ -151,11 +208,14 @@ def _quotes(store, sources, market, cutoff, start, end, limits):
             except (InvalidOperation, ValueError):
                 diagnostics['invalid_numeric_quote'] += 1
                 continue
-            values.append({**quote, 'archived_ms': _ms(meta['observed_at']),
+            values.append({**quote, 'local_receipt_exact': batched,
+                'local_receipt_status': 'frame.received_at' if batched else 'archive-time upper bound; exact receipt unknown',
+                'archived_ms': _ms(meta['observed_at']),
                 'source_ref': 'raw_observations:' + str(meta['observation_id']),
                 'source_sha256': meta['response_sha256']})
     unique = {}
-    for quote in values:
+    for index, quote in enumerate(values):
+        if index % 256 == 0: budget.check()
         key = tuple(quote[k] for k in ('event_ms','bid','ask','bid_size','ask_size'))
         old = unique.get(key)
         rank = lambda q: (q['event_received_ms'],q['archived_ms'],q['source_ref'],q['event_index'])
@@ -165,6 +225,7 @@ def _quotes(store, sources, market, cutoff, start, end, limits):
     values = list(unique.values())
     values.sort(key=lambda q: (q['event_ms'], q['event_received_ms'], q['archived_ms'],
         q['source_ref'], q['event_index']))
+    budget.check()
     return values, {'lots_decoded': len(sources), 'frames_decoded': events,
         'decoded_bytes': decoded, 'accepted_events': len(values),
         'rejected_or_excluded': dict(diagnostics)}
@@ -184,10 +245,11 @@ def _fill_classification(fill):
         return role, 'unknown', None, None
 
 
-def _join(fills, quotes, start, end, receipts):
+def _join(fills, quotes, start, end, receipts, budget):
     times = [q['event_ms'] for q in quotes]
     rows = []
-    for fill in fills:
+    for fill_index, fill in enumerate(fills):
+        if fill_index % 128 == 0: budget.check()
         index = bisect_left(times, fill['time']) - 1
         previous = quotes[index] if index >= 0 else None
         same_ms = bisect_left(times, fill['time'] + 1) - bisect_left(times, fill['time'])
@@ -200,7 +262,8 @@ def _join(fills, quotes, start, end, receipts):
                 'source_timestamp_tie_order': 'last local receipt; relative source order within millisecond unknown',
                 'spread_bps': str((ask-bid)/midpoint*10_000),
                 'midpoint': str(midpoint),
-                'received_before_fill_event': previous['event_received_ms'] < fill['time'],
+                'received_before_fill_event': (previous['event_received_ms'] < fill['time']
+                    if previous['local_receipt_exact'] else None),
                 'archived_before_fill_event': previous['archived_ms'] < fill['time']}
             before = bisect_left(times, previous['event_ms'] - 60_000 + 1)-1
             if before >= 0:
@@ -240,13 +303,15 @@ def _join(fills, quotes, start, end, receipts):
         'quote_archived_before_fill_event': sum(bool(r['strict_prefill_quote'] and r['strict_prefill_quote']['archived_before_fill_event']) for r in rows)}
 
 
-def _groups(rows):
+def _groups(rows, budget):
     grouped = defaultdict(list)
-    for row in rows:
+    for index, row in enumerate(rows):
+        if index % 256 == 0: budget.check()
         day = _event_iso(row['fill_event_ms'])[:10]
         grouped[(day, row['role'], row['position_effect'], row['side'] or 'unknown')].append(row)
     result = []
     for (day, role, effect, side), values in sorted(grouped.items()):
+        budget.check()
         matches = [r['strict_prefill_quote'] for r in values if r['strict_prefill_quote']]
         result.append({'utc_day': day, 'role': role, 'position_effect': effect, 'fill_side':side,
             'fills': len(values), 'matched': len(matches),
@@ -265,14 +330,16 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
     Root callers can mark that subject technical and continue their queue.
     """
     bounds = _limits(limits)
+    budget = _Budget(bounds['max_duration_ms'])
     address = address.lower()
     if type(cutoff_ms) is not int or cutoff_ms < 0 or not isinstance(market, str) or not market:
         raise ValueError('Explicit context scope and nonnegative cutoff required')
     if not authorized_account_history(store, network, address, cutoff_ms):
         raise PermissionError('Context includes an unreleased reserved account period')
+    budget.check()
     store.connection.executescript(SCHEMA)
-    fill_sources = _fill_sources(store, network, address, cutoff_ms, bounds)
-    fill_data, _ = _fills(store, network, address, market, cutoff_ms, bounds, fill_sources)
+    fill_sources = _fill_sources(store, network, address, cutoff_ms, bounds, budget)
+    fill_data, _ = _fills(store, network, address, market, cutoff_ms, bounds, fill_sources, budget)
     all_market = [f for f in fill_data['fills'] if f.get('coin') == market]
     if not all_market:
         return {'version': VERSION, 'status': 'data_absent', 'market': market,
@@ -284,9 +351,11 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
         raise ContextBoundError('Context-window fill limit exceeded; no partial context was retained')
     quote_start = max(0, start-bounds['quote_lookback_ms'])
     quote_sources = {feed: _quote_sources(store, network, market, cutoff_ms, quote_start,
-        end, feed, bounds) for feed in ('bbo', 'l2Book')}
+        end, feed, bounds, budget) for feed in ('bbo', 'l2Book')}
     input_fp = fingerprint({'version': VERSION, 'network': network, 'address': address,
-        'market': market, 'fill_sources': fill_sources, 'quote_sources': quote_sources, 'limits': bounds})
+        'market': market, 'fill_sources': fill_sources, 'quote_sources': quote_sources,
+        'selected_fill_fingerprint': fingerprint(all_market), 'limits': bounds})
+    budget.check()
     prior = store.connection.execute('select summary_json from bounded_market_context_results '
         'where input_fingerprint=?', (input_fp,)).fetchone()
     if prior:
@@ -300,10 +369,10 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
         'fill_coverage': fill_data['coverage'], 'fill_source_refs': fill_data['source_refs'],
         'quote_source_manifest': quote_sources, 'limits': bounds, 'feeds': {}}
     for feed, sources in quote_sources.items():
-        quotes, decoding = _quotes(store, sources, market, cutoff_ms, quote_start, end, bounds)
-        rows, coverage = _join(fills, quotes, start, end, fill_data['receipts'])
+        quotes, decoding = _quotes(store, sources, market, cutoff_ms, quote_start, end, bounds, budget)
+        rows, coverage = _join(fills, quotes, start, end, fill_data['receipts'], budget)
         result['feeds'][feed] = {'rows': rows, 'coverage': coverage, 'decoding': decoding,
-            'groups': _groups(rows)}
+            'groups': _groups(rows, budget)}
     result['limitations'] = [
         'Descriptive association only; no placement policy, causal explanation, counterfactual fill or profitability claim.',
         'Strict source-event predecessor excludes same-millisecond ordering; local receipt and archival clocks remain separate.',
@@ -320,15 +389,18 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
         'feeds': {feed: {'rows': data['rows'], 'coverage': data['coverage'], 'groups': data['groups']}
             for feed, data in result['feeds'].items()}})
     result_fp = fingerprint(result)
+    budget.check()
     summary = {'version': VERSION, 'status': 'complete_bounded_descriptive', 'market': market,
         'scope': result['scope'], 'semantic_fingerprint': semantic,
         'evidence_ref': 'bounded_market_context_results:' + result_fp,
         'result_fingerprint': result_fp, 'evidence_cutoff_ms': cutoff_ms,
         'feeds': {feed: {'coverage': data['coverage'], 'groups': data['groups']}
             for feed, data in result['feeds'].items()}, 'limitations': result['limitations']}
+    encoded = zlib.compress(canonical(result).encode(), 6)
+    budget.check()
     with store.connection:
         store.connection.execute('insert or ignore into bounded_market_context_results values(?,?,?,?,?)',
-            (result_fp, input_fp, semantic, canonical(summary), zlib.compress(canonical(result).encode(), 6)))
+            (result_fp, input_fp, semantic, canonical(summary), encoded))
     return {**summary, 'cache': 'created', 'recalculated': True}
 
 

@@ -166,3 +166,42 @@ def remember_resolution_descriptor(store,request_id):
         'memory_revision_v1':{'request_id':request_id,'supersedes':previous}}
     saved=save_knowledge(store,item)
     return {'status':'recorded_descriptor',**saved,'resolution_fingerprint':snapshot['fingerprint']}
+
+
+def remember_verified_local_resolution(store,request_id):
+    """Import a deterministic local resolution even when the provider stayed needs_data.
+
+    This preserves that original decision while making only the verified local
+    descriptor available to a future packet. It does not require a new model
+    assessment or convert the result into a hypothesis or economic outcome.
+    """
+    row=store.connection.execute('select network,address,status,result_json from population_research_jobs where request_id=?',
+        (request_id,)).fetchone()
+    if not row or row['status'] not in ('hypothesis_recorded','needs_data'):
+        raise ValueError('Persisted research result required before local-resolution memory import')
+    result=json.loads(row['result_json'] or '{}')
+    snapshot=resolution_snapshot(store,request_id,result)
+    if not snapshot:raise ValueError('Verified local artifact required before memory import')
+    proof_id=request_id+':'+snapshot['fingerprint']
+    from .research_memory import save_knowledge
+    if store.connection.execute("select 1 from sqlite_master where name='research_knowledge'").fetchone():
+        for prior in store.connection.execute('select knowledge_id,item_json from research_knowledge '
+                'where item_json like ? order by created_ms desc,rowid desc',('%'+proof_id+'%',)):
+            item=json.loads(prior['item_json'])
+            if item.get('status')=='observed_descriptor' and {'kind':'population_resolution','id':proof_id} in item.get('evidence_refs',[]):
+                return {'status':'already_recorded_descriptor','knowledge_id':prior['knowledge_id'],
+                    'economic_validation':False,'resolution_fingerprint':snapshot['fingerprint']}
+    periods=snapshot['periods']
+    synthesis=snapshot['synthesis']
+    item={'schema_version':1,'mechanism':synthesis['conclusion'],
+        'origin_accounts':sorted({period['address'] for period in periods}),
+        'origin_markets':sorted({period['market'] for period in periods}|{'*'}),
+        'periods':periods,'evidence_refs':[{'kind':'population_resolution','id':proof_id}],
+        'experiments':[],'success_conditions':['Descriptive local calculation only; no strategy validation.'],
+        'failure_conditions':[],'execution_limits':['No collection, inference, paper run or orders authorized by this memory.'],
+        'open_questions':synthesis['unknowns'],'related_hypotheses':[],
+        'status':'observed_descriptor','resolution_synthesis_v1':synthesis,
+        'memory_revision_v1':{'request_id':request_id,'supersedes':None}}
+    saved=save_knowledge(store,item)
+    return {'status':'recorded_descriptor',**saved,'economic_validation':False,
+        'resolution_fingerprint':snapshot['fingerprint']}

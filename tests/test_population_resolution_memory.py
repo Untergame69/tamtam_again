@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from tests.test_population_runtime import RuntimeTests
 from tamtam_again.engine import canonical, fingerprint
-from tamtam_again.population_memory import remember,remember_resolution_descriptor
+from tamtam_again.population_memory import remember,remember_resolution_descriptor,remember_verified_local_resolution
 from tamtam_again.population_packet import packet_for_account as build_packet
 from tamtam_again.research_memory import export_knowledge
 from tamtam_again.research_work_queue import enqueue, tick as queue_tick
@@ -47,6 +47,20 @@ class ResolutionMemoryTests(unittest.TestCase):
             exported=export_knowledge(self.s,as_of_ms=100,network='test',address='account',market='*')
             self.assertIn(first['knowledge_id'],[entry['knowledge_id'] for entry in exported])
             self.assertEqual(item['periods'][0]['market'],'ETH')
+            self.assertEqual(self.s.connection.execute('select status from population_research_jobs where request_id=?',
+                (self.request,)).fetchone()[0],'needs_data')
+
+    def test_verified_local_descriptor_needs_no_model_assessment(self):
+        with patch('tamtam_again.research_memory.clock',return_value=100):
+            self.seed_descriptor_resolution()
+            self.result.pop('resolution_assessment_v1')
+            self.s.connection.execute('update population_research_jobs set result_json=? where request_id=?',
+                (canonical(self.result),self.request));self.s.connection.commit()
+            first=remember_verified_local_resolution(self.s,self.request)
+            again=remember_verified_local_resolution(self.s,self.request)
+            self.assertEqual(first['knowledge_id'],again['knowledge_id'])
+            exported=export_knowledge(self.s,as_of_ms=100,network='test',address='account',market='*')
+            self.assertIn(first['knowledge_id'],[entry['knowledge_id'] for entry in exported])
             self.assertEqual(self.s.connection.execute('select status from population_research_jobs where request_id=?',
                 (self.request,)).fetchone()[0],'needs_data')
 

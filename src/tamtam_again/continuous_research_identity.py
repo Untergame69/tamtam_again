@@ -104,6 +104,42 @@ def evaluation_evidence_identity(packet):
     return sorted(outcomes)
 
 
+def inactive_paper_evidence_identity(packet):
+    """Economic/diagnostic facts of inactive paper sessions from typed export.
+
+    Source-period authority is checked by ``export_memory``. Its end timestamp
+    and publication metadata are not a change in economic observations.
+    """
+    from .engine import canonical
+    outcomes = set()
+    fields = ('session_id','status','position','pending','pending_count','complete_flat_state',
+              'diagnostics','net_pnl','realized_pnl','fees','funding','cash')
+    for record in packet.get('research_evaluation_memory', []):
+        if not isinstance(record, dict) or not isinstance(record.get('item'), dict):
+            raise ValueError('Typed exported paper feedback required')
+        item = record['item']
+        sessions = item.get('evidence', {}).get('sessions', [])
+        if not sessions:
+            continue
+        event_id = record.get('event_id')
+        if (item.get('version') != 'research-evaluation-memory-v1'
+                or item.get('profitability_proven') is not False
+                or not isinstance(event_id, str) or not event_id
+                or item.get('evaluation_event_id') != event_id
+                or {'kind': 'research_evaluation', 'id': event_id} not in record.get('evidence_refs', [])
+                or not isinstance(sessions, list)):
+            raise ValueError('Verified typed paper feedback proof required')
+        for session in sessions:
+            if not isinstance(session, dict):
+                raise ValueError('Typed paper session required')
+            if session.get('status') == 'active':
+                continue
+            if not isinstance(session.get('status'), str) or not session['status'] or not session.get('session_id'):
+                raise ValueError('Exact inactive paper session identity required')
+            outcomes.add(canonical({key:session[key] for key in fields if key in session}))
+    return sorted(outcomes)
+
+
 def semantic_identity(packet, market):
     content = market_content(packet, market)
     detail = packet['observations']['market_execution_detail_v1'][market]
@@ -115,6 +151,8 @@ def semantic_identity(packet, market):
         'fill_content': checksum, 'market_content': content, 'observation_wakes': wake_identities(packet)}
     evaluations = evaluation_evidence_identity(packet)
     if evaluations:identity['evaluation_outcomes'] = evaluations
+    paper = inactive_paper_evidence_identity(packet)
+    if paper:identity['inactive_paper_outcomes'] = paper
     return fingerprint(identity)
 
 
@@ -192,6 +230,7 @@ def prior_equivalent(store, network, address, market, packet):
     current_hash = packet['observations']['market_execution_detail_v1'][market]['observed_fill_content_fingerprint']
     current_wakes = wake_identities(packet)
     current_evaluations = evaluation_evidence_identity(packet)
+    current_paper = inactive_paper_evidence_identity(packet)
     legacy_filter = (' and not exists(select 1 from continuous_research_tasks t '
         'where t.request_id=j.request_id)' if has_continuous else '')
     for row in store.connection.execute('select j.request_id,j.status,j.packet_json from population_research_jobs j '
@@ -202,10 +241,11 @@ def prior_equivalent(store, network, address, market, packet):
             old_projection = market_content(old, market)
             old_wakes = wake_identities(old)
             old_evaluations = evaluation_evidence_identity(old)
+            old_paper = inactive_paper_evidence_identity(old)
         except (TypeError, ValueError, KeyError):
             continue
         if (old_projection != projection or old_wakes != current_wakes
-                or old_evaluations != current_evaluations):
+                or old_evaluations != current_evaluations or old_paper != current_paper):
             continue
         old_hash = old['observations']['market_execution_detail_v1'][market].get('observed_fill_content_fingerprint')
         if old_hash is None:

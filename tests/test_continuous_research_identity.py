@@ -183,3 +183,38 @@ class IdentityTests(unittest.TestCase):
                 self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', second))
             finally:
                 store.close()
+
+    def test_inactive_paper_economic_feedback_changes_identity_without_receipt_churn(self):
+        original = packet()
+        session = {'session_id': 'paper-1', 'status': 'stopped', 'position': '1',
+            'pending': False, 'pending_count': 0, 'complete_flat_state': False,
+            'diagnostics': ['incomplete exposure'], 'net_pnl': '-5', 'fees': '1', 'funding': '0',
+            'source_period': {'start_ms': 1, 'end_ms': 10}}
+        original['research_evaluation_memory'] = [{'event_id': 'event', 'available_ms': 10,
+            'evidence_refs': [{'kind': 'research_evaluation', 'id': 'event'}],
+            'item': {'version': 'research-evaluation-memory-v1', 'evaluation_event_id': 'event',
+                'profitability_proven': False, 'evidence': {'sessions': [session]}}}]
+        republished = copy.deepcopy(original)
+        republished['research_evaluation_memory'][0]['available_ms'] = 99
+        republished['research_evaluation_memory'][0]['item']['evidence']['sessions'][0]['source_period']['end_ms'] = 99
+        self.assertEqual(semantic_identity(original, 'BTC'), semantic_identity(republished, 'BTC'))
+        for field, value in [('position', '0'), ('net_pnl', '-6'), ('diagnostics', ['new terminal ledger diagnostic'])]:
+            changed = copy.deepcopy(original)
+            changed['research_evaluation_memory'][0]['item']['evidence']['sessions'][0][field] = value
+            self.assertNotEqual(semantic_identity(original, 'BTC'), semantic_identity(changed, 'BTC'))
+        active = copy.deepcopy(original)
+        active['research_evaluation_memory'][0]['item']['evidence']['sessions'][0]['status'] = 'active'
+        self.assertEqual(semantic_identity(packet(), 'BTC'), semantic_identity(active, 'BTC'))
+        self.assertNotEqual(semantic_identity(packet(), 'BTC'), semantic_identity(original, 'BTC'))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / 'db.sqlite')
+            try:
+                initialize(store)
+                store.connection.execute('insert into population_research_jobs '
+                    '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+                    'values(?,?,?,?,?,?,?,?,?)', ('paper-feedback', 'net', '0xabc', 'input', json.dumps(original), '{}', 1, 'suspended', 1))
+                store.connection.commit()
+                self.assertEqual(prior_equivalent(store, 'net', '0xabc', 'BTC', republished)['request_id'], 'paper-feedback')
+                self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', changed))
+            finally:
+                store.close()

@@ -18,6 +18,53 @@ def market_content(packet, market):
     return {key: detail[key] for key in ECONOMIC_DETAIL_FIELDS}
 
 
+def wake_identities(packet):
+    """Identities of provenance-checked account-wide requested-history proofs.
+
+    ``packet_for_account`` obtains these from ``export_wakes``, which verifies
+    persisted plans, reservations, raw pages and request intervals. References
+    and the proof hash are checked again here: arbitrary added wake text cannot
+    act as new evidence. Request contracts currently have account scope, so a
+    complete pagination proof also establishes coverage/absence for each market.
+    """
+    wakes = packet.get('observations', {}).get('completed_observation_requests', [])
+    if not isinstance(wakes, list):
+        raise ValueError('Verified completed observation requests required')
+    pool = packet.get('evidence_refs', [])
+    identities = set()
+    for wake in wakes:
+        if not isinstance(wake, dict):
+            raise ValueError('Verified wake record required')
+        evidence = wake.get('evidence')
+        pages = wake.get('pages')
+        if (not isinstance(evidence, dict) or fingerprint(evidence) != wake.get('evidence_fingerprint')
+                or evidence.get('promotion_authorized') is not False
+                or evidence.get('economic_completeness_proven') is not False
+                or 'research_observation_wakes:' + str(wake.get('request_id')) not in pool
+                or not isinstance(pages, list) or not pages):
+            raise ValueError('Wake identity lacks verified proof and packet provenance')
+        proofs = evidence.get('proofs')
+        if not isinstance(proofs, list) or not proofs:
+            raise ValueError('Complete requested-history proofs required')
+        page_refs = {page.get('evidence_ref') for page in pages if isinstance(page, dict)}
+        expected_refs = set()
+        for proof in proofs:
+            if not isinstance(proof, dict) or not isinstance(proof.get('source_request'), dict):
+                raise ValueError('Verified source request required')
+            request = proof['source_request']
+            if (request.get('source') != 'public_rest_history'
+                    or request.get('endpoint') not in {'userFillsByTime', 'userFunding', 'userNonFundingLedgerUpdates'}
+                    or request.get('proof') != 'pagination_coverage'
+                    or proof.get('pagination_status') != 'covered'
+                    or not isinstance(proof.get('evidence_refs'), list)):
+                raise ValueError('Verified supported pagination proof required')
+            expected_refs.update(proof['evidence_refs'])
+        if not expected_refs or page_refs != expected_refs or not page_refs <= set(pool):
+            raise ValueError('Wake pages must match verified proof references in packet')
+        identities.add(wake['evidence_fingerprint'])
+    return sorted(identities)
+
+
 def semantic_identity(packet, market):
     content = market_content(packet, market)
     detail = packet['observations']['market_execution_detail_v1'][market]
@@ -26,7 +73,7 @@ def semantic_identity(packet, market):
         raise ValueError('Exact deduplicated per-market fill-content fingerprint required')
     return fingerprint({'network': packet['network'], 'address': packet['address'].lower(),
         'market': market, 'question_version': 'observable-mechanism-v1',
-        'fill_content': checksum, 'market_content': content})
+        'fill_content': checksum, 'market_content': content, 'observation_wakes': wake_identities(packet)})
 
 
 def _legacy_fill_identity(store, packet, market):
@@ -88,14 +135,16 @@ def prior_equivalent(store, network, address, market, packet):
     current = semantic_identity(packet, market)
     projection = market_content(packet, market)
     current_hash = packet['observations']['market_execution_detail_v1'][market]['observed_fill_content_fingerprint']
+    current_wakes = wake_identities(packet)
     for row in store.connection.execute('select request_id,status,packet_json from population_research_jobs '
             'where network=? and address=? order by created_ms,request_id', (network, address.lower())):
         try:
             old = json.loads(row['packet_json'])
             old_projection = market_content(old, market)
+            old_wakes = wake_identities(old)
         except (TypeError, ValueError, KeyError):
             continue
-        if old_projection != projection:
+        if old_projection != projection or old_wakes != current_wakes:
             continue
         old_hash = old['observations']['market_execution_detail_v1'][market].get('observed_fill_content_fingerprint')
         if old_hash is None:

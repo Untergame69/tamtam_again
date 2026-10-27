@@ -84,3 +84,42 @@ class IdentityTests(unittest.TestCase):
                 self.assertIsNone(_legacy_fill_identity(store, old, 'BTC'))
             finally:
                 store.close()
+
+    def test_verified_new_requested_proof_reopens_same_fills_only_once(self):
+        from tamtam_again.engine import fingerprint
+        def with_wake(original, identity):
+            result = copy.deepcopy(original)
+            ref = 'raw_observations:' + identity
+            evidence = {'proofs': [{'source_request': {'source': 'public_rest_history',
+                'endpoint': 'userFunding', 'proof': 'pagination_coverage', 'start_ms': 1, 'end_ms': 2},
+                'pagination_status': 'covered', 'evidence_refs': [ref]}],
+                'promotion_authorized': False, 'economic_completeness_proven': False}
+            result['observations']['completed_observation_requests'] = [{'request_id': identity,
+                'available_ms': 3, 'evidence': evidence, 'evidence_fingerprint': fingerprint(evidence),
+                'pages': [{'evidence_ref': ref, 'endpoint': 'userFunding', 'values': []}]}]
+            result['evidence_refs'] = ['research_observation_wakes:' + identity, ref]
+            return result
+        base = packet(); first = with_wake(base, '1'); second = with_wake(base, '2')
+        self.assertNotEqual(semantic_identity(base, 'BTC'), semantic_identity(first, 'BTC'))
+        same = copy.deepcopy(first)
+        same['observations']['completed_observation_requests'][0]['available_ms'] = 4
+        self.assertEqual(semantic_identity(first, 'BTC'), semantic_identity(same, 'BTC'))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / 'db.sqlite')
+            try:
+                initialize(store)
+                store.connection.execute('insert into population_research_jobs '
+                    '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+                    'values(?,?,?,?,?,?,?,?,?)', ('wake1', 'net', '0xabc', 'wake1', json.dumps(first), '{}', 1, 'needs_data', 1))
+                store.connection.commit()
+                self.assertEqual(prior_equivalent(store, 'net', '0xabc', 'BTC', same)['request_id'], 'wake1')
+                self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', second))
+            finally:
+                store.close()
+        forged = copy.deepcopy(first); forged['evidence_refs'] = []
+        with self.assertRaisesRegex(ValueError, 'provenance'):
+            semantic_identity(forged, 'BTC')
+        forged = copy.deepcopy(first)
+        forged['observations']['completed_observation_requests'][0]['evidence']['proofs'][0]['pagination_status'] = 'incomplete'
+        with self.assertRaisesRegex(ValueError, 'proof'):
+            semantic_identity(forged, 'BTC')

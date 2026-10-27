@@ -235,6 +235,10 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
         for prior in prior_waits:
             set_status(store,prior['work_id'],'completed','superseded by a terminal or resolved disposition',
                 outcome={'superseded_by':work['work_id'],'disposition':assessment['state']},clock_ms=clock)
+    from .research_technical_backlog import record as record_blocker
+    blocker=record_blocker(store,source_kind=source_kind,source_id=source_id,
+        source_result_fingerprint=fingerprint(result),work_id=work['work_id'],assessment=assessment,
+        route=routed,clock_ms=clock)
     return {'source_id': source_id, 'state': assessment['state'], 'assessment': assessment,
         'route': routed, 'local_run': local_run, 'memory': memory,
         'next_packet': {'memory_refresh_required': bool(memory),
@@ -242,6 +246,7 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
         'work_id': work['work_id'], 'queue_status': work['status'], 'created': created,
         'next_candidate': (assessment['state'] in {'terminal', 'resolved', 'no_new_question', 'technical'}
             or work['status'] in {'technical_required','completed'}),
+        'technical_blocker':blocker,
         'model_calls': 0, 'collection_started': False, 'orders_authorized': False}
 
 

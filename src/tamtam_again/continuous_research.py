@@ -208,7 +208,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
          reserve_policy=None, max_candidates=8):
     """One inference task at most; deterministic follow-ups proceed independently."""
     from .research import scheduler_lock
-    from .continuous_research_policy import initialize as allowance, candidates_for_admission, report
+    from .continuous_research_policy import initialize as allowance, candidates_for_admission, report, admission_capacity
     from .population_runtime import execute_job
     from .research_evaluation import poll
     clock=now_ms() if clock_ms is None else clock_ms
@@ -252,7 +252,11 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
         result['evaluations']=poll(store,limit=8)
         from .continuous_research_resolution import poll_waits
         result['data_waits']=poll_waits(store,clock_ms=clock,limit=8,collection_policy=collection_policy)
-        inventory=admission_inventory(store,policy,clock_ms=clock)
+        result['admission']=admission_capacity(policy,report(store,policy,clock_ms=clock))
+        # Deterministic follow-ups above remain live after the inference quota
+        # expires. Do not decode the same population for a task we cannot seal.
+        inventory=({'candidate_evaluations':[]} if dispatch and result['admission']['status']=='waiting_allowance'
+            else admission_inventory(store,policy,clock_ms=clock))
         selections=candidates_for_admission(inventory,market_evidence=market_proofs(store,inventory,policy,clock))
         # Least recently considered candidates first within the same priority;
         # an unsupported or oversized subject cannot monopolize every tick.
@@ -313,6 +317,8 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
             result['candidates'].append({'candidate':item['candidate'],'market':item['market'],**current})
             if result['dispatched']:break
         result['allowance']=report(store,policy,clock_ms=clock)
+        from .research_technical_backlog import priority as technical_priority
+        result['technical_priorities']=technical_priority(store)
         result['finished_ms']=now_ms()
         store.connection.execute('insert into continuous_research_ticks(started_ms,finished_ms,dispatch,result_json) values(?,?,?,?)',
             (clock,result['finished_ms'],int(dispatch),canonical(result)));store.connection.commit()

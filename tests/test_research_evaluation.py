@@ -87,6 +87,16 @@ class ResearchEvaluationTests(unittest.TestCase):
   for value in (True,0,65):
    with self.assertRaises(ValueError):poll(self.s,limit=value)
 
+ def test_non_identifiable_is_descriptive_not_a_missing_engine(self):
+  result={'proposal':{'decision':'non_identifiable','diagnostic':'Executed fills do not identify a pre-decision rule.','wake':{}}}
+  self.s.connection.execute("update population_research_jobs set status='non_identifiable',result_json=?",
+   (json.dumps(result),));self.s.connection.commit()
+  event=handoff(self.s,'request')
+  self.assertEqual(event['state'],'descriptive')
+  self.assertEqual(event['next_plan']['kind'],'next_candidate')
+  self.assertNotEqual(event['next_plan']['iteration_class'],'technical')
+  self.assertFalse(event['promotion_authorized'])
+
  def test_external_allocation_freezes_future_rule_once(self):
   from pathlib import Path
   from unittest.mock import patch

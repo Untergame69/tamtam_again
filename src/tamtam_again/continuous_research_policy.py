@@ -194,6 +194,25 @@ def report(store, policy, *, clock_ms=None):
         'output_tokens_reserved': rows[2], 'duration_ms_reserved': rows[3], 'renewable': True}
 
 
+def admission_capacity(policy, usage):
+    """Cheap preflight only; atomic task/call reservations remain authoritative.
+
+    Avoid repeatedly decoding archives after today's allowance is consumed.
+    Existing resolutions, collection wakes and evaluations must still run.
+    """
+    limits=policy['period_limits'];task=policy['task_policy']
+    required=(('tasks',len(usage['tasks']),1,'max_tasks'),
+        ('calls_reserved',usage['calls_reserved'],1,'max_calls'),
+        ('input_tokens_reserved',usage['input_tokens_reserved'],task['max_input_tokens_per_call'],'max_input_tokens'),
+        ('output_tokens_reserved',usage['output_tokens_reserved'],task['max_output_tokens'],'max_output_tokens'),
+        ('duration_ms_reserved',usage['duration_ms_reserved'],task['timeout_seconds']*1000,'max_duration_ms'))
+    exhausted=[ceiling for _,used,added,ceiling in required if used+added>limits[ceiling]]
+    return {'status':'waiting_allowance' if exhausted else 'available',
+        'exhausted_dimensions':exhausted,
+        'not_before_ms':usage['period_end_ms'] if exhausted else None,
+        'preflight_only':True}
+
+
 def candidates_for_admission(admission_report, *, market_evidence=None):
     """Use every qualified observation, never the report's short priority queue.
 

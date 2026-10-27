@@ -56,6 +56,25 @@ class ContinuousAllowanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'reservation exhausted'):
                     reserve_call(self.store, key, 2, self.policy, clock_ms=3)
 
+    def test_admission_preflight_waits_for_renewal_without_refund(self):
+        from tamtam_again.continuous_research_policy import admission_capacity
+        for name in ('one','two','three'):self.task(name)
+        usage=report(self.store,self.policy,clock_ms=3)
+        result=admission_capacity(self.policy,usage)
+        self.assertEqual(result['status'],'waiting_allowance')
+        self.assertEqual(result['exhausted_dimensions'],['max_tasks'])
+        self.assertEqual(result['not_before_ms'],DAY_MS)
+        self.assertEqual(admission_capacity(self.policy,report(self.store,self.policy,clock_ms=DAY_MS+1))['status'],'available')
+        self.assertEqual(len(report(self.store,self.policy,clock_ms=3)['tasks']),3)
+
+    def test_admission_preflight_also_checks_call_and_usage_dimensions(self):
+        from tamtam_again.continuous_research_policy import admission_capacity
+        usage=report(self.store,self.policy,clock_ms=3)
+        for used,ceiling in [('calls_reserved','max_calls'),('input_tokens_reserved','max_input_tokens'),
+                ('output_tokens_reserved','max_output_tokens'),('duration_ms_reserved','max_duration_ms')]:
+            exhausted={**usage,used:self.policy['period_limits'][ceiling]}
+            self.assertIn(ceiling,admission_capacity(self.policy,exhausted)['exhausted_dimensions'])
+
     def test_task_ceiling_immutable_policy_expiry_and_no_retry(self):
         self.policy['period_limits']['max_tasks'] = 1
         self.task('first')

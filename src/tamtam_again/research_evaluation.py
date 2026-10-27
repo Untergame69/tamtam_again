@@ -151,7 +151,7 @@ def _handoff(store, request_id, *, kind, experiment_policy):
             wake={'kind':'structured_observation_contract_required','automatic_collection_retry':False,
                 'model_calls_authorized':0})
     if routed['state'] != 'prospective_plan_required':
-        state = ('descriptive' if routed['state'] in {'specification_required', 'completed', 'local_archive_analysis_complete'}
+        state = ('descriptive' if routed['state'] in {'specification_required', 'completed', 'local_archive_analysis_complete', 'non_identifiable'}
                  else 'needs_data' if routed['state'] in {'needs_data', 'local_archive_data_required'}
                  else 'rejected' if routed['state'] == 'reject' else 'technical_required')
         return _persist(store, request_id, kind, state, evidence=evidence,

@@ -237,6 +237,26 @@ class BoundedMarketContextTests(unittest.TestCase):
         with patch('tamtam_again.bounded_market_context.zlib.decompress',side_effect=AssertionError('decoded unscoped proof')):
             with self.assertRaises(PermissionError):load_result(self.store,result['result_fingerprint'])
 
+    def test_indexed_event_overlap_keeps_straddling_lots_and_unknown_source_bounds(self):
+        self.fills()
+        quote_start=BASE+2000-86_400_000-300_000
+        events=[]
+        for stamp in (quote_start-1000,BASE+500):
+            events.append({'received_at':_event_iso(BASE+600),
+                'message':{'channel':'bbo','data':{'coin':'ETH','time':stamp,
+                    'bbo':[{'px':'99','sz':'10'},{'px':'101','sz':'10'}]}}})
+        self.save({'events':events},endpoint='bbo',stamp=BASE+600,
+            window=(quote_start-1000,BASE+500))
+        unknown=self.quote(BASE+1500,feed='l2Book')
+        self.store.connection.execute('update raw_observations set window_start_ms=null,window_end_ms=null '
+            'where observation_id=?',(unknown,))
+        self.store.connection.commit()
+        result=self.run_context()
+        proof=load_result(self.store,result['result_fingerprint'])
+        self.assertEqual(proof['feeds']['bbo']['rows'][0]['strict_prefill_quote']['event_ms'],BASE+500)
+        self.assertEqual(proof['feeds']['l2Book']['rows'][-1]['strict_prefill_quote']['event_ms'],BASE+1500)
+        self.assertEqual(proof['feeds']['bbo']['decoding']['rejected_or_excluded']['outside_declared_context_window'],1)
+
     def test_cutoff_and_latest_fill_window_exclusions_are_explicit(self):
         self.fills()
         self.save([{'tid':3,'coin':'ETH','time':BASE-90_000_000,'side':'B','px':'99','sz':'1',

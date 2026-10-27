@@ -168,12 +168,19 @@ def _quote_sources(store, network, market, cutoff, start, end, feed, limits, bud
     # Source event bounds come from the collector's min/max frame timestamps.
     # They exclude wholly post-fill lots. Unknown bounds are decoded explicitly;
     # a bounded scan refusal never masquerades as absent market observations.
+    # Keep the event-overlap scan covered by the existing receipt index. A
+    # single flat SELECT makes SQLite seek historical payload-table pages before
+    # rejecting their event bounds; that exceeded the worker deadline. The IN
+    # list first filters IDs inside the index, then reads only matching metadata
+    # through ordered INTEGER PRIMARY KEY lookups. No receipt-time lower bound
+    # is invented, and null source bounds are still included for validation.
     return _rows(store,
-        "network=? and source='hyperliquid-websocket-v1' and entity_type='market' "
-        'and entity_id=? and endpoint=? and observed_at<=? '
-        'and (window_start_ms is null or window_start_ms<=?) '
-        'and (window_end_ms is null or window_end_ms>=?)',
-        (network, market, feed, _event_iso(cutoff), end, start),
+        "observation_id in (select observation_id from raw_observations indexed by uq_raw_receipt "
+        "where network=? and source='hyperliquid-websocket-v1' and entity_type='market' "
+        'and entity_id=? and endpoint=? and ifnull(window_start_ms,-1)<=? '
+        'and (ifnull(window_end_ms,-1)>=? or ifnull(window_start_ms,-1)=-1 '
+        'or ifnull(window_end_ms,-1)=-1) order by observation_id) and observed_at<=?',
+        (network, market, feed, end, start, _event_iso(cutoff)),
         limits['max_quote_lots_per_feed'], budget)
 
 

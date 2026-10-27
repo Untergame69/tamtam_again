@@ -113,20 +113,38 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
         if task.get('kind') == 'population_local_archive_analysis':
             if run_local:
                 from .population_local_archive_resolution import execute
-                local_run = execute(store, source_id, repo_root=repo_root)
-                # The resolver persists a fingerprinted result reference. Route
-                # again to consume that exact artifact, never model narration.
-                routed = route(store, source_id, kind=source_kind)
-                assessment = _assessment(result, routed)
+                try:
+                    local_run = execute(store, source_id, repo_root=repo_root)
+                except Exception as exc:
+                    local_run = {'status': 'technical_required', 'diagnostic_code': type(exc).__name__,
+                        'model_calls': 0, 'collection_started': False}
+                    assessment = {'state': 'technical', 'action': 'create_technical_task',
+                        'reason': 'The sealed local resolver failed; inspect its deterministic diagnostic.',
+                        'wake': {'kind': 'local_resolver_error', 'diagnostic_code': type(exc).__name__,
+                            'automatic_retry': False}}
+                else:
+                    # The resolver persists a fingerprinted result reference. Route
+                    # again to consume that exact artifact, never model narration.
+                    routed = route(store, source_id, kind=source_kind)
+                    assessment = _assessment(result, routed)
             else:
                 local_run = {'status': 'prepared', 'model_calls': 0, 'collection_started': False}
         else:
             # Dedicated existing-window resolver has a distinct sealed contract.
             if run_local and task.get('kind') == 'eth_existing_window_analysis':
                 from .eth_existing_window_resolution import execute
-                local_run = execute(store, source_id, repo_root=repo_root)
-                routed = route(store, source_id, kind=source_kind)
-                assessment = _assessment(result, routed)
+                try:
+                    local_run = execute(store, source_id, repo_root=repo_root)
+                except Exception as exc:
+                    local_run = {'status': 'technical_required', 'diagnostic_code': type(exc).__name__,
+                        'model_calls': 0, 'collection_started': False}
+                    assessment = {'state': 'technical', 'action': 'create_technical_task',
+                        'reason': 'The sealed local resolver failed; inspect its deterministic diagnostic.',
+                        'wake': {'kind': 'local_resolver_error', 'diagnostic_code': type(exc).__name__,
+                            'automatic_retry': False}}
+                else:
+                    routed = route(store, source_id, kind=source_kind)
+                    assessment = _assessment(result, routed)
 
     if assessment['state'] == 'waiting':
         try:

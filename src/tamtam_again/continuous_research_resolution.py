@@ -193,3 +193,207 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
         'work_id': work['work_id'], 'queue_status': work['status'], 'created': created,
         'next_candidate': assessment['state'] in {'terminal', 'resolved', 'no_new_question'},
         'model_calls': 0, 'collection_started': False, 'orders_authorized': False}
+
+
+def poll_waits(store, *, clock_ms=None, limit=8, client=None, collection_job=None,
+               collection_policy=None):
+    """Poll typed population data waits and publish changed-evidence work.
+
+    An optional collection call is permitted only with an already-held
+    population lease, a client and the immutable existing needs policy. This
+    function never claims a lease or invents collection authority. Durable
+    wakes are verified before a follow-up becomes ready; bounded failed or
+    saturated collection ends as insufficient data.
+    """
+    from .research_work_queue import set_status
+    clock = now_ms() if clock_ms is None else clock_ms
+    if type(clock) is not int or clock < 0 or type(limit) is not int or not 1 <= limit <= 64:
+        raise ValueError('Explicit clock and bounded wait limit required')
+    collection = None
+    if (client is None) != (collection_job is None) or ((client is not None or collection_job is not None) and collection_policy is None):
+        raise ValueError('An existing collector requires client, active job lease and immutable policy together')
+    if collection_policy is not None:
+        from .research_need_collection import tick_for_job, validate_policy
+        validate_policy(collection_policy)
+        if client is not None:
+            collection = tick_for_job(store, client, collection_job, collection_policy, clock_ms=clock)
+
+    rows = store.connection.execute(
+        "select * from research_work_queue where source_kind='population_resolution' "
+        "and status in ('waiting_data','waiting_deadline') order by created_ms,work_id limit ?", (limit,)).fetchall()
+    advanced = []
+    for work in rows:
+        request_id = work['source_id']
+        plan_row = store.connection.execute(
+            'select plan_id,plan_json from research_observation_plans where request_id=? order by created_ms desc limit 1',
+            (request_id,)).fetchone() if store.connection.execute(
+                "select 1 from sqlite_master where type='table' and name='research_observation_plans'").fetchone() else None
+        if not plan_row:
+            continue
+        plan = json.loads(plan_row['plan_json'])
+        entries = plan.get('entries')
+        if not isinstance(entries, list) or not entries:
+            set_status(store, work['work_id'], 'technical_required',
+                'Legacy or incomplete observation request needs an explicit structured contract.',
+                outcome={'state': 'technical', 'kind': 'structured_request_required'}, clock_ms=clock)
+            advanced.append({'request_id': request_id, 'state': 'technical_required'})
+            continue
+
+        # Complete a wake from already persisted per-need proofs without a
+        # network call. This is the deterministic reducer formerly reached
+        # only when another collector tick revisited the account.
+        requests_for_wake = [entry.get('request', {}) for entry in entries]
+        if store.connection.execute(
+                "select 1 from sqlite_master where name='research_need_collection_states'").fetchone():
+            proofs = []
+            all_proofs = bool(requests_for_wake)
+            from .research_memory import authorized_period
+            for request in requests_for_wake:
+                need_id = fingerprint({'plan_id': plan_row['plan_id'], 'request': request})
+                state = store.connection.execute(
+                    'select state,evidence_json from research_need_collection_states where need_id=?',
+                    (need_id,)).fetchone()
+                if not state or state['state'] != 'proof_observed':
+                    all_proofs = False
+                    break
+                proof = json.loads(state['evidence_json'] or '{}')
+                period = {'network': plan['network'], 'address': plan['address'], 'market': '*',
+                    'start_ms': request['start_ms'], 'end_ms': request['end_ms']}
+                if (proof.get('need_id') != need_id or proof.get('source_request') != request
+                        or proof.get('available_ms', clock + 1) > clock
+                        or not authorized_period(store, period, clock, end_inclusive=True)):
+                    all_proofs = False
+                    break
+                proofs.append(proof)
+            if all_proofs and len(proofs) == len(requests_for_wake):
+                wake_evidence = {'proofs': proofs, 'promotion_authorized': False,
+                    'economic_completeness_proven': False,
+                    'next_action': 'reassess on these changed observations under the unchanged research budget'}
+                available = max(p['available_ms'] for p in proofs)
+                store.connection.execute('insert or ignore into research_observation_wakes '
+                    '(request_id,available_ms,evidence_fingerprint,evidence_json) values(?,?,?,?)',
+                    (request_id, available, fingerprint(wake_evidence), canonical(wake_evidence)))
+                store.connection.commit()
+
+        wake_row = store.connection.execute(
+            'select available_ms,evidence_fingerprint,evidence_json from research_observation_wakes where request_id=?',
+            (request_id,)).fetchone() if store.connection.execute(
+                "select 1 from sqlite_master where type='table' and name='research_observation_wakes'").fetchone() else None
+        if wake_row and wake_row['available_ms'] <= clock:
+            wake_fingerprint = wake_row['evidence_fingerprint']
+            payload = {'parent_request_id': request_id,
+                'evidence_fingerprint': wake_fingerprint, 'available_ms': wake_row['available_ms'],
+                'network': plan['network'], 'address': plan['address'],
+                'next_packet_required': True, 'new_analysis_budget_authorized': False,
+                'promotion_authorized': False, 'orders_authorized': False}
+            prior = store.connection.execute(
+                "select work_id from research_work_queue where source_kind='population_wake' "
+                'and source_id=? and input_fingerprint=?',
+                (request_id, fingerprint(payload))).fetchone()
+            if prior:
+                advanced.append({'request_id': request_id, 'state': 'wake_already_queued',
+                    'work_id': prior['work_id'], 'evidence_fingerprint': wake_fingerprint,
+                    'absence': 'all_required_proofs_present', 'export': 'verified_previously',
+                    'calculation': 'not_run'})
+                continue
+            try:
+                from .research_need_collection import export_wakes
+                exported = export_wakes(store, plan['network'], plan['address'],
+                    as_of_ms=clock, request_ids=[request_id], research_origin='population')
+            except (ValueError, KeyError, TypeError) as exc:
+                set_status(store, work['work_id'], 'technical_required',
+                    'Persisted wake failed provenance validation.',
+                    outcome={'state': 'technical', 'diagnostic_code': type(exc).__name__}, clock_ms=clock)
+                advanced.append({'request_id': request_id, 'state': 'technical_required',
+                    'absence': 'unresolved', 'export': 'rejected', 'calculation': 'not_run'})
+                continue
+            if not exported or exported[0]['evidence_fingerprint'] != wake_fingerprint:
+                set_status(store, work['work_id'], 'technical_required',
+                    'Verified wake is absent or has a different evidence identity.',
+                    outcome={'state': 'technical', 'kind': 'wake_identity_mismatch'}, clock_ms=clock)
+                advanced.append({'request_id': request_id, 'state': 'technical_required',
+                    'absence': 'unresolved', 'export': 'identity_mismatch', 'calculation': 'not_run'})
+                continue
+            from .research_work_queue import enqueue
+            queued, created = enqueue(store, 'population_wake', request_id, payload,
+                status='ready', reason='all typed observations verified; prepare a changed evidence packet',
+                clock_ms=clock)
+            set_status(store, work['work_id'], 'completed', 'superseded by verified observation wake',
+                outcome={'wake_work_id': queued['work_id'], 'evidence_fingerprint': wake_fingerprint},
+                clock_ms=clock)
+            advanced.append({'request_id': request_id, 'state': 'evidence_changed',
+                'work_id': queued['work_id'], 'created': created,
+                'evidence_fingerprint': wake_fingerprint,
+                'next_packet_required': True, 'new_analysis_budget_authorized': False,
+                'absence': 'all_required_proofs_present', 'export': 'verified',
+                'calculation': 'not_run'})
+            continue
+
+        requests = [entry.get('request', {}) for entry in entries]
+        statuses = []
+        deadlines = []
+        unsupported = []
+        terminal_failures = []
+        for request in requests:
+            capability = _classify_request(request)
+            if capability in {'unsupported_acquisition', 'unsupported_proof'}:
+                unsupported.append(capability)
+                continue
+            deadline = request.get('end_ms')
+            if type(deadline) is int:
+                deadlines.append(deadline)
+                if deadline > clock:
+                    statuses.append('waiting_deadline')
+                    continue
+            identity = fingerprint({'plan_id': plan_row['plan_id'], 'request': request})
+            state = store.connection.execute(
+                'select attempts,state from research_need_collection_states where need_id=?', (identity,)).fetchone() \
+                if store.connection.execute("select 1 from sqlite_master where name='research_need_collection_states'").fetchone() else None
+            if not state:
+                statuses.append('waiting_data')
+            elif state['state'] == 'proof_observed':
+                statuses.append('waiting_data')  # aggregate wake is persisted by the collector
+            elif state['state'] == 'saturated_timestamp_unresolvable':
+                terminal_failures.append('saturated_timestamp_unresolvable')
+            elif state['state'] in {'collection_failed', 'needs_more_pages'} and collection_policy and state['attempts'] >= collection_policy['max_attempts_per_need']:
+                terminal_failures.append('bounded_collection_attempts_exhausted')
+            else:
+                statuses.append('waiting_data')
+
+        if unsupported:
+            set_status(store, work['work_id'], 'technical_required',
+                'No verified acquisition adapter or proof supports this typed request.',
+                outcome={'state': 'technical', 'unsupported': sorted(set(unsupported))}, clock_ms=clock)
+            advanced.append({'request_id': request_id, 'state': 'technical_required',
+                'unsupported': sorted(set(unsupported)), 'absence': 'unresolved',
+                'export': 'unsupported', 'calculation': 'unsupported'})
+        elif terminal_failures:
+            set_status(store, work['work_id'], 'completed', 'required observation remained insufficient after bounded collection.',
+                outcome={'state': 'insufficient_data', 'terminal': True,
+                    'failures': sorted(set(terminal_failures)), 'collection_started': bool(collection)}, clock_ms=clock)
+            advanced.append({'request_id': request_id, 'state': 'insufficient_data_terminal',
+                'failures': sorted(set(terminal_failures)), 'next_candidate': True,
+                'absence': 'confirmed_after_bounded_attempts', 'export': 'not_possible',
+                'calculation': 'not_run'})
+        elif statuses and all(s == 'waiting_deadline' for s in statuses):
+            deadline = max(deadlines) if deadlines else None
+            set_status(store, work['work_id'], 'waiting_deadline', 'typed observation window has not ended',
+                wake_at_ms=deadline, clock_ms=clock)
+            advanced.append({'request_id': request_id, 'state': 'waiting_deadline', 'deadline_ms': deadline,
+                'absence': 'not_due', 'export': 'not_attempted', 'calculation': 'not_run'})
+        else:
+            set_status(store, work['work_id'], 'waiting_data', 'polling the existing bounded collection state',
+                clock_ms=clock)
+            advanced.append({'request_id': request_id, 'state': 'waiting_data',
+                'absence': 'incomplete_or_unobserved', 'export': 'not_attempted',
+                'calculation': 'not_run'})
+    return {'advanced': advanced, 'collection': collection, 'candidate_followups': [x for x in advanced if x['state']=='evidence_changed'],
+        'model_calls': 0, 'orders_authorized': False}
+
+
+def _classify_request(request):
+    from .research_needs import classify
+    try:
+        return classify(request)['state']
+    except (KeyError, TypeError, ValueError):
+        return 'unsupported_acquisition'

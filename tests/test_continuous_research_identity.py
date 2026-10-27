@@ -21,6 +21,35 @@ def packet():
 
 
 class IdentityTests(unittest.TestCase):
+    def test_verified_prefill_context_changes_facts_but_not_serialization(self):
+        base=packet();base['available_ms']=100
+        changed=copy.deepcopy(base)
+        ref='bounded_market_context_results:'+'a'*64
+        context={'version':'bounded-market-context-v3','status':'complete_bounded_descriptive',
+            'market':'BTC','evidence_cutoff_ms':90,'result_fingerprint':'a'*64,
+            'semantic_fingerprint':'b'*64,'evidence_ref':ref}
+        changed['evidence_refs']=[ref]
+        changed['observations']['prefill_market_context_v1']=context
+        self.assertNotEqual(semantic_identity(base,'BTC'),semantic_identity(changed,'BTC'))
+        same=copy.deepcopy(changed)
+        same['observations']['prefill_market_context_v1'].update(cache='unchanged',recalculated=False,evidence_cutoff_ms=95)
+        self.assertEqual(semantic_identity(changed,'BTC'),semantic_identity(same,'BTC'))
+        same['observations']['prefill_market_context_v1']['semantic_fingerprint']='c'*64
+        self.assertNotEqual(semantic_identity(changed,'BTC'),semantic_identity(same,'BTC'))
+        same['evidence_refs']=[]
+        with self.assertRaisesRegex(ValueError,'provenance'):semantic_identity(same,'BTC')
+        same=copy.deepcopy(changed);same['available_ms']=80
+        with self.assertRaises(ValueError):semantic_identity(same,'BTC')
+
+    def test_signal_source_observation_is_not_receipt_counter_churn(self):
+        base=packet();changed=copy.deepcopy(base)
+        changed['observations']['execution_data_readiness']={'account_ws_observed':False,'market_ws_observed':False}
+        self.assertEqual(semantic_identity(base,'BTC'),semantic_identity(changed,'BTC'))
+        changed['observations']['execution_data_readiness']['market_ws_observed']=True
+        self.assertNotEqual(semantic_identity(base,'BTC'),semantic_identity(changed,'BTC'))
+        same=copy.deepcopy(changed);same['observations']['execution_data_readiness']['source_metadata']={'newer_quote':'receipt-only'}
+        self.assertEqual(semantic_identity(changed,'BTC'),semantic_identity(same,'BTC'))
+
     def test_equivalent_receipts_and_other_market_changes_do_not_reopen(self):
         original = packet(); changed = copy.deepcopy(original)
         detail = changed['observations']['market_execution_detail_v1']['BTC']

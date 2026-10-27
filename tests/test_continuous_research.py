@@ -16,6 +16,31 @@ class ContinuousPreparationTests(unittest.TestCase):
 
     def tearDown(self):self.fixture.tearDown()
 
+    def test_market_account_stream_and_catalog_invalidate_preparation_before_inference(self):
+        from tamtam_again.continuous_research import preparation_sources, execution_data_readiness
+        scope=(self.store,self.fixture.network,self.fixture.address,'COIN',200)
+        initial=preparation_sources(*scope)
+        self.assertEqual(initial,{'market':None,'account_ws':None,'catalog':None})
+        self.fixture._raw(1,'bbo',[])
+        self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1',entity_type='market',entity_id='COIN' where observation_id=1")
+        self.store.connection.commit()
+        self.assertEqual(preparation_sources(*scope)['market'],1)
+        self.assertTrue(execution_data_readiness(*scope)['market_ws_observed'])
+        self.fixture._raw(2,'userFundings',[])
+        self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1' where observation_id=2")
+        self.store.connection.commit()
+        self.assertEqual(preparation_sources(*scope)['account_ws'],2)
+        self.assertTrue(execution_data_readiness(*scope)['funding_ws_observed'])
+        self.assertFalse(execution_data_readiness(*scope)['account_ws_observed'])
+        self.fixture._raw(3,'allPerpMetas',[])
+        self.store.connection.execute("update raw_observations set entity_type='market',entity_id='collateral:all' where observation_id=3")
+        self.store.connection.commit()
+        self.assertEqual(preparation_sources(*scope)['catalog'],3)
+        self.fixture._raw(4,'bbo',[],observed=201)
+        self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1',entity_type='market',entity_id='COIN' where observation_id=4")
+        self.store.connection.commit()
+        self.assertEqual(preparation_sources(*scope)['market'],1)
+
     def test_actual_archives_produce_scoped_packet_and_conservative_availability(self):
         report={'address':self.fixture.address,'markets':['COIN','OTHER'],
             'activity':{'observed_unique_fills':2,'observed_fill_content_fingerprint':'archive'}}

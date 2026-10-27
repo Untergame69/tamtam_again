@@ -149,11 +149,41 @@ def semantic_identity(packet, market):
     identity = {'network': packet['network'], 'address': packet['address'].lower(),
         'market': market, 'question_version': 'observable-mechanism-v1',
         'fill_content': checksum, 'market_content': content, 'observation_wakes': wake_identities(packet)}
+    context = prefill_context_identity(packet, market)
+    if context is not None:identity['prefill_context'] = context
+    available_sources=observed_signal_sources(packet)
+    if available_sources:identity['observed_signal_sources']=available_sources
     evaluations = evaluation_evidence_identity(packet)
     if evaluations:identity['evaluation_outcomes'] = evaluations
     paper = inactive_paper_evidence_identity(packet)
     if paper:identity['inactive_paper_outcomes'] = paper
     return fingerprint(identity)
+
+
+def observed_signal_sources(packet):
+    readiness=packet.get('observations',{}).get('execution_data_readiness',{})
+    if not isinstance(readiness,dict):raise ValueError('Typed signal-source readiness required')
+    return [name for name in ('account_ws_observed','funding_ws_observed','market_ws_observed') if readiness.get(name) is True]
+
+
+def prefill_context_identity(packet, market):
+    """Include new pre-action observations, excluding serialization and receipt churn."""
+    context=packet.get('observations',{}).get('prefill_market_context_v1')
+    if context is None:return None
+    if not isinstance(context,dict):raise ValueError('Typed bounded prefill market context required')
+    if context.get('status')=='data_absent':return None
+    if (context.get('version')!='bounded-market-context-v3'
+            or context.get('status')!='complete_bounded_descriptive' or context.get('market')!=market
+            or type(context.get('evidence_cutoff_ms')) is not int
+            or not 0<=context['evidence_cutoff_ms']<=packet.get('available_ms',-1)
+            or not isinstance(context.get('result_fingerprint'),str)
+            or not re.fullmatch('[a-f0-9]{64}',context['result_fingerprint'])
+            or context.get('evidence_ref')!='bounded_market_context_results:'+context['result_fingerprint']
+            or context['evidence_ref'] not in packet.get('evidence_refs',[])
+            or not isinstance(context.get('semantic_fingerprint'),str)
+            or not re.fullmatch('[a-f0-9]{64}',context['semantic_fingerprint'])):
+        raise ValueError('Verified bounded prefill market context and provenance required')
+    return context['semantic_fingerprint']
 
 
 def _legacy_fill_identity(store, packet, market):
@@ -231,6 +261,8 @@ def prior_equivalent(store, network, address, market, packet):
     current_wakes = wake_identities(packet)
     current_evaluations = evaluation_evidence_identity(packet)
     current_paper = inactive_paper_evidence_identity(packet)
+    current_context = prefill_context_identity(packet, market)
+    current_sources = observed_signal_sources(packet)
     legacy_filter = (' and not exists(select 1 from continuous_research_tasks t '
         'where t.request_id=j.request_id)' if has_continuous else '')
     for row in store.connection.execute('select j.request_id,j.status,j.packet_json from population_research_jobs j '
@@ -242,10 +274,13 @@ def prior_equivalent(store, network, address, market, packet):
             old_wakes = wake_identities(old)
             old_evaluations = evaluation_evidence_identity(old)
             old_paper = inactive_paper_evidence_identity(old)
+            old_context = prefill_context_identity(old, market)
+            old_sources = observed_signal_sources(old)
         except (TypeError, ValueError, KeyError):
             continue
         if (old_projection != projection or old_wakes != current_wakes
-                or old_evaluations != current_evaluations or old_paper != current_paper):
+                or old_evaluations != current_evaluations or old_paper != current_paper
+                or old_context != current_context or old_sources != current_sources):
             continue
         old_hash = old['observations']['market_execution_detail_v1'][market].get('observed_fill_content_fingerprint')
         if old_hash is None:

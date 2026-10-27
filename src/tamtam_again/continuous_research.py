@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from time import monotonic
 from .engine import canonical, fingerprint
 from .validation import now_ms
 
@@ -58,6 +59,7 @@ def execution_data_readiness(store, network, address, market, cutoff_ms):
     sources={}
     for kind,entity,identity,endpoints in (
             ('account','account',address,('userFills',)),
+            ('funding','account',address,('userFundings',)),
             ('market','market',market,('bbo','l2Book'))):
         placeholders=','.join('?' for _ in endpoints)
         row=store.connection.execute('select observation_id,response_sha256,observed_at,endpoint '
@@ -68,10 +70,40 @@ def execution_data_readiness(store, network, address, market, cutoff_ms):
         sources[kind]=None if row is None else {'evidence_ref':'raw_observations:'+str(row['observation_id'])+
             '#sha256:'+row['response_sha256'],'archived_at':row['observed_at'],'endpoint':row['endpoint']}
     return {'version':'execution-data-readiness-v1','account_ws_observed':sources['account'] is not None,
+        'funding_ws_observed':sources['funding'] is not None,
         'market_ws_observed':sources['market'] is not None,'source_metadata':sources,
         'non_snapshot_live_signal_proven':False,'future_continuity_proven':False,
         'rest_follower_contract':'unsupported by current engine; REST event time is never signal availability',
         'limits':'Metadata confirms an archive exists, not a current subscription, a non-snapshot signal, calibrated clocks or future coverage.'}
+
+
+def preparation_sources(store, network, address, market, cutoff_ms):
+    """Invalidate cheap preparation on market/source changes, never inference.
+
+    The later semantic identity still rejects post-fill quotes, duplicate
+    receipts and unchanged rules as reasons for another model call.
+    """
+    from .population_descriptive import _event_time
+    cutoff=_event_time(cutoff_ms)
+    result={}
+    for kind,source,entity,identity,endpoints in (
+        ('market','hyperliquid-websocket-v1','market',market,('bbo','l2Book')),
+        ('account_ws','hyperliquid-websocket-v1','account',address,('userFills','userFundings')),
+        ('catalog','hyperliquid-population-rest-v1','market','collateral:all',('allPerpMetas','spotMetaAndAssetCtxs'))):
+        placeholders=','.join('?' for _ in endpoints)
+        latest=store.connection.execute('select observation_id from raw_observations '
+            'where network=? and source=? and entity_type=? and entity_id=? '
+            'and endpoint in ('+placeholders+') and observed_at<=? order by observed_at desc,observation_id desc limit 1',
+            (network,source,entity,identity,*endpoints,cutoff)).fetchone()
+        result[kind]=None if latest is None else latest[0]
+    return result
+
+
+def tracked_accounts(store, network):
+    """Existing collector registry only; this never adds a subscription."""
+    if not store.connection.execute("select 1 from sqlite_master where name='candidates'").fetchone():return set()
+    return {row[0].lower() for row in store.connection.execute(
+        "select address from candidates where network=? and status='tracked'",(network,))}
 
 
 def market_proofs(store, inventory, policy, clock):
@@ -85,7 +117,7 @@ def market_proofs(store, inventory, policy, clock):
     from .discovery import protected_addresses
     from .population_descriptive import _load_fills, _event_time
     from collections import defaultdict
-    pending=[];proofs={};protected=protected_addresses(store)
+    pending=[];proofs={};protected=protected_addresses(store);instrumented=tracked_accounts(store,policy['network'])
     for row in inventory['candidate_evaluations']:
         if row.get('disposition')!='needs_more_evidence' or not row.get('candidate_id'):
             continue
@@ -102,7 +134,7 @@ def market_proofs(store, inventory, policy, clock):
         if old and old['cutoff_ms']==cutoff and old['archive_id']==latest:
             for market,proof in json.loads(old['proof_json']).items():proofs[(address,market)]=proof
         else:pending.append((old['checked_ms'] if old else 0,address,scope,latest))
-    for _,address,scope,latest in sorted(pending)[:2]:
+    for _,address,scope,latest in sorted(pending,key=lambda x:(x[1] not in instrumented,x[0],x[1]))[:2]:
         cutoff=scope['cutoff_ms'];start=scope['period_start_ms']
         counts=store.connection.execute("select count(*),coalesce(sum(record_count),0) from raw_observations "
             "where network=? and source='hyperliquid-population-rest-v1' and entity_id=? and endpoint in ('userFills','userFillsByTime')",
@@ -146,6 +178,7 @@ def prepare_packet(store, policy, item):
     if base.get('status')!='packet_ready': return base
     packet=prepare_pilot_packet(store,base['packet'],candidate=item['candidate'],item=item,
         pilot_id=policy['policy_id'],policy_version=policy['version'],cutoff_ms=item['cutoff_ms'])
+    packet['available_ms']=item['cutoff_ms']
     packet['observations']['account_context_markets']=packet['observations'].get('markets',[])
     packet['observations']['markets']=[item['market']]
     packet['research_scope']={'market':item['market'],'admission_activity_start_ms':item['period_start_ms'],
@@ -154,8 +187,13 @@ def prepare_packet(store, policy, item):
         'other_markets':'account context only, not eligible for this hypothesis'}
     packet['observations']['execution_data_readiness']=execution_data_readiness(
         store,policy['network'],item['address'],item['market'],item['cutoff_ms'])
+    from .bounded_market_context import prepare_market_context
+    context=prepare_market_context(store,network=policy['network'],address=item['address'],
+        market=item['market'],cutoff_ms=item['cutoff_ms'],limits={'max_duration_ms':60000})
+    packet['observations']['prefill_market_context_v1']=context
+    if context.get('evidence_ref'):packet['evidence_refs'].append(context['evidence_ref'])
     from .execution_research_context import attach_execution_context
-    attach_execution_context(packet,Path(__file__).resolve().parents[2])
+    attach_execution_context(packet,Path(__file__).resolve().parents[2],store=store)
     if len(canonical(packet))>policy['task_policy']['max_packet_chars']:
         _project_other_markets(store,packet,item['market'],item['cutoff_ms'])
     from .research_evaluation import export_memory
@@ -239,6 +277,10 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
     from .population_runtime import execute_job
     from .research_evaluation import poll
     clock=now_ms() if clock_ms is None else clock_ms
+    # The installed service allows 420s. Preserve 240s for two bounded provider
+    # calls plus 60s for persistence/follow-ups; preparation gets 120s total,
+    # not a fresh budget for every rejected candidate.
+    preparation_deadline=monotonic()+120
     if type(max_candidates) is not int or not 1<=max_candidates<=32:
         raise ValueError('Explicit candidate work bound between 1 and 32 required')
     with scheduler_lock(store):
@@ -279,12 +321,19 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
         result['evaluations']=poll(store,limit=8)
         from .continuous_research_resolution import poll_waits
         result['data_waits']=poll_waits(store,clock_ms=clock,limit=8,collection_policy=collection_policy)
-        result['admission']=admission_capacity(policy,report(store,policy,clock_ms=clock))
+        usage=report(store,policy,clock_ms=clock)
+        result['admission']=admission_capacity(policy,usage)
+        if dispatch and monotonic()>=preparation_deadline:
+            result['admission']={'status':'waiting_runtime_headroom','preflight_only':True,
+                'reason':'Deterministic follow-ups used the preparation window; resume next timer tick.'}
         # Deterministic follow-ups above remain live after the inference quota
         # expires. Do not decode the same population for a task we cannot seal.
-        inventory=({'candidate_evaluations':[]} if dispatch and result['admission']['status']=='waiting_allowance'
+        inventory=({'candidate_evaluations':[]} if dispatch and result['admission']['status'] in {'waiting_allowance','waiting_runtime_headroom'}
             else admission_inventory(store,policy,clock_ms=clock))
         selections=candidates_for_admission(inventory,market_evidence=market_proofs(store,inventory,policy,clock))
+        instrumented=tracked_accounts(store,policy['network'])
+        prefer_instrumented=not usage['tasks']
+        result['admission']['first_daily_slot_prefers_existing_instrumentation']=prefer_instrumented
         # Least recently considered candidates first within the same priority;
         # an unsupported or oversized subject cannot monopolize every tick.
         def ordering(item):
@@ -292,8 +341,12 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
             account=store.connection.execute('select max(updated_ms) from continuous_research_candidates '
                 'where network=? and address=?',(policy['network'],item['address'])).fetchone()[0]
-            return (account or 0,0 if old is None else old[0],item.get('priority',''),item['candidate'])
+            return (int(prefer_instrumented and item['address'] not in instrumented),
+                account or 0,0 if old is None else old[0],item.get('priority',''),item['candidate'])
         for item in sorted(selections,key=ordering)[:max_candidates]:
+            if dispatch and monotonic()>=preparation_deadline:
+                result['admission']={'status':'waiting_runtime_headroom','preflight_only':True}
+                break
             item={**item,'network':policy['network'],'admission_cutoff_ms':item['cutoff_ms'],'cutoff_ms':clock}
             item['question']=('From the authorized executions on '+item['market']+', identify a falsifiable observable mechanism, '
                 'separating price flow, signed fees, funding, inventory and coverage. Use all deterministic statistics; '
@@ -316,8 +369,9 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                     'join population_research_jobs j using(request_id) where j.network=? and j.address=? and m.available_ms<=?',
                     (policy['network'],item['address'],clock)).fetchone()[0]
             source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
-                'packet_preparation_version':'continuous-execution-context-v2',
+                'packet_preparation_version':'continuous-prefill-and-execution-context-v3',
                 'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes,
+                'preparation_sources':preparation_sources(store,policy['network'],item['address'],item['market'],clock),
                 'feedback_available_ms':feedback_latest})
             old=store.connection.execute('select source_fingerprint,status,result_json from continuous_research_candidates '
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
@@ -327,7 +381,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 try:
                     prepared=prepare_packet(store,policy,item)
                     if prepared['status']!='packet_ready':current=prepared
-                    elif not dispatch:current={'status':'prepared','packet_fingerprint':prepared['packet']['fingerprint'],
+                    elif not dispatch or monotonic()>=preparation_deadline:current={'status':'prepared','packet_fingerprint':prepared['packet']['fingerprint'],
                         'packet_chars':len(canonical(prepared['packet'])),'semantic_fingerprint':prepared['semantic_fingerprint']}
                     elif result['dispatched']:current={'status':'prepared','reason':'one inference task per tick'}
                     else:

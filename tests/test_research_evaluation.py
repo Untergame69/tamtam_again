@@ -164,3 +164,41 @@ class ResearchEvaluationTests(unittest.TestCase):
    self.assertIn(other,item['periods']);self.assertIn('other-source',item['origin_accounts'])
    item['periods'].remove(other)
    with self.assertRaisesRegex(ValueError,'complete|union|explicit'):save_knowledge(self.s,item)
+
+ def test_inactive_paper_residual_remains_incomplete_with_source_period(self):
+  from unittest.mock import patch
+  from tamtam_again.paper import start_paper
+  from tamtam_again.research_evaluation import export_memory
+  family=register_experiment(self.s,'request',self.plan,self.profile)
+  variant=family['attempts'][0]['variant_id']
+  evaluate(self.s,variant,'comparison',synthetic_events(10000),provenance='synthetic')
+  select_final(self.s,family['family_id'])
+  evaluate(self.s,variant,'final',synthetic_events(20000),provenance='synthetic')
+  with patch('tamtam_again.paper.now_ms',return_value=30000):
+   session=start_paper(self.s,variant,synthetic_recipe=True)
+  state=json.loads(self.s.connection.execute('select state_json from paper_sessions').fetchone()[0])
+  state.update(position='2',fees='1.2',funding='-0.3',pending=[])
+  self.s.connection.execute("update paper_sessions set state_json=?,updated_at='1970-01-01T00:00:40+00:00'",(json.dumps(state),));self.s.connection.commit()
+  with patch('tamtam_again.research_evaluation.now_ms',return_value=45000):
+   active=poll(self.s)['decisions'][0]
+  self.assertEqual(active['state'],'paper_active')
+  self.s.connection.execute("update paper_sessions set status='retired'");self.s.connection.commit()
+  with patch('tamtam_again.research_evaluation.now_ms',return_value=50000):
+   inactive=poll(self.s)['decisions'][0]
+  self.assertEqual(inactive['state'],'technical_required')
+  self.assertTrue(inactive['evidence']['incomplete_paper'])
+  self.assertEqual(inactive['next_plan']['iteration_class'],'technical')
+  observation=inactive['evidence']['sessions'][0]
+  self.assertEqual(observation['position'],'2');self.assertEqual(observation['fees'],'1.2')
+  self.assertNotIn('net_pnl',observation)
+  self.assertEqual(observation['source_period']['start_ms'],30000)
+  self.assertEqual(observation['source_period']['end_ms'],40001)
+  # Feedback cannot bypass comparison/final reserve restrictions.
+  self.assertEqual(export_memory(self.s,'synthetic','fixture-only',50000),[])
+  self.s.connection.execute('create table research_window_releases(plan_id text,stage text,released_ms integer)')
+  self.s.connection.executemany('insert into research_window_releases values(?,?,?)',[(self.plan,'comparison',45000),(self.plan,'final',45000)])
+  self.s.connection.commit()
+  records=export_memory(self.s,'synthetic','fixture-only',50000)
+  retired=[entry for entry in records if entry['event_id']==inactive['event_id']][0]
+  self.assertIn(observation['source_period'],retired['periods'])
+  self.assertFalse(any(entry['event_id']==inactive['event_id'] for entry in export_memory(self.s,'synthetic','fixture-only',49999)))

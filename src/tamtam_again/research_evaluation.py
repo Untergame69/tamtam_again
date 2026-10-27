@@ -5,7 +5,8 @@ market payloads, changes a gate, calls a model, or places an order. The existing
 pipeline owns evaluation and paper starts; polling observes its durable results.
 """
 import json
-from .engine import canonical, fingerprint
+from datetime import datetime
+from .engine import canonical, fingerprint, number
 from .validation import now_ms
 
 SCHEMA = '''
@@ -15,6 +16,8 @@ CREATE TABLE IF NOT EXISTS research_evaluation_events (
 CREATE TABLE IF NOT EXISTS research_evaluation_memory (
  event_id TEXT PRIMARY KEY, request_id TEXT NOT NULL, available_ms INTEGER NOT NULL,
  memory_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS research_evaluation_source_periods (
+ event_id TEXT NOT NULL, period_json TEXT NOT NULL, PRIMARY KEY(event_id,period_json));
 '''
 
 
@@ -25,7 +28,8 @@ def _exists(store, name):
 def _persist(store, request_id, kind, state, *, evidence=None, diagnostic=None, wake=None):
     store.connection.executescript(SCHEMA)
     terminal = state in {'descriptive', 'rejected', 'technical_required', 'paper_complete'}
-    next_plan = {'kind': 'next_candidate' if terminal else 'continue_candidate',
+    next_plan = {'iteration_class': 'reject' if state == 'rejected' else 'technical' if state == 'technical_required' else 'continue',
+                 'kind': 'next_candidate' if terminal else 'continue_candidate',
                  'changed_evidence_required': True, 'rearm_budget': False,
                  'model_calls_authorized': 0, 'live_orders_authorized': False}
     event = {'version': 'research-evaluation-v1', 'request_id': request_id,
@@ -43,6 +47,9 @@ def _persist(store, request_id, kind, state, *, evidence=None, diagnostic=None, 
     with store.connection:
         store.connection.execute('insert or ignore into research_evaluation_events values(?,?,?,?,?)',
             (event_id, request_id, kind, event['created_ms'], canonical(event)))
+        for session in event['evidence'].get('sessions', []):
+            store.connection.execute('insert or ignore into research_evaluation_source_periods values(?,?)',
+                (event_id, canonical(session['source_period'])))
         store.connection.execute('insert or ignore into research_evaluation_memory values(?,?,?,?)',
             (event_id, request_id, event['created_ms'], canonical(memory)))
     return event
@@ -241,12 +248,40 @@ def _observe(store, request_id, kind, link):
     if not any(r['status'] == 'passed' for r in final):
         state = 'technical_required' if any(r['status'] == 'error' for r in final) else 'rejected'
         return _persist(store, request_id, kind, state, evidence=evidence, diagnostic='Final did not pass; new candidate requires new future reserve')
-    sessions = [dict(r) for r in store.connection.execute('select session_id,status from paper_sessions where variant_id=? order by started_ms,session_id', (selection['variant_id'],))]
+    sessions = []
+    for row in store.connection.execute('select session_id,status,state_json,started_ms,updated_at from paper_sessions where variant_id=? order by started_ms,session_id', (selection['variant_id'],)):
+        body = json.loads(row['state_json'])
+        try:
+            position = number(body.get('position'))
+            complete = position == 0 and isinstance(body.get('pending'), list) and not body['pending']
+        except (ValueError, TypeError):
+            complete = False
+        try:
+            updated_ms = int(datetime.fromisoformat(row['updated_at']).timestamp()*1000)
+            period_start, period_end = row['started_ms'], max(row['started_ms']+1, updated_ms+1)
+        except (ValueError, TypeError):
+            period_start, period_end = 0, 0  # Invalid provenance prevents memory export.
+        session = {'session_id': row['session_id'], 'status': row['status'],
+            'position': body.get('position'), 'pending': bool(body.get('pending')),
+            'pending_count': len(body['pending']) if isinstance(body.get('pending'), list) else None,
+            'complete_flat_state': complete, 'diagnostics': body.get('diagnostics', [])[:32],
+            'source_period': {'network': plan['network'], 'address': plan['address'], 'market': plan['coin'],
+                              'start_ms': period_start, 'end_ms': period_end}}
+        for key in ('net_pnl', 'realized_pnl', 'fees', 'funding', 'cash'):
+            if key in body:
+                session[key] = body[key]
+        sessions.append(session)
     evidence['sessions'] = sessions
     state = ('paper_active' if any(r['status'] == 'active' for r in sessions)
+             else 'technical_required' if any(not r['complete_flat_state'] for r in sessions)
              else 'paper_complete' if sessions else 'paper_gate_required')
+    if state == 'technical_required':
+        evidence['incomplete_paper'] = True
+
     return _persist(store, request_id, kind, state, evidence=evidence,
-                    diagnostic='Existing pipeline and explicit paper support own paper admission; final pass alone does not start a session')
+                    diagnostic=('Inactive paper retains exposure, pending orders or unknown flatness; preserve incomplete ledger'
+                        if state == 'technical_required' else
+                        'Existing pipeline and explicit paper support own paper admission; paper status does not prove profitability'))
 
 
 def poll(store, *, limit=8):
@@ -343,6 +378,11 @@ def export_memory(store, network, address, as_of_ms, *, limit=8):
                     stages = {r[0] for r in store.connection.execute('select stage from validation_evaluations where plan_id=?', (plan_row['plan_id'],))}
                     for stage in stages:
                         periods.append({'network': network, 'address': address, 'market': plan_row['coin'], **plan[stage]})
+            if _exists(store, 'research_evaluation_source_periods'):
+                for source_row in store.connection.execute('select period_json from research_evaluation_source_periods where event_id=?', (row['event_id'],)):
+                    period=json.loads(source_row[0])
+                    if period not in periods:
+                        periods.append(period)
             if not all(authorized_period(store, p, as_of_ms) for p in periods):
                 continue
             body = store.connection.execute('select memory_json from research_evaluation_memory where event_id=?', (row['event_id'],)).fetchone()

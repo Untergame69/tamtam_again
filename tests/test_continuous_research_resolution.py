@@ -23,25 +23,93 @@ class ContinuousResearchResolutionTests(unittest.TestCase):
         self.store.close()
         self.temp.cleanup()
 
-    def add_job(self, status, result, packet=None):
+    def add_job(self, status, result, packet=None, identity=None):
         packet = packet or {'available_ms': 1000, 'observations': {}}
         packet.setdefault('fingerprint', fingerprint(packet))
+        identity = identity or self.request_id
         self.store.connection.execute(
             'insert into population_research_jobs '
             '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,result_json,updated_ms) '
             'values(?,?,?,?,?,?,?, ?,?,?)',
-            (self.request_id, 'fixture', 'fixture-account', fingerprint({'input': 1}),
+            (identity, 'fixture', 'fixture-account', fingerprint({'input': identity}),
              canonical(packet), '{}', 100, status, canonical(result), 100))
         self.store.connection.commit()
 
-    def test_needs_data_text_stays_waiting_and_does_not_create_acquisition(self):
+    def test_needs_data_text_becomes_durable_technical_task_without_acquisition(self):
         self.add_job('needs_data', {'critique': {'decision': 'needs_data',
             'diagnostic': 'Please fetch whatever might help.'}})
         result = resolve_result(self.store, 'population', self.request_id, clock_ms=500)
-        self.assertEqual(result['state'], 'waiting')
-        self.assertEqual(result['queue_status'], 'waiting_data')
+        self.assertEqual(result['state'], 'technical')
+        self.assertEqual(result['queue_status'], 'technical_required')
         self.assertFalse(result['collection_started'])
         self.assertEqual(result['assessment']['wake'].get('kind'), 'structured_request_required')
+        self.assertTrue(result['next_candidate'])
+        self.assertEqual(result['assessment']['disposition'],'needs_data_contract_required')
+        self.assertFalse(self.store.connection.execute(
+            "select 1 from sqlite_master where type='table' and name='research_observation_plans'").fetchone())
+
+    def test_structured_top_level_needs_data_is_registered_and_pollable(self):
+        request = {'required_data_index': 0, 'source': 'public_rest_history',
+            'endpoint': 'userFunding', 'start_ms': 100, 'end_ms': 800,
+            'proof': 'pagination_coverage', 'decision_use': 'check archived funding'}
+        result_body = {'proposal': {'decision': 'needs_data', 'diagnostic': 'Funding interval could change this descriptive conclusion.',
+            'wake': {}, 'required_data': ['funding over selected interval'], 'observation_requests': [request]},
+            'promotion_authorized': False, 'profitability_proven': False}
+        self.add_job('needs_data', result_body)
+        result = resolve_result(self.store, 'population', self.request_id, clock_ms=500)
+        self.assertEqual(result['state'], 'waiting')
+        self.assertEqual(result['queue_status'], 'waiting_deadline')
+        self.assertEqual(result['assessment']['wake']['plan']['entries'][0]['state'], 'await_window_end')
+        self.assertEqual(self.store.connection.execute(
+            'select count(*) from research_observation_plans').fetchone()[0], 1)
+
+    def test_structured_needs_data_from_critique_is_registered_without_hypothesis_promotion(self):
+        request = {'required_data_index': 0, 'source': 'public_rest_history',
+            'endpoint': 'userNonFundingLedgerUpdates', 'start_ms': 100, 'end_ms': 800,
+            'proof': 'pagination_coverage', 'decision_use': 'check ledger events'}
+        result_body = {'proposal': {'decision': 'hypothesis', 'hypothesis': {
+            'mechanism': 'descriptive test', 'required_data': ['ledger coverage'], 'markets': ['ETH']}},
+            'critique': {'decision': 'needs_data', 'diagnostic': 'Ledger data may resolve coverage.',
+                'wake': {}, 'required_data': ['ledger coverage'], 'observation_requests': [request]},
+            'promotion_authorized': False, 'profitability_proven': False}
+        self.add_job('needs_data', result_body)
+        result = resolve_result(self.store, 'population', self.request_id, clock_ms=500)
+        self.assertEqual(result['state'], 'waiting')
+        self.assertEqual(result['assessment']['wake']['plan']['entries'][0]['request'], request)
+        self.assertEqual(self.store.connection.execute(
+            "select status from population_research_jobs where request_id=?", (self.request_id,)).fetchone()[0], 'needs_data')
+
+    def test_new_unstructured_result_closes_prior_wait_without_blocking_queue(self):
+        request = {'required_data_index': 0, 'source': 'public_rest_history',
+            'endpoint': 'userFunding', 'start_ms': 100, 'end_ms': 800,
+            'proof': 'pagination_coverage', 'decision_use': 'check funding coverage'}
+        self.add_job('needs_data', {'proposal': {'decision': 'needs_data',
+            'diagnostic': 'Funding could matter.', 'wake': {}, 'required_data': ['funding'],
+            'observation_requests': [request]}, 'promotion_authorized': False,
+            'profitability_proven': False})
+        first = resolve_result(self.store, 'population', self.request_id, clock_ms=500)
+        self.assertEqual(first['queue_status'], 'waiting_deadline')
+        self.store.connection.execute('update population_research_jobs set result_json=? where request_id=?',
+            (canonical({'proposal': {'decision': 'needs_data', 'diagnostic': 'fetch relevant context', 'wake': {}},
+                'promotion_authorized': False, 'profitability_proven': False}), self.request_id))
+        self.store.connection.commit()
+        second = resolve_result(self.store, 'population', self.request_id, clock_ms=600)
+        self.assertEqual(second['queue_status'], 'technical_required')
+        self.assertTrue(second['next_candidate'])
+        self.assertEqual(self.store.connection.execute(
+            'select status from research_work_queue where work_id=?', (first['work_id'],)).fetchone()[0], 'completed')
+
+    def test_runtime_accepts_only_complete_typed_needs_data_requests(self):
+        from tamtam_again.population_runtime import validate_response
+        from tamtam_again.research import CallContractError
+        request = {'required_data_index': 0, 'source': 'public_rest_history',
+            'endpoint': 'userFunding', 'start_ms': 100, 'end_ms': 200,
+            'proof': 'pagination_coverage', 'decision_use': 'inspect funding'}
+        response = {'decision': 'needs_data', 'diagnostic': 'Funding may matter.',
+            'wake': {}, 'required_data': ['funding interval'], 'observation_requests': [request]}
+        self.assertIsNone(validate_response(response, {}))
+        with self.assertRaises(CallContractError):
+            validate_response({**response, 'observation_requests': []}, {})
 
     def test_terminal_result_is_idempotent_and_does_not_block_next_candidate(self):
         self.add_job('non_identifiable', {'critique': {'decision': 'non_identifiable',

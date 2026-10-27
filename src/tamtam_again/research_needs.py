@@ -42,12 +42,25 @@ def register(store,request_id,*,kind='population',clock_ms=None):
     clock=now_ms() if clock_ms is None else clock_ms
     if type(clock) is not int or clock<0:raise ValueError('Explicit request availability required')
     row=store.connection.execute(f'select network,address,status,updated_ms,result_json from {table(kind)} where request_id=?',(request_id,)).fetchone()
-    if not row or row['status']!='hypothesis_recorded' or row['updated_ms']>clock:
-        raise ValueError('Available reviewed hypothesis required')
+    if not row or row['status'] not in {'hypothesis_recorded','needs_data'} or row['updated_ms']>clock:
+        raise ValueError('Available typed research result required')
     result=json.loads(row['result_json'])
-    if result.get('critique',{}).get('decision')!='consistent' or result.get('promotion_authorized') is not False or result.get('profitability_proven') is not False:
-        raise ValueError('Reviewed non-economic hypothesis required')
-    hypothesis=result['proposal']['hypothesis'];missing=hypothesis['required_data'];requests=hypothesis.get('observation_requests')
+    if result.get('promotion_authorized') is not False or result.get('profitability_proven') is not False:
+        raise ValueError('Non-promotional research result required')
+    if row['status']=='hypothesis_recorded':
+        if result.get('critique',{}).get('decision')!='consistent':
+            raise ValueError('Reviewed hypothesis consistency required')
+        hypothesis=result['proposal']['hypothesis'];missing=hypothesis['required_data'];requests=hypothesis.get('observation_requests')
+    else:
+        # Provider-level and critique-level needs_data can be collected only
+        # when they carry the same exact typed contract as an accepted
+        # hypothesis. No required-data prose is translated or guessed.
+        decision=(result.get('critique') if result.get('critique',{}).get('decision')=='needs_data'
+            else result.get('proposal') if result.get('proposal',{}).get('decision')=='needs_data' else None)
+        if not isinstance(decision,dict):raise ValueError('Typed needs_data decision required')
+        missing=decision.get('required_data');requests=decision.get('observation_requests')
+        if not isinstance(missing,list) or not missing or not isinstance(requests,list):
+            raise ValueError('Explicit typed observation contract required for needs_data collection')
     # Legacy prose stays intact; it is neither guessed nor relabeled impossible.
     if requests is None:
         plan={'state':'structured_request_required' if missing else 'no_missing_observations',

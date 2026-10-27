@@ -68,15 +68,25 @@ def _typed_wait(store, row, result, route, clock):
             'required_source': {key: source.get(key) for key in ('protocol_id', 'stage', 'input_fingerprint')},
             'new_input_fingerprint_required': True}
     proposal = result.get('proposal')
+    critique = result.get('critique')
+    direct = (critique if isinstance(critique,dict) and critique.get('decision')=='needs_data'
+        else proposal if isinstance(proposal,dict) and proposal.get('decision')=='needs_data' else None)
     hypothesis = proposal.get('hypothesis') if isinstance(proposal, dict) else None
-    if not isinstance(hypothesis, dict) or not isinstance(hypothesis.get('required_data'), list):
+    if isinstance(direct,dict):
+        missing=direct.get('required_data');requests=direct.get('observation_requests')
+        if not isinstance(missing,list) or not missing or not isinstance(requests,list):
+            return {'kind':'structured_request_required','pollable':False,
+                'required_data':missing if isinstance(missing,list) else [],
+                'new_input_fingerprint_required':True}
+    elif isinstance(hypothesis,dict) and isinstance(hypothesis.get('required_data'),list):
+        missing=hypothesis['required_data'];requests=hypothesis.get('observation_requests')
+        if not missing:return None
+        if not isinstance(requests,list):
+            return {'kind':'structured_contract_required','pollable':False,
+                'required_data':missing,'new_input_fingerprint_required':True}
+    else:
         return {'kind': 'structured_request_required', 'pollable': False,
             'new_input_fingerprint_required': True}
-    if not hypothesis['required_data']:
-        return None
-    if 'observation_requests' not in hypothesis:
-        return {'kind': 'structured_contract_required', 'pollable': False,
-            'required_data': hypothesis['required_data'], 'new_input_fingerprint_required': True}
     from .research_needs import register
     plan = register(store, row['request_id'], kind='population', clock_ms=clock)
     due = [entry['wake_ms'] for entry in plan.get('entries', [])
@@ -161,6 +171,18 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
             # guessed collection task.
             assessment['wake'] = {'kind': 'structured_contract_required', 'pollable': False,
                 'new_input_fingerprint_required': True}
+        if assessment['wake'].get('pollable') is False:
+            reason=('needs_data lacks a complete typed observation contract; preserve the provider decision and '
+                'create a technical contract-correction task. No collection or inference is scheduled.'
+                if assessment['wake'].get('kind')=='structured_request_required'
+                else 'required observations are named but lack a complete verified acquisition contract; preserve '
+                    'the provider decision and create a technical task. No collection is scheduled.')
+            assessment={'state':'technical','action':'create_technical_task',
+                'reason':reason,'disposition':'needs_data_contract_required',
+                'technical_task':{'kind':'structured_observation_contract_required',
+                    'source_decision_preserved':True,'collection_authorized':False,
+                    'model_calls_authorized':0,'next_candidate':True},
+                'wake':assessment['wake']}
 
     if assessment['state'] == 'resolved' and memory is None:
         status = row['status']
@@ -195,12 +217,31 @@ def resolve_result(store, source_kind='population', source_id=None, *, clock_ms=
     work, created = enqueue(store, 'population_resolution', source_id, work_payload,
         status=queue_status, reason=assessment.get('reason') or assessment['state'],
         wake_at_ms=wake_at, clock_ms=clock)
+    queued_outcome=json.loads(work.get('outcome_json') or '{}')
+    if queued_outcome.get('state')=='technical':
+        assessment={'state':'technical','action':'create_technical_task',
+            'reason':'Persisted typed acquisition or wake verification requires technical correction.',
+            'disposition':'acquisition_or_provenance_technical_required',
+            'wake':{'kind':'verified_adapter_or_provenance_correction','automatic_collection_retry':False}}
+    elif queued_outcome.get('state')=='insufficient_data':
+        assessment={'state':'terminal','action':'archive_insufficient_data_and_continue',
+            'reason':'Required observation was absent after the bounded acquisition attempts.',
+            'disposition':'insufficient_data_after_bounded_attempts','wake':{}}
+    if assessment['state'] in {'terminal','resolved','no_new_question','technical'}:
+        from .research_work_queue import set_status
+        prior_waits=store.connection.execute("select work_id from research_work_queue where source_kind='population_resolution' "
+            "and source_id=? and work_id!=? and status in ('waiting_data','waiting_deadline')",
+            (source_id,work['work_id'])).fetchall()
+        for prior in prior_waits:
+            set_status(store,prior['work_id'],'completed','superseded by a terminal or resolved disposition',
+                outcome={'superseded_by':work['work_id'],'disposition':assessment['state']},clock_ms=clock)
     return {'source_id': source_id, 'state': assessment['state'], 'assessment': assessment,
         'route': routed, 'local_run': local_run, 'memory': memory,
         'next_packet': {'memory_refresh_required': bool(memory),
             'input_fingerprint_must_change': True},
         'work_id': work['work_id'], 'queue_status': work['status'], 'created': created,
-        'next_candidate': assessment['state'] in {'terminal', 'resolved', 'no_new_question'},
+        'next_candidate': (assessment['state'] in {'terminal', 'resolved', 'no_new_question', 'technical'}
+            or work['status'] in {'technical_required','completed'}),
         'model_calls': 0, 'collection_started': False, 'orders_authorized': False}
 
 
@@ -387,7 +428,7 @@ def poll_waits(store, *, clock_ms=None, limit=8, client=None, collection_job=Non
                 outcome={'state': 'technical', 'unsupported': sorted(set(unsupported))}, clock_ms=clock)
             advanced.append({'request_id': request_id, 'state': 'technical_required',
                 'unsupported': sorted(set(unsupported)), 'absence': 'unresolved',
-                'export': 'unsupported', 'calculation': 'unsupported'})
+                'export': 'unsupported', 'calculation': 'unsupported', 'next_candidate': True})
         elif terminal_failures:
             set_status(store, work['work_id'], 'completed', 'required observation remained insufficient after bounded collection.',
                 outcome={'state': 'insufficient_data', 'terminal': True,

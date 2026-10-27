@@ -48,6 +48,26 @@ def _persist(store, request_id, kind, state, *, evidence=None, diagnostic=None, 
     return event
 
 
+def _pollable_needs_data(result):
+    """True only for a complete supported request contract, never for prose."""
+    proposal=result.get('proposal');critique=result.get('critique')
+    direct=(critique if isinstance(critique,dict) and critique.get('decision')=='needs_data'
+        else proposal if isinstance(proposal,dict) and proposal.get('decision')=='needs_data' else None)
+    hypothesis=proposal.get('hypothesis') if isinstance(proposal,dict) else None
+    if isinstance(direct,dict):
+        missing=direct.get('required_data');requests=direct.get('observation_requests')
+    elif isinstance(hypothesis,dict):
+        missing=hypothesis.get('required_data');requests=hypothesis.get('observation_requests')
+    else:return False
+    if not isinstance(missing,list) or not missing or not isinstance(requests,list):return False
+    try:
+        from .research_needs import validate_requests,classify
+        validate_requests(missing,requests)
+        return all(classify(request).get('state')=='acquisition_required' for request in requests)
+    except (ValueError,KeyError,TypeError):
+        return False
+
+
 def handoff(store, request_id, *, kind='population', experiment_policy=None):
     """Persist a typed next plan; freeze only an explicitly reviewed executable rule.
 
@@ -82,6 +102,47 @@ def _handoff(store, request_id, *, kind, experiment_policy):
         link = store.connection.execute('select plan_id,family_id from population_experiment_links where request_id=?', (request_id,)).fetchone()
         if link:
             return _observe(store, request_id, kind, dict(link))
+    if routed['state']=='needs_data' and _exists(store,'research_work_queue'):
+        # The generic resolver closes needs_data decisions that have no complete
+        # typed request. Keep the provider status unchanged, but expose the
+        # terminal descriptive disposition here instead of a phantom wait.
+        pending=store.connection.execute("select payload_json,outcome_json from research_work_queue "
+            "where source_kind='population_resolution' and source_id=? order by updated_ms desc,work_id desc limit 1",
+            (request_id,)).fetchone()
+        payload=json.loads(pending['payload_json']) if pending else {}
+        outcome=json.loads(pending['outcome_json'] or '{}') if pending else {}
+        resolution=payload.get('resolution',{})
+        assessment=resolution.get('assessment',{})
+        if (assessment.get('disposition')=='needs_data_contract_required'
+                or assessment.get('state')=='technical' or outcome.get('state')=='technical'):
+            evidence['resolution_disposition']='technical_required'
+            evidence['source_decision_preserved']=True
+            diagnostic=(assessment.get('reason') or
+                'The needs_data result lacks a complete typed acquisition contract; manual technical correction is required.')
+            return _persist(store,request_id,kind,'technical_required',evidence=evidence,
+                diagnostic=diagnostic,wake={'kind':'structured_observation_contract_required',
+                    'automatic_collection_retry':False,'model_calls_authorized':0})
+        if (assessment.get('disposition')=='insufficient_data_unstructured'
+                or outcome.get('state')=='insufficient_data'):
+            diagnostic=(assessment.get('reason') or
+                'The typed observations remained unavailable after bounded collection; retain descriptive insufficiency and continue.')
+            evidence['resolution_disposition']=assessment.get('disposition') or outcome.get('state')
+            evidence['source_decision_preserved']=True
+            return _persist(store,request_id,kind,'descriptive',evidence=evidence,diagnostic=diagnostic,
+                wake={'kind':'changed_authorized_evidence_only','new_input_fingerprint_required':True,
+                    'automatic_collection_retry':False})
+        if outcome.get('state')=='technical':
+            evidence['resolution_disposition']='technical_required'
+            return _persist(store,request_id,kind,'technical_required',evidence=evidence,
+                diagnostic='Typed acquisition or evidence verification needs a technical correction.',
+                wake={'kind':'verified_adapter_or_provenance_correction','automatic_collection_retry':False})
+    if routed['state']=='needs_data' and not _pollable_needs_data(result):
+        evidence['resolution_disposition']='needs_data_contract_required'
+        evidence['source_decision_preserved']=True
+        return _persist(store,request_id,kind,'technical_required',evidence=evidence,
+            diagnostic='The needs_data result lacks a complete supported typed observation contract; preserve the source decision and correct the contract.',
+            wake={'kind':'structured_observation_contract_required','automatic_collection_retry':False,
+                'model_calls_authorized':0})
     if routed['state'] != 'prospective_plan_required':
         state = ('descriptive' if routed['state'] in {'specification_required', 'completed', 'local_archive_analysis_complete'}
                  else 'needs_data' if routed['state'] in {'needs_data', 'local_archive_data_required'}

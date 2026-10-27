@@ -58,7 +58,30 @@ class ResearchEvaluationTests(unittest.TestCase):
  def test_missing_data_not_descriptive_success(self):
   self.result['proposal']['hypothesis']['required_data']=['causal quote unavailable']
   self.s.connection.execute('update population_research_jobs set result_json=?',(json.dumps(self.result),));self.s.connection.commit()
+  self.assertEqual(handoff(self.s,'request')['state'],'technical_required')
+
+ def test_supported_typed_missing_data_remains_pollable(self):
+  self.result['proposal']['hypothesis']['required_data']=['funding in selected window']
+  self.result['proposal']['hypothesis']['observation_requests']=[{'required_data_index':0,
+   'source':'public_rest_history','endpoint':'userFunding','start_ms':100,'end_ms':200,
+   'proof':'pagination_coverage','decision_use':'check funding observation coverage'}]
+  self.s.connection.execute('update population_research_jobs set result_json=?',(json.dumps(self.result),));self.s.connection.commit()
   self.assertEqual(handoff(self.s,'request')['state'],'needs_data')
+
+ def test_unstructured_needs_data_is_terminal_technical_not_phantom_wait(self):
+  from tamtam_again.continuous_research_resolution import resolve_result
+  self.result={'critique':{'decision':'needs_data','diagnostic':'Please collect whatever could help.','wake':{}},
+   'promotion_authorized':False,'profitability_proven':False}
+  self.s.connection.execute("update population_research_jobs set status='needs_data',result_json=?",
+   (json.dumps(self.result),));self.s.connection.commit()
+  resolution=resolve_result(self.s,'population','request',clock_ms=500)
+  self.assertEqual(resolution['state'],'technical')
+  self.assertEqual(resolution['queue_status'],'technical_required')
+  self.assertTrue(resolution['next_candidate'])
+  event=handoff(self.s,'request')
+  self.assertEqual(event['state'],'technical_required')
+  self.assertTrue(event['terminal'])
+  self.assertTrue(event['evidence']['source_decision_preserved'])
 
  def test_invalid_poll_budget(self):
   for value in (True,0,65):

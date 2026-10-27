@@ -101,7 +101,7 @@ def sealed_section_reference_paths(packet, allowed_refs):
     if (isinstance(mechanisms,list) and mechanisms
             and all(source_backed(item) for item in mechanisms)):
         sources.add('packet.observations.market_mechanisms')
-    context={'packet.'+key for key in ('pilot_research','research_contract')
+    context={'packet.'+key for key in ('pilot_research','research_contract','execution_research_context')
         if isinstance(packet.get(key),dict) and packet[key]}
     return sources,context
 
@@ -186,7 +186,8 @@ def validate_response(response,packet,*,request_id=None):
         from .research_needs import validate_requests
         validate_requests(hypothesis['required_data'],hypothesis['observation_requests'])
     from .population_compilation import validate_compilation
-    validate_compilation(hypothesis,accepted_refs,request_id=request_id,measurements=measurements,as_of_ms=packet.get('available_ms'))
+    validate_compilation(hypothesis,accepted_refs,request_id=request_id,measurements=measurements,
+        as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'))
 
 
 def build_proposal_prompt(packet,request_id):
@@ -218,6 +219,10 @@ For evidence_refs prefer exact identifiers from packet.evidence_refs. A source-b
 For hypothesis missing observations you may include hypothesis.observation_requests. For decision needs_data use top-level required_data plus observation_requests. In either case supply one exact object per required_data index, with fields required_data_index, source, endpoint, start_ms, end_ms, proof, decision_use. All indices must be covered exactly once. Do not supply budgets or success criteria.
 Verified local history adapter: source public_rest_history; endpoint userFillsByTime, userFunding or userNonFundingLedgerUpdates; proof pagination_coverage only. It cannot certify retention, inventory continuity or economic completeness. Declare other sources/proofs explicitly when needed; the code will retain an unsupported acquisition/proof rather than guess or claim fulfillment.
 If all necessary observations and parameters are supplied, optionally include hypothesis.executable_spec and hypothesis.experiment_profile matching the compiler contract. Otherwise retain a descriptive hypothesis and explicit missing observations. Do not invent a rule or force an unknown mechanism into a supported signal.'''
+        if isinstance(packet.get('execution_research_context'), dict):
+            instructions += '''\nThe sealed execution_research_context provides existing, chosen virtual risk limits and simulation costs; these are not measured venue costs or latency. You may cite packet.execution_research_context to justify a simulated experiment axis, but it is policy context, never sole market evidence.
+Distinguish reconstructing the source trader policy from proposing a falsifiable policy for our own decisions. Source-trader intentions or a uniquely identified original rule are not prerequisites to testing our own evidence-motivated policy. For follower research the trigger is a locally received public execution, never its historical REST event time. Do not assume such a live feed exists when the packet does not demonstrate it.
+If proposing an executable rule under these assumptions, label the result scenario-dependent. Preserve the base latency_ms, virtual capital and execution object exactly; keep max_exposure within the supplied limits. Fees and slippage are lower bounds for this scenario: any upward cost stress must be explicitly justified in the experiment profile, never described as a measurement. Declared latency sensitivity axes may be simulated, never measured_reference without a separate sealed measurement. Do not assert maker rebate eligibility or a passive fill from the IOC scenario. If observations still do not motivate a testable rule, state the specific missing calculation or observation rather than inventing one.'''
         pilot = packet.get('pilot_research')
         if isinstance(pilot, dict) and isinstance(pilot.get('question'), str):
             instructions += ('\nPilot question (answer only from this packet): ' + pilot['question'] +

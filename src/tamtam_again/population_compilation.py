@@ -20,6 +20,7 @@ def compiler_contract():
             'do not invent costs, measured delays, risk budgets or missing observations',
             'measured_reference requires measurement_ref pointing to an execution_delay_reference in sealed system_measurements; REST response time is not execution delay',
             'unknown mechanisms remain hypotheses or unsupported; no economic rejection',
+            'packet.execution_research_context, when supplied, is chosen simulation and risk context, never market evidence or measured execution capacity',
             'promotion criteria and future window policy are supplied separately, never by this output']}
 
 
@@ -29,22 +30,27 @@ def packet_references(packet):
     refs.update((observations.get('current_pass_behavior_profile') or {}).get('evidence_refs',[]))
     for mechanism in observations.get('market_mechanisms',[]):refs.update(mechanism.get('evidence_refs',[]))
     refs.update(observations.get('system_measurements',{}))
+    if isinstance(packet.get('execution_research_context'), dict):
+        refs.add('packet.execution_research_context')
     return refs
 
 
 def validate_packet_compilation(hypothesis,profile,packet,request_id):
     return validate_compilation({**hypothesis,'experiment_profile':profile},packet_references(packet),
         request_id=request_id,measurements=packet.get('observations',{}).get('system_measurements',{}),
-        as_of_ms=packet.get('available_ms'))
+        as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'))
 
 
-def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None):
+def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None,execution_context=None):
     present={'executable_spec','experiment_profile'}&hypothesis.keys()
     if not present:return None
     if present!={'executable_spec','experiment_profile'}:
         raise ValueError('Executable output requires both rule and justified experiment profile')
     spec=hypothesis['executable_spec'];profile=hypothesis['experiment_profile']
     if not isinstance(spec,dict) or not isinstance(profile,dict):raise ValueError('Structured compiler output required')
+    if execution_context is not None:
+        from .execution_research_context import validate_scenario_spec
+        validate_scenario_spec(execution_context,spec)
     markets=([leg.get('market') for leg in spec.get('legs',[])]
              if spec.get('engine')=='portfolio_reference_v1' else [spec.get('market')])
     if set(markets)!=set(hypothesis['markets']) or (spec.get('type') is not None and spec['type']!=hypothesis['type']):

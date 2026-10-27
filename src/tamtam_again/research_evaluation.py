@@ -60,6 +60,11 @@ def handoff(store, request_id, *, kind='population', experiment_policy=None):
         return _handoff(store, request_id, kind=kind, experiment_policy=experiment_policy)
 
 
+def handoff_locked(store, request_id, *, kind='population', experiment_policy=None):
+    """Handoff for a caller already holding this database's scheduler_lock."""
+    return _handoff(store, request_id, kind=kind, experiment_policy=experiment_policy)
+
+
 def _handoff(store, request_id, *, kind, experiment_policy):
     from .research_jobs import table
     from .population_routing import route

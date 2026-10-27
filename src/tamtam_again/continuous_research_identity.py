@@ -65,15 +65,57 @@ def wake_identities(packet):
     return sorted(identities)
 
 
+def evaluation_evidence_identity(packet):
+    """Stable terminal evaluation facts from reservation-checked typed export.
+
+    Publication times, lifecycle diagnostics, descriptive conclusions and next
+    directives are metadata. Only a completed validation evaluation constitutes
+    new evidence here. ``export_memory`` owns account/source-period authority.
+    """
+    records = packet.get('research_evaluation_memory', [])
+    if not isinstance(records, list):
+        raise ValueError('Typed exported evaluation memory required')
+    outcomes = set()
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError('Typed exported evaluation memory record required')
+        item = record.get('item')
+        if not isinstance(item, dict):
+            raise ValueError('Typed exported evaluation memory item required')
+        evaluations = item.get('evidence', {}).get('evaluations', [])
+        if not evaluations:
+            continue
+        event_id = record.get('event_id')
+        if (item.get('version') != 'research-evaluation-memory-v1'
+                or item.get('profitability_proven') is not False
+                or not isinstance(event_id, str) or not event_id
+                or item.get('evaluation_event_id') != event_id
+                or {'kind': 'research_evaluation', 'id': event_id} not in record.get('evidence_refs', [])
+                or not isinstance(evaluations, list)):
+            raise ValueError('Verified typed evaluation proof required')
+        for evaluation in evaluations:
+            if not isinstance(evaluation, dict):
+                raise ValueError('Typed validation evaluation required')
+            identity, status = evaluation.get('evaluation_id'), evaluation.get('status')
+            if status in {'passed', 'failed', 'error'}:
+                if not isinstance(identity, str) or not identity:
+                    raise ValueError('Terminal evaluation identity required')
+                outcomes.add((identity, status))
+    return sorted(outcomes)
+
+
 def semantic_identity(packet, market):
     content = market_content(packet, market)
     detail = packet['observations']['market_execution_detail_v1'][market]
     checksum = detail.get('observed_fill_content_fingerprint')
     if not isinstance(checksum, str) or not checksum:
         raise ValueError('Exact deduplicated per-market fill-content fingerprint required')
-    return fingerprint({'network': packet['network'], 'address': packet['address'].lower(),
+    identity = {'network': packet['network'], 'address': packet['address'].lower(),
         'market': market, 'question_version': 'observable-mechanism-v1',
-        'fill_content': checksum, 'market_content': content, 'observation_wakes': wake_identities(packet)})
+        'fill_content': checksum, 'market_content': content, 'observation_wakes': wake_identities(packet)}
+    evaluations = evaluation_evidence_identity(packet)
+    if evaluations:identity['evaluation_outcomes'] = evaluations
+    return fingerprint(identity)
 
 
 def _legacy_fill_identity(store, packet, market):
@@ -149,6 +191,7 @@ def prior_equivalent(store, network, address, market, packet):
     projection = market_content(packet, market)
     current_hash = packet['observations']['market_execution_detail_v1'][market]['observed_fill_content_fingerprint']
     current_wakes = wake_identities(packet)
+    current_evaluations = evaluation_evidence_identity(packet)
     legacy_filter = (' and not exists(select 1 from continuous_research_tasks t '
         'where t.request_id=j.request_id)' if has_continuous else '')
     for row in store.connection.execute('select j.request_id,j.status,j.packet_json from population_research_jobs j '
@@ -158,9 +201,11 @@ def prior_equivalent(store, network, address, market, packet):
             old = json.loads(row['packet_json'])
             old_projection = market_content(old, market)
             old_wakes = wake_identities(old)
+            old_evaluations = evaluation_evidence_identity(old)
         except (TypeError, ValueError, KeyError):
             continue
-        if old_projection != projection or old_wakes != current_wakes:
+        if (old_projection != projection or old_wakes != current_wakes
+                or old_evaluations != current_evaluations):
             continue
         old_hash = old['observations']['market_execution_detail_v1'][market].get('observed_fill_content_fingerprint')
         if old_hash is None:

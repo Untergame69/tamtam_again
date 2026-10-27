@@ -146,3 +146,40 @@ class IdentityTests(unittest.TestCase):
                     self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', changed))
             finally:
                 store.close()
+
+    def test_terminal_evaluation_facts_wake_unchanged_fills_without_metadata_retries(self):
+        def with_feedback(original, outcomes, event='event-1', available=10):
+            result = copy.deepcopy(original)
+            result['research_evaluation_memory'] = [{'event_id': event, 'available_ms': available,
+                'periods': [], 'evidence_refs': [{'kind': 'research_evaluation', 'id': event}],
+                'item': {'version': 'research-evaluation-memory-v1', 'evaluation_event_id': event,
+                    'profitability_proven': False, 'state': 'rejected', 'evidence': {'evaluations': outcomes}}}]
+            return result
+        base = packet()
+        technical = with_feedback(base, [])
+        self.assertEqual(semantic_identity(base, 'BTC'), semantic_identity(technical, 'BTC'))
+        pending = with_feedback(base, [{'evaluation_id': 'eval-1', 'status': 'running'}])
+        self.assertEqual(semantic_identity(base, 'BTC'), semantic_identity(pending, 'BTC'))
+        first = with_feedback(base, [{'evaluation_id': 'eval-1', 'status': 'failed'}])
+        self.assertNotEqual(semantic_identity(base, 'BTC'), semantic_identity(first, 'BTC'))
+        republished = with_feedback(base, [{'evaluation_id': 'eval-1', 'status': 'failed', 'diagnostic': 'new metadata'},
+            {'evaluation_id': 'eval-1', 'status': 'failed'}], event='republished-event', available=999)
+        self.assertEqual(semantic_identity(first, 'BTC'), semantic_identity(republished, 'BTC'))
+        second = with_feedback(base, [{'evaluation_id': 'eval-1', 'status': 'failed'}, {'evaluation_id': 'eval-2', 'status': 'passed'}])
+        self.assertNotEqual(semantic_identity(first, 'BTC'), semantic_identity(second, 'BTC'))
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(Path(tmp) / 'db.sqlite')
+            try:
+                initialize(store)
+                def save(name, body):
+                    store.connection.execute('insert into population_research_jobs '
+                        '(request_id,network,address,input_fingerprint,packet_json,policy_json,created_ms,status,updated_ms) '
+                        'values(?,?,?,?,?,?,?,?,?)', (name, 'net', '0xabc', name, json.dumps(body), '{}', 1, 'suspended', 1))
+                    store.connection.commit()
+                save('legacy-without-evaluation', base)
+                self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', first))
+                save('previous-evaluation', first)
+                self.assertEqual(prior_equivalent(store, 'net', '0xabc', 'BTC', republished)['request_id'], 'previous-evaluation')
+                self.assertIsNone(prior_equivalent(store, 'net', '0xabc', 'BTC', second))
+            finally:
+                store.close()

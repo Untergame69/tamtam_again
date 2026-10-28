@@ -28,6 +28,9 @@ def remember(store,request_id):
         'execution_limits':[hypothesis['execution_constraints'],hypothesis['risk']],
         'open_questions':questions if isinstance(questions,list) else [questions],
         'related_hypotheses':[],'status':'hypothesis'}
+    for period in packet.get('funding_witness_source_periods',[]):
+        if period not in item['periods']:item['periods'].append(period)
+        item['origin_accounts']=sorted(set(item['origin_accounts'])|{period['address']})
     # Inherited knowledge can concern other accounts or markets. Keep its entire
     # declared source union instead of laundering it into this account's period.
     for entry in packet.get('research_memory',[]):

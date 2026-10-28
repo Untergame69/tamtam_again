@@ -175,6 +175,22 @@ class ResearchEvaluationTests(unittest.TestCase):
    item['periods'].remove(other)
    with self.assertRaisesRegex(ValueError,'complete|union|explicit'):save_knowledge(self.s,item)
 
+ def test_research_memory_preserves_frozen_funding_pool_source_periods(self):
+  from tamtam_again.population_memory import remember
+  from tamtam_again.research_memory import save_knowledge
+  witness={'network':'synthetic','address':'other-witness','market':'*','start_ms':0,'end_ms':51}
+  packet={'available_ms':50,'funding_witness_source_periods':[witness]}
+  self.result['proposal']['hypothesis'].update(mechanism='fixture mechanism',rejection_criteria='fixture rejection',
+   execution_constraints='fixture constraints',risk='fixture risk')
+  self.s.connection.execute('update population_research_jobs set packet_json=?,result_json=?',
+   (json.dumps(packet),json.dumps(self.result)));self.s.connection.commit()
+  saved=remember(self.s,'request')
+  item=json.loads(self.s.connection.execute('select item_json from research_knowledge where knowledge_id=?',(saved['knowledge_id'],)).fetchone()[0])
+  self.assertIn(witness,item['periods'])
+  self.assertIn('other-witness',item['origin_accounts'])
+  item['periods'].remove(witness)
+  with self.assertRaisesRegex(ValueError,'inherited periods'):save_knowledge(self.s,item)
+
  def test_inactive_paper_residual_remains_incomplete_with_source_period(self):
   from unittest.mock import patch
   from tamtam_again.paper import start_paper

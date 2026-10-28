@@ -133,8 +133,10 @@ def market_proofs(store, inventory, policy, clock):
         latest=recent[0] if recent else None
         old=store.connection.execute('select * from continuous_market_proofs where network=? and address=?',
             (policy['network'],address)).fetchone()
-        if old and old['cutoff_ms']==cutoff and old['archive_id']==latest:
-            for market,proof in json.loads(old['proof_json']).items():proofs[(address,market)]=proof
+        cached=json.loads(old['proof_json']) if old else {}
+        if (old and old['cutoff_ms']==cutoff and old['archive_id']==latest
+                and all(p.get('version')=='rest-ws-market-tabulation-v2' for p in cached.values())):
+            for market,proof in cached.items():proofs[(address,market)]=proof
         else:pending.append((old['checked_ms'] if old else 0,address,scope,latest))
     for _,address,scope,latest in sorted(pending,key=lambda x:(x[1] not in instrumented,x[0],x[1]))[:2]:
         cutoff=scope['cutoff_ms'];start=scope['period_start_ms']
@@ -150,8 +152,10 @@ def market_proofs(store, inventory, policy, clock):
                 for fill in fills:
                     if start<=fill['time']<cutoff:by_market[fill['coin']].append(fill)
                 for market,rows in by_market.items():
-                    decoded[market]={'period_start_ms':start,'cutoff_ms':cutoff,'fills':len(rows),
+                    decoded[market]={'version':'rest-ws-market-tabulation-v2',
+                        'period_start_ms':start,'cutoff_ms':cutoff,'fills':len(rows),
                         'active_days':len({r['time']//86400000 for r in rows}),
+                        'last_fill_event_ms':max(r['time'] for r in rows),
                         'coverage':coverage,'evidence_ref':'authorized-market-tabulation:'+fingerprint(refs)}
             except (ValueError,PermissionError,KeyError,TypeError) as exc:
                 _save_candidate(store,{'network':policy['network'],'address':address,'market':'*'},
@@ -351,8 +355,14 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 'where network=? and address=? and market=?',(policy['network'],item['address'],item['market'])).fetchone()
             account=store.connection.execute('select max(updated_ms) from continuous_research_candidates '
                 'where network=? and address=?',(policy['network'],item['address'])).fetchone()[0]
+            latest_fill=(item.get('market_evidence') or {}).get('last_fill_event_ms',0)
+            # A single daily slot favors a presently observable perpetual on
+            # an already collected account. This is scheduling, not evidence
+            # of an edge; the other slots retain account fairness/discovery.
+            source_priority=(int(item['market'].startswith('@')),
+                int(latest_fill<clock-86400000),-latest_fill) if prefer_instrumented else (0,0,0)
             return (int(prefer_instrumented and item['address'] not in instrumented),
-                account or 0,0 if old is None else old[0],item.get('priority',''),item['candidate'])
+                *source_priority,account or 0,0 if old is None else old[0],item.get('priority',''),item['candidate'])
         for item in sorted(selections,key=ordering)[:max_candidates]:
             if dispatch and monotonic()>=preparation_deadline:
                 result['admission']={'status':'waiting_runtime_headroom','preflight_only':True}

@@ -140,6 +140,7 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
                     {'kind':'research_evaluation','id':entry['event_id']} not in item['evidence_refs']):
                     raise ValueError('Population evaluation feedback proof and complete periods must remain explicit')
             inherited_periods=[p for entry in packet.get('research_memory',[]) for p in entry['item']['periods']]
+            inherited_periods+=packet.get('funding_witness_source_periods',[])
             if any(p not in item['periods'] for p in inherited_periods):
                 raise ValueError('Population packet inherited periods must remain explicit')
             # Conservative union: descriptors can refer to older inventory/history.

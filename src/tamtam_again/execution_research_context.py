@@ -9,7 +9,7 @@ import hashlib
 import json
 import zlib
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .engine import fingerprint, number
 
@@ -96,6 +96,42 @@ def _root_verified_metadata(packet, store):
             'profile_fingerprint':fingerprint(rebuilt)}
 
 
+def _freeze_funding_witnesses(packet, store, scope):
+    """Freeze eligible existing sources, without reading their account payloads.
+
+    Observed subscription envelopes establish a possible source, never future
+    settlement coverage. The evaluator independently verifies each coefficient.
+    """
+    from .discovery import protected_addresses
+    from .research_memory import authorized_account_history
+    from .funding_witnesses import validate_contract
+    cutoff=packet['available_ms'];network=packet.get('network');address=packet.get('address','').lower()
+    if not isinstance(network,str) or not network or len(scope.get('evidence_refs',[]))!=2:return None
+    blocked=protected_addresses(store);selected=[];metadata=[]
+    stamp=datetime.fromtimestamp(cutoff/1000,timezone.utc).isoformat(timespec='milliseconds')
+    for row in store.connection.execute("select address,added_at from candidates where network=? and status='tracked' order by address limit 64",(network,)):
+        witness=row['address'].lower()
+        if witness==address or witness in blocked or not authorized_account_history(store,network,witness,cutoff):continue
+        try:added=int(datetime.fromisoformat(row['added_at'].replace('Z','+00:00')).timestamp()*1000)
+        except (TypeError,ValueError):continue
+        if added>cutoff:continue
+        source=store.connection.execute('select observation_id,response_sha256,observed_at from raw_observations '
+            "where network=? and source='hyperliquid-websocket-v1' and entity_type='account' and entity_id=? "
+            "and endpoint='userFundings' and observed_at<=? order by observed_at desc,observation_id desc limit 1",
+            (network,witness,stamp)).fetchone()
+        if source is None:continue
+        selected.append(witness);metadata.append({'address':witness,'evidence_ref':'raw_observations:'+str(source['observation_id']),
+            'response_sha256':source['response_sha256'],'archived_at':source['observed_at']})
+        if len(selected)==9:break
+    if not selected:return None
+    contract={'version':'settled-funding-witnesses-v1','network':network,'market':scope['market'],
+        'currency':'USDC','available_ms':cutoff,'addresses':selected,'evidence_refs':list(scope['evidence_refs'])}
+    validate_contract(contract,network=network,market=scope['market'],address=address)
+    return {'contract':contract,'source_metadata':metadata,
+        'coverage_proven':False,'use':'Settled cost coefficients only; no account fills or trade signals.',
+        'source_periods':[{'network':network,'address':a,'market':'*','start_ms':0,'end_ms':cutoff+1} for a in selected]}
+
+
 def attach_execution_context(packet, repo_root, *, store=None):
     """Attach existing parameters before sealing; do not mutate observations.
 
@@ -134,6 +170,12 @@ def attach_execution_context(packet, repo_root, *, store=None):
         # is separate from funding_interval_ms, which changes order behaviour
         # by avoiding settlement boundaries in the execution engine.
         scenario['execution']['funding_observation_interval_ms']=market_scope['funding_observation_interval_ms']
+    witnesses=None
+    if store is not None and market_scope.get('state')=='supported' and metadata_resolution.get('state')=='verified':
+        witnesses=_freeze_funding_witnesses(packet,store,market_scope)
+        if witnesses:
+            scenario['execution']['funding_witnesses']=witnesses['contract']
+            packet['funding_witness_source_periods']=witnesses['source_periods']
     context = {
         'schema_version': 'execution-research-context-v1',
         'source': {'path': SOURCE, 'policy_version': policy['version'],
@@ -143,6 +185,7 @@ def attach_execution_context(packet, repo_root, *, store=None):
         'scenario': scenario,
         'market_scope': market_scope,
         'metadata_resolution': metadata_resolution or {'state':'sealed_root_references_only'},
+        'funding_witness_sources':witnesses,
         'parameter_status': {
             'fees': 'Configured debit scenario, not our verified venue fee schedule or a maker rebate entitlement.',
             'slippage': 'Configured additional cost scenario, not measured impact.',

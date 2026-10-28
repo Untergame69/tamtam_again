@@ -13,6 +13,38 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionResearchContextTests(unittest.TestCase):
+    def test_frozen_existing_funding_pool_supports_autonomous_costs_without_account_signals(self):
+        from tests.test_funding_witnesses import FundingWitnessTests
+        from tamtam_again.collateral import build_catalog
+        from tamtam_again.market_rules import mechanism_profile
+        fixture=FundingWitnessTests();fixture.setUp()
+        try:
+            fixture.save('userFundings',fixture.funding(),entity=fixture.witness,stamp=2100)
+            fixture.save('userFundings',fixture.funding(address=fixture.reserved),entity=fixture.reserved,stamp=2100)
+            perps=[{'collateralToken':0,'universe':[{'name':'BTC','szDecimals':4,'maxLeverage':40}]}]
+            spot=[{'tokens':[{'index':0,'name':'USDC','tokenId':'fixture-usdc'}]},[]]
+            catalog=build_catalog(perps,spot,available_ms=100,evidence_refs=fixture.contract['evidence_refs'])
+            packet={'network':fixture.network,'address':fixture.source,'available_ms':3000,
+                'evidence_refs':['archive:one'],'observations':{'markets':['BTC'],
+                'market_mechanisms':[mechanism_profile(catalog,'BTC')],
+                'execution_data_readiness':{'market_ws_observed':True,'account_ws_observed':False,'funding_ws_observed':False}}}
+            with patch('tamtam_again.discovery.protected_addresses',return_value={fixture.reserved}):
+                context=attach_execution_context(packet,ROOT,store=fixture.store)
+            witnesses=context['scenario']['execution']['funding_witnesses']
+            self.assertEqual(witnesses['addresses'],[fixture.witness])
+            self.assertFalse(context['funding_witness_sources']['coverage_proven'])
+            self.assertEqual(packet['funding_witness_source_periods'][0]['address'],fixture.witness)
+            hypothesis=self.hypothesis(packet)
+            hypothesis['type']='autonomous';spec=hypothesis['executable_spec'];spec['type']='autonomous'
+            spec['signal']={'kind':'momentum','lookback_ms':1000,'threshold_bps':'2'}
+            spec['sizing']={'units':'0.01','scale':'1'}
+            spec['data_sources']=['bbo','streamHealth','userFundings']
+            self.assertEqual(validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')['state'],'executable')
+            del spec['execution']['funding_witnesses']
+            with self.assertRaisesRegex(ValueError,'simulation assumptions'):
+                validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')
+        finally:fixture.tearDown()
+
     def packet(self):
         from tamtam_again.market_rules import mechanism_profile
         catalog={'available_ms':90,'evidence_refs':['raw_observations:1'],

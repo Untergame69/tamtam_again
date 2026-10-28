@@ -396,6 +396,8 @@ def export_memory(store, network, address, as_of_ms, *, limit=8):
             packet = json.loads(source[0])
             periods = [{'network': network, 'address': address, 'market': '*',
                         'start_ms': 0, 'end_ms': packet['available_ms'] + 1}]
+            for period in packet.get('funding_witness_source_periods',[]):
+                if period not in periods:periods.append(period)
             for inherited in packet.get('research_memory', []):
                 for period in inherited['item']['periods']:
                     if period not in periods:

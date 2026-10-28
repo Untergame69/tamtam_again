@@ -11,7 +11,8 @@ def compiler_contract():
         'execution: kind,heartbeat_timeout_ms,unknown_quote_max_age_ms,order_ttl_ms,displayed_size_fraction',
         'invalidation_conditions'],
         'single_perp_v2_rules':{'entry':'target_position','exit':'horizon_or_target',
-            'follower_signal':'leader_delta','autonomous_signal':'momentum with lookback_ms,threshold_bps and sizing.units'},
+            'follower_signal':'leader_delta with positive sizing.scale',
+            'autonomous_signal':'momentum with lookback_ms,threshold_bps and positive sizing.units AND sizing.scale; data_sources must exclude userFills'},
         'experiment_profile':{'schema_version':1,'hypothesis_id':'request_id','justification':'required',
             'max_variants':'explicit integer 1..64','selection_rule':'comparison_then_one_final',
             'axes':'horizon_ms, latency_ms or scale; each declares values, category, justification, evidence_refs, measurement_status'},
@@ -54,7 +55,8 @@ def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=
             raise ValueError('Observed public market stream required before executable allocation')
         if spec.get('type')=='follower' and readiness.get('account_ws_observed') is not True:
             raise ValueError('Observed account WebSocket fills required for follower allocation; REST is not a live signal')
-        if readiness.get('funding_ws_observed') is not True:
+        frozen=(execution_context or {}).get('scenario',{}).get('execution',{}).get('funding_witnesses')
+        if readiness.get('funding_ws_observed') is not True and not frozen:
             raise ValueError('Observed supported funding stream required before allocation; missing funding is not zero funding')
     if execution_context is not None:
         from .execution_research_context import validate_scenario_spec

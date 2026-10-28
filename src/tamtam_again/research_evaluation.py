@@ -284,7 +284,8 @@ def _observe(store, request_id, kind, link):
         body = json.loads(row['state_json'])
         try:
             position = number(body.get('position'))
-            complete = position == 0 and isinstance(body.get('pending'), list) and not body['pending']
+            complete = (position == 0 and isinstance(body.get('pending'), list) and not body['pending']
+                        and body.get('funding_cost_status')!='pending')
         except (ValueError, TypeError):
             complete = False
         try:
@@ -296,6 +297,8 @@ def _observe(store, request_id, kind, link):
             'position': body.get('position'), 'pending': bool(body.get('pending')),
             'pending_count': len(body['pending']) if isinstance(body.get('pending'), list) else None,
             'complete_flat_state': complete, 'diagnostics': body.get('diagnostics', [])[:32],
+            'funding_cost_status':body.get('funding_cost_status'),
+            'funding_coverage':body.get('funding_coverage'),
             'source_period': {'network': plan['network'], 'address': plan['address'], 'market': plan['coin'],
                               'start_ms': period_start, 'end_ms': period_end}}
         selected_spec=json.loads(store.connection.execute('select spec_json from strategy_variants where variant_id=?',

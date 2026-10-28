@@ -39,6 +39,9 @@ def choose_route(experiment_status: str, report: dict) -> dict:
                 "wake": {"kind": "new_independent_evidence"}}
     results = report.get("results_after_simulated_costs") or {}
     signals = report.get("signals") or {}
+    if results.get("economic_result_complete") is False:
+        return {"route":"wait","state":"waiting","reason":"funding costs remain unknown; observed components are not after-cost results",
+                "wake":{"kind":"observed_funding_costs_required"}}
     required = {"net_pnl_observed_usdc", "fees_usdc", "funding_events_observed"}
     if required <= results.keys() and "live_non_snapshot_fills" in signals:
         return {"route": "strategic_analysis", "state": "budget_required",

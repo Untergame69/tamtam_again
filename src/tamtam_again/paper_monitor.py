@@ -14,6 +14,8 @@ def validate_policy(policy):
 
 def diagnose(policy, observed_metrics):
     validate_policy(policy)
+    if observed_metrics.get('economic_result_complete') is False:
+        return []  # Await funding; an unknown full result is not an economic loss.
     net = number(observed_metrics['net_pnl'])
     if not net.is_finite():
         raise ValueError('Finite observed paper result required')

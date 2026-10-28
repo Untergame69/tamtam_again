@@ -33,13 +33,16 @@ def period_outcome(store,session_id,*,start_ms,end_ms,as_of_ms):
         boundaries.append(candidates[0])
     values=[json.loads(r['metrics_json']) for r in boundaries]
     for value in values:
+        if value.get('economic_result_complete') is False:
+            return unknown('funding costs incomplete at period boundary')
         if value.get('flat_end') is not True or value.get('pending_end')!=0:
             return unknown('open position or pending order at period boundary')
         for field in ('net_pnl','fees','funding'):
             if field not in value or not number(value[field]).is_finite():
                 return unknown('model accounting metric missing or nonfinite')
     for row in rows:
-        diagnostics=json.loads(row['metrics_json']).get('diagnostics')
+        observed=json.loads(row['metrics_json'])
+        diagnostics=observed.get('diagnostics')
         if not isinstance(diagnostics,list) or diagnostics:
             return unknown('paper diagnostics missing or require review within period')
     result.update(status='model_period_measured',

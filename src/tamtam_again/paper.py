@@ -7,7 +7,7 @@ from time import monotonic_ns
 from typing import Any
 from uuid import uuid4
 
-from .engine import canonical, fingerprint, initial_state, metrics, number, reduce_event
+from .engine import canonical, fingerprint, initial_state, metrics, number, reduce_event, funding_coverage
 from .storage import Store, decode_observation_payload, utc_now
 from .validation import decision, get_variant, now_ms
 from . import paper_evidence
@@ -34,7 +34,9 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
     # Separate indexed entity/time scans instead of a multi-entity OR scan over
     # the whole archive. Availability is bounded at BOTH ends of the window.
     common = "network=? AND observation_id>? AND source='hyperliquid-websocket-v1' AND observed_at>=? AND observed_at<? AND requested_at<?"
-    params = (network,after_observation_id,start,end,end)
+    upper_observation_id=store.connection.execute("select coalesce(max(observation_id),0) from raw_observations").fetchone()[0]
+    common+=" AND observation_id<=?"
+    params = (network,after_observation_id,start,end,end,upper_observation_id)
     rows = []
     clause_metrics = {}
     # Incremental live paper ticks must seek by the INTEGER PRIMARY KEY cursor.
@@ -67,7 +69,16 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
         archived_available = timestamp(row["observed_at"])
         if archived_available >= end_ms:
             continue
-        payload = decode_observation_payload(row)
+        if row["endpoint"]=="userFundings":
+            from .population_local_join import _decode_verified
+            payload=_decode_verified(row,max_decoded_bytes=2_000_000)
+            data=payload.get("data",{}) if isinstance(payload,dict) else {}
+            if (not isinstance(payload,dict) or payload.get("channel")!="userFundings"
+                    or not isinstance(data,dict) or not isinstance(data.get("user"),str)
+                    or data["user"].lower()!=address.lower()):
+                raise ValueError("Primary funding envelope sender/channel mismatch")
+        else:
+            payload = decode_observation_payload(row)
         request = json.loads(row["request_json"])
         if row["endpoint"] == "streamHealth":
             receipt = timestamp(row["requested_at"])
@@ -156,7 +167,7 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
         from .funding_witnesses import archive_funding_events
         witness_events,witness_cursor=archive_funding_events(store,funding_witnesses,
             network=network,address=address,market=coin,start_ms=start_ms,end_ms=end_ms,
-            after_observation_id=after_observation_id)
+            after_observation_id=after_observation_id,through_observation_id=upper_observation_id)
         events.extend(witness_events);cursor=max(cursor,witness_cursor)
     return sorted(events,key=lambda e:(e.get("available_ms",e["received_ms"]),e["received_ms"],str(e["id"]))),cursor
 
@@ -211,6 +222,8 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
     session_id = uuid4().hex
     started = now_ms()
     state = initial_state(spec)
+    if 'funding_observation_interval_ms' in spec['execution']:
+        state['paper_funding_started_ms']=started
     if experimental_hypothesis is not None:
         # A collector restart may be needed to load the experiment's prioritized
         # account subscription. Until the first live signal there is no paper
@@ -372,6 +385,22 @@ def retire_paper(store: Store, session_id: str, *, reason: str,
             'cancelled_pending_orders':len(pending) if 'pending' in locals() else 0}
 
 
+def monitored_metrics(state,spec,block_ms,*,start_ms=None,end_ms=None):
+    """Observed ledger components never stand in for complete funding costs."""
+    result=metrics(state,spec,block_ms)
+    if 'funding_observation_interval_ms' not in spec['execution']:
+        return result
+    window=({'start_ms':start_ms,'end_ms':max(start_ms+1,end_ms+1)}
+            if start_ms is not None and end_ms is not None else state.get('funding_observation_window'))
+    coverage=funding_coverage(state,spec,window)
+    result['funding_coverage']=coverage
+    result['economic_result_complete']=coverage['state']=='complete'
+    if not result['economic_result_complete']:
+        result['net_pnl_observed_components']=result['net_pnl']
+        result['net_pnl']=None
+    return result
+
+
 def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms,*,runtime_metrics=None):
     """Caller owns transaction; identical safety decisions for live and fixture feeds."""
     healthy=state['healthy_at_ms']
@@ -390,13 +419,23 @@ def _persist_monitored_tick(store,session,state,spec,plan,cursor,clock_ms,*,runt
         state['diagnostics'].append('missing_live_heartbeat')
     else:
         state['wait_conditions']=[]
-    observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+    state['funding_observation_window']={'start_ms':session['started_ms'],'end_ms':max(session['started_ms']+1,clock_ms+1)}
+    observed_metrics=monitored_metrics(state,spec,plan['criteria']['block_ms'])
+    if 'funding_coverage' in observed_metrics:
+        state['funding_coverage']=observed_metrics['funding_coverage']
+    if observed_metrics.get('economic_result_complete') is False:
+        state['wait_conditions'].append('awaiting_observed_funding_settlements')
+        state['funding_cost_status']='pending'
+        if clock_ms-session['started_ms']>plan['budget']['max_duration_ms']:
+            state['diagnostics'].append('funding_cost_unobserved_at_paper_budget_end')
+    elif 'funding_coverage' in observed_metrics:
+        state['funding_cost_status']='complete'
     if runtime_metrics is not None:
         state['paper_runtime']=dict(runtime_metrics)
     if 'paper_monitoring' in plan:
         from .paper_monitor import diagnose
         state['diagnostics'].extend(diagnose(plan['paper_monitoring'],observed_metrics))
-        observed_metrics=metrics(state,spec,plan['criteria']['block_ms'])
+        observed_metrics=monitored_metrics(state,spec,plan['criteria']['block_ms'])
     status='suspended' if state['diagnostics'] else 'active'
     if status=='suspended':
         store.connection.execute('insert into paper_suspensions values(?,?,?)',
@@ -430,6 +469,8 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
         if session["status"] != "active":
             raise ValueError("Paper session changed before the tick acquired its lock")
         state = json.loads(session["state_json"])
+        if "funding_observation_interval_ms" in spec["execution"]:
+            state["paper_funding_started_ms"]=session["started_ms"]
         archive_profile={}
         events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),
             after_observation_id=session["last_observation_id"],

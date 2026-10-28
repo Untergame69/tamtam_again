@@ -339,7 +339,9 @@ def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) ->
     if now < run["next_review_ms"] and not forced_final:
         return None
     _, spec, plan = get_variant(store, session["variant_id"])
-    summary = metrics(state, spec, plan["criteria"]["block_ms"])
+    from .paper import monitored_metrics
+    summary = monitored_metrics(state, spec, plan["criteria"]["block_ms"],
+        start_ms=session["started_ms"],end_ms=state["last_ms"])
     prior_row=store.connection.execute(
         "SELECT report_json FROM paper_experimental_reports WHERE session_id=? ORDER BY review_index DESC LIMIT 1",
         (session_id,)).fetchone()
@@ -389,7 +391,9 @@ def report_due(store: Store, session_id: str, *, clock_ms: int | None = None) ->
                     "realized_pnl_usdc": summary["realized_pnl"], "unrealized_pnl_usdc": summary["unrealized_pnl"],
                     "fees_usdc": summary["fees"], "funding_usdc_observed": summary["funding"],
                     "funding_events_observed": summary["funding_events"], "drawdown_usdc": summary["drawdown_usdc"],
-                    "funding_coverage": "observed events are included; absence does not prove zero funding"},
+                    "funding_coverage": summary.get("funding_coverage", "observed events are included; absence does not prove zero funding"),
+                    "economic_result_complete":summary.get("economic_result_complete",False),
+                    "net_pnl_observed_components_usdc":summary.get("net_pnl_observed_components")},
         "exposure": {"current_position": state["position"], "current_notional_usdc": exposure_now,
                      "max_observed_notional_usdc": state.get("max_exposure_notional_usdc", "0"),
                      "configured_max_notional_usdc": spec["max_exposure"]["notional_usdc"],

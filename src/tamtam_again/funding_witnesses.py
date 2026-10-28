@@ -59,7 +59,7 @@ def _verify_market(store, contract):
 
 
 def archive_funding_events(store, contract, *, network, address, market, start_ms, end_ms,
-                           after_observation_id=0):
+                           after_observation_id=0,through_observation_id=None):
     """Read only authorized funding envelopes from the immutable witness pool.
 
     Whole-account guards precede EACH payload SELECT, because funding snapshots
@@ -70,6 +70,8 @@ def archive_funding_events(store, contract, *, network, address, market, start_m
     from .research_memory import authorized_account_history
     from .population_local_join import _decode_verified
     validate_contract(contract,network=network,market=market,address=address)
+    if through_observation_id is None:
+        through_observation_id=store.connection.execute("select coalesce(max(observation_id),0) from raw_observations").fetchone()[0]
     _verify_market(store,contract)
     if contract['available_ms']>start_ms:
         raise ValueError('Funding witness pool must be frozen before observation begins')
@@ -87,8 +89,8 @@ def archive_funding_events(store, contract, *, network, address, market, start_m
         rows=store.connection.execute('select observation_id,observed_at,requested_at,response_sha256 '
             "from raw_observations where network=? and source='hyperliquid-websocket-v1' "
             "and entity_type='account' and entity_id=? and endpoint='userFundings' "
-            'and observation_id>? and observed_at>=? and observed_at<? and requested_at<? '
-            'order by observation_id limit 10001',(network,witness,after_observation_id,start,end,end)).fetchall()
+            'and observation_id>? and observation_id<=? and observed_at>=? and observed_at<? and requested_at<? '
+            'order by observation_id limit 10001',(network,witness,after_observation_id,through_observation_id,start,end,end)).fetchall()
         total+=len(rows)
         if total>10000:
             raise ValueError('Frozen funding witness archive exceeds bounded row budget')

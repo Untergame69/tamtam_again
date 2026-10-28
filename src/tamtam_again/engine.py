@@ -358,8 +358,22 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
 
 
 def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Decimal) -> None:
+    blocked=[]
+    if state.get('funding_cost_status')=='pending':
+        allowed=[]
+        for order in state['pending']:
+            if _is_reduction(number(state['position']),number(order['target'])):
+                allowed.append(order)
+            elif now>order['expires_ms']:
+                _miss_order(state,'order_ttl_expired')
+            else:
+                _wait_order(state,order,'funding_cost_pending_new_exposure',now)
+                blocked.append(order)
+        state['pending']=allowed
     if spec.get('engine')=='single_perp_v3':
-        return _execute_v3(state,spec,now,stress)
+        _execute_v3(state,spec,now,stress)
+        state['pending'].extend(blocked)
+        return
     remaining = []
     for order in state["pending"]:
         if order["due_ms"] > now:
@@ -414,11 +428,14 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
         price = number(q["ask"] if buy else q["bid"])
         price *= 1 + number(spec["slippage"]["bps"]) * stress / 10000 * (1 if buy else -1)
         _fill(state, size, price, number(spec["fees"]["taker_bps"]) * stress, now)
-    state["pending"] = remaining
+    state["pending"] = remaining+blocked
 
 
 def _order(state: dict[str, Any], spec: dict[str, Any], target: Decimal, now: int,
            *, intent: str | None = None) -> None:
+    if state.get('funding_cost_status')=='pending' and not _is_reduction(number(state['position']),target):
+        _miss_order(state,'funding_cost_pending_new_exposure')
+        return
     if state["risk_halted"] and target != 0:
         return
     if spec.get('engine')=='single_perp_v3':
@@ -467,6 +484,10 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             and number(state['position'])!=0 and now-int(state['opened_ms'])>=spec['horizon_ms']):
         _order(state,spec,Decimal(0),now,intent='horizon_exit')
     unavailable = (event["kind"] == "connection" and event.get("connected") is False) or (event["kind"] in {"heartbeat","subscriptions"} and "markets" in event and spec["market"] not in event["markets"])
+    if 'paper_funding_started_ms' in state:
+        audit=funding_coverage(state,spec,{'start_ms':state['paper_funding_started_ms'],
+            'end_ms':max(state['paper_funding_started_ms']+1,now+1)})
+        state['funding_cost_status']='complete' if audit['state']=='complete' else 'pending'
     if not unavailable:
         _execute(state, spec, now, stress)
     state["last_ms"] = now

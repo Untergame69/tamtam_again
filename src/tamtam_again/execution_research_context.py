@@ -37,7 +37,10 @@ def _market_scope(packet):
     except ValueError as exc:
         return {'state':'unsupported' if 'Unsupported mechanism' in str(exc) else 'unknown',
                 'market':market,'reason':str(exc)}
-    return {'state':'supported','market':market,'rules':rules,
+    interval=matches[0].get('funding',{}).get('interval_ms')
+    if type(interval) is not int or interval<=0:
+        return {'state':'unknown','market':market,'reason':'Observed perpetual funding interval required'}
+    return {'state':'supported','market':market,'rules':rules,'funding_observation_interval_ms':interval,
             'evidence_refs':list(rules['evidence_refs']),
             'scope':'Identified USDC perpetual; venue liquidation and isolated-tier dynamics remain unmodelled.'}
 
@@ -126,6 +129,11 @@ def attach_execution_context(packet, repo_root, *, store=None):
     market_scope=_market_scope(packet)
     if metadata_resolution is not None and metadata_resolution['state']!='verified':
         market_scope={'state':'unknown','reason':metadata_resolution['reason']}
+    if market_scope.get('state')=='supported':
+        # A coverage interval describes when settled costs must be observed. It
+        # is separate from funding_interval_ms, which changes order behaviour
+        # by avoiding settlement boundaries in the execution engine.
+        scenario['execution']['funding_observation_interval_ms']=market_scope['funding_observation_interval_ms']
     context = {
         'schema_version': 'execution-research-context-v1',
         'source': {'path': SOURCE, 'policy_version': policy['version'],

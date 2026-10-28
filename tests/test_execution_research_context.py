@@ -26,9 +26,11 @@ class ExecutionResearchContextTests(unittest.TestCase):
         packet = self.packet()
         original = json.loads((ROOT / 'config/research-policy.json').read_text())
         context = attach_execution_context(packet, ROOT)
-        self.assertEqual(context['scenario'], {key: original['strategy_template'][key]
-            for key in ('max_exposure', 'fees', 'slippage', 'latency_ms',
-                        'starting_capital_usdc', 'execution')})
+        expected={key: original['strategy_template'][key] for key in
+            ('max_exposure','fees','slippage','latency_ms','starting_capital_usdc','execution')}
+        expected['execution']={**expected['execution'],'funding_observation_interval_ms':3600000}
+        self.assertEqual(context['scenario'],expected)
+        self.assertNotIn('funding_interval_ms',context['scenario']['execution'])
         for key in ('signal', 'sizing', 'horizon_ms', 'market', 'entry', 'exit'):
             self.assertNotIn(key, context['scenario'])
         self.assertNotIn('system_measurements', packet['observations'])

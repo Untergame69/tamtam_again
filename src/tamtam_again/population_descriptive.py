@@ -18,6 +18,7 @@ from .hype_diagnostics import start_position_chain_summary
 
 VERSION = 'population-descriptive-summary-v1'
 FILL_ENDPOINTS = ('userFills', 'userFillsByTime')
+RESEARCH_FILL_PROJECTION_VERSION = 'canonical-execution-facts-v1'
 RESEARCH_FILL_LIMITS = {'max_rest_pages': 2000, 'max_rest_records': 500000,
     'max_ws_lots': 20000, 'max_ws_records': 500000,
     'max_decoded_bytes_per_source': 64000000, 'max_decoded_bytes_per_lot': 4000000,
@@ -160,6 +161,52 @@ def _economic_value(key,value):
     return canonical(value)
 
 
+def _research_decimal(value):
+    """Canonical finite decimal without context-sensitive rounding or expansion."""
+    number = _d(value)
+    if not number.is_finite():
+        raise ValueError('Nonfinite execution value')
+    sign, digits, exponent = number.as_tuple()
+    if not any(digits):
+        return '0'
+    digits = list(digits)
+    while digits[-1] == 0:
+        digits.pop()
+        exponent += 1
+    exact = Decimal((sign, tuple(digits), exponent))
+    # Keep ordinary venue values readable and large exponents bounded.
+    return format(exact, 'f') if -100 <= exact.adjusted() <= 100 else str(exact)
+
+
+def _research_fill_projection(fill):
+    """Execution facts only; the archive retains all unprojected transport data."""
+    projected = {}
+    for key in _FILL_SHARED_FIELDS & fill.keys():
+        value = fill[key]
+        if key == 'liquidation':
+            # Only the structured public liquidation observation is financial
+            # evidence. Unknown shapes/prose stay in the immutable raw payload.
+            if (not isinstance(value, dict)
+                    or set(value) != {'liquidatedUser', 'markPx', 'method'}
+                    or not isinstance(value['liquidatedUser'], str)
+                    or len(value['liquidatedUser']) != 42
+                    or not value['liquidatedUser'].startswith('0x')
+                    or any(c not in '0123456789abcdefABCDEF' for c in value['liquidatedUser'][2:])
+                    or value['method'] not in ('market', 'backstop')):
+                continue
+            mark = _research_decimal(value['markPx'])
+            if _d(mark) <= 0:
+                raise ValueError('Positive observed liquidation mark required')
+            value = {'liquidatedUser': value['liquidatedUser'].lower(),
+                'markPx': mark, 'method': value['method']}
+        elif value is not None and key in _FILL_NUMBERS:
+            value = _research_decimal(value)
+        elif value is not None and key in _FILL_IDS:
+            value = str(value)
+        projected[key] = value
+    return projected
+
+
 def research_fill_source_manifest(store,network,address,cutoff_ms,*,ws_start_ms,limits=None):
     """Authorized, bounded metadata witness; no raw payload or cache read."""
     bounds={**RESEARCH_FILL_LIMITS,**(limits or {})}
@@ -194,7 +241,8 @@ def research_fill_source_manifest(store,network,address,cutoff_ms,*,ws_start_ms,
         if len(rows)>maximum:raise ValueError('Research '+kind+' lot limit exceeded; choose an explicit narrower window')
         sources[kind]=rows
     check()
-    return {'sources':{kind:[dict(row) for row in rows] for kind,rows in sources.items()},
+    return {'fill_projection_version':RESEARCH_FILL_PROJECTION_VERSION,
+        'sources':{kind:[dict(row) for row in rows] for kind,rows in sources.items()},
         'resource_limits':bounds,'ws_start_ms':ws_start_ms,'cutoff_ms':cutoff_ms}
 
 
@@ -284,17 +332,21 @@ def load_research_fill_evidence(store,network,address,cutoff_ms,*,ws_start_ms,li
         if index%128==0:check()
         duplicates+=len(items)-1
         shared={};bad=False
-        for fill,_ in items:
+        projected_items=[]
+        for fill,proof in items:
+            try:fill=_research_fill_projection(fill)
+            except (ArithmeticError,ValueError,TypeError):bad=True;continue
+            projected_items.append((fill,proof))
             for key in _FILL_SHARED_FIELDS&fill.keys():
                 try:value=_economic_value(key,fill[key])
                 except ValueError:bad=True;continue
                 if key in shared and shared[key]!=value:bad=True
                 shared[key]=value
         if bad:conflicts.append(tid);continue
-        # Prefer REST for stable legacy representation; enrich missing fields
-        # only with actual observations from the same nonconflicting identity.
+        # Canonical economics are independent of source transport/formatting;
+        # enrich only fields actually observed on this nonconflicting identity.
         merged={}
-        for fill,_ in reversed(sorted(items,key=lambda x:(x[1]['source']!='rest',x[1]['available_ms'],x[1]['observation_id']))):
+        for fill,_ in reversed(sorted(projected_items,key=lambda x:(x[1]['source']!='rest',x[1]['available_ms'],x[1]['observation_id']))):
             merged.update(fill)
         has_ws=any(proof['source']=='ws' for _,proof in items)
         if has_ws and (not _REQUIRED_WS_ECONOMICS<=merged.keys()

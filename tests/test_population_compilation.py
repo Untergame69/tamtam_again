@@ -16,6 +16,15 @@ class CompilationTests(unittest.TestCase):
   r=validate_compilation(h,{'report'},request_id='request')
   self.assertEqual(r['state'],'unsupported_mechanism');self.assertFalse(r['economic_rejection'])
   self.assertEqual(h['executable_spec']['signal']['kind'],'unknown_inventory_controller')
+ def test_external_variant_allowance_is_checked_before_compilation(self):
+  h=self.hypothesis();h['experiment_profile']['max_variants']=5
+  with self.assertRaisesRegex(ValueError,'external variant allowance'):
+   validate_compilation(h,{'report'},request_id='request',prospective_constraints={'max_profile_variants':4})
+  h['experiment_profile']['max_variants']=4
+  self.assertEqual(validate_compilation(h,{'report'},request_id='request',prospective_constraints={'max_profile_variants':4})['state'],'executable')
+  for cap in [None,True,0]:
+   with self.subTest(cap=cap),self.assertRaises(ValueError):
+    validate_compilation(h,{'report'},prospective_constraints={'max_profile_variants':cap})
  def test_partial_output_wrong_origin_and_wrong_scope_rejected(self):
   h=self.hypothesis();del h['experiment_profile']
   with self.assertRaises(ValueError):validate_compilation(h,{'report'})

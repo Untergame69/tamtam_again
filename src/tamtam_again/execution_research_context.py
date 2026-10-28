@@ -7,6 +7,7 @@ scenario without supplying an entry signal, sizing rule or holding horizon.
 from copy import deepcopy
 import hashlib
 import json
+import re
 import zlib
 from pathlib import Path
 from datetime import datetime, timezone
@@ -18,6 +19,18 @@ SOURCE = 'config/research-policy.json'
 REFERENCE = 'packet.execution_research_context'
 SCENARIO_FIELDS = ('max_exposure', 'fees', 'slippage', 'latency_ms',
                    'starting_capital_usdc', 'execution')
+
+
+def _paper_cadence(repo_root):
+    path=Path(repo_root)/'systemd/user/tamtam-again-paper.timer'
+    if not path.is_file():return None
+    raw=path.read_bytes()
+    match=re.search(r'^OnUnitActiveSec=([0-9]+)(ms|s)\s*$',raw.decode(),re.MULTILINE)
+    if not match:return None
+    value=int(match[1])*(1000 if match[2]=='s' else 1)
+    if value<=0:return None
+    return {'path':'systemd/user/tamtam-again-paper.timer','sha256':hashlib.sha256(raw).hexdigest(),
+        'configured_tick_ms':value,'classification':'configured_target_not_measured_lag'}
 
 
 def _market_scope(packet):
@@ -171,6 +184,7 @@ def attach_execution_context(packet, repo_root, *, store=None):
         # by avoiding settlement boundaries in the execution engine.
         scenario['execution']['funding_observation_interval_ms']=market_scope['funding_observation_interval_ms']
         scenario['execution']['funding_settlement_clock']='reported_hour_with_inventory_invariance_v1'
+    cadence=_paper_cadence(repo_root)
     witnesses=None
     if store is not None and market_scope.get('state')=='supported' and metadata_resolution.get('state')=='verified':
         witnesses=_freeze_funding_witnesses(packet,store,market_scope)
@@ -187,14 +201,17 @@ def attach_execution_context(packet, repo_root, *, store=None):
         'market_scope': market_scope,
         'metadata_resolution': metadata_resolution or {'state':'sealed_root_references_only'},
         'funding_witness_sources':witnesses,
+        'paper_cadence_reference':cadence,
         'available_execution_profiles':({
             'flat_at_settlement_v1':{'engine':'single_perp_v3',
                 'execution_overrides':{'funding_exposure_policy':'flat_at_settlement_v1',
-                    'small_residual_policy':'avoid_uncloseable_residual_v1'},
+                    'small_residual_policy':'avoid_uncloseable_residual_v1',
+                    'max_quote_age_ms':scenario['execution']['unknown_quote_max_age_ms'],
+                    'paper_tick_target_ms':cadence['configured_tick_ms']},
                 'use':'Optional for independently justified intraday mechanisms only; preserve the proposed entry signal.',
                 'constraints':'Wait for current-hour reported settlement clock before new exposure. Entry must leave horizon, exit latency, TTL and quote-age headroom before the next hour. Actual exits and residual inventory remain audited; intended flatness is not proof.',
                 'funding_claim':'Zero only when the executed ledger proves zero inventory throughout each scheduled-to-reported interval; exposed or ambiguous costs remain unknown.'}}
-            if market_scope.get('state')=='supported' else {}),
+            if market_scope.get('state')=='supported' and cadence is not None else {}),
         'parameter_status': {
             'fees': 'Configured debit scenario, not our verified venue fee schedule or a maker rebate entitlement.',
             'slippage': 'Configured additional cost scenario, not measured impact.',

@@ -208,6 +208,15 @@ def prepare_packet(store, policy, item):
     if context.get('evidence_ref'):packet['evidence_refs'].append(context['evidence_ref'])
     from .execution_research_context import attach_execution_context
     attach_execution_context(packet,Path(__file__).resolve().parents[2],store=store)
+    allocation=item.get('experiment_policy')
+    if allocation is None:
+        allocation=json.loads((Path(__file__).resolve().parents[2]/'config/continuous-experiment-policy.json').read_text())
+    packet['prospective_experiment_constraints']={'policy_id':allocation['policy_id'],
+        'policy_fingerprint':fingerprint(allocation),'max_profile_variants':allocation['max_profile_variants'],
+        'nominal_comparison_duration_ms':allocation['plan_template']['comparison_duration_ms'],
+        'nominal_final_duration_ms':allocation['plan_template']['final_duration_ms'],
+        'criteria':allocation['plan_template']['criteria'],
+        'limits':'External immutable criteria and resource limits; do not rewrite them. Backend may extend windows to match declared dependence.'}
     if len(canonical(packet))>policy['task_policy']['max_packet_chars']:
         _project_other_markets(store,packet,item['market'],item['cutoff_ms'])
     from .research_evaluation import export_memory
@@ -367,7 +376,8 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
             if dispatch and monotonic()>=preparation_deadline:
                 result['admission']={'status':'waiting_runtime_headroom','preflight_only':True}
                 break
-            item={**item,'network':policy['network'],'admission_cutoff_ms':item['cutoff_ms'],'cutoff_ms':clock}
+            item={**item,'network':policy['network'],'admission_cutoff_ms':item['cutoff_ms'],'cutoff_ms':clock,
+                'experiment_policy':experiment_policy}
             item['question']=('From the authorized executions on '+item['market']+', identify a falsifiable observable mechanism, '
                 'separating price flow, signed fees, funding, inventory and coverage. Use all deterministic statistics; '
                 'do not infer order placement from executed fills. If supported, specify an executable causal rule with '

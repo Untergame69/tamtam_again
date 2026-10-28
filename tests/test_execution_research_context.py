@@ -13,6 +13,39 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionResearchContextTests(unittest.TestCase):
+    def test_optional_intraday_profile_compiles_without_changing_default_signal(self):
+        from copy import deepcopy
+        from tamtam_again.experiments import compile_family
+        packet=self.packet();context=attach_execution_context(packet,ROOT)
+        self.assertEqual(context['paper_cadence_reference']['configured_tick_ms'],500)
+        self.assertEqual(context['paper_cadence_reference']['classification'],'configured_target_not_measured_lag')
+        h=self.hypothesis(packet);base=deepcopy(h['executable_spec'])
+        self.assertNotIn('funding_exposure_policy',base['execution'])
+        optional=context['available_execution_profiles']['flat_at_settlement_v1']
+        spec=h['executable_spec'];spec['engine']=optional['engine']
+        spec['execution'].update(optional['execution_overrides'])
+        self.assertEqual(validate_packet_compilation(h,h['experiment_profile'],packet,'request')['state'],'executable')
+        compiled=compile_family(h['experiment_profile'],spec)
+        self.assertEqual(compiled[0]['signal'],base['signal'])
+        self.assertEqual(compiled[0]['horizon_ms'],base['horizon_ms'])
+        self.assertEqual(compiled[0]['execution']['funding_exposure_policy'],'flat_at_settlement_v1')
+        spec['execution']['paper_tick_target_ms']+=1
+        with self.assertRaisesRegex(ValueError,'preserve'):
+            validate_packet_compilation(h,h['experiment_profile'],packet,'request')
+
+    def test_intraday_profile_requires_cadence_source_and_rejects_unlisted_policy(self):
+        from tamtam_again.execution_research_context import _paper_cadence
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertIsNone(_paper_cadence(directory))
+            path=Path(directory)/'systemd/user/tamtam-again-paper.timer';path.parent.mkdir(parents=True)
+            for value in ['0ms','garbage','1.5s']:
+                path.write_text('[Timer]\nOnUnitActiveSec='+value+'\n')
+                self.assertIsNone(_paper_cadence(directory))
+        packet=self.packet();attach_execution_context(packet,ROOT)
+        h=self.hypothesis(packet);h['executable_spec']['execution']['funding_exposure_policy']='invented'
+        with self.assertRaisesRegex(ValueError,'explicitly supplied optional'):
+            validate_packet_compilation(h,h['experiment_profile'],packet,'request')
+
     def test_frozen_existing_funding_pool_supports_autonomous_costs_without_account_signals(self):
         from tests.test_funding_witnesses import FundingWitnessTests
         from tamtam_again.collateral import build_catalog

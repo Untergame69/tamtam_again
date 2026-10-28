@@ -40,16 +40,22 @@ def validate_packet_compilation(hypothesis,profile,packet,request_id):
     return validate_compilation({**hypothesis,'experiment_profile':profile},packet_references(packet),
         request_id=request_id,measurements=packet.get('observations',{}).get('system_measurements',{}),
         as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'),
-        readiness=packet.get('observations',{}).get('execution_data_readiness'))
+        readiness=packet.get('observations',{}).get('execution_data_readiness'),
+        prospective_constraints=packet.get('prospective_experiment_constraints'))
 
 
-def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None,execution_context=None,readiness=None):
+def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=None,as_of_ms=None,execution_context=None,readiness=None,prospective_constraints=None):
     present={'executable_spec','experiment_profile'}&hypothesis.keys()
     if not present:return None
     if present!={'executable_spec','experiment_profile'}:
         raise ValueError('Executable output requires both rule and justified experiment profile')
     spec=hypothesis['executable_spec'];profile=hypothesis['experiment_profile']
     if not isinstance(spec,dict) or not isinstance(profile,dict):raise ValueError('Structured compiler output required')
+    if prospective_constraints is not None:
+        maximum=prospective_constraints.get('max_profile_variants') if isinstance(prospective_constraints,dict) else None
+        requested=profile.get('max_variants')
+        if type(maximum) is not int or maximum<1 or type(requested) is not int or not 1<=requested<=maximum:
+            raise ValueError('Experiment profile exceeds its supplied external variant allowance')
     if readiness is not None:
         if not isinstance(readiness,dict) or readiness.get('market_ws_observed') is not True:
             raise ValueError('Observed public market stream required before executable allocation')

@@ -99,6 +99,11 @@ def save_knowledge(store:Store,item:dict[str,Any]) -> dict[str,Any]:
             window=json.loads(row['plan_json'])[row['stage']]
             period={'network':row['network'],'address':row['address'],'market':row['coin'],**window}
             if period not in item['periods'] or not authorized_period(store,period,now):raise ValueError('Evaluation evidence is not an authorized declared period')
+            if store.connection.execute("select 1 from sqlite_master where name='validation_evaluation_source_periods'").fetchone():
+                for source in store.connection.execute('select period_json from validation_evaluation_source_periods where evaluation_id=?',(proof['id'],)):
+                    inherited=json.loads(source[0])
+                    if inherited not in item['periods'] or not authorized_period(store,inherited,now):
+                        raise ValueError('Evaluation funding witness source periods must remain authorized and declared')
         elif proof['kind']=='research_evaluation':
             from .research_evaluation import validate_feedback_reference
             validate_feedback_reference(store,proof['id'],item['periods'],now)

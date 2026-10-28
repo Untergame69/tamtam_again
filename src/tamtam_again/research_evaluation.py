@@ -47,7 +47,14 @@ def _persist(store, request_id, kind, state, *, evidence=None, diagnostic=None, 
     with store.connection:
         store.connection.execute('insert or ignore into research_evaluation_events values(?,?,?,?,?)',
             (event_id, request_id, kind, event['created_ms'], canonical(event)))
+        for evaluation in event['evidence'].get('evaluations', []):
+            for period in evaluation.get('source_periods',[]):
+                store.connection.execute('insert or ignore into research_evaluation_source_periods values(?,?)',
+                    (event_id,canonical(period)))
         for session in event['evidence'].get('sessions', []):
+            for period in session.get('source_periods',[]):
+                store.connection.execute('insert or ignore into research_evaluation_source_periods values(?,?)',
+                    (event_id,canonical(period)))
             store.connection.execute('insert or ignore into research_evaluation_source_periods values(?,?)',
                 (event_id, canonical(session['source_period'])))
         store.connection.execute('insert or ignore into research_evaluation_memory values(?,?,?,?)',
@@ -223,6 +230,11 @@ def _observe(store, request_id, kind, link):
         row = store.connection.execute('select result_json from validation_evaluations where evaluation_id=?',
             (evaluation['evaluation_id'],)).fetchone()
         result = json.loads(row[0] or '{}')
+        evaluation['source_periods']=[]
+        if _exists(store,'validation_evaluation_source_periods'):
+            evaluation['source_periods']=[json.loads(r[0]) for r in store.connection.execute(
+                'select period_json from validation_evaluation_source_periods where evaluation_id=?',
+                (evaluation['evaluation_id'],))]
         # Preserve the actual gate diagnostic for later released feedback, not
         # merely a label that makes the next candidate repeat the same mistake.
         evaluation['outcome'] = {key: result[key] for key in (
@@ -286,6 +298,11 @@ def _observe(store, request_id, kind, link):
             'complete_flat_state': complete, 'diagnostics': body.get('diagnostics', [])[:32],
             'source_period': {'network': plan['network'], 'address': plan['address'], 'market': plan['coin'],
                               'start_ms': period_start, 'end_ms': period_end}}
+        selected_spec=json.loads(store.connection.execute('select spec_json from strategy_variants where variant_id=?',
+            (selection['variant_id'],)).fetchone()[0])
+        witnesses=selected_spec['execution'].get('funding_witnesses',{}).get('addresses',[])
+        session['source_periods']=[{'network':plan['network'],'address':witness,'market':'*',
+            'start_ms':0,'end_ms':period_end} for witness in witnesses]
         for key in ('net_pnl', 'realized_pnl', 'fees', 'funding', 'cash'):
             if key in body:
                 session[key] = body[key]

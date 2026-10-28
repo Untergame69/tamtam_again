@@ -277,7 +277,8 @@ def main(argv: list[str] | None = None) -> int:
                         provenance = "synthetic"
                     else:
                         window = plan[args.stage]
-                        events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"])
+                        events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"],
+                            funding_witnesses=spec["execution"].get("funding_witnesses"))
                         events = classify_regimes(events,plan["criteria"])
                         provenance = "local_archive"
                     result = evaluate(store,args.variant_id,args.stage,events,provenance=provenance)

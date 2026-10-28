@@ -20,6 +20,7 @@ def timestamp(value: str) -> int:
 def archive_events(store: Store, network: str, address: str, coin: str, start_ms: int, end_ms: int,
                    *, after_observation_id: int = 0,
                    include_l2book: bool = False,
+                   funding_witnesses: dict[str,Any] | None = None,
                    include_evidence_refs: bool = False,
                    query_metrics: dict[str, Any] | None = None) -> tuple[list[dict[str,Any]], int]:
     """Only archived local receipts, live fills, and observed funding rates.
@@ -131,7 +132,7 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                                    "leader_start_position":fill.get("startPosition"),
                                    "delta":str(number(fill["sz"]) * (1 if fill["side"] == "B" else -1))})
             elif row["endpoint"] == "userFundings" and data.get("isSnapshot") is False:
-                for funding in data.get("fundings",[]):
+                for funding_index,funding in enumerate(data.get("fundings",[])):
                     if funding.get("coin") != coin:
                         continue
                     exchange = int(funding["time"])
@@ -142,7 +143,8 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                         # Apply it to OUR effective position, never copy the
                         # leader's total payment or size.
                         unit = number(funding["usdc"])/number(funding["szi"])
-                        events.append({"id":f"funding:{coin}:{exchange}","kind":"funding","received_ms":receipt,
+                        events.append({"id":(f"funding:{coin}:{exchange}:{row['observation_id']}:{funding_index}"
+                                                if funding_witnesses is not None else f"funding:{coin}:{exchange}"),"kind":"funding","received_ms":receipt,
                                        "available_ms":max(receipt,archived_available),"event_ms":exchange,
                                        "unit_funding_usdc":str(unit),"provenance":"settled_user_funding_usdc_divided_by_signed_szi"})
         if include_evidence_refs:
@@ -150,6 +152,12 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                 event.update(evidence_ref=f"raw_observations:{row['observation_id']}",
                     archive_event_index=index,archive_available_ms=archived_available,
                     archive_response_sha256=row['response_sha256'])
+    if funding_witnesses is not None:
+        from .funding_witnesses import archive_funding_events
+        witness_events,witness_cursor=archive_funding_events(store,funding_witnesses,
+            network=network,address=address,market=coin,start_ms=start_ms,end_ms=end_ms,
+            after_observation_id=after_observation_id)
+        events.extend(witness_events);cursor=max(cursor,witness_cursor)
     return sorted(events,key=lambda e:(e.get("available_ms",e["received_ms"]),e["received_ms"],str(e["id"]))),cursor
 
 
@@ -426,6 +434,7 @@ def paper_tick(store: Store, session_id: str) -> dict[str,Any]:
         events,cursor = archive_events(store,row["network"],row["address"],row["coin"],session["started_ms"],now_ms(),
             after_observation_id=session["last_observation_id"],
             include_l2book=spec['execution'].get('quote_evidence_contract')=='bbo_or_l2book_v1',
+            funding_witnesses=spec['execution'].get('funding_witnesses'),
             query_metrics=archive_profile)
         processed_ms = now_ms()
         max_receipt_lag_ms=max((max(0,processed_ms-int(event['received_ms'])) for event in events),default=0)

@@ -59,6 +59,9 @@ def validate_spec(spec: dict[str, Any]) -> None:
         raise ValueError("Unsupported entry/exit rules")
     if spec["execution"].get("kind") not in {"market_ioc", "passive_conservative"}:
         raise ValueError("Unsupported execution model")
+    if 'funding_witnesses' in spec['execution']:
+        from .funding_witnesses import validate_contract
+        validate_contract(spec['execution']['funding_witnesses'],market=spec['market'])
     funding_interval=spec["execution"].get("funding_observation_interval_ms")
     if funding_interval is not None and (type(funding_interval) is not int or funding_interval<=0):
         raise ValueError("Positive observed funding settlement interval required")
@@ -582,6 +585,8 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             settlements[str(exchange)]={"unit_funding_usdc":str(coefficient),
                 "received_ms":receipt,"available_ms":now,
                 "provenance":event.get("provenance"),"evidence_ref":event.get("evidence_ref"),
+                "archive_response_sha256":event.get("archive_response_sha256"),
+                "source_period":event.get("source_period"),"source_address":event.get("source_address"),
                 "inventory_at_settlement":None if ambiguous else str(effective_position)}
             if not ambiguous:
                 payment=effective_position*coefficient

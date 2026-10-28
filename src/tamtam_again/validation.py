@@ -293,6 +293,16 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
     prior = store.connection.execute("SELECT * FROM validation_evaluations WHERE evaluation_id=?",(evaluation_id,)).fetchone()
     if prior:
         return json.loads(prior["result_json"]) if prior["result_json"] else {"evaluation_id":evaluation_id,"status":prior["status"],"diagnostic":"Previously consumed; no rerun"}
+    witness_contract=spec['execution'].get('funding_witnesses')
+    source_periods=[]
+    if witness_contract is not None:
+        from .funding_witnesses import validate_contract
+        validate_contract(witness_contract,network=row['network'],market=row['coin'],address=row['address'])
+        source_periods=[{'network':row['network'],'address':witness,'market':'*',
+                         'start_ms':0,'end_ms':interval['end_ms']}
+                        for witness in witness_contract['addresses']]
+    store.connection.execute('create table if not exists validation_evaluation_source_periods '
+        '(evaluation_id text not null,period_json text not null,primary key(evaluation_id,period_json))')
     evaluations = store.connection.execute("SELECT count(*) FROM validation_evaluations WHERE plan_id=?", (row["plan_id"],)).fetchone()[0]
     if evaluations >= plan["budget"]["max_runs"] or now_ms() - row["created_ms"] > plan["budget"]["max_duration_ms"]:
         raise ValueError("Evaluation iteration/duration budget exhausted")
@@ -313,6 +323,9 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
                 raise ValueError("Reserved period already consumed; collect a new future period")
             store.connection.execute("INSERT INTO consumed_holdouts VALUES (?,?,?,?,?,?,?)",(evaluation_id,row["network"],row["address"],row["coin"],interval["start_ms"],interval["end_ms"],utc_now()))
         store.connection.execute("INSERT INTO validation_evaluations VALUES (?,?,?,?,?,?,?,?)",(evaluation_id,variant_id,row["plan_id"],stage,"running",data_fp,None,utc_now()))
+        for period in source_periods:
+            store.connection.execute('insert or ignore into validation_evaluation_source_periods values(?,?)',
+                                     (evaluation_id,canonical(period)))
         store.connection.commit()
     except Exception:
         store.connection.rollback()
@@ -330,7 +343,8 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
                   "status":"failed" if failures else "passed", "synthetic":bool(row["synthetic"]),
                   "promotable":stage == "final" and not failures and not row["synthetic"],
                   "failures":failures,"metrics":normal["metrics"],"stress_metrics":stress["metrics"],
-                  "input_fingerprint":data_fp,"criteria_fingerprint":fingerprint(criteria)}
+                  "input_fingerprint":data_fp,"criteria_fingerprint":fingerprint(criteria),
+                  "source_periods":source_periods}
         result['failure_classification']=classify_evaluation_failures(result)
     except Exception as exc:
         store.connection.execute("UPDATE validation_evaluations SET status='error',result_json=? WHERE evaluation_id=?",(canonical({"status":"error","error_type":type(exc).__name__}),evaluation_id))

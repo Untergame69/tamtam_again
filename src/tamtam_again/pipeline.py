@@ -96,7 +96,8 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
                     require_final_selection(store,variant[0])
                 window = plan[stage]
                 if fixtures is None:
-                    events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"])
+                    events,_ = archive_events(store,row["network"],row["address"],row["coin"],window["start_ms"],window["end_ms"],
+                            funding_witnesses=spec["execution"].get("funding_witnesses"))
                 else:
                     events=fixtures.get(variant[0],{}).get(stage,[])
                 result = evaluate(store,variant[0],stage,classify_regimes(events,plan["criteria"]),provenance="synthetic" if fixtures is not None else "local_archive")

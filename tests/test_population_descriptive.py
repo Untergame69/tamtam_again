@@ -31,7 +31,7 @@ class PopulationDescriptiveTests(unittest.TestCase):
             'sz':'1','px':'10','closedPnl':'0','fee':'0.01','feeToken':'USDC',
             'crossed':False,**changes}
 
-    def test_ws_merge_normalizes_economics_retains_transport_and_observation_provenance(self):
+    def test_ws_merge_normalizes_economics_and_keeps_transport_in_raw_provenance(self):
         from tamtam_again.population_descriptive import load_research_fill_evidence
         rest=self._execution(oid=123,hash='trade-hash',transport='rest')
         ws=self._execution(px=10.0,sz='1.000',fee='0.0100',oid='123',transport='ws',extra='only-ws')
@@ -40,8 +40,8 @@ class PopulationDescriptiveTests(unittest.TestCase):
         fills,coverage,refs,proofs=load_research_fill_evidence(self.store,self.network,self.address,
             self.cutoff,ws_start_ms=100)
         self.assertEqual(len(fills),1)
-        self.assertEqual(fills[0]['transport'],'rest')
-        self.assertEqual(fills[0]['extra'],'only-ws')
+        self.assertNotIn('transport',fills[0])
+        self.assertNotIn('extra',fills[0])
         self.assertEqual(coverage['duplicate_fill_instances'],1)
         self.assertEqual(coverage['conflicting_fill_identity_count'],0)
         self.assertEqual({p['source'] for p in proofs['one']},{'rest','ws'})

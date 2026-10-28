@@ -16,6 +16,132 @@ from scripts.prepare_43ad_local_resolution import _episode_table
 
 
 class PopulationDescriptiveTests(unittest.TestCase):
+    def _ws_raw(self,observation_id,fills,*,observed=195,received=190,snapshot=True,
+            batched=True,user=None):
+        message={'channel':'userFills','data':{'user':user or self.address,
+            'isSnapshot':snapshot,'fills':fills}}
+        payload={'events':[{'received_at':datetime.fromtimestamp(received/1000,timezone.utc).isoformat(),
+            'message':message}]} if batched else message
+        self._raw(observation_id,'userFills',payload,observed=observed,start=None,end=None)
+        self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1' where observation_id=?",(observation_id,))
+        self.store.connection.commit()
+
+    def _execution(self,tid='one',time=150,**changes):
+        return {'coin':'COIN','tid':tid,'time':time,'startPosition':'0','side':'B',
+            'sz':'1','px':'10','closedPnl':'0','fee':'0.01','feeToken':'USDC',
+            'crossed':False,**changes}
+
+    def test_ws_merge_normalizes_economics_retains_transport_and_observation_provenance(self):
+        from tamtam_again.population_descriptive import load_research_fill_evidence
+        rest=self._execution(oid=123,hash='trade-hash',transport='rest')
+        ws=self._execution(px=10.0,sz='1.000',fee='0.0100',oid='123',transport='ws',extra='only-ws')
+        self._raw(1,'userFillsByTime',[rest])
+        self._ws_raw(2,[ws])
+        fills,coverage,refs,proofs=load_research_fill_evidence(self.store,self.network,self.address,
+            self.cutoff,ws_start_ms=100)
+        self.assertEqual(len(fills),1)
+        self.assertEqual(fills[0]['transport'],'rest')
+        self.assertEqual(fills[0]['extra'],'only-ws')
+        self.assertEqual(coverage['duplicate_fill_instances'],1)
+        self.assertEqual(coverage['conflicting_fill_identity_count'],0)
+        self.assertEqual({p['source'] for p in proofs['one']},{'rest','ws'})
+        self.assertEqual({r['id'] for r in refs},{'1','2'})
+        ws_proof=next(p for p in proofs['one'] if p['source']=='ws')
+        self.assertTrue(ws_proof['is_snapshot'])
+        self.assertEqual(ws_proof['frame_received_ms'],190)
+        self.assertFalse(ws_proof['live_follower_signal'])
+
+    def test_ws_actual_economic_conflict_excludes_identity(self):
+        from tamtam_again.population_descriptive import load_research_fill_evidence
+        self._raw(1,'userFillsByTime',[self._execution()])
+        self._ws_raw(2,[self._execution(px='10.1')])
+        fills,coverage,_,proofs=load_research_fill_evidence(self.store,self.network,self.address,
+            self.cutoff,ws_start_ms=100)
+        self.assertEqual(fills,[])
+        self.assertEqual(proofs,{})
+        self.assertEqual(coverage['conflicting_fill_id_examples'],['one'])
+
+    def test_ws_cutoffs_scope_snapshots_and_legacy_default(self):
+        from tamtam_again.population_descriptive import load_research_fill_evidence,_load_fills
+        self._raw(1,'userFillsByTime',[self._execution('old-rest',time=50)])
+        self._ws_raw(2,[self._execution('snapshot'),self._execution('old-ws',time=99),
+            self._execution('future-event',time=201)])
+        self._ws_raw(3,[self._execution('future-frame')],received=201)
+        self._ws_raw(4,[self._execution('future-archive')],observed=201)
+        self._ws_raw(5,[self._execution('other-user')],user='0x'+'2'*40)
+        self._ws_raw(6,[self._execution('unbatched',time=160)],batched=False,snapshot=False)
+        fills,coverage,refs,proofs=load_research_fill_evidence(self.store,self.network,self.address,
+            self.cutoff,ws_start_ms=100)
+        self.assertEqual({f['tid'] for f in fills},{'old-rest','snapshot','unbatched'})
+        self.assertEqual({f['tid'] for f in _load_fills(self.store,self.network,self.address,self.cutoff)[0]}, {'old-rest'})
+        self.assertNotIn('4',{r['id'] for r in refs})
+        self.assertEqual(coverage['records_after_cutoff_excluded'],1)
+        self.assertEqual(coverage['source_counts']['ws_events_before_declared_window'],1)
+        self.assertEqual(proofs['unbatched'][0]['frame_receipt_status'],'unknown; archive availability only')
+        self.assertFalse(coverage['continuity_proven'])
+
+    def test_ws_only_activity_passes_through_summary_detail_and_packet(self):
+        self._ws_raw(1,[self._execution()])
+        options={'cutoff_ms':self.cutoff,'include_ws':True,'ws_start_ms':100}
+        summary=prepare_candidate_summary(self.store,self.network,self.address,**options)
+        self.assertEqual(summary['coverage']['fill_archive']['usable_unique_fill_count'],1)
+        detail=prepare_candidate_market_detail(self.store,self.network,self.address,market='COIN',**options)
+        self.assertEqual(detail['execution_activity']['fill_count'],1)
+        base={'network':self.network,'address':self.address,'available_ms':190,
+            'research_input_fingerprint':'base','evidence_refs':[],'observations':{}}
+        packet=prepare_pilot_packet(self.store,base,candidate='test',
+            item={'descriptive_markets':['COIN']},pilot_id=None,policy_version='v',**options)
+        self.assertEqual(packet['observations']['market_execution_detail_v1']['COIN']['execution_activity']['fill_count'],1)
+        self.assertEqual(prepare_candidate_summary(self.store,self.network,self.address,
+            cutoff_ms=self.cutoff)['coverage']['fill_archive']['usable_unique_fill_count'],0)
+
+    def test_ws_resource_bounds_fail_without_partial_summary(self):
+        from tamtam_again.population_descriptive import load_research_fill_evidence
+        self._ws_raw(1,[self._execution(),self._execution('two')])
+        self._ws_raw(2,[self._execution('three')])
+        for limits,pattern in [({'max_ws_lots':1},'lot limit'),
+                ({'max_ws_records':1},'record limit'),
+                ({'max_decoded_bytes_per_lot':20},'byte bound'),
+                ({'max_decoded_bytes_per_source':20},'decoded-byte limit')]:
+            with self.subTest(limits=limits),self.assertRaisesRegex(ValueError,pattern):
+                load_research_fill_evidence(self.store,self.network,self.address,
+                    self.cutoff,ws_start_ms=100,limits=limits)
+        for start,limits in [(None,None),(201,None),(100,{'unlimited':1}),(100,{'max_ws_records':0})]:
+            with self.assertRaises(ValueError):
+                load_research_fill_evidence(self.store,self.network,self.address,self.cutoff,
+                    ws_start_ms=start,limits=limits)
+
+    def test_ws_merge_rest_bounds_hash_and_exact_decimal_identity(self):
+        from tamtam_again.population_descriptive import load_research_fill_evidence
+        large='123456789012345678901234567890.123456789'
+        self._raw(1,'userFillsByTime',[self._execution(px=large),self._execution('two')])
+        self._raw(2,'userFillsByTime',[self._execution('three')])
+        self._ws_raw(3,[self._execution(px=large+'0')])
+        fills,coverage,_,_=load_research_fill_evidence(self.store,self.network,self.address,
+            self.cutoff,ws_start_ms=100)
+        self.assertEqual(len(fills),3)
+        self.assertEqual(coverage['usable_fill_provenance']['both_sources_fill_count'],1)
+        for limits,pattern in [({'max_rest_pages':1},'rest lot limit'),
+                ({'max_rest_records':1},'rest record limit')]:
+            with self.assertRaisesRegex(ValueError,pattern):
+                load_research_fill_evidence(self.store,self.network,self.address,
+                    self.cutoff,ws_start_ms=100,limits=limits)
+        self.store.connection.execute("update raw_observations set response_sha256='bad' where observation_id=3")
+        with self.assertRaisesRegex(ValueError,'hash mismatch'):
+            load_research_fill_evidence(self.store,self.network,self.address,self.cutoff,ws_start_ms=100)
+
+    def test_ws_reserved_guard_precedes_metadata_and_payload_reads(self):
+        from tamtam_again.population_descriptive import load_research_fill_evidence,research_fill_source_manifest
+        from unittest.mock import patch
+        queries=[]
+        self.store.connection.set_trace_callback(queries.append)
+        with patch('tamtam_again.population_descriptive.authorized_account_history',return_value=False):
+            for function in (load_research_fill_evidence,research_fill_source_manifest):
+                with self.assertRaises(PermissionError):
+                    function(self.store,self.network,self.address,self.cutoff,ws_start_ms=100)
+        self.store.connection.set_trace_callback(None)
+        self.assertFalse(any('raw_observations' in query for query in queries))
+
     def test_reference_projection_reconstructs_full_evidence_without_changing_aggregates(self):
         from copy import deepcopy
         from tamtam_again.engine import fingerprint

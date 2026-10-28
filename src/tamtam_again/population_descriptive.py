@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
+import time
 from collections import Counter, defaultdict
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -16,6 +18,16 @@ from .hype_diagnostics import start_position_chain_summary
 
 VERSION = 'population-descriptive-summary-v1'
 FILL_ENDPOINTS = ('userFills', 'userFillsByTime')
+RESEARCH_FILL_LIMITS = {'max_rest_pages': 2000, 'max_rest_records': 500000,
+    'max_ws_lots': 20000, 'max_ws_records': 500000,
+    'max_decoded_bytes_per_source': 64000000, 'max_decoded_bytes_per_lot': 4000000,
+    'max_duration_ms': 20000}
+_FILL_NUMBERS = {'px','sz','startPosition','closedPnl','fee','builderFee'}
+_FILL_IDS = {'tid','oid','twapId'}
+_FILL_SHARED_FIELDS = {'coin','tid','time','side','px','sz','startPosition','closedPnl',
+    'fee','feeToken','crossed','oid','dir','builderFee','twapId','hash','cloid','liquidation'}
+_REQUIRED_WS_ECONOMICS = {'coin','tid','time','side','px','sz','startPosition','closedPnl',
+    'fee','feeToken','crossed'}
 
 
 def _event_time(value):
@@ -48,7 +60,20 @@ def _get_fill_array(payload):
     return []
 
 
-def _load_fills(store, network, address, cutoff_ms):
+def _load_fills(store, network, address, cutoff_ms, *, include_ws=False, ws_start_ms=None, ws_limits=None):
+    """Legacy REST evidence by default; explicit bounded WS context is opt-in.
+
+    Including a WebSocket snapshot describes archived historical executions;
+    it never turns that snapshot or a REST page into a live follower signal.
+    """
+    if include_ws:
+        fills,coverage,refs,_=load_research_fill_evidence(store,network,address,cutoff_ms,
+            ws_start_ms=ws_start_ms,limits=ws_limits)
+        return fills,coverage,refs
+    return _load_rest_fills(store,network,address,cutoff_ms)
+
+
+def _load_rest_fills(store, network, address, cutoff_ms):
     cutoff_utc = _event_time(cutoff_ms)
     rows = store.connection.execute(
         "select * from raw_observations where network=? and source='hyperliquid-population-rest-v1' "
@@ -121,6 +146,197 @@ def _load_fills(store, network, address, cutoff_ms):
         'note': ('Counts are deduplicated observations within archived request windows, not an exhaustive account history. '
             'REST recorder marks source pages incomplete; page exhaustion is not retention proof.')}
     return fills, coverage, refs
+
+
+def _economic_value(key,value):
+    if value is None:return None
+    if key in _FILL_NUMBERS:
+        try:
+            number=_d(value)
+            if not number.is_finite():raise ValueError('Nonfinite execution value')
+            return number
+        except ArithmeticError as exc:raise ValueError('Invalid execution value') from exc
+    if key in _FILL_IDS:return str(value)
+    return canonical(value)
+
+
+def research_fill_source_manifest(store,network,address,cutoff_ms,*,ws_start_ms,limits=None):
+    """Authorized, bounded metadata witness; no raw payload or cache read."""
+    bounds={**RESEARCH_FILL_LIMITS,**(limits or {})}
+    if (set(bounds)!=set(RESEARCH_FILL_LIMITS) or any(type(v) is not int or v<1 for v in bounds.values())
+            or type(cutoff_ms) is not int or type(ws_start_ms) is not int
+            or not 0<=ws_start_ms<=cutoff_ms):
+        raise ValueError('Explicit bounded research-fill window and resource limits required')
+    address=address.lower()
+    if not authorized_account_history(store,network,address,cutoff_ms):
+        raise PermissionError('Research fills intersect an unreleased reserved account period')
+    deadline=time.monotonic()+bounds['max_duration_ms']/1000
+    def check():
+        if time.monotonic()>=deadline:raise ValueError('Research fill decoding time limit exceeded; no partial summary')
+    sources={}
+    for kind,where,params,maximum in (
+            ('rest',"network=? and source='hyperliquid-population-rest-v1' and entity_type='account' "
+             "and entity_id=? and endpoint in ('userFills','userFillsByTime') and observed_at<=? "
+             'and (window_end_ms is null or window_end_ms<=?)',
+             (network,address,_event_time(cutoff_ms),cutoff_ms),bounds['max_rest_pages']),
+            ('ws',"network=? and source='hyperliquid-websocket-v1' and entity_type='account' "
+             "and entity_id=? and endpoint='userFills' and observed_at>=? and observed_at<=?",
+             (network,address,_event_time(ws_start_ms),_event_time(cutoff_ms)),bounds['max_ws_lots'])):
+        check();store.connection.set_progress_handler(lambda:int(time.monotonic()>=deadline),10000)
+        try:
+            rows=store.connection.execute('select observation_id,response_sha256,observed_at,requested_at,'
+                'window_start_ms,window_end_ms,record_count,complete,endpoint,request_json from raw_observations where '
+                +where+' order by observation_id limit ?',(*params,maximum+1)).fetchall()
+        except sqlite3.OperationalError as exc:
+            if time.monotonic()>=deadline:raise ValueError('Research fill metadata time limit exceeded') from exc
+            raise
+        finally:store.connection.set_progress_handler(None,0)
+        if len(rows)>maximum:raise ValueError('Research '+kind+' lot limit exceeded; choose an explicit narrower window')
+        sources[kind]=rows
+    check()
+    return {'sources':{kind:[dict(row) for row in rows] for kind,rows in sources.items()},
+        'resource_limits':bounds,'ws_start_ms':ws_start_ms,'cutoff_ms':cutoff_ms}
+
+
+def load_research_fill_evidence(store,network,address,cutoff_ms,*,ws_start_ms,limits=None):
+    """Merge authorized REST history and an exact, separately bounded WS window.
+
+    Returns fills, coverage, raw references and per-fill observation provenance.
+    Shared economic disagreements exclude the identity; optional transport/API
+    fields do not create fictitious duplicate trades. No acquisition occurs.
+    """
+    from .population_local_join import _decode_verified as bounded_decode, _ms
+    started=time.monotonic()
+    manifest=research_fill_source_manifest(store,network,address,cutoff_ms,
+        ws_start_ms=ws_start_ms,limits=limits)
+    address=address.lower();bounds=manifest['resource_limits'];sources=manifest['sources']
+    deadline=started+bounds['max_duration_ms']/1000
+    def check():
+        if time.monotonic()>=deadline:raise ValueError('Research fill decoding time limit exceeded; no partial summary')
+    variants=defaultdict(list);refs=[];counts=Counter();page_status=Counter();decoded=Counter()
+    for kind,rows in sources.items():
+        for meta in rows:
+            check()
+            row=store.connection.execute('select * from raw_observations where observation_id=?',
+                (meta['observation_id'],)).fetchone()
+            if row is None or row['response_sha256']!=meta['response_sha256']:
+                raise ValueError('Research fill source identity changed')
+            payload,size=bounded_decode(row,max_decoded_bytes=bounds['max_decoded_bytes_per_lot'],with_size=True)
+            decoded[kind]+=size
+            if decoded[kind]>bounds['max_decoded_bytes_per_source']:
+                raise ValueError('Research '+kind+' decoded-byte limit exceeded; no partial summary')
+            request=json.loads(row['request_json'] or '{}')
+            ref={'kind':'raw_observation','id':str(row['observation_id']),'source':row['source'],
+                'endpoint':row['endpoint'],'sha256':row['response_sha256'],'observed_at':row['observed_at'],
+                'requested_at':row['requested_at'],'window_start_ms':row['window_start_ms'],
+                'window_end_ms':row['window_end_ms'],'record_count':row['record_count'],
+                'complete':bool(row['complete']),'pagination_status':request.get('pagination_status','not_rest' if kind=='ws' else 'unknown')}
+            refs.append(ref)
+            if kind=='rest':
+                page_status[ref['pagination_status']]+=1
+                frames=[(None,_get_fill_array(payload),None)]
+            else:
+                batched=isinstance(payload,dict) and isinstance(payload.get('events'),list)
+                rawframes=payload['events'] if batched else [{'message':payload}]
+                frames=[]
+                for frame_index,frame in enumerate(rawframes):
+                    if frame_index%128==0:check()
+                    counts['ws_frames_decoded']+=1
+                    if not isinstance(frame,dict) or not isinstance(frame.get('message'),dict):
+                        counts['ws_invalid_frame']+=1;continue
+                    message=frame['message'];data=message.get('data')
+                    if (message.get('channel')!='userFills' or not isinstance(data,dict)
+                            or not isinstance(data.get('user'),str) or data['user'].lower()!=address
+                            or not isinstance(data.get('fills'),list)):
+                        counts['ws_scope_or_schema_rejected']+=1;continue
+                    received=None
+                    if batched:
+                        try:received=_ms(frame.get('received_at'))
+                        except (TypeError,ValueError):counts['ws_invalid_frame_receipt']+=1;continue
+                        if not ws_start_ms<=received<=cutoff_ms or received>_ms(meta['observed_at']):
+                            counts['ws_frame_receipt_outside_window']+=1;continue
+                    snapshot=data.get('isSnapshot')
+                    category='snapshot' if snapshot is True else 'non_snapshot' if snapshot is False else 'unknown'
+                    counts['ws_'+category+'_frames']+=1
+                    frames.append((frame_index,data['fills'],{'is_snapshot':snapshot,'snapshot_status':category,
+                        'frame_received_ms':received,'frame_receipt_status':'frame.received_at' if batched else 'unknown; archive availability only'}))
+            for frame_index,values,frame_proof in frames:
+                if not isinstance(values,list):raise ValueError('Archived fill array is not a list')
+                counts[kind+'_decoded_records']+=len(values)
+                maximum=bounds['max_rest_records'] if kind=='rest' else bounds['max_ws_records']
+                if counts[kind+'_decoded_records']>maximum:
+                    raise ValueError('Research '+kind+' record limit exceeded; no partial summary')
+                for index,fill in enumerate(values):
+                    if index%128==0:check()
+                    if (not isinstance(fill,dict) or fill.get('tid') is None
+                            or type(fill.get('time')) is not int or fill['time']<0):
+                        counts['rows_missing_identity_or_time']+=1;continue
+                    if fill['time']>cutoff_ms:counts['records_after_cutoff_excluded']+=1;continue
+                    if kind=='ws' and fill['time']<ws_start_ms:
+                        counts['ws_events_before_declared_window']+=1;continue
+                    proof={'source':kind,'observation_id':meta['observation_id'],'sha256':meta['response_sha256'],
+                        'available_ms':_ms(meta['observed_at']),'frame_index':frame_index,
+                        'live_follower_signal':False}
+                    if frame_proof:proof.update(frame_proof)
+                    variants[str(fill['tid'])].append((fill,proof))
+    fills=[];receipts={};conflicts=[];incomplete=[];duplicates=0
+    for index,(tid,items) in enumerate(sorted(variants.items())):
+        if index%128==0:check()
+        duplicates+=len(items)-1
+        shared={};bad=False
+        for fill,_ in items:
+            for key in _FILL_SHARED_FIELDS&fill.keys():
+                try:value=_economic_value(key,fill[key])
+                except ValueError:bad=True;continue
+                if key in shared and shared[key]!=value:bad=True
+                shared[key]=value
+        if bad:conflicts.append(tid);continue
+        # Prefer REST for stable legacy representation; enrich missing fields
+        # only with actual observations from the same nonconflicting identity.
+        merged={}
+        for fill,_ in reversed(sorted(items,key=lambda x:(x[1]['source']!='rest',x[1]['available_ms'],x[1]['observation_id']))):
+            merged.update(fill)
+        has_ws=any(proof['source']=='ws' for _,proof in items)
+        if has_ws and (not _REQUIRED_WS_ECONOMICS<=merged.keys()
+                or merged.get('side') not in {'A','B'} or type(merged.get('crossed')) is not bool
+                or not isinstance(merged.get('coin'),str) or not merged['coin']
+                or not isinstance(merged.get('feeToken'),str)
+                or any(merged.get(key) is None for key in _REQUIRED_WS_ECONOMICS)):
+            incomplete.append(tid);continue
+        fills.append(merged)
+        receipts[tid]=sorted([proof for _,proof in items],key=lambda p:(p['available_ms'],p['source'],p['observation_id']))
+    fills.sort(key=lambda fill:(fill['time'],str(fill['coin']),str(fill['tid'])))
+    times=[fill['time'] for fill in fills];allrows=[row for rows in sources.values() for row in rows]
+    coverage={'version':'rest-ws-research-fill-merge-v1','raw_observation_count':len(allrows),
+        'decoded_record_count':counts['rest_decoded_records']+counts['ws_decoded_records'],
+        'unique_fill_id_count':len(variants),'usable_unique_fill_count':len(fills),
+        'duplicate_fill_instances':duplicates,'conflicting_fill_identity_count':len(conflicts),
+        'conflicting_fill_id_examples':conflicts[:20],'incomplete_economic_identity_count':len(incomplete),
+        'incomplete_economic_id_examples':incomplete[:20],
+        'rows_missing_identity_or_time':counts['rows_missing_identity_or_time'],
+        'records_after_cutoff_excluded':counts['records_after_cutoff_excluded'],
+        'first_observed_at':min((r['observed_at'] for r in allrows),default=None),
+        'last_observed_at':max((r['observed_at'] for r in allrows),default=None),
+        'first_fill_event_ms':min(times,default=None),'last_fill_event_ms':max(times,default=None),
+        'first_fill_event_utc':_event_time(min(times)) if times else None,
+        'last_fill_event_utc':_event_time(max(times)) if times else None,
+        'unbounded_request_window_count':sum(r['window_end_ms'] is None for r in sources['rest']),
+        'raw_observation_complete_true_count':sum(bool(r['complete']) for r in allrows),
+        'raw_observation_complete_false_count':sum(not bool(r['complete']) for r in allrows),
+        'pagination_status_counts':dict(sorted(page_status.items())),
+        'source_windows':{'rest':'all authorized archived request windows through cutoff',
+            'websocket':{'received_and_event_start_ms':ws_start_ms,'cutoff_ms':cutoff_ms,
+                'snapshot_is_historical_context_only':True,'live_follower_signal_created':False}},
+        'source_counts':dict(sorted(counts.items())),'source_decoded_bytes':dict(decoded),
+        'usable_fill_provenance':{
+            'rest_observed_fill_count':sum(any(p['source']=='rest' for p in ps) for ps in receipts.values()),
+            'ws_observed_fill_count':sum(any(p['source']=='ws' for p in ps) for ps in receipts.values()),
+            'both_sources_fill_count':sum({p['source'] for p in ps}=={'rest','ws'} for ps in receipts.values()),
+            'ws_snapshot_observed_fill_count':sum(any(p.get('is_snapshot') is True for p in ps) for ps in receipts.values()),
+            'live_follower_signal_created':False},
+        'resource_limits':bounds,'retention_proven':False,'continuity_proven':False,
+        'note':'REST history and a separately declared bounded WS window are merged by observed identity; gaps, omitted older WS events and snapshot uncertainty remain explicit. No live follower signal is created.'}
+    check();return fills,coverage,refs,receipts
 
 
 def _load_funding(store, network, address, cutoff_ms):
@@ -343,7 +559,8 @@ def _market_summaries(fills, funding_events, declared_scope_markets):
     return output
 
 
-def prepare_candidate_summary(store, network, address, *, cutoff_ms, candidate=None):
+def prepare_candidate_summary(store, network, address, *, cutoff_ms, candidate=None,
+        include_ws=False, ws_start_ms=None, ws_limits=None):
     """Build a stable, cutoff-bound summary without acquisition or external calls."""
     address=address.lower()
     if type(cutoff_ms) is not int or cutoff_ms<0:
@@ -357,7 +574,8 @@ def prepare_candidate_summary(store, network, address, *, cutoff_ms, candidate=N
         raise ValueError('No authorized account-scope report available at cutoff')
     report=json.loads(report_row['payload_json'])
     report_hash=hashlib.sha256(report_row['payload_json'].encode('utf-8')).hexdigest()
-    fills,fill_coverage,fill_refs=_load_fills(store,network,address,cutoff_ms)
+    fills,fill_coverage,fill_refs=_load_fills(store,network,address,cutoff_ms,
+        include_ws=include_ws,ws_start_ms=ws_start_ms,ws_limits=ws_limits)
     funding,funding_coverage,funding_refs=_load_funding(store,network,address,cutoff_ms)
     scope_profile=report.get('current_pass_behavior_profile') or {}
     summary={
@@ -377,19 +595,22 @@ def prepare_candidate_summary(store, network, address, *, cutoff_ms, candidate=N
         'evidence_refs':[f"account_scope_reports:{report_row['report_id']}#sha256:{report_hash}",
             *[f"raw_observations:{row['id']}#sha256:{row['sha256']}"
                 for row in fill_refs+funding_refs]],
-        'limits':['Archive coverage is bounded by the recorded REST requests; no retention prefix or continuous-history claim.',
+        'limits':[('Archive coverage combines recorded REST requests and the declared bounded WS window; snapshots describe historical executions only.'
+            if include_ws else 'Archive coverage is bounded by the recorded REST requests; no retention prefix or continuous-history claim.'),
             'Position chains are local arithmetic reconstructions only; listed ruptures are not bridged.',
             'Price results include only locally bounded flat-to-flat or reversal episodes, in each market quote unit.',
             'Signed fees remain in their archived fee token and are not merged with price result.',
             'Funding remains separate in the archived USDC field; only exact strict-interior position matches are attributed.',
             'No trader intent, unfilled orders, queue priority or external hedge is inferred.']}
     summary['evidence_fingerprint']=fingerprint({'version':VERSION,'network':network,'address':address,
-        'cutoff_ms':cutoff_ms,'evidence_refs':summary['evidence_refs']})
+        'cutoff_ms':cutoff_ms,'evidence_refs':summary['evidence_refs'],
+        **({'fill_source_windows':fill_coverage['source_windows']} if include_ws else {})})
     summary['summary_fingerprint']=fingerprint(summary)
     return summary
 
 
-def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, market):
+def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, market,
+        include_ws=False, ws_start_ms=None, ws_limits=None):
     """Prepare a reusable, cutoff-bound detail for one declared market.
 
     This describes observed executions and locally coherent position paths; it
@@ -399,7 +620,8 @@ def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, marke
         raise ValueError('An exact market symbol is required')
     if not authorized_account_history(store,network,address.lower(),cutoff_ms):
         raise PermissionError('Account history intersects an unreleased reserved period at cutoff')
-    fills,coverage,refs=_load_fills(store,network,address.lower(),cutoff_ms)
+    fills,coverage,refs=_load_fills(store,network,address.lower(),cutoff_ms,
+        include_ws=include_ws,ws_start_ms=ws_start_ms,ws_limits=ws_limits)
     fills=[f for f in fills if f.get('coin')==market]
     chain=start_position_chain_summary(fills,include_fill_events=True)
     ordered=chain.get('ordered_segment_fill_events',[])
@@ -539,7 +761,8 @@ def prepare_candidate_market_detail(store, network, address, *, cutoff_ms, marke
             'Maker/taker grouping uses the archived crossed flag; it does not reveal why or where an order was placed.']}
     result['evidence_fingerprint']=fingerprint({'schema_version':result['schema_version'],
         'network':network,'address':address.lower(),'market':market,'cutoff_ms':cutoff_ms,
-        'evidence_refs':result['evidence_refs']})
+        'evidence_refs':result['evidence_refs'],
+        **({'fill_source_windows':coverage['source_windows']} if include_ws else {})})
     result['detail_fingerprint']=fingerprint(result)
     return result
 
@@ -683,7 +906,8 @@ def _compact_repeated_reference_lists(packet):
 
 
 def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, policy_version, cutoff_ms,
-        local_analysis_report=None, local_analysis_protocol=None):
+        local_analysis_report=None, local_analysis_protocol=None,
+        include_ws=False, ws_start_ms=None, ws_limits=None):
     """Build the ordinary pilot packet, optionally binding an authorized immutable report.
 
     The report-derived projection and finite local-analysis contract are added
@@ -691,9 +915,11 @@ def prepare_pilot_packet(store, base_packet, *, candidate, item, pilot_id, polic
     for validating the persisted report and its existing authorization first.
     """
     summary=prepare_candidate_summary(store,base_packet['network'],base_packet['address'],
-        cutoff_ms=cutoff_ms,candidate=candidate)
+        cutoff_ms=cutoff_ms,candidate=candidate,include_ws=include_ws,
+        ws_start_ms=ws_start_ms,ws_limits=ws_limits)
     details=[prepare_candidate_market_detail(store,base_packet['network'],base_packet['address'],
-        cutoff_ms=cutoff_ms,market=market) for market in item.get('descriptive_markets',[])]
+        cutoff_ms=cutoff_ms,market=market,include_ws=include_ws,
+        ws_start_ms=ws_start_ms,ws_limits=ws_limits) for market in item.get('descriptive_markets',[])]
     packet=enrich_research_packet(base_packet,summary,details)
     if (local_analysis_report is None) != (local_analysis_protocol is None):
         raise ValueError('Local-analysis report and protocol metadata must be supplied together')

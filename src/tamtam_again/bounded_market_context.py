@@ -13,6 +13,7 @@ import zlib
 
 from .engine import canonical, fingerprint
 from .population_descriptive import _load_fills
+from . import population_descriptive
 from .population_local_join import _decode_verified, _event_iso, _ms, _quote_values, _ranked
 from .research_memory import authorized_account_history
 from .validation import now_ms
@@ -162,6 +163,61 @@ def _fills(store, network, address, market, cutoff, limits, sources, budget):
         store.connection.execute('insert into bounded_market_context_fill_cache values(?,?) '
             'on conflict(input_fingerprint) do update set payload=excluded.payload', (key, encoded))
     return payload, False
+
+
+def _research_fills(store, network, address, cutoff, ws_start, limits, budget):
+    """Cache typed bounded evidence against its exact source/window witness."""
+    ws_limits = {'max_rest_pages': limits['max_fill_pages'],
+        'max_rest_records': limits['max_fill_records'],
+        'max_ws_lots': 20_000, 'max_ws_records': 500_000,
+        'max_decoded_bytes_per_source': limits['max_fill_decoded_bytes'],
+        'max_decoded_bytes_per_lot': limits['max_decoded_bytes_per_lot'],
+        'max_duration_ms': limits['max_duration_ms']}
+    budget.check()
+    ws_limits['max_duration_ms'] = max(1, int((budget.deadline-time.monotonic())*1000))
+    manifest = population_descriptive.research_fill_source_manifest(
+        store, network, address, cutoff, ws_start_ms=ws_start, limits=ws_limits)
+    budget.check()
+    manifest['resource_limits']['max_duration_ms'] = limits['max_duration_ms']
+    key = fingerprint({'version': VERSION, 'kind': 'rest-ws-descriptive-fills',
+        'network': network, 'address': address, 'sources': manifest})
+    cached = store.connection.execute(
+        'select payload from bounded_market_context_fill_cache where input_fingerprint=?',
+        (key,)).fetchone()
+    if cached:
+        payload = json.loads(zlib.decompress(cached[0]))
+        budget.check()
+        return payload, manifest
+    ws_limits['max_duration_ms'] = max(1, int((budget.deadline-time.monotonic())*1000))
+    fills, coverage, refs, receipts = population_descriptive.load_research_fill_evidence(
+        store, network, address, cutoff, ws_start_ms=ws_start, limits=ws_limits)
+    budget.check()
+    payload = {'fills': fills, 'coverage': coverage, 'source_refs': refs,
+        'receipts': {tid: {'fill_evidence_receipts': proofs} for tid, proofs in receipts.items()}}
+    encoded = zlib.compress(canonical(payload).encode(), 6)
+    budget.check()
+    with store.connection:
+        store.connection.execute('insert or ignore into bounded_market_context_fill_cache values(?,?)',
+            (key, encoded))
+    return payload, manifest
+
+
+def _semantic_rows(rows):
+    # Later duplicate receipts enrich provenance without a semantic retry.
+    selected = []
+    for row in rows:
+        value = dict(row)
+        if 'fill_evidence_receipts' in value:
+            earliest = {}
+            for proof in value['fill_evidence_receipts']:
+                key = (proof['source'], canonical(proof.get('is_snapshot')), proof.get('snapshot_status'))
+                rank = lambda p: (p['available_ms'], p.get('frame_received_ms') or p['available_ms'],
+                    str(p['observation_id']), p.get('frame_index') or 0)
+                if key not in earliest or rank(proof) < rank(earliest[key]):
+                    earliest[key] = proof
+            value['fill_evidence_receipts'] = sorted(earliest.values(), key=canonical)
+        selected.append(value)
+    return selected
 
 
 def _quote_sources(store, network, market, cutoff, start, end, feed, limits, budget):
@@ -344,23 +400,33 @@ def _groups(rows, budget):
     return result
 
 
-def prepare_market_context(store, *, network, address, market, cutoff_ms, limits=None):
+def prepare_market_context(store, *, network, address, market, cutoff_ms, limits=None,
+        include_ws=False, ws_start_ms=None):
     """Persist a bounded descriptive proof; unchanged manifests skip decoding.
 
     Refusals raise ContextBoundError/ValueError with no partial result published.
     Root callers can mark that subject technical and continue their queue.
+    WS observations require an explicit frozen window and remain descriptive,
+    including snapshots; REST-only callers retain the legacy path.
     """
     bounds = _limits(limits)
     budget = _Budget(bounds['max_duration_ms'])
     address = address.lower()
     if type(cutoff_ms) is not int or cutoff_ms < 0 or not isinstance(market, str) or not market:
         raise ValueError('Explicit context scope and nonnegative cutoff required')
+    if type(include_ws) is not bool or (include_ws and (type(ws_start_ms) is not int
+            or not 0 <= ws_start_ms <= cutoff_ms)):
+        raise ValueError('WS context requires an explicit nonnegative descriptive window start')
     if not authorized_account_history(store, network, address, cutoff_ms):
         raise PermissionError('Context includes an unreleased reserved account period')
     budget.check()
     store.connection.executescript(SCHEMA)
-    fill_sources = _fill_sources(store, network, address, cutoff_ms, bounds, budget)
-    fill_data, _ = _fills(store, network, address, market, cutoff_ms, bounds, fill_sources, budget)
+    if include_ws:
+        fill_data, fill_sources = _research_fills(
+            store, network, address, cutoff_ms, ws_start_ms, bounds, budget)
+    else:
+        fill_sources = _fill_sources(store, network, address, cutoff_ms, bounds, budget)
+        fill_data, _ = _fills(store, network, address, market, cutoff_ms, bounds, fill_sources, budget)
     all_market = [f for f in fill_data['fills'] if f.get('coin') == market]
     if not all_market:
         return {'version': VERSION, 'status': 'data_absent', 'market': market,
@@ -373,7 +439,10 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
     quote_start = max(0, start-bounds['quote_lookback_ms'])
     quote_sources = {feed: _quote_sources(store, network, market, cutoff_ms, quote_start,
         end, feed, bounds, budget) for feed in ('bbo', 'l2Book')}
-    input_fp = fingerprint({'version': VERSION, 'network': network, 'address': address,
+    ws_identity = ({'include_ws': True, 'ws_start_ms': ws_start_ms,
+        'selected_fill_receipts': {str(f['tid']): fill_data['receipts'].get(str(f['tid']), {})
+            for f in fills}} if include_ws else {})
+    input_fp = fingerprint({**ws_identity, 'version': VERSION, 'network': network, 'address': address,
         'market': market, 'fill_sources': fill_sources, 'quote_sources': quote_sources,
         'selected_fill_fingerprint': fingerprint(all_market), 'limits': bounds})
     budget.check()
@@ -389,6 +458,11 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
             'selection_rule': 'all observed market fills in the final 24h (configured maximum), anchored to latest fill, never PnL'},
         'fill_coverage': fill_data['coverage'], 'fill_source_refs': fill_data['source_refs'],
         'quote_source_manifest': quote_sources, 'limits': bounds, 'feeds': {}}
+    if include_ws:
+        result['fill_source_manifest'] = fill_sources
+        result['descriptive_fill_policy'] = {'include_ws': True, 'ws_start_ms': ws_start_ms,
+            'ws_end_ms_inclusive': cutoff_ms, 'live_follower_signal': False,
+            'snapshots': 'descriptive observations only; never live follower signals'}
     for feed, sources in quote_sources.items():
         quotes, decoding = _quotes(store, sources, market, cutoff_ms, quote_start, end, bounds, budget)
         rows, coverage = _join(fills, quotes, start, end, fill_data['receipts'], budget)
@@ -408,7 +482,8 @@ def prepare_market_context(store, *, network, address, market, cutoff_ms, limits
     # for actual selected prefill facts, not for wholly post-fill market updates.
     semantic = fingerprint({'version': VERSION,
         'scope': {k:v for k,v in result['scope'].items() if k != 'other_market_fills'}, 'market': market,
-        'feeds': {feed: {'rows': data['rows'], 'coverage': data['coverage'], 'groups': data['groups']}
+        'feeds': {feed: {'rows': _semantic_rows(data['rows']) if include_ws else data['rows'],
+            'coverage': data['coverage'], 'groups': data['groups']}
             for feed, data in result['feeds'].items()}})
     result_fp = fingerprint(result)
     budget.check()

@@ -282,6 +282,78 @@ class BoundedMarketContextTests(unittest.TestCase):
             self.run_context()
         self.assertEqual(self.store.connection.execute('select count(*) from bounded_market_context_results').fetchone()[0],0)
 
+    def ws_fills(self, *, stamp=BASE+3000, fills=None, snapshot=False):
+        fill = {'tid': 50, 'coin': 'ETH', 'time': BASE+1000, 'side': 'B',
+            'px': '100', 'sz': '1', 'startPosition': '0', 'crossed': True,
+            'closedPnl': '0', 'fee': '0.01', 'feeToken': 'USDC'}
+        message = {'channel': 'userFills', 'data': {'user': ADDRESS,
+            'isSnapshot': snapshot, 'fills': [fill] if fills is None else fills}}
+        lot = self.save({'events': [{'received_at': _event_iso(stamp), 'message': message}]},
+            endpoint='userFills', stamp=stamp, account=True)
+        self.store.connection.execute('update raw_observations set source=? where observation_id=?',
+            ('hyperliquid-websocket-v1', lot))
+        self.store.connection.commit()
+        return lot, fill
+
+    def test_ws_only_fills_join_strict_quotes_and_snapshots_remain_descriptive(self):
+        lot, _ = self.ws_fills(snapshot=True)
+        self.quote(BASE+500)
+        self.assertEqual(self.run_context()['status'], 'data_absent')
+        result = self.run_context(include_ws=True, ws_start_ms=BASE)
+        proof = load_result(self.store, result['result_fingerprint'])
+        row = proof['feeds']['bbo']['rows'][0]
+        self.assertEqual(row['strict_prefill_quote']['event_ms'], BASE+500)
+        receipt = row['fill_evidence_receipts'][0]
+        self.assertEqual(receipt['observation_id'], lot)
+        self.assertEqual(receipt['frame_received_ms'], BASE+3000)
+        self.assertTrue(receipt['is_snapshot'])
+        self.assertFalse(receipt['live_follower_signal'])
+        self.assertFalse(proof['descriptive_fill_policy']['live_follower_signal'])
+        self.assertEqual(len(proof['fill_source_manifest']['sources']['ws']), 1)
+
+    def test_ws_context_cache_reuses_typed_evidence_and_duplicate_has_no_semantic_retry(self):
+        self.ws_fills()
+        self.quote(BASE+500)
+        first = self.run_context(include_ws=True, ws_start_ms=BASE)
+        with patch('tamtam_again.population_descriptive.load_research_fill_evidence',
+                side_effect=AssertionError('decoded unchanged typed evidence')), patch(
+                'tamtam_again.bounded_market_context._decode_verified',
+                side_effect=AssertionError('decoded unchanged quotes')):
+            cached = self.run_context(include_ws=True, ws_start_ms=BASE)
+        self.assertEqual(cached['cache'], 'unchanged')
+        self.ws_fills(stamp=BASE+4000)
+        second = self.run_context(include_ws=True, ws_start_ms=BASE)
+        self.assertEqual(first['semantic_fingerprint'], second['semantic_fingerprint'])
+        proof = load_result(self.store, second['result_fingerprint'])
+        self.assertEqual(len(proof['feeds']['bbo']['rows'][0]['fill_evidence_receipts']), 2)
+
+    def test_ws_actual_new_fill_invalidates_cache_and_rest_history_is_preserved(self):
+        self.fills()
+        self.ws_fills()
+        self.quote(BASE+500)
+        first = self.run_context(include_ws=True, ws_start_ms=BASE)
+        _, fill = self.ws_fills(stamp=BASE+4000, fills=[])
+        self.ws_fills(stamp=BASE+5000, fills=[{**fill, 'tid': 51, 'time': BASE+4500}])
+        second = self.run_context(include_ws=True, ws_start_ms=BASE)
+        self.assertEqual(first['scope']['included_market_fills'], 3)
+        self.assertEqual(second['scope']['included_market_fills'], 4)
+        self.assertNotEqual(first['semantic_fingerprint'], second['semantic_fingerprint'])
+
+    def test_ws_future_and_pre_window_exclusions_and_explicit_window(self):
+        _, fill = self.ws_fills()
+        self.ws_fills(stamp=BASE+4000, fills=[{**fill, 'tid': 51, 'time': BASE+20_000},
+            {**fill, 'tid': 52, 'time': BASE-1}])
+        result = self.run_context(include_ws=True, ws_start_ms=BASE)
+        proof = load_result(self.store, result['result_fingerprint'])
+        self.assertEqual([r['tid'] for r in proof['feeds']['bbo']['rows']], ['50'])
+        with self.assertRaisesRegex(ValueError, 'explicit'):
+            self.run_context(include_ws=True)
+        with patch('tamtam_again.bounded_market_context.authorized_account_history', return_value=False), \
+                patch('tamtam_again.population_descriptive.research_fill_source_manifest',
+                    side_effect=AssertionError('scanned reserved WS evidence')):
+            with self.assertRaises(PermissionError):
+                self.run_context(include_ws=True, ws_start_ms=BASE)
+
     def test_reserved_account_refused_before_decoding_or_cache_access(self):
         with patch('tamtam_again.bounded_market_context.authorized_account_history',return_value=False), \
                 patch('tamtam_again.bounded_market_context._decode_verified',side_effect=AssertionError('decoded reserve')):

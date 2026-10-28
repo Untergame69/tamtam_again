@@ -196,7 +196,7 @@ def get_variant(store: Store, variant_id: str) -> tuple[Any,dict[str,Any],dict[s
     return row,json.loads(row["spec_json"]),json.loads(row["plan_json"])
 
 
-def promotion(metrics_normal: dict[str,Any], stressed: dict[str,Any], criteria: dict[str,Any]) -> list[str]:
+def promotion(metrics_normal: dict[str,Any], stressed: dict[str,Any], criteria: dict[str,Any], *, funding_completeness_required: bool = False) -> list[str]:
     failures = []
     checks = {
         "net_edge_after_costs": number(metrics_normal["net_pnl"]) > max(number(criteria["min_net_pnl"]),number(metrics_normal["benchmark_cash_net_pnl"])),
@@ -211,6 +211,11 @@ def promotion(metrics_normal: dict[str,Any], stressed: dict[str,Any], criteria: 
         "funding_observed": not criteria["require_funding"] or metrics_normal["funding_events"] > 0,
         "uninterrupted_observation": not metrics_normal["diagnostics"],
     }
+    if funding_completeness_required:
+        # Both execution scenarios may hold different inventory at a boundary.
+        checks["funding_observed"]=(not criteria["require_funding"] or all(
+            metric.get("funding_coverage",{}).get("state")=="complete"
+            for metric in (metrics_normal,stressed)))
     failures.extend(key for key,passed in checks.items() if not passed)
     return failures
 
@@ -316,9 +321,11 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
         # Bonferroni over the PREDECLARED maximum trial count, rather than the
         # number seen so far; later variants cannot weaken earlier decisions.
         adjusted_alpha = float(number(criteria["confidence_alpha"])) / plan["budget"]["max_runs"]
-        normal = replay(spec,events,block_ms=criteria["block_ms"],confidence_alpha=adjusted_alpha)
-        stress = replay(spec,events,block_ms=criteria["block_ms"],stress=criteria["stress_multiplier"],confidence_alpha=adjusted_alpha)
-        failures = promotion(normal["metrics"],stress["metrics"],criteria)
+        normal = replay(spec,events,block_ms=criteria["block_ms"],confidence_alpha=adjusted_alpha,observation_window=interval)
+        stress = replay(spec,events,block_ms=criteria["block_ms"],stress=criteria["stress_multiplier"],confidence_alpha=adjusted_alpha,observation_window=interval)
+        failures = promotion(normal["metrics"],stress["metrics"],criteria,
+            funding_completeness_required=not row["synthetic"] or
+                "funding_observation_interval_ms" in spec["execution"])
         result = {"evaluation_id":evaluation_id,"variant_id":variant_id,"stage":stage,
                   "status":"failed" if failures else "passed", "synthetic":bool(row["synthetic"]),
                   "promotable":stage == "final" and not failures and not row["synthetic"],

@@ -59,6 +59,9 @@ def validate_spec(spec: dict[str, Any]) -> None:
         raise ValueError("Unsupported entry/exit rules")
     if spec["execution"].get("kind") not in {"market_ioc", "passive_conservative"}:
         raise ValueError("Unsupported execution model")
+    funding_interval=spec["execution"].get("funding_observation_interval_ms")
+    if funding_interval is not None and (type(funding_interval) is not int or funding_interval<=0):
+        raise ValueError("Positive observed funding settlement interval required")
     quote_contract=spec["execution"].get("quote_evidence_contract")
     if quote_contract is not None:
         if quote_contract!="bbo_or_l2book_v1" or not {"bbo","l2Book"}<=set(spec["data_sources"]):
@@ -117,7 +120,7 @@ def initial_state(spec: dict[str, Any]) -> dict[str, Any]:
             "signals_received": 0, "max_exposure_notional_usdc": "0", "wait_conditions": [],
             "nonexecution_reasons": {},
             "exit_uncertainties": [], "paper_runtime": {},
-            "leader_target": "0", "regimes": [], "funding_events": 0, "risk_halted": False, "peak_equity": str(spec["starting_capital_usdc"]), "processing_lags_ms": []}
+            "leader_target": "0", "regimes": [], "funding_settlements": {}, "funding_events": 0, "risk_halted": False, "peak_equity": str(spec["starting_capital_usdc"]), "processing_lags_ms": []}
 
 
 def quote_status(state: dict[str, Any], now: int, execution: dict[str, Any]) -> str:
@@ -559,11 +562,32 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
     elif kind == "funding":
         # Rate is applied to OUR position at this funding event; leader's USDC
         # funding payment is never reused. Event mark is an observed input.
-        effective_position = sum((number(f["size"]) for f in state["fills"] if f["received_ms"] <= exchange), Decimal(0))
-        payment = effective_position * number(event["unit_funding_usdc"]) if "unit_funding_usdc" in event else -effective_position * number(event["mark"]) * number(event["rate"])
-        state["cash"] = str(number(state["cash"]) + payment)
-        state["funding"] = str(number(state["funding"]) + payment)
-        state["funding_events"] += 1
+        coefficient = (number(event["unit_funding_usdc"]) if "unit_funding_usdc" in event
+                       else -number(event["mark"]) * number(event["rate"]))
+        settlements=state.setdefault("funding_settlements",{})
+        previous=settlements.get(str(exchange))
+        ambiguous=any(f["received_ms"]==exchange for f in state["fills"])
+        if ambiguous:
+            state["diagnostics"].append("funding_inventory_at_settlement_ambiguous")
+        if previous is not None:
+            if number(previous["unit_funding_usdc"])!=coefficient:
+                state["diagnostics"].append("conflicting_funding_settlement_coefficients")
+        else:
+            # Fill timestamps are OUR simulated execution/availability times,
+            # not the source fill event times. A delayed receipt uses inventory
+            # at settlement, including a position subsequently closed. Equal-ms
+            # ordering is unknown and must never fabricate a funding payment.
+            effective_position = sum((number(f["size"]) for f in state["fills"]
+                                      if f["received_ms"] < exchange), Decimal(0))
+            settlements[str(exchange)]={"unit_funding_usdc":str(coefficient),
+                "received_ms":receipt,"available_ms":now,
+                "provenance":event.get("provenance"),"evidence_ref":event.get("evidence_ref"),
+                "inventory_at_settlement":None if ambiguous else str(effective_position)}
+            if not ambiguous:
+                payment=effective_position*coefficient
+                state["cash"] = str(number(state["cash"]) + payment)
+                state["funding"] = str(number(state["funding"]) + payment)
+            state["funding_events"] += 1
     elif kind == "regime":
         if event["label"] not in state["regimes"]:
             state["regimes"].append(event["label"])
@@ -588,6 +612,59 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             state["risk_halted"] = True
             state["diagnostics"].append("risk_drawdown_limit")
             _order(state,spec,Decimal(0),now,intent='risk_exit' if spec.get('engine')=='single_perp_v3' else None)
+
+
+def funding_coverage(state: dict[str, Any], spec: dict[str, Any],
+                     observation_window: dict[str,int] | None = None) -> dict[str,Any]:
+    """Audit every settlement at which OUR inventory needed a coefficient.
+
+    Hourly venue settlements use UTC epoch boundaries. A known empty inventory
+    establishes zero cost without inventing an observed settlement or rate.
+    Missing interval/ledger ordering remains unknown, never zero funding.
+    """
+    interval=spec['execution'].get('funding_observation_interval_ms')
+    result={'version':'funding-exposure-coverage-v1','interval_ms':interval,
+            'state':'unknown','required_settlements':[], 'missing_settlements':[],
+            'ambiguous_settlements':[],'observed_settlement_count':len(state.get('funding_settlements',{})),
+            'zero_exposure_settlements':0}
+    if type(interval) is not int or interval<=0:
+        result['reason']='verified_funding_interval_missing';return result
+    if observation_window is None:
+        stamps=[point[0] for point in state['equity_curve']]
+        if not stamps:
+            result['reason']='observation_window_missing';return result
+        observation_window={'start_ms':min(stamps),'end_ms':max(stamps)+1}
+    start,end=observation_window['start_ms'],observation_window['end_ms']
+    if type(start) is not int or type(end) is not int or not 0<=start<end:
+        raise ValueError('Explicit half-open funding observation window required')
+    result['observation_window']=dict(observation_window)
+    first=((start+interval-1)//interval)*interval
+    if max(0,(end-1-first)//interval+1)>100_000:
+        result['reason']='funding_boundary_audit_resource_limit';return result
+    fills=sorted(state['fills'],key=lambda f:f['received_ms'])
+    position=Decimal(0);index=0
+    settlements=state.get('funding_settlements',{})
+    for boundary in range(first,end,interval):
+        while index<len(fills) and fills[index]['received_ms']<boundary:
+            position+=number(fills[index]['size']);index+=1
+        if index<len(fills) and fills[index]['received_ms']==boundary:
+            result['ambiguous_settlements'].append(boundary)
+        elif position:
+            result['required_settlements'].append(boundary)
+            if str(boundary) not in settlements:
+                result['missing_settlements'].append(boundary)
+        else:result['zero_exposure_settlements']+=1
+    malformed=[int(stamp) for stamp in settlements if int(stamp)%interval]
+    result['off_boundary_settlements']=sorted(malformed)
+    funding_diagnostics=[value for value in state['diagnostics'] if value in {
+        'funding_inventory_at_settlement_ambiguous','conflicting_funding_settlement_coefficients'}]
+    result['diagnostics']=sorted(set(funding_diagnostics))
+    result['state']=('incomplete' if result['missing_settlements'] or result['ambiguous_settlements']
+                     or malformed or funding_diagnostics else 'complete')
+    result['cost_basis']=('funding_cost_incomplete_or_ambiguous' if result['state']!='complete' else
+                          'observed_coefficients_for_every_exposed_boundary' if result['required_settlements'] else
+                          'no_inventory_at_any_settlement_boundary')
+    return result
 
 
 def metrics(state: dict[str, Any], spec: dict[str, Any], block_ms: int, *, confidence_alpha: float = 0.05) -> dict[str, Any]:
@@ -658,16 +735,33 @@ def hold_benchmark(spec: dict[str,Any], events: list[dict[str,Any]], stress: Dec
     exit_price = number(last["bid"])*(1-slip)
     units = min(units,number(first["ask_size"])*number(spec["execution"]["displayed_size_fraction"])/stress,number(spec["max_exposure"]["notional_usdc"])/entry)
     pnl = units*(exit_price-entry) - units*(entry+exit_price)*number(spec["fees"]["taker_bps"])*stress/10000
+    coefficients={}
     for event in ordered:
         if event["kind"] == "funding" and first["event_ms"] < event["event_ms"] <= last["event_ms"]:
-            pnl += units*number(event["unit_funding_usdc"]) if "unit_funding_usdc" in event else -units*number(event["mark"])*number(event["rate"])
+            stamp=int(event["event_ms"])
+            coefficient=(number(event["unit_funding_usdc"]) if "unit_funding_usdc" in event
+                         else -number(event["mark"])*number(event["rate"]))
+            if stamp in coefficients and coefficients[stamp]!=coefficient:
+                return None
+            coefficients[stamp]=coefficient
+    interval=spec['execution'].get('funding_observation_interval_ms')
+    if interval is not None and units:
+        first_boundary=(first['event_ms']//interval+1)*interval
+        if max(0,(last['event_ms']-first_boundary)//interval+1)>100_000:
+            return None
+        if any(boundary not in coefficients for boundary in range(first_boundary,last['event_ms']+1,interval)):
+            # An incompletely funded reference cannot establish an economic
+            # rejection, even when our own strategy was flat at those times.
+            return None
+    pnl+=units*sum(coefficients.values(),Decimal(0))
     return str(pnl)
 
 
-def replay(spec: dict[str, Any], events: list[dict[str, Any]], *, block_ms: int, stress: Any = 1, confidence_alpha: float = 0.05) -> dict[str, Any]:
+def replay(spec: dict[str, Any], events: list[dict[str, Any]], *, block_ms: int, stress: Any = 1, confidence_alpha: float = 0.05, observation_window: dict[str,int] | None = None) -> dict[str, Any]:
     state = initial_state(spec)
     for event in sorted(events, key=lambda e: (e.get("available_ms",e["received_ms"]), e["received_ms"], str(e["id"]))):
         reduce_event(state, spec, event, stress=number(stress))
     summary = metrics(state,spec,block_ms,confidence_alpha=confidence_alpha)
+    summary["funding_coverage"] = funding_coverage(state,spec,observation_window)
     summary["benchmark_matched_size_buy_hold_pnl"] = hold_benchmark(spec,events,number(stress))
     return {"state":state,"metrics":summary,"input_fingerprint":fingerprint(events)}

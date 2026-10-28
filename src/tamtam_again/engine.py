@@ -503,7 +503,7 @@ def _order(state: dict[str, Any], spec: dict[str, Any], target: Decimal, now: in
                          "expires_ms": now + spec["latency_ms"] + spec["execution"]["order_ttl_ms"]}]
 
 
-def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, Any], *, stress: Decimal = Decimal(1)) -> None:
+def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, Any], *, stress: Decimal = Decimal(1), _seen_ids: set[str] | None = None) -> None:
     """Consume ordered local receipts. Equal-ms quotes cannot fill a decision.
 
     Timers execute before the incoming message, so the message being received
@@ -514,13 +514,15 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
     if now < receipt:
         raise ValueError("Availability precedes local receipt")
     event_id = str(event["id"])
-    if event_id in state["seen"]:
+    if event_id in (state["seen"] if _seen_ids is None else _seen_ids):
         return
     if now < state["last_ms"] or exchange > receipt:
         raise ValueError("Noncausal or out-of-order event")
     if stress < 1:
         raise ValueError("Stress multiplier must be >= 1")
     state["seen"].append(event_id)
+    if _seen_ids is not None:
+        _seen_ids.add(event_id)
     state["processing_lags_ms"].append(now-receipt)
     if (spec.get('engine')=='single_perp_v3' and state.get('opened_ms') is not None
             and number(state['position'])!=0 and now-int(state['opened_ms'])>=spec['horizon_ms']):
@@ -884,8 +886,11 @@ def hold_benchmark(spec: dict[str,Any], events: list[dict[str,Any]], stress: Dec
 
 def replay(spec: dict[str, Any], events: list[dict[str, Any]], *, block_ms: int, stress: Any = 1, confidence_alpha: float = 0.05, observation_window: dict[str,int] | None = None) -> dict[str, Any]:
     state = initial_state(spec)
+    # Transient membership index; the persisted, ordered history is unchanged.
+    # A linear-list lookup per quote made multi-day replay quadratic.
+    seen_ids: set[str] = set()
     for event in sorted(events, key=lambda e: (e.get("available_ms",e["received_ms"]), e["received_ms"], str(e["id"]))):
-        reduce_event(state, spec, event, stress=number(stress))
+        reduce_event(state, spec, event, stress=number(stress), _seen_ids=seen_ids)
     summary = metrics(state,spec,block_ms,confidence_alpha=confidence_alpha)
     summary["funding_coverage"] = funding_coverage(state,spec,observation_window)
     summary["benchmark_matched_size_buy_hold_pnl"] = hold_benchmark(spec,events,number(stress))

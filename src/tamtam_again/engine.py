@@ -5,6 +5,7 @@ realized PnL, fees and funding; margin is not a spot purchase cash flow.
 """
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
 from decimal import Decimal, InvalidOperation
 import hashlib
 import json
@@ -65,6 +66,10 @@ def validate_spec(spec: dict[str, Any]) -> None:
     funding_interval=spec["execution"].get("funding_observation_interval_ms")
     if funding_interval is not None and (type(funding_interval) is not int or funding_interval<=0):
         raise ValueError("Positive observed funding settlement interval required")
+    settlement_clock=spec['execution'].get('funding_settlement_clock')
+    if settlement_clock is not None and (settlement_clock!='reported_hour_with_inventory_invariance_v1'
+                                         or funding_interval!=3_600_000):
+        raise ValueError('Reported funding clock requires verified hourly settlement interval')
     quote_contract=spec["execution"].get("quote_evidence_contract")
     if quote_contract is not None:
         if quote_contract!="bbo_or_l2book_v1" or not {"bbo","l2Book"}<=set(spec["data_sources"]):
@@ -590,7 +595,14 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
                        else -number(event["mark"]) * number(event["rate"]))
         settlements=state.setdefault("funding_settlements",{})
         previous=settlements.get(str(exchange))
-        ambiguous=any(f["received_ms"]==exchange for f in state["fills"])
+        reported_clock=spec['execution'].get('funding_settlement_clock')=='reported_hour_with_inventory_invariance_v1'
+        scheduled=(exchange//spec['execution']['funding_observation_interval_ms'])*spec['execution']['funding_observation_interval_ms'] if reported_clock else exchange
+        ambiguous=any(scheduled<=f['received_ms']<=exchange for f in state['fills'])
+        same_slot=[stamp for stamp in settlements if reported_clock and int(stamp)!=exchange
+                   and int(stamp)//spec['execution']['funding_observation_interval_ms']==exchange//spec['execution']['funding_observation_interval_ms']]
+        if same_slot:
+            state['diagnostics'].append('multiple_reported_funding_times_in_slot')
+            ambiguous=True
         if ambiguous:
             state["diagnostics"].append("funding_inventory_at_settlement_ambiguous")
         if previous is not None:
@@ -605,6 +617,8 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
                                       if f["received_ms"] < exchange), Decimal(0))
             settlements[str(exchange)]={"unit_funding_usdc":str(coefficient),
                 "received_ms":receipt,"available_ms":now,
+                "scheduled_ms":scheduled,"reported_ms":exchange,"reported_offset_ms":exchange-scheduled,
+                "settlement_clock":spec["execution"].get("funding_settlement_clock","exact_epoch_v1"),
                 "provenance":event.get("provenance"),"evidence_ref":event.get("evidence_ref"),
                 "archive_response_sha256":event.get("archive_response_sha256"),
                 "source_period":event.get("source_period"),"source_address":event.get("source_address"),
@@ -664,29 +678,50 @@ def funding_coverage(state: dict[str, Any], spec: dict[str, Any],
     if type(start) is not int or type(end) is not int or not 0<=start<end:
         raise ValueError('Explicit half-open funding observation window required')
     result['observation_window']=dict(observation_window)
-    first=((start+interval-1)//interval)*interval
+    reported_clock=spec['execution'].get('funding_settlement_clock')=='reported_hour_with_inventory_invariance_v1'
+    first=(start//interval)*interval if reported_clock else ((start+interval-1)//interval)*interval
+    result['settlement_clock']=spec['execution'].get('funding_settlement_clock','exact_epoch_v1')
     if max(0,(end-1-first)//interval+1)>100_000:
         result['reason']='funding_boundary_audit_resource_limit';return result
     fills=sorted(state['fills'],key=lambda f:f['received_ms'])
+    fill_stamps=[fill['received_ms'] for fill in fills]
     position=Decimal(0);index=0
     settlements=state.get('funding_settlements',{})
+    slots={}
+    for stamp in settlements:
+        actual=int(stamp);slot=actual//interval*interval if reported_clock else actual
+        slots.setdefault(slot,[]).append(actual)
+    result['reported_settlements']=[{'scheduled_ms':slot,'reported_ms':actual,'offset_ms':actual-slot}
+        for slot,actuals in sorted(slots.items()) for actual in sorted(actuals)]
+    result['multiple_reported_time_slots']=[]
+    result['unresolved_report_time_slots']=[]
     for boundary in range(first,end,interval):
         while index<len(fills) and fills[index]['received_ms']<boundary:
             position+=number(fills[index]['size']);index+=1
-        if index<len(fills) and fills[index]['received_ms']==boundary:
+        actuals=slots.get(boundary,[])
+        if reported_clock and len(actuals)>1:
+            result['multiple_reported_time_slots'].append(boundary)
+            result['ambiguous_settlements'].append(boundary)
+        elif reported_clock and actuals and bisect_left(fill_stamps,boundary)<bisect_right(fill_stamps,actuals[0]):
+            result['ambiguous_settlements'].append(boundary)
+        elif index<len(fills) and fills[index]['received_ms']==boundary:
             result['ambiguous_settlements'].append(boundary)
         elif position:
             result['required_settlements'].append(boundary)
-            if str(boundary) not in settlements:
-                result['missing_settlements'].append(boundary)
+            if not actuals:result['missing_settlements'].append(boundary)
+        elif reported_clock and not actuals and bisect_left(fill_stamps,boundary)<bisect_left(fill_stamps,min(end,boundary+interval)):
+            # Without a reported time, a later trade in the bucket might
+            # overlap settlement. Scheduled-time flatness is not proof of zero.
+            result['unresolved_report_time_slots'].append(boundary)
         else:result['zero_exposure_settlements']+=1
-    malformed=[int(stamp) for stamp in settlements if int(stamp)%interval]
+    malformed=[] if reported_clock else [int(stamp) for stamp in settlements if int(stamp)%interval]
     result['off_boundary_settlements']=sorted(malformed)
     funding_diagnostics=[value for value in state['diagnostics'] if value in {
-        'funding_inventory_at_settlement_ambiguous','conflicting_funding_settlement_coefficients'}]
+        'funding_inventory_at_settlement_ambiguous','conflicting_funding_settlement_coefficients',
+        'multiple_reported_funding_times_in_slot'}]
     result['diagnostics']=sorted(set(funding_diagnostics))
     result['state']=('incomplete' if result['missing_settlements'] or result['ambiguous_settlements']
-                     or malformed or funding_diagnostics else 'complete')
+                     or result['unresolved_report_time_slots'] or malformed or funding_diagnostics else 'complete')
     result['cost_basis']=('funding_cost_incomplete_or_ambiguous' if result['state']!='complete' else
                           'observed_coefficients_for_every_exposed_boundary' if result['required_settlements'] else
                           'no_inventory_at_any_settlement_boundary')
@@ -762,24 +797,31 @@ def hold_benchmark(spec: dict[str,Any], events: list[dict[str,Any]], stress: Dec
     units = min(units,number(first["ask_size"])*number(spec["execution"]["displayed_size_fraction"])/stress,number(spec["max_exposure"]["notional_usdc"])/entry)
     pnl = units*(exit_price-entry) - units*(entry+exit_price)*number(spec["fees"]["taker_bps"])*stress/10000
     coefficients={}
+    reported_clock=spec['execution'].get('funding_settlement_clock')=='reported_hour_with_inventory_invariance_v1'
     for event in ordered:
-        if event["kind"] == "funding" and first["event_ms"] < event["event_ms"] <= last["event_ms"]:
-            stamp=int(event["event_ms"])
-            coefficient=(number(event["unit_funding_usdc"]) if "unit_funding_usdc" in event
-                         else -number(event["mark"])*number(event["rate"]))
-            if stamp in coefficients and coefficients[stamp]!=coefficient:
-                return None
-            coefficients[stamp]=coefficient
+        if event['kind']!='funding':continue
+        if not reported_clock and not first['event_ms']<event['event_ms']<=last['event_ms']:continue
+        stamp=int(event['event_ms'])
+        coefficient=(number(event['unit_funding_usdc']) if 'unit_funding_usdc' in event
+                     else -number(event['mark'])*number(event['rate']))
+        if stamp in coefficients and coefficients[stamp]!=coefficient:return None
+        coefficients[stamp]=coefficient
     interval=spec['execution'].get('funding_observation_interval_ms')
     if interval is not None and units:
-        first_boundary=(first['event_ms']//interval+1)*interval
-        if max(0,(last['event_ms']-first_boundary)//interval+1)>100_000:
+        first_boundary=(first['event_ms']//interval)*interval if reported_clock else (first['event_ms']//interval+1)*interval
+        if max(0,(last['event_ms']-first_boundary)//interval+1)>100_000:return None
+        if reported_clock:
+            slots={}
+            for actual in coefficients:slots.setdefault(actual//interval*interval,[]).append(actual)
+            for boundary in range(first_boundary,last['event_ms']+1,interval):
+                actuals=slots.get(boundary,[])
+                if len(actuals)!=1:return None
+                if any(boundary<=stamp<=actuals[0] for stamp in (first['event_ms'],last['event_ms'])):
+                    return None
+        elif any(boundary not in coefficients for boundary in range(first_boundary,last['event_ms']+1,interval)):
             return None
-        if any(boundary not in coefficients for boundary in range(first_boundary,last['event_ms']+1,interval)):
-            # An incompletely funded reference cannot establish an economic
-            # rejection, even when our own strategy was flat at those times.
-            return None
-    pnl+=units*sum(coefficients.values(),Decimal(0))
+    pnl+=units*sum((coefficient for stamp,coefficient in coefficients.items()
+                    if first['event_ms']<stamp<=last['event_ms']),Decimal(0))
     return str(pnl)
 
 

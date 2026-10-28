@@ -25,6 +25,7 @@ class ContinuousPreparationTests(unittest.TestCase):
         self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1',entity_type='market',entity_id='COIN' where observation_id=1")
         self.store.connection.commit()
         self.assertEqual(preparation_sources(*scope)['market'],1)
+
         self.assertTrue(execution_data_readiness(*scope)['market_ws_observed'])
         self.fixture._raw(2,'userFundings',[])
         self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1' where observation_id=2")
@@ -40,6 +41,22 @@ class ContinuousPreparationTests(unittest.TestCase):
         self.store.connection.execute("update raw_observations set source='hyperliquid-websocket-v1',entity_type='market',entity_id='COIN' where observation_id=4")
         self.store.connection.commit()
         self.assertEqual(preparation_sources(*scope)['market'],1)
+
+    def test_one_market_scope_resource_failure_does_not_block_another_account(self):
+        from unittest.mock import patch
+        from tamtam_again.continuous_research import market_proofs
+        inventory={'candidate_evaluations':[{'candidate_id':address,'disposition':'needs_more_evidence',
+            'scope':{'market_count':2,'cutoff_ms':200,'period_start_ms':0}}
+            for address in ('0xone','0xtwo')]}
+        rows=[{'coin':'COIN','time':100}]
+        with patch('tamtam_again.population_descriptive._load_fills',side_effect=[
+                ValueError('bounded WS resource refusal'),(rows,{'continuity_proven':False},['source'])]):
+            proofs=market_proofs(self.store,inventory,self.policy,300)
+        self.assertNotIn(('0xone','COIN'),proofs)
+        self.assertIn(('0xtwo','COIN'),proofs)
+        failure=self.store.connection.execute("select status,result_json from continuous_research_candidates where address='0xone' and market='*'").fetchone()
+        self.assertEqual(failure['status'],'technical_required')
+        self.assertIn('bounded WS resource refusal',failure['result_json'])
 
     def test_actual_archives_produce_scoped_packet_and_conservative_availability(self):
         report={'address':self.fixture.address,'markets':['COIN','OTHER'],

@@ -126,9 +126,11 @@ def market_proofs(store, inventory, policy, clock):
         address=row['candidate_id'].lower();cutoff=scope['cutoff_ms']
         if address in protected:continue
         if not authorized_account_history(store,policy['network'],address,cutoff):continue
-        latest=store.connection.execute("select max(observation_id) from raw_observations where network=? "
-            "and source='hyperliquid-population-rest-v1' and entity_id=? and endpoint in ('userFills','userFillsByTime') and observed_at<=?",
-            (policy['network'],address,_event_time(cutoff))).fetchone()[0]
+        recent=store.connection.execute("select observation_id from raw_observations where network=? "
+            "and entity_type='account' and entity_id=? and source in ('hyperliquid-population-rest-v1','hyperliquid-websocket-v1') "
+            "and endpoint in ('userFills','userFillsByTime') and observed_at<=? order by observed_at desc,observation_id desc limit 1",
+            (policy['network'],address,_event_time(cutoff))).fetchone()
+        latest=recent[0] if recent else None
         old=store.connection.execute('select * from continuous_market_proofs where network=? and address=?',
             (policy['network'],address)).fetchone()
         if old and old['cutoff_ms']==cutoff and old['archive_id']==latest:
@@ -141,14 +143,20 @@ def market_proofs(store, inventory, policy, clock):
             (policy['network'],address)).fetchone()
         decoded={}
         if counts[0]<=2000 and counts[1]<=500000:
-            fills,coverage,refs=_load_fills(store,policy['network'],address,cutoff)
-            by_market=defaultdict(list)
-            for fill in fills:
-                if start<=fill['time']<cutoff:by_market[fill['coin']].append(fill)
-            for market,rows in by_market.items():
-                decoded[market]={'period_start_ms':start,'cutoff_ms':cutoff,'fills':len(rows),
-                    'active_days':len({r['time']//86400000 for r in rows}),
-                    'coverage':coverage,'evidence_ref':'authorized-market-tabulation:'+fingerprint(refs)}
+            try:
+                fills,coverage,refs=_load_fills(store,policy['network'],address,cutoff,
+                    include_ws=True,ws_start_ms=max(0,cutoff-86400000))
+                by_market=defaultdict(list)
+                for fill in fills:
+                    if start<=fill['time']<cutoff:by_market[fill['coin']].append(fill)
+                for market,rows in by_market.items():
+                    decoded[market]={'period_start_ms':start,'cutoff_ms':cutoff,'fills':len(rows),
+                        'active_days':len({r['time']//86400000 for r in rows}),
+                        'coverage':coverage,'evidence_ref':'authorized-market-tabulation:'+fingerprint(refs)}
+            except (ValueError,PermissionError,KeyError,TypeError) as exc:
+                _save_candidate(store,{'network':policy['network'],'address':address,'market':'*'},
+                    fingerprint({'cutoff':cutoff,'archive_id':latest}),
+                    {'status':'technical_required','reason':'Market-scope tabulation failed: '+str(exc)},clock)
         store.connection.execute('insert into continuous_market_proofs values(?,?,?,?,?,?) '
             'on conflict(network,address) do update set cutoff_ms=excluded.cutoff_ms,archive_id=excluded.archive_id,'
             'proof_json=excluded.proof_json,checked_ms=excluded.checked_ms',
@@ -177,19 +185,21 @@ def prepare_packet(store, policy, item):
         max_chars=2000000)
     if base.get('status')!='packet_ready': return base
     packet=prepare_pilot_packet(store,base['packet'],candidate=item['candidate'],item=item,
-        pilot_id=policy['policy_id'],policy_version=policy['version'],cutoff_ms=item['cutoff_ms'])
+        pilot_id=policy['policy_id'],policy_version=policy['version'],cutoff_ms=item['cutoff_ms'],
+        include_ws=True,ws_start_ms=max(0,item['cutoff_ms']-86400000))
     packet['available_ms']=item['cutoff_ms']
     packet['observations']['account_context_markets']=packet['observations'].get('markets',[])
     packet['observations']['markets']=[item['market']]
     packet['research_scope']={'market':item['market'],'admission_activity_start_ms':item['period_start_ms'],
         'archive_receipt_cutoff_ms':item['cutoff_ms'],
-        'detail_period':'all authorized archived history through cutoff; admission activity uses preceding 30 days',
+        'detail_period':'all authorized REST history through cutoff plus explicit preceding 24h WebSocket event/receipt window; admission activity uses preceding 30 days',
         'other_markets':'account context only, not eligible for this hypothesis'}
     packet['observations']['execution_data_readiness']=execution_data_readiness(
         store,policy['network'],item['address'],item['market'],item['cutoff_ms'])
     from .bounded_market_context import prepare_market_context
     context=prepare_market_context(store,network=policy['network'],address=item['address'],
-        market=item['market'],cutoff_ms=item['cutoff_ms'],limits={'max_duration_ms':60000})
+        market=item['market'],cutoff_ms=item['cutoff_ms'],limits={'max_duration_ms':60000},
+        include_ws=True,ws_start_ms=max(0,item['cutoff_ms']-86400000))
     packet['observations']['prefill_market_context_v1']=context
     if context.get('evidence_ref'):packet['evidence_refs'].append(context['evidence_ref'])
     from .execution_research_context import attach_execution_context
@@ -369,7 +379,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                     'join population_research_jobs j using(request_id) where j.network=? and j.address=? and m.available_ms<=?',
                     (policy['network'],item['address'],clock)).fetchone()[0]
             source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
-                'packet_preparation_version':'continuous-prefill-and-execution-context-v3',
+                'packet_preparation_version':'continuous-rest-ws-prefill-and-execution-context-v4',
                 'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes,
                 'preparation_sources':preparation_sources(store,policy['network'],item['address'],item['market'],clock),
                 'feedback_available_ms':feedback_latest})

@@ -70,6 +70,15 @@ def validate_spec(spec: dict[str, Any]) -> None:
     if settlement_clock is not None and (settlement_clock!='reported_hour_with_inventory_invariance_v1'
                                          or funding_interval!=3_600_000):
         raise ValueError('Reported funding clock requires verified hourly settlement interval')
+    exposure_policy=spec['execution'].get('funding_exposure_policy')
+    if exposure_policy is not None:
+        if (exposure_policy!='flat_at_settlement_v1' or spec.get('engine')!='single_perp_v3'
+                or settlement_clock!='reported_hour_with_inventory_invariance_v1'
+                or spec['execution'].get('kind')!='market_ioc'):
+            raise ValueError('Flat-at-settlement policy requires hourly reported clock and priority IOC engine')
+        quote_buffer=spec['execution'].get('max_quote_age_ms',spec['execution'].get('unknown_quote_max_age_ms'))
+        if type(quote_buffer) is not int or quote_buffer<0:
+            raise ValueError('Frozen quote-age funding exit buffer required')
     quote_contract=spec["execution"].get("quote_evidence_contract")
     if quote_contract is not None:
         if quote_contract!="bbo_or_l2book_v1" or not {"bbo","l2Book"}<=set(spec["data_sources"]):
@@ -226,6 +235,21 @@ def _funding_boundary(now: int, interval: int) -> int:
     return (now // interval + 1) * interval
 
 
+def _funding_entry_guard(state,spec,now,target,*,at_execution=False):
+    if (spec['execution'].get('funding_exposure_policy')!='flat_at_settlement_v1'
+            or _is_reduction(number(state['position']),target)):
+        return None
+    interval=spec['execution']['funding_observation_interval_ms'];slot=now//interval*interval
+    reports=[record for record in state.get('funding_settlements',{}).values()
+             if record.get('scheduled_ms')==slot and record['available_ms']<now]
+    if not reports:return 'current_hour_reported_funding_clock_unavailable'
+    buffer=spec['execution'].get('max_quote_age_ms',spec['execution']['unknown_quote_max_age_ms'])
+    lead=spec['horizon_ms']+spec['latency_ms']+spec['execution']['order_ttl_ms']+buffer
+    if not at_execution:lead+=spec['latency_ms']
+    if now+lead>=slot+interval:return 'entry_exit_buffer_overlaps_next_funding_hour'
+    return None
+
+
 def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Decimal) -> None:
     remaining=[]
     for order in state['pending']:
@@ -364,6 +388,15 @@ def _execute_v3(state: dict[str, Any], spec: dict[str, Any], now: int, stress: D
 
 def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Decimal) -> None:
     blocked=[]
+    if spec['execution'].get('funding_exposure_policy')=='flat_at_settlement_v1':
+        accepted=[]
+        for order in state['pending']:
+            reason=_funding_entry_guard(state,spec,now,number(order['target']),at_execution=True)
+            if reason:
+                _miss_order(state,reason)
+                _record_v4_opportunity(state,spec,order,now,eligible=False,outcome='missed',reason=reason)
+            else:accepted.append(order)
+        state['pending']=accepted
     if state.get('funding_cost_status')=='pending':
         allowed=[]
         for order in state['pending']:
@@ -438,6 +471,10 @@ def _execute(state: dict[str, Any], spec: dict[str, Any], now: int, stress: Deci
 
 def _order(state: dict[str, Any], spec: dict[str, Any], target: Decimal, now: int,
            *, intent: str | None = None) -> None:
+    reason=_funding_entry_guard(state,spec,now,target)
+    if reason:
+        _miss_order(state,reason)
+        return
     if state.get('funding_cost_status')=='pending' and not _is_reduction(number(state['position']),target):
         _miss_order(state,'funding_cost_pending_new_exposure')
         return
@@ -598,16 +635,24 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         reported_clock=spec['execution'].get('funding_settlement_clock')=='reported_hour_with_inventory_invariance_v1'
         scheduled=(exchange//spec['execution']['funding_observation_interval_ms'])*spec['execution']['funding_observation_interval_ms'] if reported_clock else exchange
         ambiguous=any(scheduled<=f['received_ms']<=exchange for f in state['fills'])
+        prior_position=sum((number(f['size']) for f in state['fills'] if f['received_ms']<scheduled),Decimal(0))
         same_slot=[stamp for stamp in settlements if reported_clock and int(stamp)!=exchange
                    and int(stamp)//spec['execution']['funding_observation_interval_ms']==exchange//spec['execution']['funding_observation_interval_ms']]
+        last_report=max([exchange,*[int(stamp) for stamp in same_slot]])
+        zero_interval=(not prior_position and not any(scheduled<=f['received_ms']<=last_report for f in state['fills']))
+        def source_issue(kind):
+            issue={'kind':kind,'scheduled_ms':scheduled,'reported_ms':exchange,'event_id':event_id}
+            issues=state.setdefault('funding_source_diagnostics',[])
+            if issue not in issues:issues.append(issue)
+            if not zero_interval and kind not in state['diagnostics']:
+                state['diagnostics'].append(kind)
         if same_slot:
-            state['diagnostics'].append('multiple_reported_funding_times_in_slot')
-            ambiguous=True
-        if ambiguous:
-            state["diagnostics"].append("funding_inventory_at_settlement_ambiguous")
+            source_issue('multiple_reported_funding_times_in_slot')
+            ambiguous=not zero_interval
+        if ambiguous:source_issue('funding_inventory_at_settlement_ambiguous')
         if previous is not None:
-            if number(previous["unit_funding_usdc"])!=coefficient:
-                state["diagnostics"].append("conflicting_funding_settlement_coefficients")
+            if number(previous['unit_funding_usdc'])!=coefficient:
+                source_issue('conflicting_funding_settlement_coefficients')
         else:
             # Fill timestamps are OUR simulated execution/availability times,
             # not the source fill event times. A delayed receipt uses inventory
@@ -650,7 +695,8 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         state["equity_curve"].append([now, str(equity)])
         if number(state["peak_equity"]) - equity >= number(spec["max_exposure"]["max_drawdown_usdc"]) and not state["risk_halted"]:
             state["risk_halted"] = True
-            state["diagnostics"].append("risk_drawdown_limit")
+            state["diagnostics"].append("risk_drawdown_with_unknown_funding" if
+                state.get("funding_cost_status")=="pending" else "risk_drawdown_limit")
             _order(state,spec,Decimal(0),now,intent='risk_exit' if spec.get('engine')=='single_perp_v3' else None)
 
 
@@ -695,12 +741,25 @@ def funding_coverage(state: dict[str, Any], spec: dict[str, Any],
         for slot,actuals in sorted(slots.items()) for actual in sorted(actuals)]
     result['multiple_reported_time_slots']=[]
     result['unresolved_report_time_slots']=[]
+    result['source_data_diagnostics']=list(state.get('funding_source_diagnostics',[]))
+    cost_diagnostics=[]
     for boundary in range(first,end,interval):
         while index<len(fills) and fills[index]['received_ms']<boundary:
             position+=number(fills[index]['size']);index+=1
         actuals=slots.get(boundary,[])
+        issues=[issue['kind'] for issue in state.get('funding_source_diagnostics',[])
+                if issue['scheduled_ms']==boundary]
+        if reported_clock and len(actuals)>1:result['multiple_reported_time_slots'].append(boundary)
+        zero_interval=(not position and actuals and
+            bisect_left(fill_stamps,boundary)==bisect_right(fill_stamps,max(actuals)))
+        if zero_interval:
+            # Any coefficient, including conflicting/unidentified ones, has
+            # exactly zero effect when our inventory was provably zero across
+            # every reported clock possibility. Keep source issues separate.
+            result['zero_exposure_settlements']+=1
+            continue
+        cost_diagnostics.extend(issues)
         if reported_clock and len(actuals)>1:
-            result['multiple_reported_time_slots'].append(boundary)
             result['ambiguous_settlements'].append(boundary)
         elif reported_clock and actuals and bisect_left(fill_stamps,boundary)<bisect_right(fill_stamps,actuals[0]):
             result['ambiguous_settlements'].append(boundary)
@@ -716,12 +775,9 @@ def funding_coverage(state: dict[str, Any], spec: dict[str, Any],
         else:result['zero_exposure_settlements']+=1
     malformed=[] if reported_clock else [int(stamp) for stamp in settlements if int(stamp)%interval]
     result['off_boundary_settlements']=sorted(malformed)
-    funding_diagnostics=[value for value in state['diagnostics'] if value in {
-        'funding_inventory_at_settlement_ambiguous','conflicting_funding_settlement_coefficients',
-        'multiple_reported_funding_times_in_slot'}]
-    result['diagnostics']=sorted(set(funding_diagnostics))
+    result['diagnostics']=sorted(set(cost_diagnostics))
     result['state']=('incomplete' if result['missing_settlements'] or result['ambiguous_settlements']
-                     or result['unresolved_report_time_slots'] or malformed or funding_diagnostics else 'complete')
+                     or result['unresolved_report_time_slots'] or malformed or cost_diagnostics else 'complete')
     result['cost_basis']=('funding_cost_incomplete_or_ambiguous' if result['state']!='complete' else
                           'observed_coefficients_for_every_exposed_boundary' if result['required_settlements'] else
                           'no_inventory_at_any_settlement_boundary')
@@ -762,6 +818,7 @@ def metrics(state: dict[str, Any], spec: dict[str, Any], block_ms: int, *, confi
             "missed_orders": state["missed_orders"], "partial_orders": state["partial_orders"],
             "flat_end": number(state["position"]) == 0, "pending_end": len(state["pending"]),
             "funding_events": state["funding_events"], "diagnostics": sorted(set(state["diagnostics"])),
+            "funding_source_diagnostics":state.get("funding_source_diagnostics",[]),
             "processing_lag_max_ms": max(state["processing_lags_ms"],default=0),
             "confidence_alpha": confidence_alpha,
             "uncertainty_assumption": "descriptive block estimate; independence is not established",

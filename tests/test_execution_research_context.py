@@ -60,7 +60,8 @@ class ExecutionResearchContextTests(unittest.TestCase):
         context = attach_execution_context(packet, ROOT)
         expected={key: original['strategy_template'][key] for key in
             ('max_exposure','fees','slippage','latency_ms','starting_capital_usdc','execution')}
-        expected['execution']={**expected['execution'],'funding_observation_interval_ms':3600000}
+        expected['execution']={**expected['execution'],'funding_observation_interval_ms':3600000,
+            'funding_settlement_clock':'reported_hour_with_inventory_invariance_v1'}
         self.assertEqual(context['scenario'],expected)
         self.assertNotIn('funding_interval_ms',context['scenario']['execution'])
         for key in ('signal', 'sizing', 'horizon_ms', 'market', 'entry', 'exit'):

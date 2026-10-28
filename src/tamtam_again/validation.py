@@ -259,9 +259,25 @@ def classify_evaluation_failures(result: dict[str,Any]) -> dict[str,Any]:
                          'gain_concentration','uncertainty','stress_edge'}:
             economic.append(failure)
         else:evidence.append(failure)
-    state='technical_required' if evidence else 'inconclusive' if sample else 'rejected'
+    stress=result.get('stress_metrics') if isinstance(result.get('stress_metrics'),dict) else {}
+    def complete_zero_funding_path(values):
+        coverage=values.get('funding_coverage',{})
+        return (isinstance(coverage,dict) and coverage.get('state')=='complete'
+            and coverage.get('settlement_clock')=='reported_hour_with_inventory_invariance_v1'
+            and coverage.get('required_settlements')==[]
+            and values.get('flat_end') is True and values.get('pending_end')==0
+            and type(values.get('fills')) is int and values['fills']>=2
+            and values.get('diagnostics')==[])
+    necessary_net_failure=(set(evidence)=={'market_reference'} and not sample
+        and 'net_edge_after_costs' in economic
+        and complete_zero_funding_path(metrics) and complete_zero_funding_path(stress))
+    # A missing buy-and-hold cost cannot rescue a candidate whose completely
+    # known cash result already fails a necessary preregistered net gate.
+    # Acceptance still requires every gate; this never changes failed→passed.
+    state=('rejected' if necessary_net_failure else 'technical_required' if evidence
+        else 'inconclusive' if sample else 'rejected')
     return {'version':'evaluation-failure-classes-v1','state':state,
-            'decision_basis':'incomplete_evaluation_evidence' if evidence else
+            'decision_basis':'known_necessary_net_gate' if necessary_net_failure else 'incomplete_evaluation_evidence' if evidence else
                 'insufficient_sample_or_regime_support' if sample else 'preregistered_economic_gates_failed',
             'evidence_failures':evidence,'sample_failures':sample,'economic_failures':economic}
 

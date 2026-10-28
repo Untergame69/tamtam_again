@@ -1,5 +1,6 @@
 """Missing evidence remains distinct from a measured economic rejection."""
 import json
+from copy import deepcopy
 import unittest
 from tests import test_population_experiments as fixtures
 from tamtam_again.recipe import synthetic_plan, synthetic_events
@@ -12,6 +13,30 @@ from tamtam_again.experiments import select_final
 class EvidenceFailureTests(unittest.TestCase):
     setUp=fixtures.PopulationExperimentTests.setUp
     tearDown=fixtures.PopulationExperimentTests.tearDown
+
+    def test_known_necessary_net_gate_can_reject_without_an_unpriced_benchmark(self):
+        metrics={'funding_coverage':{'state':'complete','required_settlements':[],
+            'settlement_clock':'reported_hour_with_inventory_invariance_v1'},
+            'flat_end':True,'pending_end':0,'fills':4,'diagnostics':[],
+            'net_pnl':'-1','benchmark_matched_size_buy_hold_pnl':None}
+        result={'status':'failed','failures':['net_edge_after_costs','market_reference'],
+            'metrics':metrics,'stress_metrics':deepcopy(metrics)}
+        classified=classify_evaluation_failures(result)
+        self.assertEqual(classified['state'],'rejected')
+        self.assertEqual(classified['decision_basis'],'known_necessary_net_gate')
+        self.assertEqual(classified['evidence_failures'],['market_reference'])
+        self.assertEqual(result['status'],'failed')
+        for failure in ('funding_observed','flat_boundaries','independent_block_volume','regime_coverage'):
+            missing=deepcopy(result);missing['failures'].append(failure)
+            self.assertNotEqual(classify_evaluation_failures(missing)['state'],'rejected')
+        for change in ('exposed','incomplete','no_fills','unresolved_exit','old_clock'):
+            missing=deepcopy(result)
+            if change=='exposed':missing['metrics']['funding_coverage']['required_settlements']=[1000]
+            elif change=='incomplete':missing['stress_metrics']['funding_coverage']['state']='incomplete'
+            elif change=='no_fills':missing['metrics']['fills']=0
+            elif change=='unresolved_exit':missing['metrics']['flat_end']=False
+            else:missing['metrics']['funding_coverage']['settlement_clock']='exact_epoch_v1'
+            self.assertEqual(classify_evaluation_failures(missing)['state'],'technical_required')
 
     def family(self, **criteria):
         plan=synthetic_plan()

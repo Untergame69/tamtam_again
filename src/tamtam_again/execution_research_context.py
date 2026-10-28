@@ -170,6 +170,7 @@ def attach_execution_context(packet, repo_root, *, store=None):
         # is separate from funding_interval_ms, which changes order behaviour
         # by avoiding settlement boundaries in the execution engine.
         scenario['execution']['funding_observation_interval_ms']=market_scope['funding_observation_interval_ms']
+        scenario['execution']['funding_settlement_clock']='reported_hour_with_inventory_invariance_v1'
     witnesses=None
     if store is not None and market_scope.get('state')=='supported' and metadata_resolution.get('state')=='verified':
         witnesses=_freeze_funding_witnesses(packet,store,market_scope)
@@ -186,6 +187,14 @@ def attach_execution_context(packet, repo_root, *, store=None):
         'market_scope': market_scope,
         'metadata_resolution': metadata_resolution or {'state':'sealed_root_references_only'},
         'funding_witness_sources':witnesses,
+        'available_execution_profiles':({
+            'flat_at_settlement_v1':{'engine':'single_perp_v3',
+                'execution_overrides':{'funding_exposure_policy':'flat_at_settlement_v1',
+                    'small_residual_policy':'avoid_uncloseable_residual_v1'},
+                'use':'Optional for independently justified intraday mechanisms only; preserve the proposed entry signal.',
+                'constraints':'Wait for current-hour reported settlement clock before new exposure. Entry must leave horizon, exit latency, TTL and quote-age headroom before the next hour. Actual exits and residual inventory remain audited; intended flatness is not proof.',
+                'funding_claim':'Zero only when the executed ledger proves zero inventory throughout each scheduled-to-reported interval; exposed or ambiguous costs remain unknown.'}}
+            if market_scope.get('state')=='supported' else {}),
         'parameter_status': {
             'fees': 'Configured debit scenario, not our verified venue fee schedule or a maker rebate entitlement.',
             'slippage': 'Configured additional cost scenario, not measured impact.',
@@ -230,7 +239,12 @@ def validate_scenario_spec(context, spec):
     scope=context.get('market_scope',{})
     if scope.get('state')!='supported' or spec.get('market')!=scope.get('market'):
         raise ValueError('Verified matching USDC perpetual metadata required before compilation')
-    if spec.get('engine') not in (None, 'single_perp_v2'):
+    profile=spec.get('execution',{}).get('funding_exposure_policy')
+    selected=context.get('available_execution_profiles',{}).get(profile) if profile is not None else None
+    if profile is not None and not selected:
+        raise ValueError('Only an explicitly supplied optional execution profile can be selected')
+    allowed_engines=(selected['engine'],) if selected else (None,'single_perp_v2')
+    if spec.get('engine') not in allowed_engines:
         # A portfolio or passive model needs a separately supplied scenario,
         # rather than inheriting single-perp assumptions without accounting.
         raise ValueError('Execution context covers only the declared single-perp IOC scenario')
@@ -238,7 +252,8 @@ def validate_scenario_spec(context, spec):
     rules=execution.pop('market_rules',None)
     if rules!=scope['rules']:
         raise ValueError('Execution market rules must equal the verified metadata projection')
-    if (execution!=scenario['execution'] or any(spec.get(key) != scenario[key] for key in
+    expected_execution={**scenario['execution'],**(selected['execution_overrides'] if selected else {})}
+    if (execution!=expected_execution or any(spec.get(key) != scenario[key] for key in
            ('latency_ms', 'starting_capital_usdc'))):
         raise ValueError('Executable base specification must preserve the supplied simulation assumptions')
     costs = spec.get('fees', {})

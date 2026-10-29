@@ -115,7 +115,21 @@ journalctl --user -u tamtam-again-population-research.service -n 30 --no-pager
 PYTHONPATH=src python3 scripts/verify_continuous_research.py --db data/tamtam.sqlite3 --output /tmp/continuous-research-proof.json
 ```
 
-Git : production publiée jusqu'à `7cd33ce` au dernier contrôle ; les corrections
-sont encore dans `codex/autonomous-cycle-20261027`, avant intégration et déploiement.
+Git : les corrections sont intégrées à `main` et publiées jusqu'à `560a773` ;
+la présente mise à jour documentaire les suit. Les deux timers ont été réactivés
+après une intégration lorsque les services étaient inactifs. Les quatre unités
+installées recherche/paper sont identiques aux fichiers versionnés ; les
+collecteurs sont restés actifs. Les deux archives locales préexistantes et
+`data/` restent non suivis et préservés.
+
+Le contrôle après installation conserve neuf appels, 11 essais historiques
+partagés et zéro évaluation réelle ; le rejeu des neuf tâches est sans inférence.
+Le dernier passage de recherche terminé à 07:48:31 UTC précédait l'installation.
+Le prochain passage naturel est annoncé à 08:03:31 UTC le 29 octobre ; il reste
+à observer, sans le présenter comme déjà exécuté. Le quota des trois études du
+29 est consommé ; son renouvellement reste le 30 octobre à 00:00 UTC, sans
+réinitialisation anticipée ni nouveau budget. L'inférence et les futures mesures
+restent à démontrer après ce déploiement.
+
 Aucun nouvel ordre réel, lancement paper ou appel IA manuel n'a été effectué
 pour ces corrections. Les collecteurs existants continuent de fonctionner.

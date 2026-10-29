@@ -44,6 +44,8 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
     # indexes; forcing a table scan there would make pipeline evaluations scan
     # the entire multi-gigabyte live archive.
     observation_source = "raw_observations NOT INDEXED" if after_observation_id > 0 else "raw_observations"
+    entity_index=any(row[1]=='idx_observations_entity_time'
+        for row in store.connection.execute('pragma index_list(raw_observations)')) if after_observation_id==0 else False
     clauses=[("bbo","entity_type='market' AND entity_id=? AND endpoint='bbo'",(coin,))]
     if include_l2book:
         clauses.append(("l2Book","entity_type='market' AND entity_id=? AND endpoint='l2Book'",(coin,)))
@@ -54,7 +56,7 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
         # Historical single-entity windows must not scan every market sharing
         # the same endpoint. Keep the primary-key cursor seek for live ticks.
         source=("raw_observations INDEXED BY idx_observations_entity_time"
-                if after_observation_id==0 and name!='health' else observation_source)
+                if after_observation_id==0 and entity_index and name!='health' else observation_source)
         batch = store.connection.execute('SELECT * FROM '+source+' WHERE '+common+' AND '+clause,params+extra).fetchall()
         clause_metrics[name] = {"query_ms": round((monotonic_ns()-query_started)/1_000_000, 3),
                                 "rows": len(batch)}

@@ -23,7 +23,7 @@ def run_recipe(output,*,observation_followup=False):
         'final_duration_ms':6000,'criteria':synthetic_plan()['criteria'],
         'budget':synthetic_plan()['budget'],'isolation':'unavailable'}}
     calls=[]
-    def inference(policy,prompt):
+    def inference(policy,prompt,*,on_response=None):
         calls.append(clock[0])
         usage={'cost_usd':0,'cost_status':'synthetic_fixture','duration_ms':0}
         if prompt.startswith('Review'):

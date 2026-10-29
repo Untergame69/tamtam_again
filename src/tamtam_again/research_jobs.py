@@ -15,7 +15,11 @@ def request_count(store):
             # does not reserve a shared model call. Count it only on activation.
             if kind=='paper':
                 columns={r[1] for r in store.connection.execute('pragma table_info(paper_research_jobs)')}
-                if 'activated_ms' in columns:
+                if 'status' not in columns:
+                    # Minimal legacy registries cannot prove non-activation.
+                    # Count every retained row rather than refund unknown work.
+                    total+=store.connection.execute('select count(*) from paper_research_jobs').fetchone()[0]
+                elif 'activated_ms' in columns:
                     total+=store.connection.execute("select count(*) from paper_research_jobs where activated_ms is not null or status in ('sealed','running','interrupted','suspended','failed','error','timeout','expired','hypothesis_recorded','needs_data','non_identifiable','unsupported_mechanism','reject')").fetchone()[0]
                 else:
                     # Before activation timestamps existed, only non-archived

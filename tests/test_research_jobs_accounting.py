@@ -6,6 +6,12 @@ from tamtam_again.research_jobs import request_count
 
 
 class SharedAccountingTests(unittest.TestCase):
+    def test_minimal_legacy_registry_cannot_refund_unknown_attempts(self):
+        connection=sqlite3.connect(':memory:');self.addCleanup(connection.close)
+        connection.execute('create table paper_research_jobs(request_id text)')
+        connection.executemany('insert into paper_research_jobs values(?)',[('unknown-1',),('unknown-2',)])
+        self.assertEqual(request_count(SimpleNamespace(connection=connection)),2)
+
     def store(self, *, pilot=False, continuous=False, activation=True):
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)

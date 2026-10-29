@@ -51,7 +51,11 @@ def archive_events(store: Store, network: str, address: str, coin: str, start_ms
                     ("health","entity_type='stream' AND endpoint='streamHealth'",())])
     for name,clause,extra in clauses:
         query_started = monotonic_ns()
-        batch = store.connection.execute('SELECT * FROM '+observation_source+' WHERE '+common+' AND '+clause,params+extra).fetchall()
+        # Historical single-entity windows must not scan every market sharing
+        # the same endpoint. Keep the primary-key cursor seek for live ticks.
+        source=("raw_observations INDEXED BY idx_observations_entity_time"
+                if after_observation_id==0 and name!='health' else observation_source)
+        batch = store.connection.execute('SELECT * FROM '+source+' WHERE '+common+' AND '+clause,params+extra).fetchall()
         clause_metrics[name] = {"query_ms": round((monotonic_ns()-query_started)/1_000_000, 3),
                                 "rows": len(batch)}
         rows.extend(batch)

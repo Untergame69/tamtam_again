@@ -1,12 +1,12 @@
 # Boucle autonome — preuve de bout en bout
 
-État au 28 octobre 2026 : **mission en cours, critère de fin non atteint**.
+État au 29 octobre 2026 : **mission en cours, critère de fin non atteint**.
 Cette fiche sera complétée par les identifiants du cycle réel ; une recette
 synthétique ou une correction du worker ne suffit pas à le déclarer démontré.
 
 ## Preuves déjà obtenues
 
-- Le worker de production a choisi six sujets les 27 et 28 octobre, dans les
+- Le worker de production a choisi neuf sujets les 27, 28 et 29 octobre, dans les
   enveloppes de trois études/six appels par jour. Leurs décisions restent
   descriptives, `needs_data`, `unsupported_mechanism` ou `non_identifiable`.
   Aucun de ces résultats ne contient une règle exécutable revue.
@@ -21,6 +21,17 @@ synthétique ou une correction du worker ne suffit pas à le déclarer démontr�
   `usdc/szi` distincts et des timestamps légèrement après l'heure ronde. Leur
   égalité exacte et une frontière à la milliseconde zéro seraient des hypothèses
   invalides. Aucun résultat économique n'a été fabriqué à partir de ces écarts.
+- Le contrôle en lecture seule du 29 octobre a retrouvé neuf appels conservés,
+  le compteur historique partagé à 11/8 et zéro évaluation réelle. Les trois
+  études du 29 ont été faites par l'ancienne version encore installée ; elles
+  ne démontrent pas les corrections présentes dans la branche de travail.
+- La préparation réelle vérifiée le 29 octobre produit un paquet ETH de
+  204 998 caractères en 32,394 s et un prompt de 214 494 caractères, sous les
+  plafonds inchangés de 225 000 / 260 000. La calibration vérifie 64 enveloppes,
+  345 681 octets décodés et 113 coefficients du marché dans la fenêtre bornée.
+  Les deux profils optionnels passent les contrôles de paramètres après
+  projection. Aucun signal ou hypothèse n'a été inventé pour ce contrôle,
+  aucun appel IA et aucun plan prospectif n'ont été créés.
 
 ## Corrections raccordées dans la branche de travail
 
@@ -45,11 +56,39 @@ La première étude quotidienne privilégie les observations exploitables d'un
 compte déjà instrumenté ; les autres créneaux conservent la découverte et la
 rotation. Cette priorité décrit la disponibilité des preuves, pas la rentabilité.
 
+Le rejeu utilise désormais un index temporaire pour dédupliquer les identifiants,
+sans modifier le ledger persistant. Le contrôle synthétique de performance donne
+0,061 / 0,252 / 0,635 s pour 10 001 / 40 001 / 100 001 événements. Ce contrôle ne
+prouve ni une stratégie ni le temps d'une évaluation réelle complète. Les lectures
+historiques utilisent l'index compte/marché–temps existant, sans scanner tous les
+marchés d'un même endpoint.
+
+L'utilisateur a autorisé le 28 octobre un scénario de coûts prudent, **sans
+promotion sur cette seule preuve**. Le scénario fige le plus grand coefficient
+horaire absolu d'un échantillon autorisé borné comme débit symétrique sur notre
+inventaire, quel que soit son côté. C'est une sensibilité choisie : ni borne
+physique des coûts futurs, ni réconciliation des arrondis de la plateforme.
+Les paiements observés et leurs désaccords restent séparés. Le scénario ne
+modifie aucun quota ou critère et ne définit pas le signal de trading.
+
+Ce profil est optionnel et figé avant les observations futures. Il interdit
+sélection finale et paper, même si ses critères numériques passent. Une fois ses
+comparaisons terminées et le délai de libération existant écoulé, sa finale
+inutilisée peut être abandonnée administrativement : fenêtres et marqueur de
+consommation conservés, aucune évaluation finale inventée et aucune réutilisation
+comme réserve vierge. Les plans ordinaires gardent leur cycle initial.
+
+Les 358 tests de régression pertinents ont réussi avant la dernière correction
+de projection ; les 108 tests concernés par cette correction ont ensuite réussi.
+Une revue indépendante a vérifié les frontières comptables et l'interdiction de
+promotion, puis la projection, avec 61 tests ciblés et une compilation de fixture
+identique avant/après projection. Ces contrôles ne remplacent pas le cycle réel.
+
 ## Conditions de fin encore à prouver
 
 | Transition | État |
 |---|---|
-| Admission automatique d'un candidat | Observée sur six sujets |
+| Admission automatique d'un candidat | Observée sur neuf sujets |
 | Hypothèse exécutable et critique persistées | Non démontrées sur le parcours nouveau |
 | Règle et critères figés avant données nouvelles | Aucun nouveau plan réel |
 | Évaluation interprétable sur ces données | Aucune évaluation réelle enregistrée |
@@ -57,9 +96,9 @@ rotation. Cette priorité décrit la disponibilité des preuves, pas la rentabil
 | Action suivante exécutée sans retouche du dossier | Progression descriptive observée ; cycle scientifique attendu |
 
 Les enveloppes IA et les fenêtres prospectives existantes restent inchangées.
-Le renouvellement quotidien n'efface aucun essai historique. Un scénario de
-financement empirique éventuel exige une qualification explicite de ses limites ;
-il ne peut pas être présenté comme un coût de venue exactement réconcilié.
+Le renouvellement quotidien n'efface aucun essai historique. Le scénario de
+financement conserve ses limites explicites ; il ne peut pas être présenté
+comme un coût de plateforme exactement réconcilié.
 
 ## Références et supervision
 

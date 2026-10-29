@@ -75,7 +75,8 @@ class ExecutionContractBindingTests(unittest.TestCase):
         response=deepcopy(self.response)
         response['hypothesis']['experiment_profile']['hypothesis_id']=runtime.request
         if reference is not None:response['hypothesis']['executable_spec']['execution']['funding_sensitivity_scenario']=reference
-        runtime.s.connection.execute('update population_research_jobs set packet_json=?',(canonical(self.packet),))
+        runtime.s.connection.execute('update population_research_jobs set packet_json=?,policy_json=?',
+            (canonical(self.packet),canonical({**runtime.policy,'max_prompt_chars':100000})))
         runtime.s.connection.commit()
         raw=canonical(response);critique={'decision':'consistent','diagnostic':'fixture review','wake':{}}
         with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',side_effect=[(raw,runtime.usage),(canonical(critique),runtime.usage)]) as caller:

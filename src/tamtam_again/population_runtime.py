@@ -108,6 +108,7 @@ def sealed_section_reference_paths(packet, allowed_refs):
 
 
 def validate_response(response,packet,*,request_id=None):
+    if 'model_packet_view' in packet:raise ValueError('Model packet views cannot be used for validation')
     from .research import CallContractError
     diagnostic=response.get('diagnostic')
     if not ((isinstance(diagnostic,str) and diagnostic.strip()) or (isinstance(diagnostic,dict) and diagnostic)) or not isinstance(response.get('wake'),dict):
@@ -196,7 +197,8 @@ def validate_response(response,packet,*,request_id=None):
 
 def build_proposal_prompt(packet,request_id):
     from .population_compilation import compiler_contract
-    encoded=canonical(packet)
+    from .sealed_references import model_packet_view, MODEL_REFERENCE_INSTRUCTIONS
+    encoded=canonical(model_packet_view(packet))
     if packet.get('schema_version')=='paper-local-evidence-analysis-v1':
         instructions='''Answer in French from this compact, deterministic summary and its cited archived evidence.
 Question: do these enriched archives sharpen the proposed execution mechanism and support a useful future test despite irrecoverable historical causal links?
@@ -240,10 +242,10 @@ When supplied, funding_sensitivity_v1 is a separate user-authorized adverse cost
                 'An incompatible mechanism should route to a technical task; it does not establish economic invalidity. '
                 'Do not request historical links or completeness that the packet marks irrecoverable.')
     if packet.get('evidence_reference_projection'):
-        instructions += '''\nThe raw85 reference notation is lossless: it contains the observation id and every SHA-256 byte in base85. Cite the exact listed reference or an admitted section path. Reference indices address the original expanded pool in the same order; no reference was dropped.
+        instructions += '''\nThe sealed source uses lossless raw85 archive references; the displayed root pool uses proof_ref aliases instead. Reference indices and fingerprints still address the original expanded sealed pool in the same order; no reference was dropped.
 Position-record tables retain every record and value. For each group, layout integers index the full field vector; constants fill fixed indices, columns name indices provided by each row, and rows contain [record identity, varying cells]. Mapping identities are segment keys; list identities are original positions. These are exact tables, not selected examples or a statistical subsample.'''
     return ('Propose a falsifiable mechanism from this sealed paper evidence. No tools exist.\n'
-        +instructions+'\nCompiler contract:\n'+canonical(compiler_contract())+
+        +instructions+'\n'+MODEL_REFERENCE_INSTRUCTIONS+'\nCompiler contract:\n'+canonical(compiler_contract())+
         '\nRequest id: '+request_id+'\nPacket:\n'+encoded)
 
 
@@ -407,7 +409,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
         checkpoint()
         source_proposal=parse_response(raw);artifacts['source_proposal']=deepcopy(source_proposal)
         checkpoint()
-        proposal=deepcopy(source_proposal)
+        from .sealed_references import bind_model_evidence_refs, model_packet_view, MODEL_REFERENCE_INSTRUCTIONS
+        proposal,evidence_bindings=bind_model_evidence_refs(source_proposal,packet)
+        artifacts['evidence_reference_bindings']=evidence_bindings
         from .population_compilation import bind_execution_contracts
         if proposal.get('decision')=='hypothesis':
             proposal['hypothesis'],bindings=bind_execution_contracts(
@@ -427,7 +431,7 @@ Return JSON: decision consistent|needs_data|non_identifiable|unsupported_mechani
 Review any optional executable_spec and experiment_profile for fidelity to the hypothesis, causal inputs,
 parameter evidence and explicit missing requirements. A sealed:<fingerprint> funding sensitivity reference selects the exact contract already supplied in packet.execution_research_context; runtime has bound and fully validated it. Review that selection against the supplied contract. Do not rewrite them or set promotion criteria.
 Consistent remains a hypothesis requiring prospective evaluation, not proof of an advantage.
-Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(source_proposal)
+'''+MODEL_REFERENCE_INSTRUCTIONS+'\nPacket:\n'+canonical(model_packet_view(packet))+'\nProposal:\n'+canonical(source_proposal)
             raw,measured=bounded_call(prompt);artifacts['raw_critique']=raw
             checkpoint()
             critique=parse_response(raw);artifacts['critique']=critique

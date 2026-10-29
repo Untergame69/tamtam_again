@@ -15,7 +15,9 @@ def market_content(packet, market):
         raise ValueError('Complete per-market economic projection required')
     # Coverage receipt counts, duplicate counts, reference indices and provenance
     # fingerprints must not turn an equivalent page receipt into market evidence.
-    return {key: detail[key] for key in ECONOMIC_DETAIL_FIELDS}
+    from .position_projection import restore_position_path
+    return {key:restore_position_path(detail[key]) if key=='position_path' else detail[key]
+        for key in ECONOMIC_DETAIL_FIELDS}
 
 
 def wake_identities(packet):
@@ -30,7 +32,8 @@ def wake_identities(packet):
     wakes = packet.get('observations', {}).get('completed_observation_requests', [])
     if not isinstance(wakes, list):
         raise ValueError('Verified completed observation requests required')
-    pool = packet.get('evidence_refs', [])
+    from .sealed_references import expanded_evidence_refs
+    pool = expanded_evidence_refs(packet)
     identities = set()
     for wake in wakes:
         if not isinstance(wake, dict):
@@ -202,7 +205,8 @@ def _legacy_fill_identity(store, packet, market):
         return None
     refs = detail.get('evidence_refs')
     if refs is None:
-        pool = packet.get('evidence_refs', [])
+        from .sealed_references import expanded_evidence_refs
+        pool = expanded_evidence_refs(packet)
         indices = detail.get('evidence_ref_indices', [])
         if not indices or any(type(i) is not int or not 0 <= i < len(pool) for i in indices):
             return None

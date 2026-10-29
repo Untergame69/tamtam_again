@@ -297,7 +297,8 @@ def adapt_eth_evidence_paths_v1(response, packet):
     refs = hypothesis.get('evidence_refs') if isinstance(hypothesis, dict) else None
     if not isinstance(refs, list) or not refs or any(not isinstance(ref, str) for ref in refs):
         raise ValueError('Evidence refs must be a nonempty list of strings')
-    allowed = set(packet.get('evidence_refs', []))
+    from .sealed_references import expanded_evidence_refs
+    allowed = set(packet.get('evidence_refs', []))|set(expanded_evidence_refs(packet))
     observations = packet.get('observations', {})
     details = observations.get('market_execution_detail_v1', {})
     descriptive = observations.get('descriptive_history_v1', {})

@@ -250,6 +250,21 @@ def _project_other_markets(store, packet, market, available_ms):
     summary['projection_scope']='All selected-market aggregates retained; other markets are activity context only; full source is losslessly archived.'
     summary.pop('summary_fingerprint',None);summary['summary_fingerprint']=fingerprint(summary)
     observations=packet['observations']
+    from .position_projection import compact_position_path,compact_records
+    detail=observations.get('market_execution_detail_v1',{}).get(market)
+    if isinstance(detail,dict) and isinstance(detail.get('position_path'),dict):
+        packed=compact_position_path(detail['position_path'])
+        if packed!=detail['position_path']:
+            detail['position_path']=packed
+            detail['display_projection']={'version':'position-record-table-v1',
+                'source_detail_fingerprint':detail['detail_fingerprint'],
+                'full_detail_reference':'continuous_research_projections:'+source}
+            detail.pop('detail_fingerprint',None);detail['detail_fingerprint']=fingerprint(detail)
+    for selected in summary.get('markets',{}).values():
+        positions=selected.get('positions',{})
+        if 'position_chain_segments' in positions:
+            positions['position_chain_segments']=compact_records(positions['position_chain_segments'])
+    summary.pop('summary_fingerprint',None);summary['summary_fingerprint']=fingerprint(summary)
     mechanisms=observations.get('market_mechanisms')
     if isinstance(mechanisms,list):
         observations['market_mechanisms']=[row for row in mechanisms if row.get('instrument')==market]
@@ -269,6 +284,8 @@ def _project_other_markets(store, packet, market, available_ms):
                 'full_context_reference':'continuous_research_projections:'+source}
             context.pop('fingerprint',None);context['fingerprint']=fingerprint(context)
     packet['evidence_refs'].append('continuous_research_projections:'+source)
+    from .sealed_references import compact_evidence_refs
+    compact_evidence_refs(packet)
 
 
 def _seal(store, policy, item, prepared, clock):
@@ -418,7 +435,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                     'join population_research_jobs j using(request_id) where j.network=? and j.address=? and m.available_ms<=?',
                     (policy['network'],item['address'],clock)).fetchone()[0]
             source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
-                'packet_preparation_version':'continuous-rest-ws-prefill-and-execution-profiles-v5',
+                'packet_preparation_version':'continuous-lossless-position-and-reference-projection-v6',
                 'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes,
                 'preparation_sources':preparation_sources(store,policy['network'],item['address'],item['market'],clock),
                 'feedback_available_ms':feedback_latest})

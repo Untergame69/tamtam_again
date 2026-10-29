@@ -72,7 +72,8 @@ def _safe_response_parts(response):
 def sealed_section_reference_paths(packet, allowed_refs):
     """Finite section identities anchored to the unchanged, sealed evidence pool."""
     from .engine import fingerprint
-    pool=packet.get('evidence_refs',[])
+    from .sealed_references import expanded_evidence_refs
+    pool=expanded_evidence_refs(packet)
     observations=packet.get('observations',{})
     sources=set()
     def source_backed(section):
@@ -160,7 +161,8 @@ def validate_response(response,packet,*,request_id=None):
         raise CallContractError({'stage':'result_validation','code':'hypothesis_market_out_of_scope',
             'field':'hypothesis.markets','observed':hypothesis['markets'],
             'limit':packet['observations'].get('markets',[])})
-    allowed_refs=set(packet['evidence_refs'])
+    from .sealed_references import expanded_evidence_refs
+    allowed_refs=set(packet['evidence_refs'])|set(expanded_evidence_refs(packet))
     behavior=packet['observations'].get('current_pass_behavior_profile') or {}
     allowed_refs.update(behavior.get('evidence_refs',[]))
     for mechanism in packet['observations'].get('market_mechanisms',[]):
@@ -237,6 +239,9 @@ When supplied, funding_sensitivity_v1 is a separate user-authorized adverse cost
                 '\nKeep research interest, observability, and compatibility with the current paper engine as separate judgments. '
                 'An incompatible mechanism should route to a technical task; it does not establish economic invalidity. '
                 'Do not request historical links or completeness that the packet marks irrecoverable.')
+    if packet.get('evidence_reference_projection'):
+        instructions += '''\nThe raw85 reference notation is lossless: it contains the observation id and every SHA-256 byte in base85. Cite the exact listed reference or an admitted section path. Reference indices address the original expanded pool in the same order; no reference was dropped.
+Position-record tables retain every record and value. For each group, layout integers index the full field vector; constants fill fixed indices, columns name indices provided by each row, and rows contain [record identity, varying cells]. Mapping identities are segment keys; list identities are original positions. These are exact tables, not selected examples or a statistical subsample.'''
     return ('Propose a falsifiable mechanism from this sealed paper evidence. No tools exist.\n'
         +instructions+'\nCompiler contract:\n'+canonical(compiler_contract())+
         '\nRequest id: '+request_id+'\nPacket:\n'+encoded)

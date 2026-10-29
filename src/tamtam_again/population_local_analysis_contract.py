@@ -83,7 +83,8 @@ def validate_contract(packet: dict, contract: dict) -> dict:
     if source.get('report_ref') != report_reference(source):
         raise LocalAnalysisContractError('source_reference_invalid', 'source.report_ref',
             source.get('report_ref'), report_reference(source))
-    refs = packet.get('evidence_refs')
+    from .sealed_references import expanded_evidence_refs
+    refs = expanded_evidence_refs(packet)
     if not isinstance(refs, list) or source['report_ref'] not in refs:
         raise LocalAnalysisContractError('source_not_sealed', 'source.report_ref', source['report_ref'],
             'exact reference present in sealed packet evidence_refs')

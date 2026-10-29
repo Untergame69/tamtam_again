@@ -26,7 +26,8 @@ def compiler_contract():
 
 
 def packet_references(packet):
-    refs=set(packet.get('evidence_refs',[]))
+    from .sealed_references import expanded_evidence_refs
+    refs=set(packet.get('evidence_refs',[]))|set(expanded_evidence_refs(packet))
     observations=packet.get('observations',{})
     refs.update((observations.get('current_pass_behavior_profile') or {}).get('evidence_refs',[]))
     for mechanism in observations.get('market_mechanisms',[]):refs.update(mechanism.get('evidence_refs',[]))

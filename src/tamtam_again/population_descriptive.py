@@ -935,7 +935,8 @@ def enrich_research_packet(packet, summary, market_details=None):
 
 def _compact_repeated_reference_lists(packet):
     """Represent repeated reference lists as exact indices into the sealed pool."""
-    pool=packet.get('evidence_refs',[])
+    from .sealed_references import expanded_evidence_refs
+    pool=expanded_evidence_refs(packet)
     indices={ref:index for index,ref in enumerate(pool)}
     observations=packet.get('observations',{})
     sections=[(observations.get('descriptive_history_v1'), 'summary_fingerprint')]

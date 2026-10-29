@@ -66,6 +66,10 @@ def _tick(store: Store, *, fixtures=None, chronological=False) -> dict[str,Any]:
         if row["synthetic"] and fixtures is None:
             continue
         for stage in ("comparison","final"):
+            if stage=='final' and 'funding_sensitivity_scenario' in spec['execution']:
+                reports.append({'variant_id':variant[0],'status':'exploratory_complete',
+                    'diagnostic':'Chosen funding sensitivity cannot authorize a final reserve or paper'})
+                break
             if (fixtures is None or chronological) and now_ms() < plan[stage]["end_ms"]:
                 decision(store,row["network"],row["address"],row["coin"],"needs_data",f"{stage} window not complete",
                          {"received_until_ms":plan[stage]["end_ms"]},"evaluate_unchanged_variant",{"variant_id":variant[0]})

@@ -70,6 +70,13 @@ def validate_spec(spec: dict[str, Any]) -> None:
     if settlement_clock is not None and (settlement_clock!='reported_hour_with_inventory_invariance_v1'
                                          or funding_interval!=3_600_000):
         raise ValueError('Reported funding clock requires verified hourly settlement interval')
+    sensitivity=spec['execution'].get('funding_sensitivity_scenario')
+    if sensitivity is not None:
+        from .funding_sensitivity import validate_scenario
+        validate_scenario(sensitivity,market=spec['market'])
+        if (spec.get('engine')!='single_perp_v3' or spec['execution'].get('funding_exposure_policy') is not None
+                or spec['execution'].get('kind')!='market_ioc'):
+            raise ValueError('Funding sensitivity requires priority IOC engine and excludes flat policy')
     exposure_policy=spec['execution'].get('funding_exposure_policy')
     if exposure_policy is not None:
         if (exposure_policy!='flat_at_settlement_v1' or spec.get('engine')!='single_perp_v3'
@@ -532,6 +539,9 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
         audit=funding_coverage(state,spec,{'start_ms':state['paper_funding_started_ms'],
             'end_ms':max(state['paper_funding_started_ms']+1,now+1)})
         state['funding_cost_status']='complete' if audit['state']=='complete' else 'pending'
+    if 'funding_sensitivity_scenario' in spec['execution']:
+        from .funding_sensitivity import apply_through
+        apply_through(state,spec,now,stress)
     if not unavailable:
         _execute(state, spec, now, stress)
     state["last_ms"] = now
@@ -646,7 +656,8 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
             issue={'kind':kind,'scheduled_ms':scheduled,'reported_ms':exchange,'event_id':event_id}
             issues=state.setdefault('funding_source_diagnostics',[])
             if issue not in issues:issues.append(issue)
-            if not zero_interval and kind not in state['diagnostics']:
+            if (not zero_interval and 'funding_sensitivity_scenario' not in spec['execution']
+                    and kind not in state['diagnostics']):
                 state['diagnostics'].append(kind)
         if same_slot:
             source_issue('multiple_reported_funding_times_in_slot')
@@ -670,7 +681,8 @@ def reduce_event(state: dict[str, Any], spec: dict[str, Any], event: dict[str, A
                 "archive_response_sha256":event.get("archive_response_sha256"),
                 "source_period":event.get("source_period"),"source_address":event.get("source_address"),
                 "inventory_at_settlement":None if ambiguous else str(effective_position)}
-            if not ambiguous:
+            settlements[str(exchange)]['observed_payment_component']=(None if ambiguous else str(effective_position*coefficient))
+            if not ambiguous and 'funding_sensitivity_scenario' not in spec['execution']:
                 payment=effective_position*coefficient
                 state["cash"] = str(number(state["cash"]) + payment)
                 state["funding"] = str(number(state["funding"]) + payment)
@@ -855,6 +867,10 @@ def hold_benchmark(spec: dict[str,Any], events: list[dict[str,Any]], stress: Dec
     exit_price = number(last["bid"])*(1-slip)
     units = min(units,number(first["ask_size"])*number(spec["execution"]["displayed_size_fraction"])/stress,number(spec["max_exposure"]["notional_usdc"])/entry)
     pnl = units*(exit_price-entry) - units*(entry+exit_price)*number(spec["fees"]["taker_bps"])*stress/10000
+    sensitivity=spec['execution'].get('funding_sensitivity_scenario')
+    if sensitivity is not None:
+        count=max(0,last['event_ms']//3_600_000-first['event_ms']//3_600_000)
+        return str(pnl-abs(units)*number(sensitivity['debit_usdc_per_base_unit'])*stress*count)
     coefficients={}
     reported_clock=spec['execution'].get('funding_settlement_clock')=='reported_hour_with_inventory_invariance_v1'
     for event in ordered:
@@ -889,9 +905,28 @@ def replay(spec: dict[str, Any], events: list[dict[str, Any]], *, block_ms: int,
     # Transient membership index; the persisted, ordered history is unchanged.
     # A linear-list lookup per quote made multi-day replay quadratic.
     seen_ids: set[str] = set()
+    if 'funding_sensitivity_scenario' in spec['execution']:
+        state['funding_sensitivity_window']=observation_window or {
+            'start_ms':min((e.get('available_ms',e['received_ms']) for e in events),default=0),
+            'end_ms':max((e.get('available_ms',e['received_ms']) for e in events),default=0)+1}
     for event in sorted(events, key=lambda e: (e.get("available_ms",e["received_ms"]), e["received_ms"], str(e["id"]))):
         reduce_event(state, spec, event, stress=number(stress), _seen_ids=seen_ids)
+    sensitivity=spec['execution'].get('funding_sensitivity_scenario')
+    if sensitivity is not None:
+        from .funding_sensitivity import apply_through
+        apply_through(state,spec,state['funding_sensitivity_window']['end_ms']-1,number(stress))
     summary = metrics(state,spec,block_ms,confidence_alpha=confidence_alpha)
     summary["funding_coverage"] = funding_coverage(state,spec,observation_window)
+    if sensitivity is not None:
+        summary['observed_funding_coverage']=summary['funding_coverage']
+        summary['observed_funding_components']=state.get('funding_settlements',{})
+        summary['funding_coverage']={'version':'funding-sensitivity-accounting-v1','state':'complete',
+            'classification':'chosen_model_cost_complete_not_observed_venue_cost',
+            'model_only':True,'observed_costs_complete':False,
+            'settlement_clock':sensitivity['settlement_clock'],
+            'contract_fingerprint':sensitivity['fingerprint'],
+            'required_settlements':[r['scheduled_ms'] for r in state.get('funding_sensitivity_ledger',[]) if number(r['inventory_before_boundary'])]}
+        summary['funding_sensitivity_ledger']=state.get('funding_sensitivity_ledger',[])
+        summary['observed_funding_not_booked_into_scenario_cash']=True
     summary["benchmark_matched_size_buy_hold_pnl"] = hold_benchmark(spec,events,number(stress))
     return {"state":state,"metrics":summary,"input_fingerprint":fingerprint(events)}

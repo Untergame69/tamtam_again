@@ -227,6 +227,18 @@ def classify_evaluation_failures(result: dict[str,Any]) -> dict[str,Any]:
     establish economic rejection. Performance figures remain recorded even when
     evidence prevents that verdict. Legacy results are interpreted read-only.
     """
+    if result.get('evaluation_mode')=='nonpromoting_funding_sensitivity':
+        comparison={key:value for key,value in result.items() if key!='evaluation_mode'}
+        comparison['failures']=result.get('criteria_failures',[])
+        comparison['status']='error' if result.get('status')=='error' else 'failed' if comparison['failures'] else 'passed'
+        ordinary=classify_evaluation_failures(comparison)
+        technical=ordinary['state']=='technical_required'
+        return {'version':'evaluation-failure-classes-v1','state':'technical_required' if technical else 'inconclusive',
+            'decision_basis':'incomplete_sensitivity_execution_evidence' if technical else 'preregistered_nonpromoting_cost_sensitivity',
+            'scenario_decision':result.get('scenario_decision'),
+            'evidence_failures':ordinary['evidence_failures'],'sample_failures':ordinary['sample_failures'],
+            'economic_failures':[],'scenario_economic_failures':ordinary['economic_failures'],
+            'scenario_gate_failures':comparison['failures']}
     if result.get('status')=='passed':
         return {'version':'evaluation-failure-classes-v1','state':'passed',
                 'decision_basis':'all_preregistered_gates_passed',
@@ -284,6 +296,13 @@ def classify_evaluation_failures(result: dict[str,Any]) -> dict[str,Any]:
 
 def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,Any]], *, provenance: str) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
+    sensitivity=spec['execution'].get('funding_sensitivity_scenario')
+    if sensitivity is not None:
+        from .funding_sensitivity import validate_scenario
+        validate_scenario(sensitivity,market=row['coin'])
+        if sensitivity['available_ms']>row['frozen_ms']:
+            raise ValueError('Sensitivity parameter must be available before immutable rule freeze')
+        if stage=='final':raise ValueError('Funding sensitivity is comparison-only; no final reserve authorized')
     if plan.get("experiment_mode") == "experimental_paper_only":
         raise ValueError("Paper-only experiment is not eligible for economic evaluation or promotion")
     if stage not in {"exploration","comparison","final"}:
@@ -317,6 +336,9 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
         source_periods=[{'network':row['network'],'address':witness,'market':'*',
                          'start_ms':0,'end_ms':interval['end_ms']}
                         for witness in witness_contract['addresses']]
+    if sensitivity is not None:
+        for period in sensitivity['source_periods']:
+            if period not in source_periods:source_periods.append(period)
     store.connection.execute('create table if not exists validation_evaluation_source_periods '
         '(evaluation_id text not null,period_json text not null,primary key(evaluation_id,period_json))')
     evaluations = store.connection.execute("SELECT count(*) FROM validation_evaluations WHERE plan_id=?", (row["plan_id"],)).fetchone()[0]
@@ -361,6 +383,17 @@ def evaluate(store: Store, variant_id: str, stage: str, events: list[dict[str,An
                   "failures":failures,"metrics":normal["metrics"],"stress_metrics":stress["metrics"],
                   "input_fingerprint":data_fp,"criteria_fingerprint":fingerprint(criteria),
                   "source_periods":source_periods}
+        if sensitivity is not None:
+            original_disposition=classify_evaluation_failures(result)
+            scenario_decision=('criteria_passed_under_chosen_scenario' if not failures else
+                'inconclusive_under_chosen_scenario' if original_disposition['state'] in {'technical_required','inconclusive'} else
+                'rejected_under_chosen_scenario')
+            result.update(evaluation_mode='nonpromoting_funding_sensitivity',status='failed',promotable=False,
+                criteria_passed=not failures,criteria_failures=list(failures),scenario_decision=scenario_decision,
+                failures=[*failures,'scenario_only_not_promotable'],
+                funding_sensitivity_contract=sensitivity,
+                criteria_scope='Numerical gates on chosen sensitivity model only; not observed-cost N1 validation',
+                actual_economic_validation=False,final_authorized=False,paper_authorized=False)
         result['failure_classification']=classify_evaluation_failures(result)
     except Exception as exc:
         store.connection.execute("UPDATE validation_evaluations SET status='error',result_json=? WHERE evaluation_id=?",(canonical({"status":"error","error_type":type(exc).__name__}),evaluation_id))

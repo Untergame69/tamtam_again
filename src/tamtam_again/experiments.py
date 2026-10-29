@@ -99,11 +99,29 @@ def register_family(store:Store,plan_id:str,profile:dict[str,Any],base_spec:dict
 
 def select_final(store:Store,family_id:str) -> dict[str,Any]:
     prior=store.connection.execute('select * from experiment_selections where family_id=?',(family_id,)).fetchone()
-    if prior:return dict(prior)
     family=store.connection.execute('select * from experiment_families where family_id=?',(family_id,)).fetchone()
     if not family:raise ValueError('Unknown experiment family')
+    is_sensitivity='funding_sensitivity_scenario' in json.loads(family['base_spec_json'])['execution']
+    if prior:
+        if is_sensitivity and prior['variant_id'] is not None:
+            raise ValueError('Funding sensitivity cannot authorize a final selection')
+        return dict(prior)
     plan=store.connection.execute('select plan_json,synthetic from validation_plans where plan_id=?',(family['plan_id'],)).fetchone()
     data=json.loads(plan['plan_json']);now=int(time.time()*1000)
+    if is_sensitivity:
+        attempts=list(store.connection.execute("select variant_id from experiment_attempts where family_id=? and status='frozen'",(family_id,)))
+        if not attempts:raise ValueError('Sensitivity family has no executable frozen comparison')
+        evaluations=[store.connection.execute("select evaluation_id,status from validation_evaluations where variant_id=? and stage='comparison' order by created_at desc limit 1",(a['variant_id'],)).fetchone() for a in attempts]
+        if any(e is None or e['status']=='running' for e in evaluations):
+            raise ValueError('Sensitivity family requires completed comparisons; no final selection permitted')
+        if any(e['status']=='error' for e in evaluations):
+            raise ValueError('Sensitivity comparison execution error; no scientific conclusion or final selection')
+        proof={'comparison_evidence':[dict(e) for e in evaluations],
+               'diagnostic':'Nonpromoting funding sensitivity is terminal exploratory evidence; final untouched'}
+        store.connection.execute('insert or ignore into experiment_selections values (?,?,?,?,?)',
+            (family_id,None,now,'exploratory_complete',canonical(proof)))
+        store.connection.commit()
+        return dict(store.connection.execute('select * from experiment_selections where family_id=?',(family_id,)).fetchone())
     if not plan['synthetic'] and not data['comparison']['end_ms']<=now<data['final']['start_ms']:
         raise ValueError('Selection requires completed comparison and an unopened final window')
     candidates=[];evidence=[]

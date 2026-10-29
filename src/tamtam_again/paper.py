@@ -205,6 +205,8 @@ def start_paper(store: Store, variant_id: str, *, synthetic_recipe: bool = False
                 independent_after_incomplete: bool = False,
                 runtime_state: dict[str,Any] | None = None) -> dict[str,Any]:
     row,spec,plan = get_variant(store,variant_id)
+    if 'funding_sensitivity_scenario' in spec['execution']:
+        raise ValueError('Funding sensitivity evidence cannot authorize any paper session')
     if experimental_hypothesis is None:
         passed = store.connection.execute("SELECT result_json FROM validation_evaluations WHERE variant_id=? AND stage='final' AND status='passed'",(variant_id,)).fetchone()
         if not passed or (row["synthetic"] and not synthetic_recipe):

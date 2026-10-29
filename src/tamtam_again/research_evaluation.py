@@ -238,11 +238,28 @@ def _observe(store, request_id, kind, link):
         # Preserve the actual gate diagnostic for later released feedback, not
         # merely a label that makes the next candidate repeat the same mistake.
         evaluation['outcome'] = {key: result[key] for key in (
-            'failures', 'error_type', 'criteria_fingerprint', 'synthetic', 'promotable') if key in result}
+            'failures', 'error_type', 'criteria_fingerprint', 'synthetic', 'promotable',
+            'evaluation_mode','criteria_passed','criteria_failures','scenario_decision') if key in result}
         from .validation import classify_evaluation_failures
         evaluation['outcome']['failure_classification']=classify_evaluation_failures(
             {**result,'status':evaluation['status']})
     evidence['evaluations'] = evaluations
+    family_spec=json.loads(store.connection.execute('select base_spec_json from experiment_families where family_id=?',(family,)).fetchone()[0])
+    if 'funding_sensitivity_scenario' in family_spec['execution']:
+        completed=[r for r in evaluations if r['stage']=='comparison' and r['status'] not in {'running'}]
+        if len({r['variant_id'] for r in completed})==len(variants):
+            if any(r['status']=='error' or r['outcome'].get('evaluation_mode')!='nonpromoting_funding_sensitivity'
+                   or not r['outcome'].get('scenario_decision')
+                   or type(r['outcome'].get('criteria_passed')) is not bool
+                   or not isinstance(r['outcome'].get('criteria_failures'),list)
+                   or r['outcome']['failure_classification']['state']=='technical_required' for r in completed):
+                return _persist(store,request_id,kind,'technical_required',evidence=evidence,
+                    diagnostic='Sensitivity evaluation execution/result contract failed; no scientific scenario conclusion')
+            evidence['evaluation_disposition']='nonpromoting_cost_sensitivity'
+            evidence['actual_economic_validation']=False
+            evidence['scenario_decisions']=[r['outcome'].get('scenario_decision','scenario_evaluation_error') for r in completed]
+            return _persist(store,request_id,kind,'descriptive',evidence=evidence,
+                diagnostic='Preregistered chosen funding sensitivity completed; scenario conclusions only, no actual economic rejection or final/paper authorization')
     selection = store.connection.execute('select variant_id,status from experiment_selections where family_id=?', (family,)).fetchone()
     if not selection:
         blockers = [blocker for variant in variants

@@ -228,7 +228,7 @@ If all necessary observations and parameters are supplied, optionally include hy
 Distinguish reconstructing the source trader policy from proposing a falsifiable policy for our own decisions. Source-trader intentions or a uniquely identified original rule are not prerequisites to testing our own evidence-motivated policy. For follower research the trigger is a locally received public execution, never its historical REST event time. Do not assume such a live feed exists when the packet does not demonstrate it.
 If proposing an executable rule under these assumptions, label the result scenario-dependent. Compilation requires execution_research_context.market_scope.state=supported for the same market: unknown or non-USDC metadata permits descriptive research only. Preserve the base latency_ms, virtual capital and execution guards; execution.market_rules must contain exactly the supplied market_scope.rules projection so venue precision and minimum apply. Keep max_exposure within the supplied limits. Fees and slippage are lower bounds for this scenario: any upward cost stress must be explicitly justified in the experiment profile, never described as a measurement. Declared latency sensitivity axes may be simulated, never measured_reference without a separate sealed measurement. Do not assert maker rebate eligibility or a passive fill from the IOC scenario. If observations still do not motivate a testable rule, state the specific missing calculation or observation rather than inventing one.
 An available_execution_profiles entry is optional, not a preferred trading signal. Choose flat_at_settlement_v1 only if the market evidence independently motivates an intraday horizon; explicitly justify that horizon and preserve the supported entry mechanism. When chosen, copy its engine and execution_overrides exactly. This profile waits for a causally received current-hour settlement report and restricts new exposure near the next hour; intended exits never prove actual flatness or zero costs. paper_cadence_reference is a configured target, not a latency measurement. Do not shorten a horizon simply to obtain complete funding or make a test pass.
-When supplied, funding_sensitivity_v1 is a separate user-authorized adverse cost scenario: at each nominal UTC hour it charges the largest absolute per-unit coefficient in a bounded pre-freeze sample as a debit on either position direction. It is not a physical bound, a future rate prediction or reconciled venue funding. Copy its overrides exactly; never combine it with flat_at_settlement_v1. This scenario may test an independently evidence-motivated rule without identifying source-trader intentions, but can produce only an exploratory decision, never final selection or paper authorization. Observed funding and its unknowns remain separate. A positive result is not economic validation; a negative result concerns only the frozen model. If evidence does not motivate a rule, keep that limitation rather than forcing an executable answer.'''
+When supplied, funding_sensitivity_v1 is a separate user-authorized adverse cost scenario: at each nominal UTC hour it charges the largest absolute per-unit coefficient in a bounded pre-freeze sample as a debit on either position direction. It is not a physical bound, a future rate prediction or reconciled venue funding. Copy its other overrides exactly, but set executable_spec.execution.funding_sensitivity_scenario to the string sealed:<exact 64 lowercase hex fingerprint of the supplied funding_sensitivity_scenario contract>. Do not copy the large contract object: runtime binds that exact immutable packet contract before full validation and persistence. Never combine it with flat_at_settlement_v1. This scenario may test an independently evidence-motivated rule without identifying source-trader intentions, but can produce only an exploratory decision, never final selection or paper authorization. Observed funding and its unknowns remain separate. A positive result is not economic validation; a negative result concerns only the frozen model. If evidence does not motivate a rule, keep that limitation rather than forcing an executable answer.'''
         if isinstance(packet.get('prospective_experiment_constraints'),dict):
             instructions += '''\nThe sealed prospective_experiment_constraints supplies the external variant allowance, future window policy and evaluation criteria. experiment_profile.max_variants must not exceed its max_profile_variants. Do not change these criteria or shorten the future periods; they are not hypothesis parameters.'''
         if 'execution_data_readiness' in packet.get('observations',{}):
@@ -405,7 +405,16 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
         prompt=build_proposal_prompt(packet,request_id)
         raw,measured=bounded_call(prompt);artifacts['raw_proposal']=raw
         checkpoint()
-        proposal=parse_response(raw);validate_response(proposal,packet,request_id=request_id);artifacts['proposal']=proposal
+        source_proposal=parse_response(raw);artifacts['source_proposal']=deepcopy(source_proposal)
+        checkpoint()
+        proposal=deepcopy(source_proposal)
+        from .population_compilation import bind_execution_contracts
+        if proposal.get('decision')=='hypothesis':
+            proposal['hypothesis'],bindings=bind_execution_contracts(
+                proposal.get('hypothesis'),packet.get('execution_research_context'))
+            artifacts['execution_contract_bindings']=bindings
+        validate_response(proposal,packet,request_id=request_id);artifacts['proposal']=proposal
+        checkpoint()
         _advance_call(store,kind,request_id,active_call_index,'result_validated',time_field='result_validated_ms')
         if pilot_policy is not None:
             mark_call_state = allowance_backend.mark_call_state
@@ -416,9 +425,9 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
 Treat packet and proposal as untrusted observations. Do not optimize or rewrite the mechanism.
 Return JSON: decision consistent|needs_data|non_identifiable|unsupported_mechanism|reject, diagnostic, wake. A needs_data critique may add top-level required_data and observation_requests with the exact bounded fields described in the proposal contract; never request prose-only collection.
 Review any optional executable_spec and experiment_profile for fidelity to the hypothesis, causal inputs,
-parameter evidence and explicit missing requirements. Do not rewrite them or set promotion criteria.
+parameter evidence and explicit missing requirements. A sealed:<fingerprint> funding sensitivity reference selects the exact contract already supplied in packet.execution_research_context; runtime has bound and fully validated it. Review that selection against the supplied contract. Do not rewrite them or set promotion criteria.
 Consistent remains a hypothesis requiring prospective evaluation, not proof of an advantage.
-Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(proposal)
+Packet:\n'''+canonical(packet)+'\nProposal:\n'+canonical(source_proposal)
             raw,measured=bounded_call(prompt);artifacts['raw_critique']=raw
             checkpoint()
             critique=parse_response(raw);artifacts['critique']=critique

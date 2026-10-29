@@ -1,10 +1,52 @@
 """Optional executable output is checked without coercing unknown mechanisms."""
+from copy import deepcopy
+import re
 from .experiments import compile_family
 from .harness_extensions import capability,CONTRACTS
 
 
+FUNDING_CONTRACT_PATH = ('packet.execution_research_context.available_execution_profiles.'
+    'funding_sensitivity_v1.execution_overrides.funding_sensitivity_scenario')
+
+
+def bind_execution_contracts(hypothesis, execution_context):
+    """Resolve one exact sealed contract reference on a copy, without choosing rules.
+
+    Full-object specifications retain their existing validation path. References
+    are frontend notation only; engines and persisted proposals receive objects.
+    """
+    resolved=deepcopy(hypothesis)
+    if not isinstance(resolved,dict):return resolved,[]
+    spec=resolved.get('executable_spec')
+    if not isinstance(spec,dict) or not isinstance(spec.get('execution'),dict):return resolved,[]
+    execution=spec['execution'];reference=execution.get('funding_sensitivity_scenario')
+    if not isinstance(reference,str):return resolved,[]
+    if re.fullmatch(r'sealed:[0-9a-f]{64}',reference) is None:
+        raise ValueError('Exact sealed funding sensitivity reference required')
+    from .engine import fingerprint
+    from .funding_sensitivity import validate_scenario
+    context=deepcopy(execution_context)
+    if not isinstance(context,dict):raise ValueError('Sealed execution context required for contract reference')
+    claimed=context.pop('fingerprint',None)
+    if claimed!=fingerprint(context):raise ValueError('Sealed execution context fingerprint mismatch')
+    selected=context.get('available_execution_profiles',{}).get('funding_sensitivity_v1',{})
+    contract=selected.get('execution_overrides',{}).get('funding_sensitivity_scenario')
+    validate_scenario(contract,market=spec.get('market'))
+    if reference!='sealed:'+contract['fingerprint']:
+        raise ValueError('Sealed funding sensitivity reference does not match supplied contract')
+    execution['funding_sensitivity_scenario']=deepcopy(contract)
+    return resolved,[{'version':'sealed-execution-contract-binding-v1',
+        'field':'hypothesis.executable_spec.execution.funding_sensitivity_scenario',
+        'source':FUNDING_CONTRACT_PATH,'reference':reference,
+        'contract_fingerprint':contract['fingerprint'],'execution_context_fingerprint':claimed}]
+
+
 def compiler_contract():
-    return {'engines':CONTRACTS,'single_perp_v2_fields':[
+    return {'engines':CONTRACTS,'sealed_execution_contract_reference':{
+        'field':'executable_spec.execution.funding_sensitivity_scenario',
+        'value':'sealed:<exact 64 lowercase hex contract fingerprint>',
+        'source':FUNDING_CONTRACT_PATH,
+        'rule':'Select only the supplied exact contract; runtime resolves it before full validation. Other execution overrides must still be copied exactly.'},'single_perp_v2_fields':[
         'schema_version=2','type','market','data_sources','signal','entry','exit','sizing',
         'max_exposure: notional_usdc,max_drawdown_usdc,max_leverage','fees: maker_bps,taker_bps',
         'slippage: bps','latency_ms','horizon_ms','starting_capital_usdc',
@@ -50,6 +92,7 @@ def validate_compilation(hypothesis,allowed_refs,*,request_id=None,measurements=
     if not present:return None
     if present!={'executable_spec','experiment_profile'}:
         raise ValueError('Executable output requires both rule and justified experiment profile')
+    hypothesis,_=bind_execution_contracts(hypothesis,execution_context)
     spec=hypothesis['executable_spec'];profile=hypothesis['experiment_profile']
     if not isinstance(spec,dict) or not isinstance(profile,dict):raise ValueError('Structured compiler output required')
     if prospective_constraints is not None:

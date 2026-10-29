@@ -67,12 +67,34 @@ class ExecutionResearchContextTests(unittest.TestCase):
             self.assertEqual(witnesses['addresses'],[fixture.witness])
             self.assertFalse(context['funding_witness_sources']['coverage_proven'])
             self.assertEqual(packet['funding_witness_source_periods'][0]['address'],fixture.witness)
+            self.assertEqual(context['funding_sensitivity_source']['policy_id'],
+                'user-authorized-adverse-funding-sensitivity-20261028')
+            sensitivity=context['funding_sensitivity_calibration']['contract']
+            self.assertFalse(sensitivity['promotion_authorized'])
+            self.assertEqual(sensitivity['debit_usdc_per_base_unit'],'0.1')
+            self.assertNotIn('funding_sensitivity_scenario',context['scenario']['execution'])
             hypothesis=self.hypothesis(packet)
             hypothesis['type']='autonomous';spec=hypothesis['executable_spec'];spec['type']='autonomous'
             spec['signal']={'kind':'momentum','lookback_ms':1000,'threshold_bps':'2'}
             spec['sizing']={'units':'0.01','scale':'1'}
             spec['data_sources']=['bbo','streamHealth','userFundings']
             self.assertEqual(validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')['state'],'executable')
+            from copy import deepcopy
+            alternative=deepcopy(hypothesis)
+            optional=context['available_execution_profiles']['funding_sensitivity_v1']
+            alternative['executable_spec']['engine']=optional['engine']
+            alternative['executable_spec']['execution'].update(optional['execution_overrides'])
+            self.assertEqual(validate_packet_compilation(alternative,alternative['experiment_profile'],packet,'request')['state'],'executable')
+            alternative['executable_spec']['execution']['funding_exposure_policy']='flat_at_settlement_v1'
+            with self.assertRaisesRegex(ValueError,'mutually exclusive'):
+                validate_packet_compilation(alternative,alternative['experiment_profile'],packet,'request')
+            with patch('tamtam_again.funding_sensitivity.build_scenario',side_effect=ValueError('bounded calibration refused')), \
+                    patch('tamtam_again.discovery.protected_addresses',return_value={fixture.reserved}):
+                fallback=attach_execution_context(packet,ROOT,store=fixture.store)
+            self.assertEqual(fallback['funding_sensitivity_calibration']['status'],'technical_required')
+            self.assertEqual(fallback['funding_sensitivity_calibration']['reason'],'bounded calibration refused')
+            self.assertNotIn('funding_sensitivity_v1',fallback['available_execution_profiles'])
+            self.assertEqual(fallback['scenario'],context['scenario'])
             del spec['execution']['funding_witnesses']
             with self.assertRaisesRegex(ValueError,'simulation assumptions'):
                 validate_packet_compilation(hypothesis,hypothesis['experiment_profile'],packet,'request')

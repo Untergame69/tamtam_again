@@ -1,0 +1,12 @@
+{
+  "version": "funding-sensitivity-policy-v1",
+  "policy_id": "user-authorized-adverse-funding-sensitivity-20261028",
+  "promotion_authorized": false,
+  "administrative_completion": "abandon_unused_final_after_comparison_with_existing_release_grace_v1",
+  "lookback_ms": 86400000,
+  "max_envelopes": 64,
+  "max_decoded_bytes": 2000000,
+  "max_records": 100000,
+  "max_duration_ms": 5000,
+  "justification": "User authorized an explicit prudent cost scenario without promotion on this evidence on 2026-10-28. Freeze the largest absolute signed per-unit funding coefficient in the bounded authorized pre-freeze sample as a symmetric debit at each nominal hour. This is a chosen adverse sensitivity, not a physical upper bound, a future rate prediction, a rounding guarantee or a venue-cost reconciliation. Keep observed settlements and missing/conflicting observations separate. No quota, future-window or evaluation criterion is relaxed."
+}

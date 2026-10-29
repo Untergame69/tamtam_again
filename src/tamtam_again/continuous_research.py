@@ -399,7 +399,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                     'join population_research_jobs j using(request_id) where j.network=? and j.address=? and m.available_ms<=?',
                     (policy['network'],item['address'],clock)).fetchone()[0]
             source_fp=fingerprint({'source_ref':item['source_ref'],'admission_cutoff':item['admission_cutoff_ms'],
-                'packet_preparation_version':'continuous-rest-ws-prefill-and-execution-context-v4',
+                'packet_preparation_version':'continuous-rest-ws-prefill-and-execution-profiles-v5',
                 'market':item['market'],'latest_archive_id':latest,'latest_scope':scope,'wakes':wakes,
                 'preparation_sources':preparation_sources(store,policy['network'],item['address'],item['market'],clock),
                 'feedback_available_ms':feedback_latest})

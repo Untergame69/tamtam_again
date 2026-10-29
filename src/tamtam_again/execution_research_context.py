@@ -191,6 +191,45 @@ def attach_execution_context(packet, repo_root, *, store=None):
         if witnesses:
             scenario['execution']['funding_witnesses']=witnesses['contract']
             packet['funding_witness_source_periods']=witnesses['source_periods']
+    sensitivity=None;sensitivity_source=None
+    sensitivity_path=Path(repo_root)/'config/funding-sensitivity-policy.json'
+    if witnesses and sensitivity_path.is_file():
+        from .funding_sensitivity import build_scenario
+        sensitivity_raw=sensitivity_path.read_bytes()
+        sensitivity_policy=json.loads(sensitivity_raw)
+        try:
+            sensitivity=build_scenario(store,witnesses['contract'],network=packet['network'],
+                address=packet['address'],market=market_scope['market'],cutoff_ms=packet['available_ms'],
+                policy=sensitivity_policy)
+        except ValueError as exc:
+            # An optional sensitivity refusal cannot invalidate independent
+            # strict accounting or descriptive market evidence. Never invent a
+            # replacement rate; retain the exact typed refusal in the packet.
+            sensitivity={'contract':None,'status':'technical_required',
+                'reason':str(exc),'evidence_refs':[],'source_periods':[]}
+        sensitivity_source={'path':'config/funding-sensitivity-policy.json',
+            'sha256':hashlib.sha256(sensitivity_raw).hexdigest(),'policy_id':sensitivity_policy['policy_id']}
+        if sensitivity.get('contract'):
+            packet['evidence_refs']=list(dict.fromkeys([*packet['evidence_refs'],*sensitivity['evidence_refs']]))
+            periods=packet.setdefault('funding_witness_source_periods',[])
+            for period in sensitivity['source_periods']:
+                if period not in periods:periods.append(period)
+    profiles={}
+    if market_scope.get('state')=='supported' and cadence is not None:
+        common={'small_residual_policy':'avoid_uncloseable_residual_v1',
+                'max_quote_age_ms':scenario['execution']['unknown_quote_max_age_ms'],
+                'paper_tick_target_ms':cadence['configured_tick_ms']}
+        profiles['flat_at_settlement_v1']={'engine':'single_perp_v3',
+            'execution_overrides':{**common,'funding_exposure_policy':'flat_at_settlement_v1'},
+            'use':'Optional for independently justified intraday mechanisms only; preserve the proposed entry signal.',
+            'constraints':'Wait for current-hour reported settlement clock before new exposure. Entry must leave horizon, exit latency, TTL and quote-age headroom before the next hour. Actual exits and residual inventory remain audited; intended flatness is not proof.',
+            'funding_claim':'Zero only when the executed ledger proves zero inventory throughout each scheduled-to-reported interval; exposed or ambiguous costs remain unknown.'}
+        if sensitivity and sensitivity.get('contract'):
+            profiles['funding_sensitivity_v1']={'engine':'single_perp_v3',
+                'execution_overrides':{**common,'funding_sensitivity_scenario':sensitivity['contract']},
+                'use':'Optional user-authorized, frozen adverse cost sensitivity for an evidence-motivated policy; never a live-cost validation.',
+                'constraints':'Mutually exclusive with flat_at_settlement_v1. Freeze before new evaluation data. All sample, execution and risk gates remain. This evidence cannot authorize final selection or paper even if numerical criteria pass.',
+                'funding_claim':'Chosen symmetric debit from a bounded historical sample, not a physical bound or prediction. Actual funding coverage remains separately unknown when missing or conflicting.'}
     context = {
         'schema_version': 'execution-research-context-v1',
         'source': {'path': SOURCE, 'policy_version': policy['version'],
@@ -201,17 +240,10 @@ def attach_execution_context(packet, repo_root, *, store=None):
         'market_scope': market_scope,
         'metadata_resolution': metadata_resolution or {'state':'sealed_root_references_only'},
         'funding_witness_sources':witnesses,
+        'funding_sensitivity_source':sensitivity_source,
+        'funding_sensitivity_calibration':sensitivity,
         'paper_cadence_reference':cadence,
-        'available_execution_profiles':({
-            'flat_at_settlement_v1':{'engine':'single_perp_v3',
-                'execution_overrides':{'funding_exposure_policy':'flat_at_settlement_v1',
-                    'small_residual_policy':'avoid_uncloseable_residual_v1',
-                    'max_quote_age_ms':scenario['execution']['unknown_quote_max_age_ms'],
-                    'paper_tick_target_ms':cadence['configured_tick_ms']},
-                'use':'Optional for independently justified intraday mechanisms only; preserve the proposed entry signal.',
-                'constraints':'Wait for current-hour reported settlement clock before new exposure. Entry must leave horizon, exit latency, TTL and quote-age headroom before the next hour. Actual exits and residual inventory remain audited; intended flatness is not proof.',
-                'funding_claim':'Zero only when the executed ledger proves zero inventory throughout each scheduled-to-reported interval; exposed or ambiguous costs remain unknown.'}}
-            if market_scope.get('state')=='supported' and cadence is not None else {}),
+        'available_execution_profiles':profiles,
         'parameter_status': {
             'fees': 'Configured debit scenario, not our verified venue fee schedule or a maker rebate entitlement.',
             'slippage': 'Configured additional cost scenario, not measured impact.',
@@ -256,7 +288,11 @@ def validate_scenario_spec(context, spec):
     scope=context.get('market_scope',{})
     if scope.get('state')!='supported' or spec.get('market')!=scope.get('market'):
         raise ValueError('Verified matching USDC perpetual metadata required before compilation')
-    profile=spec.get('execution',{}).get('funding_exposure_policy')
+    execution_spec=spec.get('execution',{})
+    profile=execution_spec.get('funding_exposure_policy')
+    if 'funding_sensitivity_scenario' in execution_spec:
+        if profile is not None:raise ValueError('Funding sensitivity and flat exposure policies are mutually exclusive')
+        profile='funding_sensitivity_v1'
     selected=context.get('available_execution_profiles',{}).get(profile) if profile is not None else None
     if profile is not None and not selected:
         raise ValueError('Only an explicitly supplied optional execution profile can be selected')

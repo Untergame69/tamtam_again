@@ -54,6 +54,9 @@ class FundingCalibrationTests(CalibrationFixture):
         self.assertEqual(sample['row_index'],0);self.assertTrue(sample['response_sha256'])
         self.assertTrue(all(ref.split(':')[1].isdigit() for ref in result['evidence_refs']))
         self.assertTrue(result['source_periods'])
+        self.assertEqual(len(result['source_periods']),1)
+        self.assertEqual(result['source_periods'][0]['start_ms'],0)
+        self.assertEqual(result['source_periods'][0]['end_ms'],2201)
 
     def test_old_snapshot_rows_and_future_event_rows_do_not_calibrate(self):
         cutoff=86_400_000+5000

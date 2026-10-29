@@ -190,7 +190,7 @@ def attach_execution_context(packet, repo_root, *, store=None):
         witnesses=_freeze_funding_witnesses(packet,store,market_scope)
         if witnesses:
             scenario['execution']['funding_witnesses']=witnesses['contract']
-            packet['funding_witness_source_periods']=witnesses['source_periods']
+            packet['funding_witness_source_periods']=deepcopy(witnesses['source_periods'])
     sensitivity=None;sensitivity_source=None
     sensitivity_path=Path(repo_root)/'config/funding-sensitivity-policy.json'
     if witnesses and sensitivity_path.is_file():
@@ -214,6 +214,11 @@ def attach_execution_context(packet, repo_root, *, store=None):
             periods=packet.setdefault('funding_witness_source_periods',[])
             for period in sensitivity['source_periods']:
                 if period not in periods:periods.append(period)
+            union={}
+            for period in periods:
+                key=(period['network'],period['address'],period['market'],period['start_ms'])
+                if key not in union or period['end_ms']>union[key]['end_ms']:union[key]=period
+            packet['funding_witness_source_periods']=[union[key] for key in sorted(union)]
     profiles={}
     if market_scope.get('state')=='supported' and cadence is not None:
         common={'small_residual_policy':'avoid_uncloseable_residual_v1',

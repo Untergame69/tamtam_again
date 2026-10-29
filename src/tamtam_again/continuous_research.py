@@ -249,6 +249,25 @@ def _project_other_markets(store, packet, market, available_ms):
     summary['full_account_context_reference']='continuous_research_projections:'+source
     summary['projection_scope']='All selected-market aggregates retained; other markets are activity context only; full source is losslessly archived.'
     summary.pop('summary_fingerprint',None);summary['summary_fingerprint']=fingerprint(summary)
+    observations=packet['observations']
+    mechanisms=observations.get('market_mechanisms')
+    if isinstance(mechanisms,list):
+        observations['market_mechanisms']=[row for row in mechanisms if row.get('instrument')==market]
+        observations['other_market_metadata_reference']='continuous_research_projections:'+source
+    context=packet.get('execution_research_context')
+    if isinstance(context,dict):
+        calibration=context.get('funding_sensitivity_calibration')
+        selected=context.get('available_execution_profiles',{}).get('funding_sensitivity_v1',{})
+        contract=selected.get('execution_overrides',{}).get('funding_sensitivity_scenario')
+        if isinstance(calibration,dict) and contract and calibration.get('contract')==contract:
+            # The complete immutable contract remains inline once, at the
+            # compiler's selected-profile path. This removes only duplication.
+            context['funding_sensitivity_calibration']={
+                'coverage':calibration.get('coverage'),
+                'contract_fingerprint':contract['fingerprint'],
+                'contract_reference':'packet.execution_research_context.available_execution_profiles.funding_sensitivity_v1.execution_overrides.funding_sensitivity_scenario',
+                'full_context_reference':'continuous_research_projections:'+source}
+            context.pop('fingerprint',None);context['fingerprint']=fingerprint(context)
     packet['evidence_refs'].append('continuous_research_projections:'+source)
 
 

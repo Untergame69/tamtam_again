@@ -132,6 +132,13 @@ def build_scenario(store,witness_contract,*,network,address,market,cutoff_ms,pol
                 'quoted_szi':str(value['szi']),'reported_ms':stamp,'scheduled_ms':stamp//HOUR*HOUR,
                 'evidence_ref':ref,'response_sha256':row['response_sha256'],
                 'row_index':index,'source_address':account})
+    # Every guarded envelope has a zero-based account-wide source interval.
+    # Their exact union is one longest prefix per source, not one copy per lot.
+    union={}
+    for period in periods:
+        key=(period['network'],period['address'],period['market'],period['start_ms'])
+        if key not in union or period['end_ms']>union[key]['end_ms']:union[key]=period
+    periods=[union[key] for key in sorted(union)]
     coverage={'lookback_ms':effective['lookback_ms'],'event_start_ms':lower,'event_end_ms':cutoff_ms,
         'selection':'latest archived envelopes by observation_id before cutoff; exact market rows in final24h only',
         'envelopes_selected':len(metadata),'envelopes_verified':len(manifests),'decoded_bytes':decoded_bytes,

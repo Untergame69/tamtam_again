@@ -97,3 +97,23 @@ class ContinuousPreparationTests(unittest.TestCase):
         row=self.store.connection.execute('select body_gzip from continuous_research_projections where source_fingerprint=?',(source,)).fetchone()
         self.assertEqual(json.loads(gzip.decompress(row[0])),original)
         self.assertIn('continuous_research_projections:'+source,packet['evidence_refs'])
+
+    def test_projection_keeps_one_complete_scenario_and_selected_market_metadata(self):
+        contract={'fingerprint':'fixture-contract','source_manifests':list(range(1000))}
+        context={'available_execution_profiles':{'funding_sensitivity_v1':{
+            'execution_overrides':{'funding_sensitivity_scenario':contract}}},
+            'funding_sensitivity_calibration':{'contract':contract,'coverage':{'matching_coefficients':1000}}}
+        context['fingerprint']=fingerprint(context)
+        packet={'observations':{'descriptive_history_v1':{'markets':{'COIN':{'price':'all retained'},'OTHER':{'price':'context'}}},
+            'market_mechanisms':[{'instrument':'COIN','rules':'retained'},{'instrument':'OTHER','rules':'context'}]},
+            'execution_research_context':context,'evidence_refs':['raw:one']}
+        original=json.loads(canonical(packet));source=fingerprint(packet)
+        _project_other_markets(self.store,packet,'COIN',200)
+        self.assertEqual(packet['observations']['market_mechanisms'],[{'instrument':'COIN','rules':'retained'}])
+        projected=packet['execution_research_context']
+        self.assertEqual(projected['available_execution_profiles']['funding_sensitivity_v1']['execution_overrides']['funding_sensitivity_scenario'],contract)
+        self.assertNotIn('contract',projected['funding_sensitivity_calibration'])
+        self.assertEqual(projected['funding_sensitivity_calibration']['contract_fingerprint'],contract['fingerprint'])
+        self.assertEqual(projected['fingerprint'],fingerprint({k:v for k,v in projected.items() if k!='fingerprint'}))
+        row=self.store.connection.execute('select body_gzip from continuous_research_projections where source_fingerprint=?',(source,)).fetchone()
+        self.assertEqual(json.loads(gzip.decompress(row[0])),original)

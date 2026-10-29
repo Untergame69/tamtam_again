@@ -124,12 +124,19 @@ collecteurs sont restés actifs. Les deux archives locales préexistantes et
 
 Le contrôle après installation conserve neuf appels, 11 essais historiques
 partagés et zéro évaluation réelle ; le rejeu des neuf tâches est sans inférence.
-Le dernier passage de recherche terminé à 07:48:31 UTC précédait l'installation.
-Le prochain passage naturel est annoncé à 08:03:31 UTC le 29 octobre ; il reste
-à observer, sans le présenter comme déjà exécuté. Le quota des trois études du
-29 est consommé ; son renouvellement reste le 30 octobre à 00:00 UTC, sans
-réinitialisation anticipée ni nouveau budget. L'inférence et les futures mesures
-restent à démontrer après ce déploiement.
+Le premier passage naturel observé après installation est le tick **185**, lancé
+le 29 octobre à **08:03:31 UTC** (09:03:31 Paris), terminé avec `Result=success`.
+Son travail déterministe dure 95 ms dans le registre : neuf dossiers retraités,
+six issues descriptives et trois besoins techniques conservés, zéro nouveau
+dispatch, neuf appels totaux et toujours zéro évaluation réelle. Les décisions
+source et anciennes routes restent conservées ; aucune issue descriptive n'est
+un rejet économique. Le contrôle de rejeu des neuf tâches reste sans inférence.
+
+Le quota des trois études du 29 est consommé ; le tick 185 persiste
+`waiting_allowance`, motif `max_tasks`, avec `not_before_ms=1793318400000`, soit le
+**30 octobre à 00:00 UTC**. Aucun compteur n'est réinitialisé et aucun nouveau
+budget n'est ajouté. La reprise opérationnelle est observée ; l'hypothèse revue,
+les données futures et leur utilisation scientifique restent à démontrer.
 
 Aucun nouvel ordre réel, lancement paper ou appel IA manuel n'a été effectué
 pour ces corrections. Les collecteurs existants continuent de fonctionner.

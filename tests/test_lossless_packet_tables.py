@@ -4,7 +4,8 @@ import unittest
 
 from tamtam_again.engine import canonical,fingerprint
 from tamtam_again.position_projection import compact_records,restore_records
-from tamtam_again.sealed_references import compact_evidence_refs,expanded_evidence_refs
+from tamtam_again.sealed_references import (compact_evidence_refs,expanded_evidence_refs,
+    compact_section_reference_indices,section_reference_indices)
 from tamtam_again.continuous_research_identity import semantic_identity,wake_identities
 from tamtam_again.population_runtime import validate_response,sealed_section_reference_paths
 from tamtam_again.population_compilation import packet_references
@@ -45,6 +46,26 @@ class PositionTablesTests(unittest.TestCase):
 
 
 class ReferenceProjectionTests(unittest.TestCase):
+    def test_reference_runs_preserve_every_index_order_and_source_binding(self):
+        refs=['fixture:'+str(i) for i in range(1000)]
+        indices=list(range(700))+list(range(900,950))+list(range(900,920))
+        section={'evidence_ref_indices':indices,'reference_projection':{
+            'version':'sealed-root-reference-indices-v1','reference_pool':'packet.evidence_refs',
+            'reference_count':len(indices),'ordered_reference_fingerprint':fingerprint([refs[i] for i in indices])}}
+        before=copy.deepcopy(section);compact_section_reference_indices(section)
+        self.assertEqual(section_reference_indices(section,len(refs)),indices)
+        self.assertLess(len(canonical(section)),len(canonical(before)))
+        packet={'evidence_refs':refs,'observations':{'markets':['COIN'],
+            'market_execution_detail_v1':{'COIN':section}}}
+        self.assertIn('packet.observations.market_execution_detail_v1.COIN',
+            sealed_section_reference_paths(packet,set(refs))[0])
+        section['reference_projection']['ordered_reference_fingerprint']='0'*64
+        self.assertNotIn('packet.observations.market_execution_detail_v1.COIN',
+            sealed_section_reference_paths(packet,set(refs))[0])
+        for runs in ([[0,1000000000]],[[-1,2]],[[0,0]],[[True,2]]):
+            bad={'evidence_ref_runs':runs,'reference_projection':{'version':'sealed-root-reference-ranges-v1'}}
+            with self.assertRaises(ValueError):section_reference_indices(bad,len(refs))
+
     def test_all_hash_bytes_and_reference_indices_round_trip(self):
         refs=['raw_observations:'+str(i)+'#sha256:'+fingerprint({'row':i}) for i in range(100)]
         packet={'evidence_refs':refs+['raw_observations:1000','fixture:source']}

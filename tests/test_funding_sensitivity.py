@@ -40,6 +40,19 @@ class CalibrationFixture(unittest.TestCase):
 
 
 class FundingCalibrationTests(CalibrationFixture):
+    def test_dense_manifest_table_keeps_all_verified_source_rows(self):
+        from tamtam_again.position_projection import restore_records
+        for i in range(64):self.f.save('userFundings',self.f.funding(stamp=2280+i),stamp=2300+i)
+        result=self.build();table=result['contract']['calibration']['source_manifests']
+        rows=restore_records(table)
+        self.assertEqual(len(rows),64)
+        self.assertEqual(result['coverage']['envelopes_verified'],64)
+        for row in rows:
+            oid=int(row['evidence_ref'].split(':')[1])
+            original=self.f.store.connection.execute('select response_sha256 from raw_observations where observation_id=?',(oid,)).fetchone()
+            self.assertEqual(row['response_sha256'],original[0])
+            self.assertEqual(row['source_period']['end_ms'],row['available_ms']+1)
+
     def test_exact_signed_sample_adverse_symmetric_debit_and_replay_provenance(self):
         self.f.store.connection.execute('pragma query_only=on')
         result=self.build();contract=result['contract']

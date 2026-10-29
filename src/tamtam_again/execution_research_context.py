@@ -71,10 +71,26 @@ def _root_verified_metadata(packet, store):
     markets=observations.get('markets',[])
     if not isinstance(markets,list) or len(markets)!=1:
         raise ValueError('Exactly one market needs verified metadata')
-    profiles=[row for row in observations.get('market_mechanisms',[])
+    all_profiles=observations.get('market_mechanisms',[])
+    profiles=[row for row in all_profiles
               if isinstance(row,dict) and row.get('instrument')==markets[0]]
-    if len(profiles)!=1:raise ValueError('One matching archived market profile required')
-    profile=profiles[0];refs=profile.get('evidence_refs');available=profile.get('available_ms')
+    if len(profiles)>1:raise ValueError('One matching archived market profile required')
+    derived=not profiles
+    if derived:
+        # A later fill may reveal a market omitted by the older account scope.
+        # Its metadata can still be reconstructed from the SAME sealed global
+        # catalog; no new provider request or guessed market rules are needed.
+        roots=set();anchors=[]
+        for candidate in all_profiles:
+            if not isinstance(candidate,dict):raise ValueError('Structured archived catalog profiles required')
+            refs=candidate.get('evidence_refs');available=candidate.get('available_ms')
+            if (not isinstance(refs,list) or len(refs)!=2 or any(not isinstance(r,str) for r in refs)
+                    or type(available) is not int):raise ValueError('Unambiguous archived catalog roots required')
+            roots.add((tuple(sorted(refs)),available));anchors.append(candidate)
+        if len(roots)!=1:raise ValueError('One unambiguous archived catalog required for an omitted market')
+        profile=anchors[0]
+    else:profile=profiles[0]
+    refs=profile.get('evidence_refs');available=profile.get('available_ms')
     cutoff=packet.get('available_ms')
     if (not isinstance(refs,list) or len(refs)!=2 or len(set(refs))!=2
             or type(available) is not int or type(cutoff) is not int
@@ -101,11 +117,16 @@ def _root_verified_metadata(packet, store):
         raise ValueError('Both perpetual and collateral-token metadata are required')
     catalog=build_catalog(payloads['allPerpMetas'],payloads['spotMetaAndAssetCtxs'],
                           available_ms=available,evidence_refs=list(refs))
-    rebuilt=mechanism_profile(catalog,markets[0])
-    if fingerprint(rebuilt)!=fingerprint(profile):
+    anchor=mechanism_profile(catalog,profile.get('instrument'))
+    if fingerprint(anchor)!=fingerprint(profile):
         raise ValueError('Archived market profile must equal its raw metadata reconstruction')
+    rebuilt=mechanism_profile(catalog,markets[0])
+    if not derived and fingerprint(rebuilt)!=fingerprint(profile):
+        raise ValueError('Archived market profile must equal its raw metadata reconstruction')
+    if derived:observations['market_mechanisms']=[*all_profiles,rebuilt]
     packet['evidence_refs']=list(dict.fromkeys([*packet.get('evidence_refs',[]),*refs]))
     return {'state':'verified','evidence_refs':list(refs),
+            'profile_origin':'derived_from_same_archived_catalog' if derived else 'matching_archived_profile',
             'profile_fingerprint':fingerprint(rebuilt)}
 
 

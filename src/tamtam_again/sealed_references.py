@@ -7,6 +7,42 @@ from .engine import fingerprint
 VERSION='raw-sha256-base85-v1'
 RAW=re.compile(r'raw_observations:([0-9]+)#sha256:([a-f0-9]{64})\Z')
 SHORT=re.compile(r'raw85:([0-9]+):(.{40})\Z')
+RANGE_VERSION='sealed-root-reference-ranges-v1'
+
+
+def section_reference_indices(section,pool_size):
+    indices=section.get('evidence_ref_indices');runs=section.get('evidence_ref_runs')
+    if indices is not None and runs is not None:raise ValueError('Only one reference index representation permitted')
+    if runs is not None:
+        if (section.get('reference_projection',{}).get('version')!=RANGE_VERSION
+                or not isinstance(runs,list) or not runs):raise ValueError('Versioned reference runs required')
+        indices=[]
+        for run in runs:
+            if (not isinstance(run,list) or len(run)!=2 or any(type(i) is not int for i in run)
+                    or run[0]<0 or run[1]<1 or run[0]+run[1]>pool_size
+                    or len(indices)+run[1]>100000):raise ValueError('Reference range bound exceeded')
+            indices.extend(range(run[0],run[0]+run[1]))
+    if (not isinstance(indices,list) or not indices or len(indices)>100000
+            or any(type(i) is not int or not 0<=i<pool_size for i in indices)):
+        raise ValueError('Bounded reference indices required')
+    return indices
+
+
+def compact_section_reference_indices(section):
+    indices=section.get('evidence_ref_indices')
+    projection=section.get('reference_projection',{})
+    if (not isinstance(indices,list) or not indices
+            or projection.get('version')!='sealed-root-reference-indices-v1'):return
+    runs=[]
+    for index in indices:
+        if type(index) is not int or index<0:raise ValueError('Nonnegative reference indices required')
+        if runs and index==runs[-1][0]+runs[-1][1]:runs[-1][1]+=1
+        else:runs.append([index,1])
+    from .engine import canonical
+    if len(canonical(runs))>=len(canonical(indices)):return
+    section.pop('evidence_ref_indices');section['evidence_ref_runs']=runs
+    projection['version']=RANGE_VERSION
+    projection['note']='Every original reference index retained in order as [start, count] runs into the expanded sealed root pool.'
 
 
 def expand_reference(reference):
@@ -59,7 +95,7 @@ MODEL_REFERENCE_INSTRUCTIONS = ('packet.evidence_refs contains proof_ref:<index>
     'one for each original expanded sealed reference in exactly the same order. Cite these exact aliases '
     'in hypothesis.evidence_refs or experiment_profile.axes[*].evidence_refs; runtime binds them '
     'to the original immutable source before validation. Literal original references and admitted '
-    'section paths remain valid. Existing evidence_ref_indices and reference_projection fingerprints '
+    'section paths remain valid. Existing evidence_ref_indices, evidence_ref_runs [start,count] and reference_projection fingerprints '
     'describe the ORIGINAL expanded sealed source pool, never hashes of display aliases. '
     'The model_packet_view header identifies a display view, not a new sealed source.')
 

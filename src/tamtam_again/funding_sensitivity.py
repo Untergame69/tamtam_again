@@ -154,6 +154,8 @@ def build_scenario(store,witness_contract,*,network,address,market,cutoff_ms,pol
                 'exact_coefficients_fingerprint':fingerprint([str(value.normalize()) for value in sorted(values)])}
                for slot,values in sorted(slots.items()) if len(values)>1]
     refs=list(dict.fromkeys([*witness_contract['evidence_refs'],*[m['evidence_ref'] for m in manifests]]))
+    from .position_projection import compact_records
+    manifest_table=compact_records(manifests,scalar_maps_as_cells=False)
     contract={'version':VERSION,'market':market,'network':network,'currency':'USDC','interval_ms':HOUR,
         'available_ms':cutoff_ms,'classification':'chosen_cost_sensitivity_not_physical_bound',
         'rule':'adverse_symmetric_sample_envelope','promotion_authorized':False,
@@ -165,7 +167,7 @@ def build_scenario(store,witness_contract,*,network,address,market,cutoff_ms,pol
             'minimum_signed_coefficient':str(min(number(s['coefficient']) for s in samples)),
             'maximum_signed_coefficient':str(max(number(s['coefficient']) for s in samples)),
             'exact_sample_fingerprint':fingerprint(samples),'maximum_producing_sample':maximum,
-            'coefficient_disputes':conflicts,'source_manifests':manifests},
+            'coefficient_disputes':conflicts,'source_manifests':manifest_table},
         'evidence_refs':refs,'source_periods':periods,
         'limits':['Chosen symmetric debit sensitivity, not a measured future rate, physical bound or venue rounding claim.',
             'Every nominal hour debits absolute OUR pre-boundary position; no funding credit is assumed.',

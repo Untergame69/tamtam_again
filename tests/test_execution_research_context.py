@@ -13,6 +13,42 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionResearchContextTests(unittest.TestCase):
+    def test_newly_observed_market_uses_the_same_verified_global_catalog(self):
+        from copy import deepcopy
+        from tamtam_again.collateral import build_catalog
+        from tamtam_again.market_rules import mechanism_profile
+        from tamtam_again.storage import Store
+        perps=[{'collateralToken':0,'universe':[
+            {'name':'BTC','szDecimals':4,'maxLeverage':40},
+            {'name':'XMR','szDecimals':3,'maxLeverage':10}]}]
+        spot=[{'tokens':[{'index':0,'name':'USDC','tokenId':'fixture-usdc'}]},[]]
+        refs=['raw_observations:1','raw_observations:2']
+        catalog=build_catalog(perps,spot,available_ms=90,evidence_refs=refs)
+        with tempfile.TemporaryDirectory() as directory:
+            with Store(Path(directory)/'db') as store:
+                with patch('tamtam_again.storage.utc_now',return_value='1970-01-01T00:00:00.050+00:00'):
+                    for endpoint,payload in [('allPerpMetas',perps),('spotMetaAndAssetCtxs',spot)]:
+                        store.save_observation(network='fixture',source='hyperliquid-population-rest-v1',
+                            entity_type='market',entity_id='collateral:all',endpoint=endpoint,payload=payload,
+                            request_payload={'type':endpoint})
+                anchor=mechanism_profile(catalog,'BTC')
+                def packet(market):
+                    return {'network':'fixture','available_ms':100,'evidence_refs':['fixture:scope'],
+                        'observations':{'markets':[market],'market_mechanisms':[deepcopy(anchor)]}}
+                p=packet('XMR');context=attach_execution_context(p,ROOT,store=store)
+                self.assertEqual(context['market_scope']['state'],'supported')
+                self.assertEqual(context['market_scope']['rules']['instrument'],'XMR')
+                self.assertEqual(context['metadata_resolution']['profile_origin'],'derived_from_same_archived_catalog')
+                self.assertEqual(p['observations']['market_mechanisms'][0],anchor)
+                self.assertEqual(p['observations']['market_mechanisms'][1],mechanism_profile(catalog,'XMR'))
+                unknown=attach_execution_context(packet('NOT_IN_CATALOG'),ROOT,store=store)
+                self.assertNotEqual(unknown['market_scope']['state'],'supported')
+                corrupt=packet('XMR');corrupt['observations']['market_mechanisms'][0]['minimum_order']['denomination']='USDH'
+                self.assertNotEqual(attach_execution_context(corrupt,ROOT,store=store)['market_scope']['state'],'supported')
+                ambiguous=packet('XMR');other=deepcopy(anchor);other['evidence_refs']=['raw_observations:3','raw_observations:4']
+                ambiguous['observations']['market_mechanisms'].append(other)
+                self.assertEqual(attach_execution_context(ambiguous,ROOT,store=store)['metadata_resolution']['state'],'unverified')
+
     def test_optional_intraday_profile_compiles_without_changing_default_signal(self):
         from copy import deepcopy
         from tamtam_again.experiments import compile_family

@@ -207,9 +207,9 @@ def _legacy_fill_identity(store, packet, market):
     if refs is None:
         from .sealed_references import expanded_evidence_refs
         pool = expanded_evidence_refs(packet)
-        indices = detail.get('evidence_ref_indices', [])
-        if not indices or any(type(i) is not int or not 0 <= i < len(pool) for i in indices):
-            return None
+        from .sealed_references import section_reference_indices
+        try:indices=section_reference_indices(detail,len(pool))
+        except ValueError:return None
         refs = [pool[i] for i in indices]
     if not isinstance(refs, list) or not refs:
         return None

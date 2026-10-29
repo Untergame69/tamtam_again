@@ -251,6 +251,7 @@ def _project_other_markets(store, packet, market, available_ms):
     summary.pop('summary_fingerprint',None);summary['summary_fingerprint']=fingerprint(summary)
     observations=packet['observations']
     from .position_projection import compact_position_path,compact_records
+    summary['other_market_activity_context']=compact_records(summary['other_market_activity_context'],scalar_maps_as_cells=False)
     detail=observations.get('market_execution_detail_v1',{}).get(market)
     if isinstance(detail,dict) and isinstance(detail.get('position_path'),dict):
         packed=compact_position_path(detail['position_path'])
@@ -264,7 +265,13 @@ def _project_other_markets(store, packet, market, available_ms):
         positions=selected.get('positions',{})
         if 'position_chain_segments' in positions:
             positions['position_chain_segments']=compact_records(positions['position_chain_segments'])
-    summary.pop('summary_fingerprint',None);summary['summary_fingerprint']=fingerprint(summary)
+    from .sealed_references import compact_section_reference_indices
+    for section,field in ((summary,'summary_fingerprint'),(detail,'detail_fingerprint')):
+        if isinstance(section,dict):
+            compact_section_reference_indices(section)
+            section.pop(field,None);section[field]=fingerprint(section)
+    if 'simultaneous_position_snapshot' in observations:
+        observations['simultaneous_position_snapshot']=compact_records(observations['simultaneous_position_snapshot'])
     mechanisms=observations.get('market_mechanisms')
     if isinstance(mechanisms,list):
         observations['market_mechanisms']=[row for row in mechanisms if row.get('instrument')==market]

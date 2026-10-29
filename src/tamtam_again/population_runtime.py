@@ -72,7 +72,7 @@ def _safe_response_parts(response):
 def sealed_section_reference_paths(packet, allowed_refs):
     """Finite section identities anchored to the unchanged, sealed evidence pool."""
     from .engine import fingerprint
-    from .sealed_references import expanded_evidence_refs
+    from .sealed_references import expanded_evidence_refs,section_reference_indices,RANGE_VERSION
     pool=expanded_evidence_refs(packet)
     observations=packet.get('observations',{})
     sources=set()
@@ -80,13 +80,11 @@ def sealed_section_reference_paths(packet, allowed_refs):
         if not isinstance(section,dict):return False
         refs=section.get('evidence_refs')
         if refs is None:
-            indices=section.get('evidence_ref_indices')
             projection=section.get('reference_projection',{})
-            if (not isinstance(indices,list) or not indices
-                    or any(type(index) is not int or not 0<=index<len(pool) for index in indices)):
-                return False
+            try:indices=section_reference_indices(section,len(pool))
+            except ValueError:return False
             refs=[pool[index] for index in indices]
-            if (projection.get('version')!='sealed-root-reference-indices-v1'
+            if (projection.get('version') not in ('sealed-root-reference-indices-v1',RANGE_VERSION)
                     or projection.get('reference_pool')!='packet.evidence_refs'
                     or projection.get('reference_count')!=len(refs)
                     or projection.get('ordered_reference_fingerprint')!=fingerprint(refs)):

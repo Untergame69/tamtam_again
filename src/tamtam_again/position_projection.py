@@ -13,7 +13,7 @@ MAX_FIELDS=1024
 MAX_RESTORED_CHARS=2000000
 
 
-def compact_records(value):
+def compact_records(value, *, scalar_maps_as_cells=True):
     kind='mapping' if isinstance(value,dict) else 'list' if isinstance(value,list) else None
     if kind is None:return value
     items=list(value.items()) if kind=='mapping' else list(enumerate(value))
@@ -25,7 +25,7 @@ def compact_records(value):
             if depth>16:raise ValueError('Position record layout depth exceeded')
             # Small scalar maps (notably fee-token maps) remain cells. Their
             # empty/nonempty keys must not multiply the surrounding schemas.
-            if isinstance(node,dict) and (depth==0 or any(isinstance(v,(dict,list)) for v in node.values())):
+            if isinstance(node,dict) and (not scalar_maps_as_cells or depth==0 or any(isinstance(v,(dict,list)) for v in node.values())):
                 return {key:layout(node[key],depth+1) for key in sorted(node)}
             index=len(fields);fields.append(node)
             if len(fields)>MAX_FIELDS:raise ValueError('Position record field bound exceeded')

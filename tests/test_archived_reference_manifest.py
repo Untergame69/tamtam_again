@@ -110,3 +110,111 @@ class ArchivedReferenceManifestTests(unittest.TestCase):
             self.assertEqual(run(self.store,self.runtime.request)['status'],'suspended')
             self.assertEqual(run(self.store,self.runtime.request)['status'],'unchanged_no_inference')
             caller.assert_not_called()
+
+    def _reseal(self):
+        self.source_fp=fingerprint(self.source)
+        self.store.connection.execute('insert or replace into continuous_research_projections values(?,?,?)',
+            (self.source_fp,20,gzip.compress(canonical(self.source).encode(),mtime=0)))
+        self.packet=deepcopy(self.source)
+        compact_reference_manifest(self.packet,self.source,self.source_fp)
+        self.packet['fingerprint']=fingerprint(self.packet)
+        self.store.connection.commit()
+
+    def test_inherited_source_union_guard_precedes_body_read(self):
+        from tamtam_again.validation import initialize as validation_schema
+        validation_schema(self.store)
+        period={'network':'test','address':'witness','market':'*','start_ms':0,'end_ms':11}
+        self.source['funding_witness_source_periods']=[period]
+        self.source['research_memory']=[{'item':{'periods':[{**period,'address':'ancestor'}]}}]
+        self.source['research_evaluation_memory']=[{'periods':[{**period,'address':'feedback'}]}]
+        self._reseal()
+        self.assertEqual(len(self.packet['evidence_source_manifest']['source_periods']),3)
+        for account in ('witness','ancestor','feedback'):
+            statements=[];self.store.connection.set_trace_callback(statements.append)
+            with patch('tamtam_again.discovery.protected_addresses',return_value={account}),self.assertRaises(ValueError):
+                load_manifest_reference_pool(self.store,self.packet)
+            self.assertFalse(any('select body_gzip' in item.lower() for item in statements))
+        statements=[];self.store.connection.set_trace_callback(statements.append)
+        with patch('tamtam_again.research_memory.authorized_period',return_value=False),self.assertRaises(ValueError):
+            load_manifest_reference_pool(self.store,self.packet)
+        self.assertFalse(any('select body_gzip' in item.lower() for item in statements))
+        self.store.connection.set_trace_callback(None)
+        self.assertEqual(load_manifest_reference_pool(self.store,self.packet),self.source['evidence_refs'])
+
+    def _review_executable(self,network='synthetic'):
+        from tamtam_again.recipe import synthetic_spec,synthetic_plan
+        self.source['network']=network
+        if network=='hyperliquid-mainnet':self.source['address']='0x'+'1'*40
+        self._reseal()
+        spec=synthetic_spec();spec['market']='BTC'
+        profile={'schema_version':1,'hypothesis_id':self.runtime.request,'justification':'fixture only',
+            'max_variants':1,'selection_rule':'comparison_then_one_final','axes':[{
+                'parameter':'horizon_ms','values':[500],'category':'hypothesis','justification':'fixture',
+                'evidence_refs':['packet.observations.market_execution_detail_v1.BTC'],'measurement_status':'simulated'}]}
+        self.response['hypothesis'].update(type='follower',executable_spec=spec,experiment_profile=profile)
+        self.store.connection.execute('update population_research_jobs set network=?,address=?,packet_json=?,policy_json=?',
+            (network,self.source['address'],canonical(self.packet),canonical({**self.runtime.policy,'max_prompt_chars':100000})))
+        self.store.connection.commit()
+        critique={'decision':'consistent','diagnostic':'fixture','wake':{}}
+        with patch('tamtam_again.population_runtime.verify'),patch('tamtam_again.population_runtime.call',
+                side_effect=[(canonical(self.response),self.runtime.usage),(canonical(critique),self.runtime.usage)]):
+            self.assertEqual(run(self.store,self.runtime.request)['status'],'hypothesis_recorded')
+        template={'version':'population-plan-v1','justification':'fixture only','max_plans':1,
+            'comparison_delay_ms':100,'comparison_duration_ms':6000,'selection_gap_ms':2000,
+            'final_duration_ms':6000,'criteria':synthetic_plan()['criteria'],
+            'budget':synthetic_plan()['budget'],'isolation':'unavailable'}
+        if network!='synthetic':template['criteria']['require_funding']=True
+        allocation={'version':'experiment-allocation-v1','policy_id':'manifest-fixture-v1',
+            'justification':'fixture only','max_profile_variants':1,'plan_template':template}
+        return spec,profile,allocation
+
+    def test_executable_manifest_handoff_freezes_rule_then_evaluates_future_fixture(self):
+        from tamtam_again.research_evaluation import handoff,poll
+        from tamtam_again.validation import evaluate
+        from tamtam_again.recipe import synthetic_events
+        spec,profile,allocation=self._review_executable()
+        with patch('tamtam_again.population_plans.now_ms',return_value=1000):
+            event=handoff(self.store,self.runtime.request,experiment_policy=allocation)
+        self.assertEqual(event['state'],'awaiting_comparison',event)
+        plan=json.loads(self.store.connection.execute('select plan_json from validation_plans').fetchone()[0])
+        self.assertGreater(plan['comparison']['start_ms'],1000)
+        variant=self.store.connection.execute('select variant_id,spec_json from strategy_variants').fetchone()
+        self.assertEqual(json.loads(variant['spec_json']),spec)
+        frozen=json.loads(self.store.connection.execute('select profile_json from experiment_families').fetchone()[0])
+        self.assertEqual(frozen,profile)
+        self.assertEqual(handoff(self.store,self.runtime.request,experiment_policy=allocation),event)
+        events=synthetic_events(plan['comparison']['start_ms'])
+        for item in events:
+            if item['kind']=='bbo':item.update(bid='100',ask='100.1')
+        evaluated=evaluate(self.store,variant['variant_id'],'comparison',events,provenance='synthetic')
+        self.assertEqual(evaluated['status'],'failed')
+        self.assertEqual(poll(self.store)['decisions'][0]['state'],'rejected')
+        self.assertEqual(self.store.connection.execute('select count(*) from population_plan_drafts').fetchone()[0],1)
+
+    def test_own_frozen_plan_crash_resumes_without_reading_unrelated_holdout(self):
+        from tamtam_again.research_evaluation import handoff
+        from tamtam_again.discovery import protected_addresses
+        spec,profile,allocation=self._review_executable(network='hyperliquid-mainnet')
+        import time
+        freeze_ms=int(time.time()*1000)+1000
+        with patch('tamtam_again.population_plans.now_ms',return_value=freeze_ms), \
+                patch('tamtam_again.validation.now_ms',return_value=freeze_ms), \
+                patch('tamtam_again.population_plans._register_experiment',side_effect=RuntimeError('fixture interruption')):
+            with self.assertRaises(RuntimeError):handoff(self.store,self.runtime.request,experiment_policy=allocation)
+        original=self.store.connection.execute('select plan_id,plan_json from validation_plans').fetchone()
+        self.assertIn(self.source['address'],protected_addresses(self.store))
+        with self.assertRaises(ValueError):load_manifest_reference_pool(self.store,self.packet)
+        with patch('tamtam_again.population_plans.now_ms',return_value=freeze_ms+1), \
+                patch('tamtam_again.validation.now_ms',return_value=freeze_ms+1), \
+                patch('tamtam_again.population_experiments.now_ms',return_value=freeze_ms+1):
+            resumed=handoff(self.store,self.runtime.request,experiment_policy=allocation)
+        self.assertEqual(resumed['state'],'awaiting_comparison',resumed)
+        current=self.store.connection.execute('select plan_id,plan_json from validation_plans').fetchone()
+        self.assertEqual(tuple(current),tuple(original))
+        self.assertEqual(self.store.connection.execute('select count(*) from strategy_variants').fetchone()[0],1)
+        plan=json.loads(original['plan_json']);plan.pop('population_origin');plan['coin']='OTHER'
+        from tamtam_again.validation import create_plan
+        with patch('tamtam_again.validation.now_ms',return_value=freeze_ms+1):create_plan(self.store,plan)
+        with self.assertRaises(ValueError):
+            load_manifest_reference_pool(self.store,self.packet,frozen_plan_id=original['plan_id'],
+                request_id=self.runtime.request,reviewed_ms=30)

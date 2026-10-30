@@ -67,20 +67,38 @@ def compiler_contract():
             'promotion criteria and future window policy are supplied separately, never by this output']}
 
 
-def packet_references(packet):
+def packet_references(packet, *, source_reference_pool=None):
     from .sealed_references import expanded_evidence_refs
-    refs=set(packet.get('evidence_refs',[]))|set(expanded_evidence_refs(packet))
+    from .sealed_references import verified_manifest_pool
+    pool=verified_manifest_pool(packet,source_reference_pool)
+    refs=set(packet.get('evidence_refs',[]))|set(expanded_evidence_refs(packet))|set(pool)
     observations=packet.get('observations',{})
     refs.update((observations.get('current_pass_behavior_profile') or {}).get('evidence_refs',[]))
     for mechanism in observations.get('market_mechanisms',[]):refs.update(mechanism.get('evidence_refs',[]))
     refs.update(observations.get('system_measurements',{}))
     if isinstance(packet.get('execution_research_context'), dict):
         refs.add('packet.execution_research_context')
-    return refs
+    from .population_runtime import sealed_section_reference_paths
+    sections,contexts=sealed_section_reference_paths(packet,refs,source_reference_pool=source_reference_pool)
+    return refs|sections|contexts
 
 
-def validate_packet_compilation(hypothesis,profile,packet,request_id):
-    return validate_compilation({**hypothesis,'experiment_profile':profile},packet_references(packet),
+def validate_packet_compilation(hypothesis,profile,packet,request_id,*,store=None,source_reference_pool=None,reviewed_ms=None):
+    if 'evidence_source_manifest' in packet and source_reference_pool is None and store is not None:
+        from .sealed_references import load_manifest_reference_pool
+        plan_id=None
+        if type(reviewed_ms) is int and store.connection.execute(
+                "select 1 from sqlite_master where name='population_plan_drafts'").fetchone():
+            draft=store.connection.execute('select plan_json from population_plan_drafts where request_id=?',
+                (request_id,)).fetchone()
+            if draft:
+                import json
+                from .engine import fingerprint
+                plan_id=fingerprint(json.loads(draft[0]))
+        source_reference_pool=load_manifest_reference_pool(store,packet,frozen_plan_id=plan_id,
+            request_id=request_id,reviewed_ms=reviewed_ms)
+    return validate_compilation({**hypothesis,'experiment_profile':profile},
+        packet_references(packet,source_reference_pool=source_reference_pool),
         request_id=request_id,measurements=packet.get('observations',{}).get('system_measurements',{}),
         as_of_ms=packet.get('available_ms'),execution_context=packet.get('execution_research_context'),
         readiness=packet.get('observations',{}).get('execution_data_readiness'),

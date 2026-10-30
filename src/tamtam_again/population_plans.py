@@ -51,7 +51,7 @@ def _prepare_plan(store,request_id,policy,profile,*,kind='population'):
         spec=json.loads(job['result_json'])['proposal']['hypothesis']['executable_spec']
         from .population_compilation import validate_packet_compilation
         packet=json.loads(job['packet_json'])
-        validate_packet_compilation(json.loads(job['result_json'])['proposal']['hypothesis'],profile,packet,request_id)
+        validate_packet_compilation(json.loads(job['result_json'])['proposal']['hypothesis'],profile,packet,request_id,store=store,reviewed_ms=job['updated_ms'])
         specs=compile_family(profile,spec)
         embargo=max(max(s['horizon_ms'],s['signal'].get('lookback_ms',0))+s['latency_ms'] for s in specs)
         now=now_ms();packet=json.loads(job['packet_json'])

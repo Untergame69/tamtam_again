@@ -33,7 +33,10 @@ def _register_experiment(store,request_id,plan_id,profile,*,kind='population'):
     hypothesis=json.loads(job['result_json'])['proposal']['hypothesis'];spec=hypothesis['executable_spec']
     if plan['coin']!=spec['market']:raise ValueError('Experiment market differs from hypothesis')
     from .population_compilation import validate_packet_compilation
-    validate_packet_compilation(hypothesis,profile,packet,request_id)
+    from .sealed_references import load_manifest_reference_pool
+    source_pool=load_manifest_reference_pool(store,packet,frozen_plan_id=plan_id,request_id=request_id,
+        reviewed_ms=job['updated_ms'])
+    validate_packet_compilation(hypothesis,profile,packet,request_id,source_reference_pool=source_pool)
     if profile.get('hypothesis_id')!=request_id:raise ValueError('Experiment profile must reference its reviewed hypothesis')
     if not plan['synthetic']:
         if plan['created_ms']<job['updated_ms'] or now_ms()>=data['comparison']['start_ms']:

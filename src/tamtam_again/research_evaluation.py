@@ -116,7 +116,7 @@ def _handoff(store, request_id, *, kind, experiment_policy):
     from .research_jobs import table
     from .population_routing import route
     registry = table(kind)
-    job = store.connection.execute(f'select status,result_json,packet_json from {registry} where request_id=?', (request_id,)).fetchone()
+    job = store.connection.execute(f'select status,result_json,packet_json,updated_ms from {registry} where request_id=?', (request_id,)).fetchone()
     if not job:
         raise ValueError('Known reviewed research request required')
     result = json.loads(job['result_json'] or '{}')
@@ -187,7 +187,7 @@ def _handoff(store, request_id, *, kind, experiment_policy):
     from .population_plans import _prepare_plan
     from .population_compilation import validate_packet_compilation
     try:
-        validate_packet_compilation(hypothesis, profile, json.loads(job['packet_json']), request_id)
+        validate_packet_compilation(hypothesis, profile, json.loads(job['packet_json']), request_id, store=store, reviewed_ms=job['updated_ms'])
         allocated = plan_policy(experiment_policy, profile, hypothesis['executable_spec'])
         bind_policy(store, experiment_policy)
         if kind == 'population':

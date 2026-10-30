@@ -189,7 +189,7 @@ def compact_reference_manifest(packet, source_packet, source_fingerprint):
         'source_fingerprint':source_fingerprint,'source_canonical_bytes':len(canonical(source_packet).encode()),
         'network':source_packet.get('network'),'address':source_packet.get('address'),
         'available_ms':source_packet.get('available_ms'),'reference_count':len(pool),
-        'ordered_source_fingerprint':fingerprint(pool),
+        'ordered_source_fingerprint':fingerprint(pool),'source_periods':_declared_source_periods(source_packet),
         'meaning':'Complete original ordered proof pool is losslessly stored in the existing source archive. Section indices/runs and hashes address that pool. All selected-market observations remain inline. Host verifies the archive before inference; model has no archive tools.'}
     for section,field in sections:
         if not isinstance(section,dict) or not isinstance(section.get('reference_projection'),dict):continue
@@ -210,7 +210,41 @@ def verified_manifest_pool(packet, source_pool=None):
     return source_pool
 
 
-def load_manifest_reference_pool(store,packet):
+def _declared_source_periods(packet):
+    """The finite inherited source union already carried by research packets."""
+    from .engine import canonical
+    periods=[]
+    for field in ('source_periods','funding_witness_source_periods'):
+        value=packet.get(field,[])
+        if not isinstance(value,list):raise ValueError('Declared source period list required')
+        periods.extend(value)
+    for entry in packet.get('research_memory',[]):periods.extend(entry['item']['periods'])
+    for entry in packet.get('research_evaluation_memory',[]):periods.extend(entry['periods'])
+    unique={canonical(period):period for period in periods}
+    return [deepcopy(unique[key]) for key in sorted(unique)]
+
+
+def _authorize_manifest_periods(store,packet,manifest,blocked):
+    from .research_memory import authorized_account_history,authorized_period
+    declared=manifest.get('source_periods')
+    if not isinstance(declared,list):raise ValueError('Archived source period union required')
+    periods=declared+_declared_source_periods(packet)
+    has_plans=store.connection.execute("select 1 from sqlite_master where name='validation_plans'").fetchone()
+    for period in periods:
+        # Source periods are half-open, while packet availability is inclusive.
+        # The account guard at the exact cutoff prevents a release at +1ms
+        # from granting access to a reservation active at the decision time.
+        if (not isinstance(period,dict) or not {'network','address','market','start_ms','end_ms'}<=period.keys()
+                or any(not isinstance(period[key],str) or not period[key] for key in ('network','address','market'))
+                or type(period['start_ms']) is not int or type(period['end_ms']) is not int
+                or not 0<=period['start_ms']<period['end_ms']<=packet['available_ms']+1
+                or period['address'].lower() in blocked
+                or not authorized_account_history(store,period['network'],period['address'].lower(),packet['available_ms'])
+                or (has_plans and not authorized_period(store,period,packet['available_ms']+1))):
+            raise ValueError('Archived inherited source period is reserved or unavailable')
+
+
+def load_manifest_reference_pool(store,packet,*,frozen_plan_id=None,request_id=None,reviewed_ms=None):
     """Read the one authorized existing source archive, never from a model tool."""
     import gzip
     import io
@@ -233,8 +267,34 @@ def load_manifest_reference_pool(store,packet):
             or not 0<manifest['source_canonical_bytes']<=MAX_MARKET_DECODED_BYTES_PER_LOT):
         raise ValueError('Bounded same-scope archived reference manifest required')
     network,address,cutoff=manifest['network'],str(manifest['address']).lower(),manifest['available_ms']
-    if address in protected_addresses(store) or not authorized_account_history(store,network,address,cutoff):
+    blocked=protected_addresses(store)
+    if address in blocked and frozen_plan_id is not None:
+        # Registration/recovery may reread only its already-exposed prefix.
+        # A legacy or unrelated holdout can never obtain this exception.
+        plan_row=store.connection.execute('select network,address,created_ms,plan_json from validation_plans where plan_id=?',
+            (frozen_plan_id,)).fetchone()
+        if plan_row:
+            plan=json.loads(plan_row['plan_json'])
+            others=store.connection.execute('select plan_id,plan_json from validation_plans where synthetic=0 and address=? and plan_id!=?',
+                (address,frozen_plan_id)).fetchall()
+            other=False
+            import time
+            clock=int(time.time()*1000)
+            releases=store.connection.execute("select 1 from sqlite_master where name='research_window_releases'").fetchone()
+            for candidate in others:
+                if not releases or not json.loads(candidate['plan_json']).get('population_origin'):
+                    other=True;break
+                stages={row[0] for row in store.connection.execute('select stage from research_window_releases '
+                    'where plan_id=? and released_ms<=?',(candidate['plan_id'],clock))}
+                if stages!={'comparison','final'}:other=True;break
+            if (not other and plan_row['network']==network and plan_row['address'].lower()==address
+                    and request_id is not None and plan.get('population_origin',{}).get('request_id')==request_id
+                    and type(reviewed_ms) is int and cutoff<=reviewed_ms<=plan_row['created_ms']
+                    and packet['available_ms']<plan['comparison']['start_ms']):
+                blocked=blocked-{address}
+    if address in blocked or not authorized_account_history(store,network,address,cutoff):
         raise ValueError('Archived reference source is reserved or unauthorized')
+    _authorize_manifest_periods(store,packet,manifest,blocked)
     row=store.connection.execute('select available_ms,length(body_gzip) from continuous_research_projections where source_fingerprint=?',
         (manifest['source_fingerprint'],)).fetchone()
     if not row or row[0]!=cutoff or not 0<row[1]<=MAX_MARKET_DECODED_BYTES_PER_LOT:
@@ -248,6 +308,8 @@ def load_manifest_reference_pool(store,packet):
     if (fingerprint(source)!=manifest['source_fingerprint'] or source.get('network')!=network
             or str(source.get('address')).lower()!=address or source.get('available_ms')!=cutoff):
         raise ValueError('Archived reference source identity mismatch')
+    if manifest['source_periods']!=_declared_source_periods(source):
+        raise ValueError('Archived source period union mismatch')
     pool=verified_manifest_pool(packet,expanded_evidence_refs(source))
     inline=expanded_evidence_refs(packet)
     if any(ref not in pool and ref!=manifest['source_reference'] for ref in inline):

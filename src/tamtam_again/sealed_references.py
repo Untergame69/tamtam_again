@@ -92,11 +92,11 @@ def compact_evidence_refs(packet):
 MODEL_VIEW_VERSION='ordered-evidence-alias-view-v1'
 ALIAS=re.compile(r'proof_ref:(0|[1-9][0-9]*)\Z')
 MODEL_REFERENCE_INSTRUCTIONS = ('packet.evidence_refs contains proof_ref:<index> display aliases, '
-    'one for each original expanded sealed reference in exactly the same order. Cite these exact aliases '
+    'one for each inline sealed reference in exactly the same order. Cite these exact aliases '
     'in hypothesis.evidence_refs or experiment_profile.axes[*].evidence_refs; runtime binds them '
     'to the original immutable source before validation. Literal original references and admitted '
     'section paths remain valid. Existing evidence_ref_indices, evidence_ref_runs [start,count] and reference_projection fingerprints '
-    'describe the ORIGINAL expanded sealed source pool, never hashes of display aliases. '
+    'describe the ORIGINAL expanded source pool named by reference_pool, never hashes of display aliases. If evidence_source_manifest is supplied, section indices/runs address that full archived pool and its count/hash; cite an admitted section path or the exact source_reference for bulk history. All selected-market observations are inline; the model cannot read the archive. '
     'The model_packet_view header identifies a display view, not a new sealed source.')
 
 
@@ -147,3 +147,109 @@ def bind_model_evidence_refs(response,packet):
             'ordered_source_reference_fingerprint':fingerprint(pool),'reference_count':len(pool),
             'bindings':bindings}]
     return resolved,[]
+
+
+MANIFEST_VERSION='archived-ordered-evidence-pool-v1'
+
+
+def compact_reference_manifest(packet, source_packet, source_fingerprint):
+    """Replace only bulk root proofs; their exact source remains in the existing archive."""
+    from .engine import canonical
+    pool=expanded_evidence_refs(source_packet)
+    if source_fingerprint!=fingerprint(source_packet):raise ValueError('Exact archived source required')
+    source_ref='continuous_research_projections:'+source_fingerprint
+    observations=packet.get('observations',{})
+    sections=[(observations.get('descriptive_history_v1'),'summary_fingerprint')]
+    sections.extend((section,'detail_fingerprint') for section in observations.get('market_execution_detail_v1',{}).values())
+    positions={ref:index for index,ref in enumerate(pool)}
+    for section,field in sections:
+        if not isinstance(section,dict):continue
+        refs=section.get('evidence_refs')
+        if isinstance(refs,list) and refs and all(ref in positions for ref in refs):
+            section['evidence_ref_indices']=[positions[ref] for ref in refs]
+            section.pop('evidence_refs')
+            section['reference_projection']={'version':'sealed-root-reference-indices-v1',
+                'reference_pool':'packet.evidence_refs','reference_count':len(refs),
+                'ordered_reference_fingerprint':fingerprint(refs)}
+            compact_section_reference_indices(section)
+    # Preserve every explicit nested reference (especially wake proof pages and
+    # market rules), plus all descriptive/context scope references, in source order.
+    explicit=set()
+    def visit(value):
+        if isinstance(value,str):explicit.add(value)
+        elif isinstance(value,dict):
+            for key,item in value.items():
+                if key!='evidence_refs' or value is not packet:visit(item)
+        elif isinstance(value,list):
+            for item in value:visit(item)
+    visit(packet)
+    packet['evidence_refs']=[ref for ref in pool if not RAW.fullmatch(ref) or ref in explicit]+[source_ref]
+    packet.pop('evidence_reference_projection',None)
+    packet['evidence_source_manifest']={'version':MANIFEST_VERSION,'source_reference':source_ref,
+        'source_fingerprint':source_fingerprint,'source_canonical_bytes':len(canonical(source_packet).encode()),
+        'network':source_packet.get('network'),'address':source_packet.get('address'),
+        'available_ms':source_packet.get('available_ms'),'reference_count':len(pool),
+        'ordered_source_fingerprint':fingerprint(pool),
+        'meaning':'Complete original ordered proof pool is losslessly stored in the existing source archive. Section indices/runs and hashes address that pool. All selected-market observations remain inline. Host verifies the archive before inference; model has no archive tools.'}
+    for section,field in sections:
+        if not isinstance(section,dict) or not isinstance(section.get('reference_projection'),dict):continue
+        section['reference_projection']['reference_pool']=source_ref+'.evidence_refs'
+        section.pop(field,None);section[field]=fingerprint(section)
+
+
+def verified_manifest_pool(packet, source_pool=None):
+    """Require an explicitly host-verified pool for archived section citations."""
+    manifest=packet.get('evidence_source_manifest')
+    if manifest is None:return expanded_evidence_refs(packet)
+    if (not isinstance(manifest,dict) or manifest.get('version')!=MANIFEST_VERSION
+            or not isinstance(source_pool,list) or any(not isinstance(ref,str) for ref in source_pool)
+            or type(manifest.get('reference_count')) is not int
+            or manifest.get('reference_count')!=len(source_pool)
+            or manifest.get('ordered_source_fingerprint')!=fingerprint(source_pool)):
+        raise ValueError('Verified archived ordered proof pool required')
+    return source_pool
+
+
+def load_manifest_reference_pool(store,packet):
+    """Read the one authorized existing source archive, never from a model tool."""
+    import gzip
+    import io
+    import json
+    from .discovery import protected_addresses
+    from .research_memory import authorized_account_history
+    from .population_local_join import MAX_MARKET_DECODED_BYTES_PER_LOT
+    manifest=packet.get('evidence_source_manifest')
+    if manifest is None:return None
+    if (not isinstance(manifest,dict) or manifest.get('version')!=MANIFEST_VERSION
+            or re.fullmatch(r'[a-f0-9]{64}',str(manifest.get('source_fingerprint'))) is None
+            or manifest.get('source_reference')!='continuous_research_projections:'+manifest['source_fingerprint']
+            or manifest.get('source_reference') not in expanded_evidence_refs(packet)
+            or manifest.get('network')!=packet.get('network')
+            or str(manifest.get('address')).lower()!=str(packet.get('address')).lower()
+            or type(manifest.get('available_ms')) is not int
+            or type(packet.get('available_ms')) is not int
+            or not 0<=manifest['available_ms']<=packet['available_ms']
+            or type(manifest.get('source_canonical_bytes')) is not int
+            or not 0<manifest['source_canonical_bytes']<=MAX_MARKET_DECODED_BYTES_PER_LOT):
+        raise ValueError('Bounded same-scope archived reference manifest required')
+    network,address,cutoff=manifest['network'],str(manifest['address']).lower(),manifest['available_ms']
+    if address in protected_addresses(store) or not authorized_account_history(store,network,address,cutoff):
+        raise ValueError('Archived reference source is reserved or unauthorized')
+    row=store.connection.execute('select available_ms,length(body_gzip) from continuous_research_projections where source_fingerprint=?',
+        (manifest['source_fingerprint'],)).fetchone()
+    if not row or row[0]!=cutoff or not 0<row[1]<=MAX_MARKET_DECODED_BYTES_PER_LOT:
+        raise ValueError('Archived reference source cutoff or size mismatch')
+    body=store.connection.execute('select body_gzip from continuous_research_projections where source_fingerprint=?',
+        (manifest['source_fingerprint'],)).fetchone()[0]
+    with gzip.GzipFile(fileobj=io.BytesIO(body)) as archive:
+        decoded=archive.read(manifest['source_canonical_bytes']+1)
+    if len(decoded)!=manifest['source_canonical_bytes']:raise ValueError('Archived reference source size mismatch')
+    source=json.loads(decoded)
+    if (fingerprint(source)!=manifest['source_fingerprint'] or source.get('network')!=network
+            or str(source.get('address')).lower()!=address or source.get('available_ms')!=cutoff):
+        raise ValueError('Archived reference source identity mismatch')
+    pool=verified_manifest_pool(packet,expanded_evidence_refs(source))
+    inline=expanded_evidence_refs(packet)
+    if any(ref not in pool and ref!=manifest['source_reference'] for ref in inline):
+        raise ValueError('Inline reference absent from verified archive')
+    return pool

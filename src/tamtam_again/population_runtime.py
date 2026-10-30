@@ -69,11 +69,12 @@ def _safe_response_parts(response):
     return canonical(body),canonical(metadata)
 
 
-def sealed_section_reference_paths(packet, allowed_refs):
+def sealed_section_reference_paths(packet, allowed_refs, *, source_reference_pool=None):
     """Finite section identities anchored to the unchanged, sealed evidence pool."""
     from .engine import fingerprint
-    from .sealed_references import expanded_evidence_refs,section_reference_indices,RANGE_VERSION
-    pool=expanded_evidence_refs(packet)
+    from .sealed_references import section_reference_indices,RANGE_VERSION
+    from .sealed_references import verified_manifest_pool
+    pool=verified_manifest_pool(packet,source_reference_pool)
     observations=packet.get('observations',{})
     sources=set()
     def source_backed(section):
@@ -85,7 +86,8 @@ def sealed_section_reference_paths(packet, allowed_refs):
             except ValueError:return False
             refs=[pool[index] for index in indices]
             if (projection.get('version') not in ('sealed-root-reference-indices-v1',RANGE_VERSION)
-                    or projection.get('reference_pool')!='packet.evidence_refs'
+                    or projection.get('reference_pool')!=(packet['evidence_source_manifest']['source_reference']+'.evidence_refs'
+                        if 'evidence_source_manifest' in packet else 'packet.evidence_refs')
                     or projection.get('reference_count')!=len(refs)
                     or projection.get('ordered_reference_fingerprint')!=fingerprint(refs)):
                 return False
@@ -105,8 +107,10 @@ def sealed_section_reference_paths(packet, allowed_refs):
     return sources,context
 
 
-def validate_response(response,packet,*,request_id=None):
+def validate_response(response,packet,*,request_id=None,source_reference_pool=None):
     if 'model_packet_view' in packet:raise ValueError('Model packet views cannot be used for validation')
+    from .sealed_references import verified_manifest_pool
+    verified_pool=verified_manifest_pool(packet,source_reference_pool)
     from .research import CallContractError
     diagnostic=response.get('diagnostic')
     if not ((isinstance(diagnostic,str) and diagnostic.strip()) or (isinstance(diagnostic,dict) and diagnostic)) or not isinstance(response.get('wake'),dict):
@@ -161,14 +165,14 @@ def validate_response(response,packet,*,request_id=None):
             'field':'hypothesis.markets','observed':hypothesis['markets'],
             'limit':packet['observations'].get('markets',[])})
     from .sealed_references import expanded_evidence_refs
-    allowed_refs=set(packet['evidence_refs'])|set(expanded_evidence_refs(packet))
+    allowed_refs=set(packet['evidence_refs'])|set(expanded_evidence_refs(packet))|set(verified_pool)
     behavior=packet['observations'].get('current_pass_behavior_profile') or {}
     allowed_refs.update(behavior.get('evidence_refs',[]))
     for mechanism in packet['observations'].get('market_mechanisms',[]):
         allowed_refs.update(mechanism.get('evidence_refs',[]))
     measurements=packet['observations'].get('system_measurements',{})
     allowed_refs.update(measurements)
-    section_refs,context_refs=sealed_section_reference_paths(packet,allowed_refs)
+    section_refs,context_refs=sealed_section_reference_paths(packet,allowed_refs,source_reference_pool=source_reference_pool)
     accepted_refs=allowed_refs|section_refs|context_refs
     if (not hypothesis['evidence_refs'] or not set(hypothesis['evidence_refs'])<=accepted_refs
             or not set(hypothesis['evidence_refs'])&(allowed_refs|section_refs)):
@@ -239,8 +243,8 @@ When supplied, funding_sensitivity_v1 is a separate user-authorized adverse cost
                 '\nKeep research interest, observability, and compatibility with the current paper engine as separate judgments. '
                 'An incompatible mechanism should route to a technical task; it does not establish economic invalidity. '
                 'Do not request historical links or completeness that the packet marks irrecoverable.')
-    if packet.get('evidence_reference_projection'):
-        instructions += '''\nThe sealed source uses lossless raw85 archive references; the displayed root pool uses proof_ref aliases instead. Reference indices and fingerprints still address the original expanded sealed pool in the same order; no reference was dropped.
+    if packet.get('evidence_reference_projection') or packet.get('evidence_source_manifest'):
+        instructions += '''\nAll SHA-256 proof references remain lossless in the sealed source pool or its declared host-verified source archive. The displayed root pool uses proof_ref aliases. Section indices/runs and fingerprints address the original pool declared by reference_pool; no source proof was dropped.
 Position-record tables retain every record and value. For each group, layout integers index the full field vector; constants fill fixed indices, columns name indices provided by each row, and rows contain [record identity, varying cells]. Mapping identities are segment keys; list identities are original positions. These are exact tables, not selected examples or a statistical subsample.'''
     return ('Propose a falsifiable mechanism from this sealed paper evidence. No tools exist.\n'
         +instructions+'\n'+MODEL_REFERENCE_INSTRUCTIONS+'\nCompiler contract:\n'+canonical(compiler_contract())+
@@ -402,6 +406,12 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
             _advance_call(store,kind,request_id,active_call_index,'response_validated',
                 time_field='response_validated_ms')
             return result
+        from .sealed_references import load_manifest_reference_pool
+        source_reference_pool=load_manifest_reference_pool(store,packet)
+        if source_reference_pool is not None:
+            manifest=packet['evidence_source_manifest']
+            artifacts['verified_evidence_source_manifest']={key:manifest[key] for key in
+                ('version','source_reference','source_fingerprint','reference_count','ordered_source_fingerprint')}
         prompt=build_proposal_prompt(packet,request_id)
         raw,measured=bounded_call(prompt);artifacts['raw_proposal']=raw
         checkpoint()
@@ -415,7 +425,7 @@ def execute_job(store,request_id,row,*,kind='population',sealed_packet=None):
             proposal['hypothesis'],bindings=bind_execution_contracts(
                 proposal.get('hypothesis'),packet.get('execution_research_context'))
             artifacts['execution_contract_bindings']=bindings
-        validate_response(proposal,packet,request_id=request_id);artifacts['proposal']=proposal
+        validate_response(proposal,packet,request_id=request_id,source_reference_pool=source_reference_pool);artifacts['proposal']=proposal
         checkpoint()
         _advance_call(store,kind,request_id,active_call_index,'result_validated',time_field='result_validated_ms')
         if pilot_policy is not None:

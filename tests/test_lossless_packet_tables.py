@@ -126,7 +126,7 @@ class ProductionProjectionIdentityTests(unittest.TestCase):
             _project_other_markets(fixture.store,packet,'COIN',200)
             self.assertEqual(semantic_identity(packet,'COIN'),identity)
             self.assertLess(len(canonical(packet)),len(canonical(before)))
-            paths,_=sealed_section_reference_paths(packet,packet_references(packet))
+            paths,_=sealed_section_reference_paths(packet,set(packet_references(packet))|set(before['evidence_refs']),source_reference_pool=before['evidence_refs'])
             self.assertIn('packet.observations.market_execution_detail_v1.COIN',paths)
             blob=fixture.store.connection.execute('select body_gzip from continuous_research_projections where source_fingerprint=?',(source,)).fetchone()[0]
             self.assertEqual(__import__('json').loads(gzip.decompress(blob)),before)

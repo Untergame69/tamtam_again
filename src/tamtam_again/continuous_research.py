@@ -291,8 +291,8 @@ def _project_other_markets(store, packet, market, available_ms):
                 'full_context_reference':'continuous_research_projections:'+source}
             context.pop('fingerprint',None);context['fingerprint']=fingerprint(context)
     packet['evidence_refs'].append('continuous_research_projections:'+source)
-    from .sealed_references import compact_evidence_refs
-    compact_evidence_refs(packet)
+    from .sealed_references import compact_reference_manifest
+    compact_reference_manifest(packet,json.loads(full),source)
 
 
 def _seal(store, policy, item, prepared, clock):

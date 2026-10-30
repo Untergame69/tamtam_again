@@ -414,7 +414,7 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
             source_priority=(int(item['market'].startswith('@')),
                 int(latest_fill<clock-86400000),-latest_fill) if prefer_instrumented else (0,0,0)
             return (int(prefer_instrumented and item['address'] not in instrumented),
-                *source_priority,account or 0,0 if old is None else old[0],item.get('priority',''),item['candidate'])
+                account or 0,*source_priority,0 if old is None else old[0],item.get('priority',''),item['candidate'])
         for item in sorted(selections,key=ordering)[:max_candidates]:
             if dispatch and monotonic()>=preparation_deadline:
                 result['admission']={'status':'waiting_runtime_headroom','preflight_only':True}
@@ -425,7 +425,11 @@ def tick(store, policy, *, dispatch=True, clock_ms=None, experiment_policy=None,
                 'separating price flow, signed fees, funding, inventory and coverage. Use all deterministic statistics; '
                 'do not infer order placement from executed fills. If supported, specify an executable causal rule with '
                 'explicit costs, timing and rejection criteria; otherwise record the exact missing observation or a useful '
-                'descriptive conclusion. Trader private intentions and irrecoverable historical links are not prerequisites.')
+                'descriptive conclusion. For follower research, our observable trigger is the publicly received fill: '
+                'assess a response after our own delay and costs, without requiring the trader\'s earlier decision rule. '
+                'An autonomous rule instead needs a signal available before our independent decision. '
+                'Neither path is justified solely by activity or account PnL; explain the market evidence motivating it. '
+                'Trader private intentions and irrecoverable historical links are not prerequisites.')
             latest=store.connection.execute('select max(observation_id) from raw_observations '
                 "where network=? and entity_type='account' and entity_id=? and source='hyperliquid-population-rest-v1'",
                 (policy['network'],item['address'])).fetchone()[0]

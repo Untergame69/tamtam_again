@@ -1,8 +1,21 @@
 # Boucle autonome — preuve de bout en bout
 
-État au 29 octobre 2026 : **mission en cours, critère de fin non atteint**.
+État au 30 octobre 2026 : **mission en cours, critère de fin non atteint**.
 Cette fiche sera complétée par les identifiants du cycle réel ; une recette
 synthétique ou une correction du worker ne suffit pas à le déclarer démontré.
+
+Reprise du 30 octobre : `5fad694` est installé et poussé sur `origin/main`.
+Les timers recherche/paper ont été restaurés après intégration à services
+inactifs ; les collecteurs n'ont pas été arrêtés. La revue indépendante des
+corrections ciblées a exécuté 54 tests avec succès. Les neuf anciens paquets
+ne contenaient ni contexte de marché pré-fill ni scénario d'exécution : ils ne
+constituent pas neuf essais des corrections nouvelles. Le quota du 30 est
+disponible, mais le contrôle actuel XMR dépasse encore 225 000 caractères à
+cause de 6 432 références ; aucun appel ni plan n'a été créé par ce contrôle.
+Une rotation des comptes instrumentés avant la préférence pour le fill le plus
+récent évite qu'un compte volumineux monopolise chaque passage. La question de
+suivi précise que notre signal est le fill public reçu, sans exiger la règle
+privée qui précédait ce fill ; l'intérêt après nos coûts reste à démontrer.
 
 ## Preuves déjà obtenues
 

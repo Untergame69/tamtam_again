@@ -12,6 +12,29 @@ from tamtam_again.population_experiments import register_experiment
 
 
 class ContinuousEvaluationIntegrationTests(unittest.TestCase):
+ def test_recent_oversized_account_does_not_starve_other_instrumented_accounts(self):
+  from tamtam_again import continuous_research
+  from tamtam_again.population import migrate
+  policy=json.loads((Path(continuous_research.__file__).resolve().parents[2]/'config/continuous-research-policy.json').read_text())
+  policy['network']='synthetic'
+  inventory={'candidate_evaluations':[{'candidate_id':name,'candidate_alias':name,
+    'disposition':'admissible_descriptive','research_question':'fixture',
+    'source_ref':'fixture:'+name,'priority':'P3','scope':{'markets':['SYNTH'],'market_count':1,
+    'period_start_ms':0,'cutoff_ms':100}} for name in ('oversized','other')]}
+  with tempfile.TemporaryDirectory() as directory, Store(Path(directory)/'fixture.sqlite') as store:
+   migrate(store);continuous_research.initialize(store)
+   store.connection.execute('insert into continuous_research_candidates values(?,?,?,?,?,?,?)',
+    ('synthetic','oversized','SYNTH','old','packet_too_large','{}',10));store.connection.commit()
+   with patch('tamtam_again.continuous_research.admission_inventory',return_value=inventory),patch(
+      'tamtam_again.continuous_research.market_proofs',return_value={
+       ('oversized','SYNTH'):{'last_fill_event_ms':999},('other','SYNTH'):{'last_fill_event_ms':100}}),patch(
+      'tamtam_again.continuous_research.tracked_accounts',return_value={'oversized','other'}),patch(
+      'tamtam_again.continuous_research.prepare_packet',return_value={'status':'packet_too_large'}) as preparation:
+    outcome=continuous_research.tick(store,policy,dispatch=False,clock_ms=1000,max_candidates=1)
+   self.assertEqual(outcome['candidates'][0]['candidate'],'other:SYNTH')
+   self.assertEqual(preparation.call_count,1)
+   self.assertEqual(outcome['dispatched'],[])
+
  def test_malformed_provider_wake_does_not_block_the_next_candidate(self):
   from tamtam_again import continuous_research
   from tamtam_again.population import migrate
